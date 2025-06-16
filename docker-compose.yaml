@@ -13,12 +13,6 @@ services:
       APP_PORT: "8080"
     depends_on:
       - db # Ensures the 'db' service starts before 'web'
-    volumes:
-      # Optional: Mount your source code for hot-reloading during development
-      # This can be useful if your Go server supports live-reloading (e.g., using fresh)
-      # Or just for easier debugging / inspecting files inside the container
-      # If you're building a production image, you'd typically remove this.
-      - .:/app
     # Set entrypoint to run migrations before starting the app (example)
     # entrypoint: ["/bin/sh", "-c", "/app/web-app migrate up && /app/web-app"]
 
