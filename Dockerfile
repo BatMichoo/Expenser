@@ -1,7 +1,7 @@
 # File: ./server/Dockerfile
 
 # --- STAGE 1: Builder ---
-FROM golang:1.22-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Set working directory inside the container
 WORKDIR /app
@@ -39,4 +39,4 @@ COPY static/ static/
 EXPOSE 8080
 
 # Command to run the executable
-CMD ["./web-app"]
+CMD ["./bin/web-app"]
