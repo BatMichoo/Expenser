@@ -15,7 +15,7 @@ func CreateRouter() *gin.Engine {
 	router.Static("/static", "./static") // Serve files from ./static directory under /static URL path
 
 	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{
+		c.HTML(http.StatusOK, "base.html", gin.H{
 			"Title":   "My HTMX App",
 			"Message": "Welcome!",
 		})
