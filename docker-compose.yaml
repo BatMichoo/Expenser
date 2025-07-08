@@ -1,28 +1,25 @@
 services:
-  # Go HTMX Application Service
   web:
+    container_name: web
     build:
-      context: ./server # Build context is the project root (where go.mod, internal/, static/, etc. are)
-      dockerfile: ./Dockerfile # Path to the Dockerfile for the web service
+      context: ./server
+      dockerfile: ./Dockerfile
+    env_file:
+      - ./.env
     ports:
-      - "8080:8080" # Map host port 8080 to container port 8080
-    environment:
-      # Environment variables for your Go application
-      # These will be accessible via os.Getenv() in your Go code
-      DATABASE_URL: "postgres://user:password@db:5432/mydatabase?sslmode=disable"
-      APP_PORT: "8080"
+      - "8080:8080"
     depends_on:
-      - db # Ensures the 'db' service starts before 'web'
-    # Set entrypoint to run migrations before starting the app (example)
-    # entrypoint: ["/bin/sh", "-c", "/app/web-app migrate up && /app/web-app"]
+      db:
+        condition: service_healthy
 
   nginx:
+    container_name: nginx
     image: nginx:stable-alpine
     env_file:
       - ./.env
     ports:
-      - "80:80" # HTTP for redirection
-      - "443:443" # HTTPS traffic
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl-params.conf:/etc/nginx/ssl-params.conf:ro
@@ -31,20 +28,25 @@ services:
     depends_on:
       - web
 
-  # PostgreSQL Database Service
   db:
-    image: postgres:16-alpine # Using the official PostgreSQL image
+    container_name: db
+    image: postgres:16-alpine
     environment:
-      # Required environment variables for the PostgreSQL image
-      POSTGRES_DB: mydatabase
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      PGTZ: Europe/Sofia
+      LANG: en_US.utf8
+      LC_ALL: en_US.utf8
     volumes:
-      # Persistent volume for database data
-      # Data will persist even if the container is removed
       - db-data:/var/lib/postgresql/data
     ports:
-      - "5432:5432" # Optional: Expose DB port to host for local access (e.g., via GUI tool)
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  db-data: # Define the named volume for database persistence
+  db-data:

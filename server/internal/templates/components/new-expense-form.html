@@ -1,0 +1,51 @@
+{{ block "new-exp" . }}
+<div>
+  <h2 class="new-expense-heading">
+    Add New Expense
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-dollar-sign">
+      <line x1="12" y1="1" x2="12" y2="23" />
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  </h2>
+  <form class="new-expense-form">
+    <div>
+      <label for="utilityType" class="form-label">Utility Type</label>
+      <select id="utilityType" name="type" class="form-input-common">
+        <option value="">Select a Utility</option>
+        <option value="Electricity">Electricity</option>
+        <option value="Water">Water</option>
+        <option value="Gas">Gas</option>
+        <option value="Internet">Internet</option>
+        <option value="TV">TV</option>
+        <option value="Waste">Waste Management</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div>
+      <label for="amount" class="form-label">Amount ($)</label>
+      <input type="number" id="amount" name="amount" step="0.01" min="0" required class="form-input-common"
+        placeholder="e.g., 75.50" />
+    </div>
+    <div>
+      <label for="expenseDate" class="form-label">Date</label>
+      <input type="date" id="expenseDate" name="date" required class="form-input-common" />
+    </div>
+    <div>
+      <label for="notes" class="form-label">Notes (Optional)</label>
+      <textarea id="notes" name="notes" rows="3" class="form-input-common" placeholder="e.g., Q2 2025 bill"></textarea>
+    </div>
+    <div>
+      <button type="button" class="btn-primary" onClick="document.getElementById('dialog-modal').close();">
+        Cancel
+      </button>
+      <button type="submit" class="btn-primary" hx-post="/home/expenses" hx-target="#recent-expenses"
+        hx-swap="afterbegin" hx-on::after-request="if(event.detail.successful) {
+        document.getElementById('dialog-modal').close();
+    }">
+        Add Expense
+      </button>
+    </div>
+  </form>
+</div>
+{{ end }}

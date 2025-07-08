@@ -1,0 +1,808 @@
+:root {
+  --bg-color-light: #f9fafb;
+  --bg-color-dark: #1a202c;
+  --bg-color-dark-acc: #374151;
+  --tx-color-light: #374151;
+  --tx-color-dark: #e2e8f0;
+  --light-theme-toggle-background: #e5e7eb;
+  --light-theme-toggle-hover: #d1d5db;
+  --light-theme-toggle-focus-shadow: rgba(156, 163, 175, 0.5);
+  --dark-theme-toggle-focus-shadow: rgba(156, 163, 175, 0.5);
+  --light-tracker-nav-button-hover-background: #ebf8ff;
+  --light-tracker-nav-button-hover-color: #1d4ed8;
+  --dark-tracker-nav-button-hover-background: #1e3a8a;
+  --tracker-nav-button-focus-shadow: rgba(59, 130, 246, 0.5);
+  --light-tracker-nav-button-active-border: #3b82f6;
+  --dark-tracker-nav-button-active-border: #1e3a8a;
+  --footer-color-light: #6b7280;
+  --footer-color-dark: #9ca3af;
+  --btn-primary-background-light: #2563eb;
+  --btn-primary-color: #ffffff;
+  --btn-primary-hover-light: #1d4ed8;
+  --btn-primary-background-dark: #1d4ed8;
+  --btn-primary-hover-dark: #1e3a8a;
+  --btn-primary-focus-shadow-1: #3b82f6;
+  --btn-primary-focus-shadow-2: rgba(59, 130, 246, 0.5);
+  --btn-red-background-light: #dc2626;
+  --btn-red-color: #ffffff;
+  --btn-red-hover-light: #991b1b;
+  --btn-red-background-dark: #b91c1c;
+  --btn-red-hover-dark: #7f1d1d;
+  --btn-red-focus-shadow-1: #ef4444;
+  --btn-red-focus-shadow-2: rgba(239, 68, 68, 0.5);
+  --section-heading-color-light: #6b7280;
+  --overview-section-heading-svg-color-light: #3b82f6;
+  --overview-section-heading-svg-color-dark: #60a5fa;
+  --recent-expenses-section-heading-svg-color-light: #a855f7;
+  --recent-expenses-section-heading-svg-color-dark: #c084fc;
+  --total-expenses-card-gradient-start-light: #3b82f6;
+  --total-expenses-card-gradient-end-light: #2563eb;
+  --total-expenses-card-gradient-start-dark: #1d4ed8;
+  --total-expenses-card-gradient-end-dark: #1e3a8a;
+  --highest-expense-card-gradient-start-light: #a855f7;
+  --highest-expense-card-gradient-end-light: #9333ea;
+  --highest-expense-card-gradient-start-dark: #7e22ce;
+  --highest-expense-card-gradient-end-dark: #6b21a8;
+  --expenses-table-border: #f9fafb;
+  --table-action-button-blue-light: #3b82f6;
+  --table-action-button-blue-hover-light: #1d4ed8;
+  --table-action-button-blue-dark: #60a5fa;
+  --table-action-button-blue-hover-dark: #93c5fd;
+  --form-label-color-light: #374151;
+  --form-label-color-dark: #d1d5db;
+  --form-input-border-light: #d1d5db;
+  --form-input-background-light: #ffffff;
+  --form-input-text-light: #374151;
+  --form-input-border-dark: #4b5563;
+  --form-input-background-dark: #374151;
+  --form-input-text-dark: #e5e7eb;
+  --new-expense-form-input-focus-border: #3b82f6;
+  --new-expense-form-input-focus-shadow-1: #3b82f6;
+  --new-expense-form-input-focus-shadow-2: rgba(59, 130, 246, 0.5);
+  --welcome-section-heading-color-light: #374151;
+  --welcome-section-heading-color-dark: #f3f4f6;
+  --welcome-section-paragraph-1-color-light: #4b5563;
+  --welcome-section-paragraph-1-color-dark: #d1d5db;
+  --welcome-section-paragraph-2-color-light: #6b7280;
+  --welcome-section-paragraph-2-color-dark: #9ca3af;
+  --welcome-section-svg-color-light: #3b82f6;
+  --welcome-section-svg-color-dark: #60a5fa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0em;
+  font:
+    16px/1.5 "Inter",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-color-light);
+  color: var(--tx-color-light);
+  min-height: 100vh;
+  display: flex;
+  justify-content: space-between;
+  flex-direction: column;
+  align-items: center;
+  transition-property: background-color, color;
+  transition-duration: 300ms;
+}
+
+/* Dark theme styles */
+body.dark {
+  background-color: var(--bg-color-dark);
+  color: var(--tx-color-dark);
+}
+
+/* Header Section */
+.header-section {
+  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 3em;
+  width: 92%;
+}
+
+.header-section h3 {
+  margin: auto 0;
+}
+
+/* Theme Toggle Button */
+#theme-toggle {
+  margin: 0.5em;
+  padding: 0.5em;
+  background-color: var(--light-theme-toggle-background);
+  color: var(--tx-color-light);
+  border-radius: 0.5em;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: none;
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: 300ms;
+  display: flex;
+  align-items: center;
+  outline: none;
+}
+
+body.dark #theme-toggle {
+  background-color: var(--bg-color-dark-acc);
+  color: var(--tx-color-dark);
+}
+
+#theme-toggle:hover {
+  background-color: var(--light-theme-toggle-hover);
+}
+
+body.dark #theme-toggle:hover {
+  background-color: #4b5563;
+}
+
+#theme-toggle:focus {
+  box-shadow: 0 0 0 2px var(--light-theme-toggle-focus-shadow);
+}
+
+#theme-toggle .sun {
+  display: block;
+}
+
+body.dark #theme-toggle .sun {
+  display: none;
+}
+
+#theme-toggle .moon {
+  display: none;
+}
+
+body.dark #theme-toggle .moon {
+  display: block;
+}
+
+#theme-toggle span {
+  margin-left: 0.5em;
+}
+
+/* Tracker Navigation */
+.tracker-navigation {
+  display: flex;
+  gap: 1em;
+  justify-content: center;
+  padding: 0.5em;
+  transition-property: background-color;
+  transition-duration: 300ms;
+}
+
+.tracker-nav-button {
+  padding: 0.5em 1em;
+  font-weight: 700;
+  border: 2px solid inherit;
+  border-radius: 0.5em;
+  transition-property: background-color, color;
+  transition-duration: 200ms;
+  outline: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+body.dark .tracker-nav-button {
+  background-color: var(--bg-color-dark-acc);
+  color: var(--tx-color-dark);
+}
+
+.tracker-nav-button:focus {
+  box-shadow: 0 0 0 2px var(--tracker-nav-button-focus-shadow);
+}
+
+.tracker-nav-button:hover {
+  background-color: var(--light-tracker-nav-button-hover-background);
+  color: var(--light-tracker-nav-button-hover-color);
+}
+
+body.dark .tracker-nav-button:hover {
+  background-color: var(--dark-tracker-nav-button-hover-background);
+}
+
+/* Specific styles for active/inactive home button */
+.tracker-nav-button.active {
+  border: 2px solid var(--light-tracker-nav-button-active-border);
+}
+
+body.dark .tracker-nav-button.active {
+  border: 2px solid var(--dark-tracker-nav-button-active-border);
+}
+
+.tracker-nav-button svg {
+  width: 1.75em;
+  height: 1.75em;
+  margin-right: 0.75em;
+}
+
+.container {
+  margin: 0 auto;
+  text-align: center;
+  flex-grow: 1;
+  min-width: 70%;
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding: 2em;
+  }
+}
+
+/* Main Content Area for Trackers */
+.tracker-content {
+  padding: 1.5em;
+  border-radius: 0.5em;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transition-property: background-color;
+  transition-duration: 300ms;
+}
+
+@media (min-width: 768px) {
+  .tracker-content {
+    padding: 2em;
+  }
+}
+
+footer {
+  width: 100%;
+  text-align: center;
+  color: var(--footer-color-light);
+  font-size: 0.875em;
+  line-height: 1.25em;
+  margin-top: 2em;
+  transition-property: color;
+  transition-duration: 300ms;
+}
+
+body.dark footer {
+  color: var(--footer-color-dark);
+}
+
+/* Common button styles */
+.btn-primary {
+  padding: 0.75em 2em;
+  background-color: var(--btn-primary-background-light);
+  color: var(--btn-primary-color);
+  font-weight: 700;
+  font-size: 1.125em;
+  line-height: 1.75em;
+  border-radius: 0.5em;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: none;
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: 200ms;
+  outline: none;
+}
+
+body.dark .btn-primary {
+  background-color: var(--btn-primary-background-dark);
+}
+
+.btn-primary:hover {
+  background-color: var(--btn-primary-hover-light);
+}
+
+body.dark .btn-primary:hover {
+  background-color: var(--btn-primary-hover-dark);
+}
+
+.btn-primary:focus {
+  box-shadow:
+    0 0 0 2px var(--btn-primary-focus-shadow-1),
+    0 0 0 4px var(--btn-primary-focus-shadow-2);
+}
+
+/* Add Expense Section */
+#add-expense-section {
+  margin-bottom: 2.5em;
+}
+
+#add-expense-section button {
+  padding: 0.75em 2em;
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.125em;
+  line-height: 1.75em;
+  border-radius: 0.5em;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: none;
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: 200ms;
+  outline: none;
+}
+
+.section-heading svg {
+  margin-left: 0.75em;
+}
+
+/* Apply section heading styles */
+#overview-section h2,
+#recent-expenses-section h2,
+#car-overview-section h2,
+#add-car-expense-section h2,
+#recent-car-expenses-section h2,
+.new-expense-heading {
+  font-size: 1.875em;
+  line-height: 2.25em;
+  font-weight: 700;
+  color: var(--section-heading-color-light);
+  margin-bottom: 1.5em;
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  justify-content: center;
+  transition-property: color;
+  transition-duration: 300ms;
+}
+
+/* Specific SVG colors for each section heading */
+#overview-section h2 svg {
+  color: var(--overview-section-heading-svg-color-light);
+}
+
+body.dark #overview-section h2 svg {
+  color: var(--overview-section-heading-svg-color-dark);
+}
+
+#recent-expenses-section h2 svg {
+  color: var(--recent-expenses-section-heading-svg-color-light);
+}
+
+body.dark #recent-expenses-section h2 svg {
+  color: var(--recent-expenses-section-heading-svg-color-dark);
+}
+
+#car-overview-section h2 svg {
+  color: #ef4444;
+}
+
+body.dark #car-overview-section h2 svg {
+  color: #f87171;
+}
+
+#add-car-expense-section h2 svg,
+.new-expense-heading svg {
+  color: #22c55e;
+}
+
+body.dark #add-car-expense-section h2 svg,
+body.dark .new-expense-heading svg {
+  color: #4ade80;
+}
+
+#dialog-modal {
+  min-width: 40%;
+  background-color: inherit;
+  border: none;
+  border-radius: 0.5em;
+}
+
+#dialog-modal::backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  /* Optional: add a blur effect */
+}
+
+.new-expense-heading {
+  font-size: 1.875em;
+  line-height: 2.25em;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 1.5em;
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  justify-content: center;
+  transition-property: color;
+  transition-duration: 300ms;
+}
+
+.new-expense-heading svg {
+  color: #22c55e;
+}
+
+body.dark .new-expense-heading {
+  color: #f3f4f6;
+}
+
+body.dark .new-expense-heading svg {
+  color: #4ade80;
+}
+
+.new-expense-form {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1em;
+}
+
+@media (min-width: 768px) {
+  .new-expense-form {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.new-expense-form .md-col-span-2 {
+  grid-column: span 2 / span 2;
+}
+
+.new-expense-form .flex-justify-end {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1em;
+  /* Added for spacing between buttons */
+}
+
+body.dark .new-expense-form {}
+
+.new-expense-form label {
+  display: block;
+  font-size: 0.875em;
+  line-height: 1.25em;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25em;
+}
+
+body.dark .new-expense-form label {
+  color: #d1d5db;
+}
+
+.new-expense-form input,
+.new-expense-form select,
+.new-expense-form textarea {
+  margin-top: 0.25em;
+  display: block;
+  width: 100%;
+  padding: 0.75em;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375em;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  font-size: 1em;
+  background-color: #ffffff;
+  color: #374151;
+  transition-property: border-color, box-shadow, background-color, color;
+  transition-duration: 200ms;
+}
+
+body.dark .new-expense-form input,
+body.dark .new-expense-form select,
+body.dark .new-expense-form textarea {
+  border-color: #4b5563;
+  background-color: #374151;
+  color: #e5e7eb;
+}
+
+.new-expense-form input:focus,
+.new-expense-form select:focus,
+.new-expense-form textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow:
+    0 0 0 1px #3b82f6,
+    0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+
+.new-expense-form button {
+  padding: 0.75em 2em;
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.125em;
+  line-height: 1.75em;
+  border-radius: 0.5em;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: none;
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: 200ms;
+  outline: none;
+}
+
+body.dark .new-expense-form button {
+  background-color: #1d4ed8;
+}
+
+.new-expense-form button:hover {
+  background-color: #1d4ed8;
+}
+
+body.dark .new-expense-form button:hover {
+  background-color: #1e3a8a;
+}
+
+.new-expense-form button:focus {
+  box-shadow:
+    0 0 0 2px #3b82f6,
+    0 0 0 4px rgba(59, 130, 246, 0.5);
+}
+
+/* Grid Container - Common Styles */
+.grid-common {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5em;
+  margin-bottom: 2em;
+}
+
+@media (min-width: 768px) {
+  .grid-common {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-common {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.overview-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1em;
+  flex: 1;
+}
+
+/* Apply grid common styles */
+.car-grid-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5em;
+  margin-bottom: 2em;
+}
+
+/* Apply card common styles */
+.card {
+  padding: 1.5em;
+  border-radius: 0.5em;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  color: #ffffff;
+  transition-property: background-color, color;
+  transition-duration: 300ms;
+  flex-basis: 25%;
+}
+
+/* Specific Card Backgrounds */
+.total-expenses-card {
+  background-image: linear-gradient(to bottom right,
+      var(--total-expenses-card-gradient-start-light),
+      var(--total-expenses-card-gradient-end-light));
+}
+
+body.dark .total-expenses-card {
+  background-image: linear-gradient(to bottom right,
+      var(--total-expenses-card-gradient-start-dark),
+      var(--total-expenses-card-gradient-end-dark));
+}
+
+.highest-expense-card {
+  background-image: linear-gradient(to bottom right,
+      var(--highest-expense-card-gradient-start-light),
+      var(--highest-expense-card-gradient-end-light));
+}
+
+body.dark .highest-expense-card {
+  background-image: linear-gradient(to bottom right,
+      var(--highest-expense-card-gradient-start-dark),
+      var(--highest-expense-card-gradient-end-dark));
+}
+
+@media (min-width: 768px) {
+  .highest-expense-card {
+    grid-column: span 2 / span 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .highest-expense-card {
+    grid-column: span 1 / span 1;
+  }
+}
+
+.total-car-expenses-card {
+  background-image: linear-gradient(to bottom right, #ef4444, #dc2626);
+}
+
+body.dark .total-car-expenses-card {
+  background-image: linear-gradient(to bottom right, #b91c1c, #991b1b);
+}
+
+.next-service-card {
+  background-image: linear-gradient(to bottom right, #f59e0b, #d97706);
+}
+
+body.dark .next-service-card {
+  background-image: linear-gradient(to bottom right, #b45309, #92400e);
+}
+
+.last-fuel-up-card {
+  background-image: linear-gradient(to bottom right, #f97316, #ea580c);
+}
+
+body.dark .last-fuel-up-card {
+  background-image: linear-gradient(to bottom right, #c2410c, #9a3412);
+}
+
+@media (min-width: 768px) {
+  .last-fuel-up-card {
+    grid-column: span 2 / span 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .last-fuel-up-card {
+    grid-column: span 1 / span 1;
+  }
+}
+
+/* Apply common table styles */
+.expenses-table {
+  min-width: 100%;
+  border-spacing: 0em;
+  border: 1px solid var(--expenses-table-border);
+  border-radius: 0.5em;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition-property: background-color, border-color;
+  transition-duration: 300ms;
+}
+
+.expenses-table tr {
+  padding: 0.25em;
+}
+
+body.dark .expenses-table {
+  border-color: var(--dark-tracker-nav-button-active-border);
+}
+
+body.dark .expenses-table tbody tr:nth-of-type(odd) {
+  background-color: var(--bg-color-dark-acc);
+}
+
+/* Table action buttons - Common Styles */
+.table-action-button {
+  border-radius: 0.25em;
+  padding: 0.25em;
+  transition-property: color;
+  transition-duration: 300ms;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.table-action-button.blue {
+  color: var(--table-action-button-blue-light);
+}
+
+.table-action-button.blue:hover {
+  color: var(--table-action-button-blue-hover-light);
+}
+
+body.dark .table-action-button.blue {
+  color: var(--table-action-button-blue-dark);
+}
+
+body.dark .table-action-button.blue:hover {
+  color: var(--table-action-button-blue-hover-dark);
+}
+
+.table-action-button.red {
+  color: #ef4444;
+}
+
+.table-action-button.red:hover {
+  color: #b91c1c;
+}
+
+body.dark .table-action-button.red {
+  color: #f87171;
+}
+
+body.dark .table-action-button.red:hover {
+  color: #fda4af;
+}
+
+/* Specific button for Add Car Expense submit */
+#add-car-expense-section button[type="submit"] {
+  padding: 0.75em 2em;
+  background-color: #dc2626;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.125em;
+  line-height: 1.75em;
+  border-radius: 0.5em;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: none;
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: 200ms;
+  outline: none;
+}
+
+/* Welcome Section */
+.welcome-section {
+  text-align: center;
+  padding: 3em 0;
+}
+
+/* Welcome Section Heading */
+.welcome-section h2 {
+  font-size: 1.875em;
+  line-height: 2.25em;
+  font-weight: 700;
+  color: var(--welcome-section-heading-color-light);
+  margin-bottom: 1em;
+}
+
+/* Dark mode Welcome Section Heading */
+body.dark .welcome-section h2 {
+  color: var(--welcome-section-heading-color-dark);
+}
+
+/* Welcome Section Paragraph 1 */
+.welcome-section p:nth-of-type(1) {
+  font-size: 1.125em;
+  line-height: 1.75em;
+  color: var(--welcome-section-paragraph-1-color-light);
+  margin-bottom: 1.5em;
+}
+
+/* Dark mode Welcome Section Paragraph 1 */
+body.dark .welcome-section p:nth-of-type(1) {
+  color: var(--welcome-section-paragraph-1-color-dark);
+}
+
+/* Paragraph 2 styling */
+.welcome-section p:nth-of-type(2) {
+  font-size: 1em;
+  line-height: 1.5em;
+  color: var(--welcome-section-paragraph-2-color-light);
+}
+
+/* Dark mode paragraph 2 styling */
+body.dark .welcome-section p:nth-of-type(2) {
+  color: var(--welcome-section-paragraph-2-color-dark);
+}
+
+/* SVG icon styling */
+.welcome-section svg {
+  width: 6.25em;
+  height: 6.25em;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 2em;
+  color: var(--welcome-section-svg-color-light);
+  stroke-width: 1px;
+}
+
+/* Dark mode SVG icon styling */
+body.dark .welcome-section svg {
+  color: var(--welcome-section-svg-color-dark);
+}

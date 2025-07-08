@@ -1,12 +1,16 @@
 include .env
-export
 
 CERTS_DIR := nginx/certs
 KEY_FILE := $(CERTS_DIR)/homeserver.lan.key
 CRT_FILE := $(CERTS_DIR)/homeserver.lan.crt
 OPENSSL_CNF := $(CERTS_DIR)/openssl.cnf
 
-.PHONY: clean create-ssl certs
+.PHONY: clean create-ssl certs test
+
+TEST_FLAGS := -v -race -cover -count=1
+
+test:
+	cd server && go test $(TEST_FLAGS) ./...
 
 clean:
 	@echo "Cleaning up generated files..."
