@@ -30,6 +30,8 @@ func main() {
 		tPath = "internal/templates/**/*.html"
 	}
 
+	fmt.Printf("Template path: %s\n", tPath)
+
 	t := template.Must(template.ParseGlob(tPath))
 	router.SetHTMLTemplate(t) // Tell Gin to use this template set
 
@@ -38,7 +40,16 @@ func main() {
 		log.Fatalln("Couldn't initialize database.")
 	}
 
-	router.Static("/static", "../static")
+	var sPath string
+	if cfg.Mode == "" {
+		sPath = filepath.Join(config.GetProjectRootDir(), "static")
+	} else {
+		sPath = "../static"
+	}
+
+	fmt.Printf("Static path: %s\n", sPath)
+
+	router.Static("/static", sPath)
 
 	handlers.RegisterRoutes(router, db)
 
