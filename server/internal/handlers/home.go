@@ -94,25 +94,37 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 		RecentExpenses: recentExpenses,
 	}
 
-	c.HTML(http.StatusOK, "home", pageData)
+	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+
+	if isHtmxRequest {
+		c.HTML(http.StatusOK, "home", pageData)
+	} else {
+		rl := &RootLayout{
+			TemplateName:    "home",
+			TemplateContent: pageData,
+		}
+		c.HTML(http.StatusOK, "index", rl)
+	}
+
 }
 
-func (h *HomeHandler) GetNew(c *gin.Context) {
+func (h *HomeHandler) GetCreateForm(c *gin.Context) {
 	c.HTML(http.StatusOK, "new-exp", gin.H{})
 }
 
 func (h *HomeHandler) CreateExpense(c *gin.Context) {
-
 	utilType := c.Request.PostFormValue("type")
 	date, err := time.Parse("2006-01-02", c.Request.PostFormValue("date"))
 	if err != nil {
 		// TODO: Handle error page
 		c.HTML(http.StatusBadRequest, "error", err)
+		return
 	}
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
 	if err != nil {
 		// TODO: Handle error page
 		c.HTML(http.StatusBadRequest, "error", err)
+		return
 	}
 	notes := c.Request.PostFormValue("notes")
 
@@ -130,9 +142,72 @@ func (h *HomeHandler) CreateExpense(c *gin.Context) {
 		// TODO: Handle error page
 		fmt.Printf("error creating: %v", err)
 		c.HTML(http.StatusBadRequest, "error", err)
+		return
 	}
 
 	c.HTML(http.StatusCreated, "recent-exp-row", newExpense)
+}
+
+func (h *HomeHandler) GetEditForm(c *gin.Context) {
+	id, err := strconv.Atoi(c.Query("id"))
+	if err != nil {
+		// TODO: Handle error page
+		c.HTML(http.StatusBadRequest, "error", err)
+		return
+	}
+
+	exp, err := h.DB.GetHomeExpenseByID(id)
+	if err != nil {
+		// TODO: Handle error page
+		c.HTML(http.StatusBadRequest, "error", err)
+		return
+	}
+
+	c.HTML(http.StatusOK, "edit-exp", exp)
+}
+
+func (h *HomeHandler) EditExpenseById(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		// TODO: Handle error page
+		c.HTML(http.StatusBadRequest, "error", err)
+		return
+	}
+
+	utilType := c.Request.PostFormValue("type")
+	date, err := time.Parse("2006-01-02", c.Request.PostFormValue("date"))
+	if err != nil {
+		// TODO: Handle error page
+		c.HTML(http.StatusBadRequest, "error", err)
+		return
+	}
+	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
+	if err != nil {
+		// TODO: Handle error page
+		c.HTML(http.StatusBadRequest, "error", err)
+		return
+	}
+	notes := c.Request.PostFormValue("notes")
+
+	fmt.Printf("New Expense is : %s, %s, %v, %s", utilType, date, amount, notes)
+
+	editExpense := &models.HomeExpense{
+		ID:          id,
+		Amount:      amount,
+		UtilityType: utilType,
+		ExpenseDate: date,
+		Notes:       notes,
+	}
+
+	err = h.DB.EditHomeExpense(editExpense)
+	if err != nil {
+		// TODO: Handle error page
+		fmt.Printf("error editing: %v", err)
+		c.HTML(http.StatusBadRequest, "error", err)
+		return
+	}
+
+	c.HTML(http.StatusOK, "recent-exp-row", editExpense)
 }
 
 func (h *HomeHandler) GetExpenseById(c *gin.Context) {
@@ -140,6 +215,7 @@ func (h *HomeHandler) GetExpenseById(c *gin.Context) {
 	if err != nil {
 		// TODO: Handle error page
 		c.HTML(http.StatusBadRequest, "error", err)
+		return
 	}
 
 	exp, err := h.DB.GetHomeExpenseByID(id)
@@ -147,6 +223,7 @@ func (h *HomeHandler) GetExpenseById(c *gin.Context) {
 	if err != nil {
 		// TODO: Handle error page
 		c.HTML(http.StatusBadRequest, "error", err)
+		return
 	}
 
 	c.HTML(http.StatusOK, "expense", exp)

@@ -1,4 +1,4 @@
-{{ block "home" . }}
+{{ define "home" }}
 <!-- Add New Expense Form -->
 <section id="add-expense-section">
   <button type="submit" hx-get="/home/expenses/new" hx-target="#dialog-modal">
@@ -61,6 +61,12 @@
       <tbody id="recent-expenses">
         {{ range .RecentExpenses }} {{ template "recent-exp-row" . }} {{ end }}
       </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2">Total:</td>
+          <td colspan="1">Mnogo Pari Lek $$</td>
+        </tr>
+      </tfoot>
     </table>
   </div>
 </section>

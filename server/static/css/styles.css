@@ -107,7 +107,11 @@ body.dark {
 }
 
 .header-section h3 {
-  margin: auto 0;
+  position: absolute;
+  top: -2%;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  cursor: pointer;
 }
 
 /* Theme Toggle Button */
@@ -678,6 +682,10 @@ body.dark .last-fuel-up-card {
 
 body.dark .expenses-table {
   border-color: var(--dark-tracker-nav-button-active-border);
+}
+
+.expenses-table tbody tr:nth-of-type(odd) {
+  background-color: var(--light-theme-toggle-background);
 }
 
 body.dark .expenses-table tbody tr:nth-of-type(odd) {

@@ -249,6 +249,31 @@ func (db *DB) GetExpensesByUtilityType(utility string) (*[]models.HomeExpense, e
 	return &expenses, nil
 }
 
+func (db *DB) EditHomeExpense(editExpense *models.HomeExpense) error {
+	query := `
+		UPDATE home_expenses
+		SET
+			utility_type_id = (SELECT id FROM utility_types WHERE name = $2),
+			amount = $3,
+			expense_date = $4,
+			notes = $5
+		WHERE id = $1;
+	`
+	row := db.conn.QueryRow(query,
+		editExpense.ID,
+		editExpense.UtilityType,
+		editExpense.Amount,
+		editExpense.ExpenseDate,
+		editExpense.Notes,
+	)
+
+	if err := row.Err(); err != nil {
+		return fmt.Errorf("error editing expense: %v", err)
+	}
+
+	return nil
+}
+
 func (db *DB) DeleteExpense(id int) (bool, error) {
 	query := `
 		DELETE FROM home_expenses
