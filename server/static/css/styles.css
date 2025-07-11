@@ -74,7 +74,8 @@
 }
 
 body {
-  margin: 0em;
+  margin: 0em auto;
+  width: 95vw;
   font:
     16px/1.5 "Inter",
     sans-serif;
@@ -104,6 +105,7 @@ body.dark {
   justify-content: space-between;
   padding: 0 3em;
   width: 92%;
+  max-height: 6vh;
 }
 
 .header-section h3 {
@@ -231,8 +233,8 @@ body.dark .tracker-nav-button.active {
 }
 
 .container {
-  margin: 0 auto;
   text-align: center;
+  align-content: center;
   flex-grow: 1;
   min-width: 70%;
 }
@@ -261,6 +263,7 @@ body.dark .tracker-nav-button.active {
 }
 
 footer {
+  max-height: 6vh;
   width: 100%;
   text-align: center;
   color: var(--footer-color-light);
@@ -273,6 +276,14 @@ footer {
 
 body.dark footer {
   color: var(--footer-color-dark);
+}
+
+#index-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 1em;
 }
 
 /* Common button styles */
@@ -342,9 +353,6 @@ body.dark .btn-primary:hover {
 /* Apply section heading styles */
 #overview-section h2,
 #recent-expenses-section h2,
-#car-overview-section h2,
-#add-car-expense-section h2,
-#recent-car-expenses-section h2,
 .new-expense-heading {
   font-size: 1.875em;
   line-height: 2.25em;
@@ -376,20 +384,10 @@ body.dark #recent-expenses-section h2 svg {
   color: var(--recent-expenses-section-heading-svg-color-dark);
 }
 
-#car-overview-section h2 svg {
-  color: #ef4444;
-}
-
-body.dark #car-overview-section h2 svg {
-  color: #f87171;
-}
-
-#add-car-expense-section h2 svg,
 .new-expense-heading svg {
   color: #22c55e;
 }
 
-body.dark #add-car-expense-section h2 svg,
 body.dark .new-expense-heading svg {
   color: #4ade80;
 }
@@ -444,6 +442,11 @@ body.dark .new-expense-heading svg {
   .new-expense-form {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .new-expense-form> :last-child {
+    grid-row: 3;
+    grid-column: 2;
+  }
 }
 
 .new-expense-form .md-col-span-2 {
@@ -454,10 +457,7 @@ body.dark .new-expense-heading svg {
   display: flex;
   justify-content: flex-end;
   gap: 1em;
-  /* Added for spacing between buttons */
 }
-
-body.dark .new-expense-form {}
 
 .new-expense-form label {
   display: block;
@@ -543,40 +543,12 @@ body.dark .new-expense-form button:hover {
     0 0 0 4px rgba(59, 130, 246, 0.5);
 }
 
-/* Grid Container - Common Styles */
-.grid-common {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5em;
-  margin-bottom: 2em;
-}
-
-@media (min-width: 768px) {
-  .grid-common {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1024px) {
-  .grid-common {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
 .overview-container {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
   gap: 1em;
-  flex: 1;
-}
-
-/* Apply grid common styles */
-.car-grid-container {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5em;
-  margin-bottom: 2em;
 }
 
 /* Apply card common styles */
@@ -590,6 +562,7 @@ body.dark .new-expense-form button:hover {
   transition-property: background-color, color;
   transition-duration: 300ms;
   flex-basis: 25%;
+  min-height: 25vh;
 }
 
 /* Specific Card Backgrounds */
@@ -617,54 +590,6 @@ body.dark .highest-expense-card {
       var(--highest-expense-card-gradient-end-dark));
 }
 
-@media (min-width: 768px) {
-  .highest-expense-card {
-    grid-column: span 2 / span 2;
-  }
-}
-
-@media (min-width: 1024px) {
-  .highest-expense-card {
-    grid-column: span 1 / span 1;
-  }
-}
-
-.total-car-expenses-card {
-  background-image: linear-gradient(to bottom right, #ef4444, #dc2626);
-}
-
-body.dark .total-car-expenses-card {
-  background-image: linear-gradient(to bottom right, #b91c1c, #991b1b);
-}
-
-.next-service-card {
-  background-image: linear-gradient(to bottom right, #f59e0b, #d97706);
-}
-
-body.dark .next-service-card {
-  background-image: linear-gradient(to bottom right, #b45309, #92400e);
-}
-
-.last-fuel-up-card {
-  background-image: linear-gradient(to bottom right, #f97316, #ea580c);
-}
-
-body.dark .last-fuel-up-card {
-  background-image: linear-gradient(to bottom right, #c2410c, #9a3412);
-}
-
-@media (min-width: 768px) {
-  .last-fuel-up-card {
-    grid-column: span 2 / span 2;
-  }
-}
-
-@media (min-width: 1024px) {
-  .last-fuel-up-card {
-    grid-column: span 1 / span 1;
-  }
-}
-
 /* Apply common table styles */
 .expenses-table {
   min-width: 100%;
@@ -678,6 +603,19 @@ body.dark .last-fuel-up-card {
 
 .expenses-table tr {
   padding: 0.25em;
+}
+
+.expenses-table td,
+th {
+  padding: 0.25em;
+}
+
+.expenses-table tfoot {
+  border-top: 2px solid var(--footer-color-dark);
+}
+
+body.dark .expenses-table tfoot tr {
+  border-top: 2px solid var(--dark-tracker-nav-button-active-border);
 }
 
 body.dark .expenses-table {
@@ -733,25 +671,6 @@ body.dark .table-action-button.red {
 
 body.dark .table-action-button.red:hover {
   color: #fda4af;
-}
-
-/* Specific button for Add Car Expense submit */
-#add-car-expense-section button[type="submit"] {
-  padding: 0.75em 2em;
-  background-color: #dc2626;
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 1.125em;
-  line-height: 1.75em;
-  border-radius: 0.5em;
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  border: none;
-  cursor: pointer;
-  transition-property: background-color, color;
-  transition-duration: 200ms;
-  outline: none;
 }
 
 /* Welcome Section */

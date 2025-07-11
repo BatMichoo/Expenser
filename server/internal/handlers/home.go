@@ -18,10 +18,17 @@ type HomeHandler struct {
 type HighestExpense struct {
 	Amount float64
 	Type   string
+	IsOOB  bool
+}
+
+type MonthlyExpense struct {
+	Amount float64
+	Month  string
+	IsOOB  bool
 }
 
 type HomeData struct {
-	MonthlyExpense float64
+	MonthlyExpense *MonthlyExpense
 	HighestExpense *HighestExpense
 	RecentExpenses *[]models.HomeExpense
 }
@@ -51,8 +58,39 @@ func (h *HomeHandler) Delete(c *gin.Context) {
 		c.HTML(http.StatusNoContent, "", gin.H{})
 		return
 	}
+	timeNow := time.Now()
+	month := timeNow.Month()
 
-	c.HTML(http.StatusOK, "", gin.H{})
+	monthlyExpense, err := h.DB.GetTotalExpenseForMonth(month)
+	if err != nil {
+		// TODO: Handle error page
+		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
+		c.HTML(http.StatusInternalServerError, "error", err)
+		return
+	}
+
+	highestExpense, utilType, err := h.DB.GetHighestExpenseForMonth(month)
+	if err != nil {
+		// TODO: Handle error page
+		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
+		c.HTML(http.StatusInternalServerError, "error", err)
+		return
+	}
+
+	pageData := &HomeData{
+		MonthlyExpense: &MonthlyExpense{
+			Amount: monthlyExpense,
+			Month:  month.String(),
+			IsOOB:  true,
+		},
+		HighestExpense: &HighestExpense{
+			Amount: highestExpense,
+			Type:   utilType,
+			IsOOB:  true,
+		},
+	}
+
+	c.HTML(http.StatusOK, "delete", pageData)
 }
 
 func (h *HomeHandler) GetHome(c *gin.Context) {
@@ -86,7 +124,10 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 	}
 
 	pageData := &HomeData{
-		MonthlyExpense: monthlyExpense,
+		MonthlyExpense: &MonthlyExpense{
+			Amount: monthlyExpense,
+			Month:  month.String(),
+		},
 		HighestExpense: &HighestExpense{
 			Amount: highestExpense,
 			Type:   utilType,
@@ -109,7 +150,17 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 }
 
 func (h *HomeHandler) GetCreateForm(c *gin.Context) {
-	c.HTML(http.StatusOK, "new-exp", gin.H{})
+	c.HTML(http.StatusOK, "new-exp-form", gin.H{})
+}
+
+type CreateExpResponse struct {
+	ID             int
+	Amount         float64
+	UtilityType    string
+	ExpenseDate    time.Time
+	Notes          string
+	MonthlyExpense *MonthlyExpense
+	HighestExpense *HighestExpense
 }
 
 func (h *HomeHandler) CreateExpense(c *gin.Context) {
@@ -145,7 +196,30 @@ func (h *HomeHandler) CreateExpense(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusCreated, "recent-exp-row", newExpense)
+	timeNow := time.Now()
+
+	highestExp, expType, err := h.DB.GetHighestExpenseForMonth(timeNow.Month())
+	montlyTotal, err := h.DB.GetTotalExpenseForMonth(timeNow.Month())
+
+	crExpResp := &CreateExpResponse{
+		ID:          newExpense.ID,
+		Amount:      newExpense.Amount,
+		UtilityType: newExpense.UtilityType,
+		ExpenseDate: newExpense.ExpenseDate,
+		Notes:       newExpense.Notes,
+		HighestExpense: &HighestExpense{
+			Amount: highestExp,
+			Type:   expType,
+			IsOOB:  true,
+		},
+		MonthlyExpense: &MonthlyExpense{
+			Amount: montlyTotal,
+			Month:  timeNow.Month().String(),
+			IsOOB:  true,
+		},
+	}
+
+	c.HTML(http.StatusCreated, "new-exp", crExpResp)
 }
 
 func (h *HomeHandler) GetEditForm(c *gin.Context) {
@@ -207,7 +281,30 @@ func (h *HomeHandler) EditExpenseById(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "recent-exp-row", editExpense)
+	timeNow := time.Now()
+
+	highestExp, expType, err := h.DB.GetHighestExpenseForMonth(timeNow.Month())
+	montlyTotal, err := h.DB.GetTotalExpenseForMonth(timeNow.Month())
+
+	edExpResp := &CreateExpResponse{
+		ID:          editExpense.ID,
+		Amount:      editExpense.Amount,
+		UtilityType: editExpense.UtilityType,
+		ExpenseDate: editExpense.ExpenseDate,
+		Notes:       editExpense.Notes,
+		HighestExpense: &HighestExpense{
+			Amount: highestExp,
+			Type:   expType,
+			IsOOB:  true,
+		},
+		MonthlyExpense: &MonthlyExpense{
+			Amount: montlyTotal,
+			Month:  timeNow.Month().String(),
+			IsOOB:  true,
+		},
+	}
+
+	c.HTML(http.StatusCreated, "new-exp", edExpResp)
 }
 
 func (h *HomeHandler) GetExpenseById(c *gin.Context) {

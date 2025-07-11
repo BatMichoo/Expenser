@@ -3,6 +3,7 @@ package database
 import (
 	"expenser/internal/config"
 	"expenser/internal/models"
+	"fmt"
 	"log"
 	"testing"
 	"time"
@@ -74,6 +75,96 @@ func TestCreateHomeExpense(t *testing.T) {
 			assert.NoError(t, err)
 
 			got, err := testDB.GetHomeExpenseByID(tt.input.ID)
+			assert.NoError(t, err)
+			assert.NotNil(t, got)
+			tt.validate(t, got)
+		})
+	}
+}
+
+func TestEditHomeExpense(t *testing.T) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Panicf("Couldn't load config in test Edit Home Expense %v", err)
+		t.FailNow()
+	}
+
+	testDB := InitTestDB(cfg)
+	defer testDB.Close()
+
+	type testCase struct {
+		name     string
+		input    *models.HomeExpense
+		setup    func(t *testing.T) int
+		wantErr  bool
+		validate func(t *testing.T, got *models.HomeExpense)
+	}
+
+	expenseDate := time.Now()
+	tests := []testCase{
+		{
+			name: "Valid",
+			setup: func(t *testing.T) int {
+				initial := &models.HomeExpense{
+					Amount:      150.00,
+					ExpenseDate: expenseDate.Add(time.Hour * 24),
+					UtilityType: "Electricity",
+					Notes:       "Test 1234567",
+				}
+
+				err := testDB.CreateHomeExpense(initial)
+				if err != nil {
+					t.Skipf("Error setting up existing expense test: %v", err)
+				}
+
+				return initial.ID
+			},
+			input: &models.HomeExpense{
+				Amount:      250.00,
+				ExpenseDate: expenseDate,
+				UtilityType: "Gas",
+				Notes:       "Test 1234",
+			},
+			wantErr: false,
+			validate: func(t *testing.T, got *models.HomeExpense) {
+				assert.Equal(t, 250.00, got.Amount)
+				assert.Equal(t, expenseDate.Local().Round(time.Second), got.ExpenseDate.Local().Round(time.Second))
+				assert.Equal(t, "Gas", got.UtilityType)
+				assert.Equal(t, "Test 1234", got.Notes)
+			},
+		},
+		// {
+		// 	name:  "Invalid utility type",
+		// 	setup: func(t *testing.T) {},
+		// 	input: &models.HomeExpense{
+		// 		Amount:      250.00,
+		// 		ExpenseDate: expenseDate,
+		// 		UtilityType: "Caca",
+		// 		Notes:       "Test 1234",
+		// 	},
+		// 	wantErr: true,
+		// 	validate: func(t *testing.T, got *models.HomeExpense) {
+		// 	},
+		// },
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ResetTestDB(testDB)
+
+			tt.input.ID = tt.setup(t)
+
+			fmt.Printf("Created exp is: %v", tt.input)
+			err := testDB.EditHomeExpense(tt.input)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+
+			fmt.Printf("Edited exp ID is: %v", tt.input.ID)
+			got, err := testDB.GetHomeExpenseByID(tt.input.ID)
+			fmt.Printf("Edited exp is: %v", got)
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 			tt.validate(t, got)

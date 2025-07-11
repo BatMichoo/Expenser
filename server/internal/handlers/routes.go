@@ -17,7 +17,6 @@ func RegisterRoutes(router *gin.Engine, db *database.DB) {
 	router.GET("/home/expenses/new", homeHandler.GetCreateForm)
 	router.POST("/home/expenses", homeHandler.CreateExpense)
 	router.GET("/home/expenses/edit", homeHandler.GetEditForm)
-	router.GET("/home/expenses/:id", homeHandler.GetExpenseById)
 	router.PUT("/home/expenses/:id", homeHandler.EditExpenseById)
 	router.DELETE("/home/expenses/:id", homeHandler.Delete)
 

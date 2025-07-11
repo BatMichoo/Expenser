@@ -1,0 +1,7 @@
+{{ define "highest-card" }}
+<div class="card highest-expense-card" id="highest-expense" {{ if .IsOOB }}hx-swap-oob="true" {{ end }}>
+  <h3>Highest Expense</h3>
+  <p>{{ .Type}}</p>
+  <p>Last month: {{ printf "%.2f" .Amount}}</p>
+</div>
+{{ end }}

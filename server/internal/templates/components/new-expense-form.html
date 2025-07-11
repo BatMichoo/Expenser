@@ -1,4 +1,4 @@
-{{ define "new-exp" }}
+{{ define "new-exp-form" }}
 <div>
   <h2 class="new-expense-heading">
     Add New Expense
@@ -8,7 +8,7 @@
       <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
     </svg>
   </h2>
-  <form class="new-expense-form">
+  <form class="new-expense-form" hx-post="/home/expenses" hx-target="#recent-expenses" hx-swap="afterbegin">
     <div>
       <label for="utilityType" class="form-label">Utility Type</label>
       <select id="utilityType" name="type" class="form-input-common">
@@ -39,8 +39,7 @@
       <button type="button" class="btn-primary" onClick="document.getElementById('dialog-modal').close();">
         Cancel
       </button>
-      <button type="submit" class="btn-primary" hx-post="/home/expenses" hx-target="#recent-expenses"
-        hx-swap="afterbegin" hx-on::after-request="if(event.detail.successful) {
+      <button type="submit" class="btn-primary" hx-on::after-request="if(event.detail.successful) {
         document.getElementById('dialog-modal').close();
     }">
         Add Expense

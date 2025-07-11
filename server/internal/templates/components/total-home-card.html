@@ -1,0 +1,7 @@
+{{ define "total-card" }}
+<div class="card total-expenses-card" id="total-expense" {{ if .IsOOB }}hx-swap-oob="true" {{ end }}>
+  <h3>Total Monthly Expenses</h3>
+  <p>{{ printf "%.2f" .Amount }}</p>
+  <p>As of {{ .Month }} 2025</p>
+</div>
+{{ end }}

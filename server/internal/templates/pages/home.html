@@ -1,5 +1,4 @@
 {{ define "home" }}
-<!-- Add New Expense Form -->
 <section id="add-expense-section">
   <button type="submit" hx-get="/home/expenses/new" hx-target="#dialog-modal">
     Add Expense
@@ -8,8 +7,17 @@
 <section id="overview-section">
   <h2>
     <span>Dashboard Summary</span>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
       <rect width="7" height="9" x="3" y="3" rx="1" />
       <rect width="7" height="5" x="14" y="3" rx="1" />
       <rect width="7" height="9" x="14" y="12" rx="1" />
@@ -19,14 +27,14 @@
 
   <div class="overview-container">
     <!-- Total Expenses Card -->
-    <div class="card total-expenses-card">
+    <div class="card total-expenses-card" id="total-expense">
       <h3>Total Monthly Expenses</h3>
-      <p>{{ printf "%.2f" .MonthlyExpense}}</p>
-      <p>As of June 2025</p>
+      <p>{{ printf "%.2f" .MonthlyExpense.Amount }}</p>
+      <p>As of {{ .MonthlyExpense.Month }} 2025</p>
     </div>
 
     <!-- Highest Expense Category Card -->
-    <div class="card highest-expense-card">
+    <div class="card highest-expense-card" id="highest-expense">
       <h3>Highest Expense</h3>
       <p>{{ .HighestExpense.Type}}</p>
       <p>Last month: {{ printf "%.2f" .HighestExpense.Amount}}</p>
@@ -37,9 +45,20 @@
 <section id="recent-expenses-section">
   <h2>
     <span>Recent Expenses</span>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 2v20c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2Z" />
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path
+        d="M4 2v20c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2Z"
+      />
       <path d="M12 4.5h3" />
       <path d="M8 8.5h8" />
       <path d="M8 12.5h8" />
@@ -59,12 +78,14 @@
         </tr>
       </thead>
       <tbody id="recent-expenses">
-        {{ range .RecentExpenses }} {{ template "recent-exp-row" . }} {{ end }}
+        {{ range .RecentExpenses }} {{ template "exp-row" . }} {{ end }}
       </tbody>
       <tfoot>
         <tr>
           <td colspan="2">Total:</td>
-          <td colspan="1">Mnogo Pari Lek $$</td>
+          <td colspan="1">
+            <span id="total">{{ .MonthlyExpense.Amount }}</span>
+          </td>
         </tr>
       </tfoot>
     </table>

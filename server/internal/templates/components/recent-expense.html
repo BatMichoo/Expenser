@@ -1,15 +1,23 @@
-{{ define "recent-exp-row" }}
+{{ define "exp-row" }}
 <tr id="exp-{{ .ID }}">
   <td>{{ .ExpenseDate.Format "02.01.2006" }}</td>
   <td>{{ .UtilityType }}</td>
   <td>{{ printf "%.2f" .Amount }}</td>
   <td>{{ .Notes }}</td>
   <td>
-    <button class="table-action-button blue" hx-get="/home/expenses/edit?id={{ .ID }}" hx-target="#dialog-modal">
+    <button
+      class="table-action-button blue"
+      hx-get="/home/expenses/edit?id={{ .ID }}"
+      hx-target="#dialog-modal"
+    >
       Edit
     </button>
-    <button class="table-action-button red" hx-delete="/home/expenses/{{ .ID }}" hx-target="#exp-{{ .ID }}"
-      hx-swap="outerHTML">
+    <button
+      class="table-action-button red"
+      hx-delete="/home/expenses/{{ .ID }}"
+      hx-target="#exp-{{ .ID }}"
+      hx-swap="outerHTML"
+    >
       Delete
     </button>
   </td>
