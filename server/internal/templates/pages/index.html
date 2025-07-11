@@ -1,4 +1,4 @@
-{{ define "index" }}
+{{ define "root" }}
 <!doctype html>
 <html lang="en">
 
@@ -16,9 +16,10 @@
     <!-- This is where HTMX will swap the content for different trackers -->
     <div id="tracker-content">
       <!-- Initial content for the landing page, or default tracker overview -->
-      {{ if eq .TemplateName "home" }} {{ template "home" .TemplateContent }}
-      {{ else if eq .TemplateName "car" }} {{ template "car" .TemplateContent
-      }} {{ else }} {{ template "index-content" . }} {{ end }}
+      {{ if eq .TemplateName "home-page" }} {{ template "home-page"
+      .TemplateContent }} {{ else if eq .TemplateName "car-page" }} {{
+      template "car-page" .TemplateContent }} {{ else }} {{ template
+      "index-page" . }} {{ end }}
     </div>
   </div>
   <footer>

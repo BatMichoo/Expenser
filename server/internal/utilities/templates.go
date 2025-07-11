@@ -1,0 +1,63 @@
+package utilities
+
+// Pages defines the names for full application pages.
+type Pages struct {
+	Index string // Index is the name for the main index page template.
+	Home  string // Home is the name for the home-related expense page template.
+	Car   string // Car is the name for the car-related expense page template.
+}
+
+// HTMXComponents defines the names for reusable HTMX-specific UI components.
+type HTMXComponents struct {
+	Header        string // Header is the name for the application's header component.
+	Footer        string // Footer is the name for the application's footer component.
+	CreateExpForm string // CreateExpForm is the name for the expense creation form component.
+	NewExp        string // NewExp is the name for the new expense component (often a row or card).
+	EditExpForm   string // EditExpForm is the name for the expense editing form component.
+}
+
+// Responses defines the names for specific HTMX partial responses.
+// These are often fragments returned by HTMX requests that swap content on the page.
+type Responses struct {
+	CreateHomeExp string // CreateHomeExp is the name for the response partial after creating a home expense.
+	UpdateHomeExp string // UpdateHomeExp is the name for the response partial after updating a home expense.
+	DeleteHomeExp string // DeleteHomeExp is the name for the response partial after deleting a home expense.
+}
+
+// HTMLTemplates groups all template names used throughout the application.
+// This provides a centralized and organized way to reference templates for rendering.
+type HTMLTemplates struct {
+	Root       string          // Root is the name for the root template that often includes other templates.
+	Pages      *Pages          // Pages holds a collection of full page template names.
+	Responses  *Responses      // Responses holds a collection of HTMX response partial template names.
+	Components *HTMXComponents // Components holds a collection of reusable HTMX component template names.
+}
+
+var pages = &Pages{
+	Index: "index-page",
+	Home:  "home-page",
+	Car:   "car-page",
+}
+
+var components = &HTMXComponents{
+	Header:        "header",
+	Footer:        "footer",
+	CreateExpForm: "create-exp-form",
+	EditExpForm:   "edit-exp-form",
+}
+
+// responses initializes the Responses struct with specific template identifiers.
+var responses = &Responses{
+	CreateHomeExp: "create-exp",
+	DeleteHomeExp: "delete-exp",
+}
+
+// Templates is the main exported variable that provides access to all
+// organized template names. It should be imported and used
+// globally for consistent template referencing.
+var Templates = &HTMLTemplates{
+	Root:       "root",
+	Pages:      pages,
+	Responses:  responses,
+	Components: components,
+}

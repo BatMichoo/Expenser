@@ -3,6 +3,7 @@ package handlers
 import (
 	database "expenser/internal/db"
 	"expenser/internal/models"
+	"expenser/internal/utilities"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -90,7 +91,7 @@ func (h *HomeHandler) Delete(c *gin.Context) {
 		},
 	}
 
-	c.HTML(http.StatusOK, "delete", pageData)
+	c.HTML(http.StatusOK, utilities.Templates.Responses.DeleteHomeExp, pageData)
 }
 
 func (h *HomeHandler) GetHome(c *gin.Context) {
@@ -138,19 +139,19 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	if isHtmxRequest {
-		c.HTML(http.StatusOK, "home", pageData)
+		c.HTML(http.StatusOK, utilities.Templates.Pages.Home, pageData)
 	} else {
 		rl := &RootLayout{
-			TemplateName:    "home",
+			TemplateName:    utilities.Templates.Pages.Index,
 			TemplateContent: pageData,
 		}
-		c.HTML(http.StatusOK, "index", rl)
+		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
 
 }
 
 func (h *HomeHandler) GetCreateForm(c *gin.Context) {
-	c.HTML(http.StatusOK, "new-exp-form", gin.H{})
+	c.HTML(http.StatusOK, utilities.Templates.Components.CreateExpForm, gin.H{})
 }
 
 type CreateExpResponse struct {
@@ -219,7 +220,7 @@ func (h *HomeHandler) CreateExpense(c *gin.Context) {
 		},
 	}
 
-	c.HTML(http.StatusCreated, "new-exp", crExpResp)
+	c.HTML(http.StatusCreated, utilities.Templates.Components.NewExp, crExpResp)
 }
 
 func (h *HomeHandler) GetEditForm(c *gin.Context) {
@@ -237,7 +238,7 @@ func (h *HomeHandler) GetEditForm(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "edit-exp", exp)
+	c.HTML(http.StatusOK, utilities.Templates.Components.EditExpForm, exp)
 }
 
 func (h *HomeHandler) EditExpenseById(c *gin.Context) {
@@ -304,7 +305,7 @@ func (h *HomeHandler) EditExpenseById(c *gin.Context) {
 		},
 	}
 
-	c.HTML(http.StatusCreated, "new-exp", edExpResp)
+	c.HTML(http.StatusCreated, utilities.Templates.Components.NewExp, edExpResp)
 }
 
 func (h *HomeHandler) GetExpenseById(c *gin.Context) {

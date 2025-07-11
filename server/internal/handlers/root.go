@@ -2,6 +2,7 @@ package handlers
 
 import (
 	database "expenser/internal/db"
+	"expenser/internal/utilities"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -26,11 +27,11 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	if isHtmxRequest {
-		c.HTML(http.StatusOK, "index-content", gin.H{})
+		c.HTML(http.StatusOK, utilities.Templates.Pages.Index, gin.H{})
 	} else {
 		rl := &RootLayout{
-			TemplateName: "index-content",
+			TemplateName: utilities.Templates.Pages.Index,
 		}
-		c.HTML(http.StatusOK, "index", rl)
+		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
 }
