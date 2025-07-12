@@ -142,7 +142,7 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 		c.HTML(http.StatusOK, utilities.Templates.Pages.Home, pageData)
 	} else {
 		rl := &RootLayout{
-			TemplateName:    utilities.Templates.Pages.Index,
+			TemplateName:    utilities.Templates.Pages.Home,
 			TemplateContent: pageData,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)

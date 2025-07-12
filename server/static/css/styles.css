@@ -108,12 +108,37 @@ body.dark {
   max-height: 6vh;
 }
 
+/* Mobile adjustments for Header Section */
+@media (max-width: 767px) {
+  .header-section {
+    padding: 0 1em;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    max-height: unset;
+  }
+}
+
 .header-section h3 {
   position: absolute;
   top: -2%;
   left: 50%;
   transform: translate(-50%, 50%);
   cursor: pointer;
+}
+
+/* Mobile adjustments for Header Section h3 */
+@media (max-width: 767px) {
+  .header-section h3 {
+    position: static;
+    /* Remove absolute positioning on mobile */
+    transform: none;
+    /* Remove transform */
+    margin: 0.5em 0;
+    /* Add some vertical margin */
+    font-size: 1.5em;
+    /* Adjust font size for mobile */
+  }
 }
 
 /* Theme Toggle Button */
@@ -182,6 +207,20 @@ body.dark #theme-toggle .moon {
   transition-duration: 300ms;
 }
 
+/* Mobile adjustments for Tracker Navigation */
+@media (max-width: 767px) {
+  .tracker-navigation {
+    flex-direction: column;
+    /* Stack buttons vertically on mobile */
+    gap: 0.5em;
+    /* Reduce gap */
+    width: 100%;
+    /* Take full width */
+    padding: 0.5em 1em;
+    /* Adjust padding */
+  }
+}
+
 .tracker-nav-button {
   padding: 0.5em 1em;
   font-weight: 700;
@@ -197,6 +236,16 @@ body.dark #theme-toggle .moon {
   box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Mobile adjustments for Tracker Nav Buttons */
+@media (max-width: 767px) {
+  .tracker-nav-button {
+    width: 100%;
+    /* Make buttons full width */
+    justify-content: center;
+    /* Center content within buttons */
+  }
 }
 
 body.dark .tracker-nav-button {
@@ -245,6 +294,16 @@ body.dark .tracker-nav-button.active {
   }
 }
 
+/* Mobile adjustments for Container (primarily padding) */
+@media (max-width: 767px) {
+  .container {
+    padding: 1em;
+    /* Reduce padding on mobile */
+    min-width: 95%;
+    /* Adjust width for mobile */
+  }
+}
+
 /* Main Content Area for Trackers */
 .tracker-content {
   padding: 1.5em;
@@ -259,6 +318,14 @@ body.dark .tracker-nav-button.active {
 @media (min-width: 768px) {
   .tracker-content {
     padding: 2em;
+  }
+}
+
+/* Mobile adjustments for Tracker Content */
+@media (max-width: 767px) {
+  .tracker-content {
+    padding: 1em;
+    /* Reduce padding on mobile */
   }
 }
 
@@ -305,27 +372,17 @@ body.dark footer {
   outline: none;
 }
 
-body.dark .btn-primary {
-  background-color: var(--btn-primary-background-dark);
-}
-
-.btn-primary:hover {
-  background-color: var(--btn-primary-hover-light);
-}
-
-body.dark .btn-primary:hover {
-  background-color: var(--btn-primary-hover-dark);
-}
-
-.btn-primary:focus {
-  box-shadow:
-    0 0 0 2px var(--btn-primary-focus-shadow-1),
-    0 0 0 4px var(--btn-primary-focus-shadow-2);
-}
-
-/* Add Expense Section */
 #add-expense-section {
   margin-bottom: 2.5em;
+}
+
+/* Mobile adjustments for Add Expense Section Button */
+@media (max-width: 767px) {
+  #add-expense-section button {
+    width: 90%;
+    font-size: 1em;
+    padding: 0.75em 1em;
+  }
 }
 
 #add-expense-section button {
@@ -367,6 +424,31 @@ body.dark .btn-primary:hover {
   transition-duration: 300ms;
 }
 
+/* Mobile adjustments for Section Headings */
+@media (max-width: 767px) {
+
+  #overview-section h2,
+  #recent-expenses-section h2,
+  .new-expense-heading {
+    font-size: 1.5em;
+    /* Smaller font size on mobile */
+    margin-bottom: 1em;
+    /* Slightly less margin */
+    text-align: center;
+    /* Ensure text alignment is good if it wraps */
+    flex-wrap: wrap;
+    /* Allow text and SVG to wrap if necessary */
+  }
+
+  .section-heading svg {
+    margin-left: 0.25em;
+    /* Reduce margin on SVG */
+    width: 1.5em;
+    /* Adjust SVG size */
+    height: 1.5em;
+  }
+}
+
 /* Specific SVG colors for each section heading */
 #overview-section h2 svg {
   color: var(--overview-section-heading-svg-color-light);
@@ -397,6 +479,20 @@ body.dark .new-expense-heading svg {
   background-color: inherit;
   border: none;
   border-radius: 0.5em;
+}
+
+/* Mobile adjustments for Dialog Modal */
+@media (max-width: 767px) {
+  #dialog-modal {
+    min-width: 90%;
+    /* Wider on small screens */
+    margin: 1em;
+    /* Add some margin from edges */
+    max-height: 90vh;
+    /* Limit height to prevent overflow on very small screens */
+    overflow-y: auto;
+    /* Allow scrolling if content is too tall */
+  }
 }
 
 #dialog-modal::backdrop {
@@ -446,6 +542,23 @@ body.dark .new-expense-heading svg {
   .new-expense-form> :last-child {
     grid-row: 3;
     grid-column: 2;
+  }
+}
+
+/* Mobile adjustments for New Expense Form (already 1fr, so mainly padding/gap) */
+@media (max-width: 767px) {
+  .new-expense-form {
+    padding: 0 1em;
+    /* Add horizontal padding to prevent elements from touching edges */
+    gap: 0.75em;
+    /* Slightly reduce gap for tighter layout */
+  }
+
+  .new-expense-form .flex-justify-end {
+    flex-direction: column;
+    /* Stack buttons vertically in the form */
+    gap: 0.5em;
+    /* Reduce gap between stacked buttons */
   }
 }
 
@@ -551,6 +664,14 @@ body.dark .new-expense-form button:hover {
   gap: 1em;
 }
 
+/* Mobile adjustments for Overview Container */
+@media (max-width: 767px) {
+  .overview-container {
+    flex-direction: column;
+    gap: 1.5em;
+  }
+}
+
 /* Apply card common styles */
 .card {
   padding: 1.5em;
@@ -563,6 +684,15 @@ body.dark .new-expense-form button:hover {
   transition-duration: 300ms;
   flex-basis: 25%;
   min-height: 25vh;
+}
+
+/* Mobile adjustments for Cards */
+@media (max-width: 767px) {
+  .card {
+    width: 90%;
+    min-height: unset;
+    padding: 1.25em;
+  }
 }
 
 /* Specific Card Backgrounds */
@@ -601,8 +731,84 @@ body.dark .highest-expense-card {
   transition-duration: 300ms;
 }
 
-.expenses-table tr {
-  padding: 0.25em;
+/* Mobile adjustments for Expenses Table */
+@media (max-width: 767px) {
+  .expenses-table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: none;
+  }
+
+  /* Apply to table rows and cells within the scrollable table */
+  .expenses-table thead,
+  .expenses-table tbody,
+  .expenses-table th,
+  .expenses-table td,
+  .expenses-table tr {
+    display: block;
+  }
+
+  .expenses-table thead tr {
+    display: none;
+  }
+
+  .expenses-table tr {
+    border: 1px solid var(--expenses-table-border);
+    margin-bottom: 0.5em;
+    border-radius: 0.5em;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  .expenses-table td {
+    border: none;
+    border-bottom: 1px solid var(--expenses-table-border);
+    position: relative;
+    padding-left: 50%;
+    text-align: center;
+  }
+
+  .expenses-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .expenses-table td:before {
+    /* Use data-label attribute to show column headers on mobile */
+    content: attr(data-label);
+    position: absolute;
+    left: 6px;
+    width: 45%;
+    padding-right: 10px;
+    white-space: nowrap;
+    text-align: left;
+    font-weight: bold;
+    color: var(--tx-color-light);
+  }
+
+  .expenses-table tfoot {
+    border-top: none;
+    display: block;
+    margin-top: 1em;
+    border-top: none;
+  }
+
+  body.dark .expenses-table tfoot {
+    border-top: none;
+  }
+
+  .expenses-table tfoot tr {
+    background-color: var(--light-theme-toggle-background);
+    margin-bottom: 0;
+  }
+
+  body.dark .expenses-table tfoot tr {
+    background-color: var(--bg-color-dark-acc);
+  }
+
+  body.dark .expenses-table {
+    border: none;
+  }
 }
 
 .expenses-table td,
@@ -610,12 +816,14 @@ th {
   padding: 0.25em;
 }
 
-.expenses-table tfoot {
-  border-top: 2px solid var(--footer-color-dark);
+.expenses-table tbody :last-child td {
+  border-bottom: 2px solid var(--footer-color-dark);
 }
 
-body.dark .expenses-table tfoot tr {
-  border-top: 2px solid var(--dark-tracker-nav-button-active-border);
+@media (min-width: 767px) {
+  body.dark .expenses-table tbody :last-child td {
+    border-bottom: 2px solid var(--dark-tracker-nav-button-active-border);
+  }
 }
 
 body.dark .expenses-table {
@@ -626,6 +834,14 @@ body.dark .expenses-table {
   background-color: var(--light-theme-toggle-background);
 }
 
+.expenses-table tbody tr:nth-of-type(even) {
+  border-color: var(--light-theme-toggle-background);
+}
+
+.expenses-table tbody tr:nth-of-type(even) td {
+  border-color: var(--light-theme-toggle-background);
+}
+
 body.dark .expenses-table tbody tr:nth-of-type(odd) {
   background-color: var(--bg-color-dark-acc);
 }
@@ -633,7 +849,7 @@ body.dark .expenses-table tbody tr:nth-of-type(odd) {
 /* Table action buttons - Common Styles */
 .table-action-button {
   border-radius: 0.25em;
-  padding: 0.25em;
+  padding: 0.5em 1em;
   transition-property: color;
   transition-duration: 300ms;
   background: none;
@@ -641,42 +857,58 @@ body.dark .expenses-table tbody tr:nth-of-type(odd) {
   cursor: pointer;
 }
 
+/* Mobile adjustments for Table Action Buttons */
+@media (max-width: 767px) {
+  .table-action-button {
+    font-size: 0.9em;
+    padding: 0.3em 0.8em;
+  }
+}
+
 .table-action-button.blue {
-  color: var(--table-action-button-blue-light);
+  background-color: var(--table-action-button-blue-light);
 }
 
 .table-action-button.blue:hover {
-  color: var(--table-action-button-blue-hover-light);
+  border-color: var(--table-action-button-blue-hover-light);
 }
 
 body.dark .table-action-button.blue {
-  color: var(--table-action-button-blue-dark);
+  background-color: var(--table-action-button-blue-dark);
 }
 
 body.dark .table-action-button.blue:hover {
-  color: var(--table-action-button-blue-hover-dark);
+  border-color: var(--table-action-button-blue-hover-dark);
 }
 
 .table-action-button.red {
-  color: #ef4444;
+  background-color: #ef4444;
 }
 
 .table-action-button.red:hover {
-  color: #b91c1c;
+  border-color: #b91c1c;
 }
 
 body.dark .table-action-button.red {
-  color: #f87171;
+  background-color: #f87171;
 }
 
 body.dark .table-action-button.red:hover {
-  color: #fda4af;
+  border-color: #fda4af;
 }
 
 /* Welcome Section */
 .welcome-section {
   text-align: center;
   padding: 3em 0;
+}
+
+/* Mobile adjustments for Welcome Section */
+@media (max-width: 767px) {
+  .welcome-section {
+    padding: 1.5em 1em;
+    /* Reduce vertical and add horizontal padding */
+  }
 }
 
 /* Welcome Section Heading */
@@ -686,6 +918,16 @@ body.dark .table-action-button.red:hover {
   font-weight: 700;
   color: var(--welcome-section-heading-color-light);
   margin-bottom: 1em;
+}
+
+/* Mobile adjustments for Welcome Section Heading */
+@media (max-width: 767px) {
+  .welcome-section h2 {
+    font-size: 1.6em;
+    /* Adjust font size */
+    line-height: 1.3;
+    margin-bottom: 0.75em;
+  }
 }
 
 /* Dark mode Welcome Section Heading */
@@ -701,6 +943,16 @@ body.dark .welcome-section h2 {
   margin-bottom: 1.5em;
 }
 
+/* Mobile adjustments for Welcome Section Paragraph 1 */
+@media (max-width: 767px) {
+  .welcome-section p:nth-of-type(1) {
+    font-size: 1em;
+    /* Adjust font size */
+    line-height: 1.5;
+    margin-bottom: 1em;
+  }
+}
+
 /* Dark mode Welcome Section Paragraph 1 */
 body.dark .welcome-section p:nth-of-type(1) {
   color: var(--welcome-section-paragraph-1-color-dark);
@@ -711,6 +963,14 @@ body.dark .welcome-section p:nth-of-type(1) {
   font-size: 1em;
   line-height: 1.5em;
   color: var(--welcome-section-paragraph-2-color-light);
+}
+
+/* Mobile adjustments for Welcome Section Paragraph 2 */
+@media (max-width: 767px) {
+  .welcome-section p:nth-of-type(2) {
+    font-size: 0.875em;
+    /* Adjust font size */
+  }
 }
 
 /* Dark mode paragraph 2 styling */
@@ -727,6 +987,16 @@ body.dark .welcome-section p:nth-of-type(2) {
   margin-top: 2em;
   color: var(--welcome-section-svg-color-light);
   stroke-width: 1px;
+}
+
+/* Mobile adjustments for Welcome Section SVG */
+@media (max-width: 767px) {
+  .welcome-section svg {
+    width: 4em;
+    /* Smaller SVG on mobile */
+    height: 4em;
+    margin-top: 1em;
+  }
 }
 
 /* Dark mode SVG icon styling */

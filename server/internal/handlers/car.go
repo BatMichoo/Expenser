@@ -2,6 +2,7 @@ package handlers
 
 import (
 	database "expenser/internal/db"
+	"expenser/internal/utilities"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,5 +18,5 @@ func NewCarHandler(db *database.DB) *CarHandler {
 }
 
 func (h *CarHandler) GetHome(c *gin.Context) {
-	c.HTML(200, "car", map[string]any{})
+	c.HTML(200, utilities.Templates.Pages.Car, map[string]any{})
 }
