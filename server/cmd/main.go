@@ -4,6 +4,7 @@ import (
 	"expenser/internal/config"
 	database "expenser/internal/db"
 	"expenser/internal/handlers"
+	"expenser/internal/middleware"
 	"fmt"
 	"html/template"
 	"log"
@@ -51,7 +52,13 @@ func main() {
 
 	router.Static("/static", sPath)
 
-	handlers.RegisterRoutes(router, db)
+	// Initialize auth service
+	authService := middleware.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration)
+
+	// Add optional auth middleware to provide user context
+	router.Use(authService.OptionalAuthMiddleware())
+
+	handlers.RegisterRoutes(router, db, authService)
 
 	// --- Start the server ---
 	port := os.Getenv("APP_PORT")
