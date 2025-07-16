@@ -7,24 +7,24 @@ import (
 	"time"
 )
 
-func (db *DB) GetHomeUtilityTypes() (*[]models.HomeUtilityType, error) {
+func (db *DB) GetCarExpenseTypes() (*[]models.CarExpenseType, error) {
 	query := `
-		SELECT * FROM utility_types 
+		SELECT * FROM car_expense_types
 		`
-	var expenseTypes []models.HomeUtilityType
+	var expenseTypes []models.CarExpenseType
 	rows, err := db.conn.Query(query)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch expenses: %v", err)
+		return nil, fmt.Errorf("failed to fetch car expenses: %v", err)
 	}
 
 	for rows.Next() {
 		err := rows.Err()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch expenses: %v", err)
+			return nil, fmt.Errorf("failed to fetch car expenses: %v", err)
 		}
 
-		var expType models.HomeUtilityType
+		var expType models.CarExpenseType
 		err = rows.Scan(&expType.ID,
 			&expType.Name,
 		)
@@ -38,10 +38,10 @@ func (db *DB) GetHomeUtilityTypes() (*[]models.HomeUtilityType, error) {
 	return &expenseTypes, nil
 }
 
-func (db *DB) GetTotalHomeExpenseForMonth(month time.Month) (float64, error) {
+func (db *DB) GetTotalCarExpenseForMonth(month time.Month) (float64, error) {
 	currentYear := time.Now().Year()
 	query := `
-		SELECT SUM(amount) FROM home_expenses
+		SELECT SUM(amount) FROM car_expenses
 		WHERE EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2
 		`
 
@@ -61,20 +61,20 @@ func (db *DB) GetTotalHomeExpenseForMonth(month time.Month) (float64, error) {
 	return totalAmount.Float64, nil
 }
 
-func (db *DB) GetHighestHomeExpenseForMonth(month time.Month) (float64, string, error) {
+func (db *DB) GetHighestCarExpenseForMonth(month time.Month) (float64, string, error) {
 	currentYear := time.Now().Year()
 	query := `
 		SELECT
-			he.amount,
-			ut.name
+			ce.amount,
+			ct.name
 		FROM
-			home_expenses he
+			car_expenses ce
 		JOIN
-			utility_types ut ON he.utility_type_id = ut.id
+			car_expense_types ct ON ce.car_expense_type_id = ct.id
 		WHERE
-			EXTRACT(MONTH FROM he.expense_date) = $1 AND EXTRACT(YEAR FROM he.expense_date) = $2
+			EXTRACT(MONTH FROM ce.expense_date) = $1 AND EXTRACT(YEAR FROM ce.expense_date) = $2
 		ORDER BY
-			he.amount DESC
+			ce.amount DESC
 		LIMIT 1;
 	`
 
@@ -97,31 +97,31 @@ func (db *DB) GetHighestHomeExpenseForMonth(month time.Month) (float64, string, 
 }
 
 // Retrieves home expense by Id, returns error upon failure.
-func (db *DB) GetHomeExpenseByID(id int) (*models.HomeExpense, error) {
+func (db *DB) GetCarExpenseByID(id int) (*models.CarExpense, error) {
 	query := `
 		SELECT
-			he.id,
-			ut.name AS utility_name,
-			he.amount,
-			he.expense_date,
-			he.notes,
-			he.created_at
+			ce.id,
+			ct.name AS type,
+			ce.amount,
+			ce.expense_date,
+			ce.notes,
+			ce.created_at
 		FROM
-			home_expenses he
+			car_expenses ce
 		JOIN
-			utility_types ut ON he.utility_type_id = ut.id
+			car_expense_types ct ON ce.car_expense_type_id = ct.id
 		WHERE
-			he.id = $1;
+			ce.id = $1;
 	`
 
-	var expense models.HomeExpense
+	var expense models.CarExpense
 	err := db.conn.QueryRow(query,
 		id,
 	).Scan(
 		&expense.ID,
-		&expense.UtilityType,
+		&expense.Type,
 		&expense.Amount,
-		&expense.ExpenseDate,
+		&expense.Date,
 		&expense.Notes,
 		&expense.CreatedAt)
 
@@ -129,67 +129,67 @@ func (db *DB) GetHomeExpenseByID(id int) (*models.HomeExpense, error) {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get home expense: %w", err)
+		return nil, fmt.Errorf("failed to get car expense: %w\n", err)
 	}
 
 	return &expense, nil
 }
 
 // Creates a new entry of a home expense. Automatically handles utility type FK.
-func (db *DB) CreateHomeExpense(input *models.HomeExpense) error {
+func (db *DB) CreateCarExpense(input *models.CarExpense) error {
 	query := `
-		INSERT INTO home_expenses (utility_type_id, amount, expense_date, notes)
+		INSERT INTO car_expenses (car_expense_type_id, amount, expense_date, notes)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id, created_at, (SELECT name FROM utility_types WHERE id = utility_type_id);
+		RETURNING id, created_at, (SELECT name FROM car_expense_types WHERE id = car_expense_type_id);
 	`
 
 	err := db.conn.QueryRow(query,
-		input.UtilityTypeID,
+		input.ExpenseTypeID,
 		input.Amount,
-		input.ExpenseDate,
+		input.Date,
 		input.Notes,
-	).Scan(&input.ID, &input.CreatedAt, &input.UtilityType)
+	).Scan(&input.ID, &input.CreatedAt, &input.Type)
 
 	if err != nil {
-		return fmt.Errorf("failed to create home expense: %w\n", err)
+		return fmt.Errorf("failed to create car expense: %w\n", err)
 	}
 
 	return nil
 }
 
-func (db *DB) GetHomeExpensesForMonth(month time.Month, year int) (*[]models.HomeExpense, error) {
+func (db *DB) GetCarExpensesForMonth(month time.Month, year int) (*[]models.CarExpense, error) {
 	query := `
-		SELECT he.id, ut.name, he.amount, he.expense_date, he.notes, he.created_at
-			FROM home_expenses he
+		SELECT ce.id, ct.name, ce.amount, ce.expense_date, ce.notes, ce.created_at
+			FROM car_expenses ce
 		JOIN
-			utility_types ut ON he.utility_type_id = ut.id
+			car_expense_types ct ON ce.car_expense_type_id = ct.id
 		WHERE
 			EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2
 		ORDER BY 
-			he.expense_date DESC;
+			ce.expense_date DESC;
 	`
 
-	var expenses []models.HomeExpense
+	var expenses []models.CarExpense
 	rows, err := db.conn.Query(query,
 		int(month),
 		year,
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch expenses: %v", err)
+		return nil, fmt.Errorf("failed to fetch car expenses: %v", err)
 	}
 
 	for rows.Next() {
 		err := rows.Err()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch expenses: %v", err)
+			return nil, fmt.Errorf("failed to fetch car expenses: %v", err)
 		}
 
-		var exp models.HomeExpense
+		var exp models.CarExpense
 		err = rows.Scan(&exp.ID,
-			&exp.UtilityType,
+			&exp.Type,
 			&exp.Amount,
-			&exp.ExpenseDate,
+			&exp.Date,
 			&exp.Notes,
 			&exp.CreatedAt,
 		)
@@ -203,13 +203,13 @@ func (db *DB) GetHomeExpensesForMonth(month time.Month, year int) (*[]models.Hom
 	return &expenses, nil
 }
 
-func (db *DB) GetHomeExpensesForYear(year int) (*[]models.HomeExpense, error) {
+func (db *DB) GetCarExpensesForYear(year int) (*[]models.CarExpense, error) {
 	query := `
-		SELECT * FROM home_expenses
+		SELECT * FROM car_expenses
 		WHERE EXTRACT(YEAR FROM expense_date) = $1
 	`
 
-	var expenses []models.HomeExpense
+	var expenses []models.CarExpense
 	rows, err := db.conn.Query(query,
 		year,
 	)
@@ -224,11 +224,11 @@ func (db *DB) GetHomeExpensesForYear(year int) (*[]models.HomeExpense, error) {
 			return nil, fmt.Errorf("error fetching expenses: %v", err)
 		}
 
-		var exp models.HomeExpense
+		var exp models.CarExpense
 		err = rows.Scan(&exp.ID,
-			&exp.UtilityType,
+			&exp.Type,
 			&exp.Amount,
-			&exp.ExpenseDate,
+			&exp.Date,
 			&exp.Notes,
 			&exp.CreatedAt,
 		)
@@ -242,37 +242,37 @@ func (db *DB) GetHomeExpensesForYear(year int) (*[]models.HomeExpense, error) {
 	return &expenses, nil
 }
 
-func (db *DB) GetHomeExpensesByUtilityType(utility string) (*[]models.HomeExpense, error) {
+func (db *DB) GetCarExpensesByType(utility string) (*[]models.CarExpense, error) {
 	query := `
-		SELECT * FROM home_expenses
-		WHERE utility_type_id = (SELECT id FROM utility_types WHERE name = $1)`
+		SELECT * FROM car_expenses
+		WHERE car_expense_type_id = (SELECT id FROM car_expense_types WHERE name = $1)`
 
-	var expenses []models.HomeExpense
+	var expenses []models.CarExpense
 	rows, err := db.conn.Query(query,
 		utility,
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("error fetching expenses: %v", err)
+		return nil, fmt.Errorf("error fetching car expenses: %v", err)
 	}
 
 	for rows.Next() {
 		err := rows.Err()
 		if err != nil {
-			return nil, fmt.Errorf("error fetching expenses: %v", err)
+			return nil, fmt.Errorf("error fetching car expenses: %v", err)
 		}
 
-		var exp models.HomeExpense
+		var exp models.CarExpense
 		err = rows.Scan(&exp.ID,
-			&exp.UtilityType,
+			&exp.Type,
 			&exp.Amount,
-			&exp.ExpenseDate,
+			&exp.Date,
 			&exp.Notes,
 			&exp.CreatedAt,
 		)
 
 		if err != nil {
-			return nil, fmt.Errorf("error scanning expenses: %v", err)
+			return nil, fmt.Errorf("error scanning car expenses: %v", err)
 		}
 		expenses = append(expenses, exp)
 	}
@@ -280,35 +280,35 @@ func (db *DB) GetHomeExpensesByUtilityType(utility string) (*[]models.HomeExpens
 	return &expenses, nil
 }
 
-func (db *DB) EditHomeExpense(editExpense *models.HomeExpense) error {
+func (db *DB) EditCarExpense(editExpense *models.CarExpense) error {
 	query := `
-		UPDATE home_expenses
+		UPDATE car_expenses
 		SET
-			utility_type_id = $2,
+			car_expense_type_id = $2,
 			amount = $3,
 			expense_date = $4,
 			notes = $5
 		WHERE id = $1
-		RETURNING (SELECT name FROM utility_types WHERE id = $2);
+		RETURNING (SELECT name FROM car_expense_types WHERE id = $2);
 	`
 	err := db.conn.QueryRow(query,
 		editExpense.ID,
-		editExpense.UtilityTypeID,
+		editExpense.ExpenseTypeID,
 		editExpense.Amount,
-		editExpense.ExpenseDate,
+		editExpense.Date,
 		editExpense.Notes,
-	).Scan(&editExpense.UtilityType)
+	).Scan(&editExpense.Type)
 
 	if err != nil {
-		return fmt.Errorf("error editing expense: %v", err)
+		return fmt.Errorf("error editing car expense: %v", err)
 	}
 
 	return nil
 }
 
-func (db *DB) DeleteHomeExpense(id int) (bool, error) {
+func (db *DB) DeleteCarExpense(id int) (bool, error) {
 	query := `
-		DELETE FROM home_expenses
+		DELETE FROM car_expenses
 		WHERE id = $1`
 
 	res, err := db.conn.Exec(query,
@@ -316,12 +316,12 @@ func (db *DB) DeleteHomeExpense(id int) (bool, error) {
 	)
 
 	if err != nil {
-		return false, fmt.Errorf("error deleting expense: %v", err)
+		return false, fmt.Errorf("error deleting car expense: %v", err)
 	}
 
 	rowCount, err := res.RowsAffected()
 	if err != nil {
-		return false, fmt.Errorf("error deleting expense: %v", err)
+		return false, fmt.Errorf("error deleting car expense: %v", err)
 	}
 
 	if rowCount < 1 {

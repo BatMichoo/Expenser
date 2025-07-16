@@ -816,12 +816,20 @@ th {
   padding: 0.25em;
 }
 
-.expenses-table tbody :last-child td {
+.expenses-table thead :last-child th {
   border-bottom: 2px solid var(--footer-color-dark);
 }
 
 @media (min-width: 767px) {
+  .expenses-table tbody :last-child td {
+    border-bottom: 2px solid var(--footer-color-dark);
+  }
+
   body.dark .expenses-table tbody :last-child td {
+    border-bottom: 2px solid var(--dark-tracker-nav-button-active-border);
+  }
+
+  body.dark .expenses-table thead :last-child th {
     border-bottom: 2px solid var(--dark-tracker-nav-button-active-border);
   }
 }
@@ -835,10 +843,6 @@ body.dark .expenses-table {
 }
 
 .expenses-table tbody tr:nth-of-type(even) {
-  border-color: var(--light-theme-toggle-background);
-}
-
-.expenses-table tbody tr:nth-of-type(even) td {
   border-color: var(--light-theme-toggle-background);
 }
 

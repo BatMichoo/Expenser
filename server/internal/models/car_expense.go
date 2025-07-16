@@ -2,17 +2,17 @@ package models
 
 import "time"
 
-type HomeExpense struct {
+type CarExpense struct {
 	ID            int       `form:"id"`
-	UtilityTypeID int       `form:"typeID"`
-	UtilityType   string    `form:"type" binding:"required"`
+	ExpenseTypeID int       `form:"typeID"`
+	Type          string    `form:"type" binding:"required"`
 	Amount        float64   `form:"amount" binding:"required"`
-	ExpenseDate   time.Time `form:"date" binding:"required"`
+	Date          time.Time `form:"date" binding:"required"`
 	Notes         string    `form:"notes"`
 	CreatedAt     time.Time `form:"createdAt"`
 }
 
-type HomeUtilityType struct {
+type CarExpenseType struct {
 	ID   int
 	Name string
 }

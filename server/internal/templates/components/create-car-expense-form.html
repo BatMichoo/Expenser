@@ -1,0 +1,45 @@
+{{ define "create-car-exp-form" }}
+<div>
+  <h2 class="new-expense-heading">
+    Add New Expense
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23" />
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  </h2>
+  <form class="new-expense-form" hx-post="/car/expenses" hx-target="#recent-expenses" hx-swap="afterbegin">
+    <div>
+      <label for="utilityType">Expense Type</label>
+      <select id="utilityType" name="typeID">
+        <option value="">Select an Expense Type</option>
+        {{range .}}
+        <option value="{{ .ID }}">{{ .Name}}</option>
+        {{end}}
+      </select>
+    </div>
+    <div>
+      <label for="amount">Amount ($)</label>
+      <input type="number" id="amount" name="amount" step="0.01" min="0" required placeholder="e.g., 75.50" />
+    </div>
+    <div>
+      <label for="expenseDate">Date</label>
+      <input type="date" id="expenseDate" name="date" required />
+    </div>
+    <div>
+      <label for="notes">Notes (Optional)</label>
+      <textarea id="notes" name="notes" rows="3" placeholder="e.g., Q2 2025 bill"></textarea>
+    </div>
+    <div>
+      <button type="button" class="btn-primary" onClick="document.getElementById('dialog-modal').close();">
+        Cancel
+      </button>
+      <button type="submit" class="btn-primary" hx-on::after-request="if(event.detail.successful) {
+        document.getElementById('dialog-modal').close();
+    }">
+        Add Expense
+      </button>
+    </div>
+  </form>
+</div>
+{{ end }}

@@ -1,6 +1,6 @@
-{{ define "delete-exp" }} {{ with .MonthlyExpense }} {{ template "total-card" .
-}} }} {{ end }} {{ with .HighestExpense }} {{ template "highest-card" . }} {{
-end }}
+{{ define "delete-car-exp" }} {{ with .MonthlyExpense }} {{ template
+"total-card" . }} {{ end }} {{ with .HighestExpense }} {{ template
+"highest-card" . }} {{ end }}
 <span id="total" hx-swap-oob="true">{{ .MonthlyExpense.Amount }}</span>
 <dialog id="dialog-modal" hx-swap-oob="true" hx-on::after-swap="document.getElementById('dialog-modal').showModal()">
 </dialog>

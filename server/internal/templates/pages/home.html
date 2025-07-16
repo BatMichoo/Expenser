@@ -58,13 +58,13 @@
         </tr>
       </thead>
       <tbody id="recent-expenses">
-        {{ range .RecentExpenses }} {{ template "exp-row" . }} {{ end }}
+        {{ range .RecentExpenses }} {{ template "home-exp-row" . }} {{ end }}
       </tbody>
       <tfoot>
         <tr>
           <td colspan="2">Total:</td>
           <td colspan="1">
-            <span id="total">{{ .MonthlyExpense.Amount }}</span>
+            <span id="total">{{ printf "%.2f" .MonthlyExpense.Amount }}</span>
           </td>
         </tr>
       </tfoot>

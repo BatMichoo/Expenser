@@ -9,11 +9,16 @@ type Pages struct {
 
 // HTMXComponents defines the names for reusable HTMX-specific UI components.
 type HTMXComponents struct {
-	Header        string // Header is the name for the application's header component.
-	Footer        string // Footer is the name for the application's footer component.
-	CreateExpForm string // CreateExpForm is the name for the expense creation form component.
-	NewExp        string // NewExp is the name for the new expense component (often a row or card).
-	EditExpForm   string // EditExpForm is the name for the expense editing form component.
+	Header            string // Header is the name for the application's header component.
+	Footer            string // Footer is the name for the application's footer component.
+	CreateHomeExpForm string // CreateExpForm is the name for the expense creation form component.
+	NewHomeExp        string // NewExp is the name for the new expense component (often a row or card).
+	EditHomeExpForm   string // EditExpForm is the name for the expense editing form component.
+	CreateCarExpForm  string // CreateExpForm is the name for the expense creation form component.
+	NewCarExp         string // NewExp is the name for the new expense component (often a row or card).
+	EditCarExpForm    string // EditExpForm is the name for the expense editing form component.
+	HomeExpRow        string
+	CarExpRow         string
 }
 
 // Responses defines the names for specific HTMX partial responses.
@@ -22,6 +27,9 @@ type Responses struct {
 	CreateHomeExp string // CreateHomeExp is the name for the response partial after creating a home expense.
 	UpdateHomeExp string // UpdateHomeExp is the name for the response partial after updating a home expense.
 	DeleteHomeExp string // DeleteHomeExp is the name for the response partial after deleting a home expense.
+	CreateCarExp  string // CreateHomeExp is the name for the response partial after creating a home expense.
+	UpdateCarExp  string // UpdateHomeExp is the name for the response partial after updating a home expense.
+	DeleteCarExp  string // DeleteHomeExp is the name for the response partial after deleting a home expense.
 }
 
 // HTMLTemplates groups all template names used throughout the application.
@@ -40,16 +48,22 @@ var pages = &Pages{
 }
 
 var components = &HTMXComponents{
-	Header:        "header",
-	Footer:        "footer",
-	CreateExpForm: "create-exp-form",
-	EditExpForm:   "edit-exp-form",
+	Header:            "header",
+	Footer:            "footer",
+	HomeExpRow:        "home-exp-row",
+	CarExpRow:         "car-exp-row",
+	CreateHomeExpForm: "create-home-exp-form",
+	EditHomeExpForm:   "edit-home-exp-form",
+	CreateCarExpForm:  "create-car-exp-form",
+	EditCarExpForm:    "edit-car-exp-form",
 }
 
 // responses initializes the Responses struct with specific template identifiers.
 var responses = &Responses{
-	CreateHomeExp: "create-exp",
-	DeleteHomeExp: "delete-exp",
+	CreateHomeExp: "create-home-exp",
+	DeleteHomeExp: "delete-home-exp",
+	CreateCarExp:  "create-car-exp",
+	DeleteCarExp:  "delete-car-exp",
 }
 
 // Templates is the main exported variable that provides access to all

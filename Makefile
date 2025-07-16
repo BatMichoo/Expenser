@@ -1,5 +1,10 @@
 include .env
 
+.PHONY: start
+
+start:
+	cd server/cmd && go run main.go
+
 CERTS_DIR := nginx/certs
 KEY_FILE := $(CERTS_DIR)/homeserver.lan.key
 CRT_FILE := $(CERTS_DIR)/homeserver.lan.crt

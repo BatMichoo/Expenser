@@ -1,4 +1,4 @@
-{{ define "create-exp-form" }}
+{{ define "create-home-exp-form" }}
 <div>
   <h2 class="new-expense-heading">
     Add New Expense
@@ -11,15 +11,11 @@
   <form class="new-expense-form" hx-post="/home/expenses" hx-target="#recent-expenses" hx-swap="afterbegin">
     <div>
       <label for="utilityType">Utility Type</label>
-      <select id="utilityType" name="type">
+      <select id="utilityType" name="typeID">
         <option value="">Select a Utility</option>
-        <option value="Electricity">Electricity</option>
-        <option value="Water">Water</option>
-        <option value="Gas">Gas</option>
-        <option value="Internet">Internet</option>
-        <option value="TV">TV</option>
-        <option value="Waste">Waste Management</option>
-        <option value="Other">Other</option>
+        {{range .}}
+        <option value="{{ .ID }}">{{ .Name}}</option>
+        {{end}}
       </select>
     </div>
     <div>
