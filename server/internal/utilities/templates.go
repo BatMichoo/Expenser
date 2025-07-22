@@ -2,9 +2,11 @@ package utilities
 
 // Pages defines the names for full application pages.
 type Pages struct {
-	Index string // Index is the name for the main index page template.
-	Home  string // Home is the name for the home-related expense page template.
-	Car   string // Car is the name for the car-related expense page template.
+	Index    string // Index is the name for the main index page template.
+	Register string
+	Login    string
+	Home     string // Home is the name for the home-related expense page template.
+	Car      string // Car is the name for the car-related expense page template.
 }
 
 // HTMXComponents defines the names for reusable HTMX-specific UI components.
@@ -24,12 +26,14 @@ type HTMXComponents struct {
 // Responses defines the names for specific HTMX partial responses.
 // These are often fragments returned by HTMX requests that swap content on the page.
 type Responses struct {
-	CreateHomeExp string // CreateHomeExp is the name for the response partial after creating a home expense.
-	UpdateHomeExp string // UpdateHomeExp is the name for the response partial after updating a home expense.
-	DeleteHomeExp string // DeleteHomeExp is the name for the response partial after deleting a home expense.
-	CreateCarExp  string // CreateHomeExp is the name for the response partial after creating a home expense.
-	UpdateCarExp  string // UpdateHomeExp is the name for the response partial after updating a home expense.
-	DeleteCarExp  string // DeleteHomeExp is the name for the response partial after deleting a home expense.
+	CreateHomeExp   string // CreateHomeExp is the name for the response partial after creating a home expense.
+	UpdateHomeExp   string // UpdateHomeExp is the name for the response partial after updating a home expense.
+	DeleteHomeExp   string // DeleteHomeExp is the name for the response partial after deleting a home expense.
+	CreateCarExp    string // CreateHomeExp is the name for the response partial after creating a home expense.
+	UpdateCarExp    string // UpdateHomeExp is the name for the response partial after updating a home expense.
+	DeleteCarExp    string // DeleteHomeExp is the name for the response partial after deleting a home expense.
+	LoginSuccess    string
+	RegisterSuccess string
 }
 
 // HTMLTemplates groups all template names used throughout the application.
@@ -42,9 +46,11 @@ type HTMLTemplates struct {
 }
 
 var pages = &Pages{
-	Index: "index-page",
-	Home:  "home-page",
-	Car:   "car-page",
+	Index:    "index-page",
+	Register: "register-page",
+	Login:    "login-page",
+	Home:     "home-page",
+	Car:      "car-page",
 }
 
 var components = &HTMXComponents{
@@ -60,10 +66,12 @@ var components = &HTMXComponents{
 
 // responses initializes the Responses struct with specific template identifiers.
 var responses = &Responses{
-	CreateHomeExp: "create-home-exp",
-	DeleteHomeExp: "delete-home-exp",
-	CreateCarExp:  "create-car-exp",
-	DeleteCarExp:  "delete-car-exp",
+	CreateHomeExp:   "create-home-exp",
+	DeleteHomeExp:   "delete-home-exp",
+	CreateCarExp:    "create-car-exp",
+	DeleteCarExp:    "delete-car-exp",
+	LoginSuccess:    "login-success",
+	RegisterSuccess: "register-success",
 }
 
 // Templates is the main exported variable that provides access to all

@@ -1,31 +1,53 @@
 package handlers
 
 import (
+	"expenser/internal/config"
 	database "expenser/internal/db"
+	"expenser/internal/middleware"
+	"expenser/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(router *gin.Engine, db *database.DB) {
+func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
+	// Public routes (no authentication required)
 	rootHandler := NewRootHandler(db)
-
 	router.GET("/", rootHandler.GetRoot)
 
-	homeHandler := NewHomeHandler(db)
+	as := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration)
+	authHandler := NewAuthHandler(db, as)
 
-	router.GET("/home", homeHandler.GetHome)
-	router.GET("/home/expenses/new", homeHandler.GetCreateHomeForm)
-	router.POST("/home/expenses", homeHandler.CreateHomeExpense)
-	router.GET("/home/expenses/edit", homeHandler.GetEditHomeForm)
-	router.PUT("/home/expenses/:id", homeHandler.EditHomeExpenseById)
-	router.DELETE("/home/expenses/:id", homeHandler.DeleteHomeExp)
+	router.GET("/login", authHandler.GetLogin)
+	router.POST("/login", authHandler.Login)
+	router.GET("/logout", authHandler.Logout)
+	router.GET("/register", authHandler.GetRegister)
+	router.POST("/register", authHandler.Register)
+
+	am := middleware.NewAuthMiddleware(as)
+
+	homeHandler := NewHomeHandler(db)
+	protectedHome := router.Group("/home")
+	{
+		protectedHome.Use(am.AuthMiddleware())
+
+		protectedHome.GET("", homeHandler.GetHome)
+		protectedHome.GET("/expenses/new", homeHandler.GetCreateHomeForm)
+		protectedHome.POST("/expenses", homeHandler.CreateHomeExpense)
+		protectedHome.GET("/expenses/edit", homeHandler.GetEditHomeForm)
+		protectedHome.PUT("/expenses/:id", homeHandler.EditHomeExpenseById)
+		protectedHome.DELETE("/expenses/:id", homeHandler.DeleteHomeExp)
+	}
 
 	carHandler := NewCarHandler(db)
+	protectedCar := router.Group("/car")
+	{
+		protectedCar.Use(am.AuthMiddleware())
 
-	router.GET("/car", carHandler.GetHome)
-	router.GET("/car/expenses/new", carHandler.GetCreateCarForm)
-	router.POST("/car/expenses", carHandler.CreateCarExpense)
-	router.GET("/car/expenses/edit", carHandler.GetEditCarForm)
-	router.PUT("/car/expenses/:id", carHandler.EditCarExpenseById)
-	router.DELETE("/car/expenses/:id", carHandler.DeleteCarExp)
+		protectedCar.GET("", carHandler.GetHome)
+		protectedCar.GET("/expenses/new", carHandler.GetCreateCarForm)
+		protectedCar.POST("/expenses", carHandler.CreateCarExpense)
+		protectedCar.GET("/expenses/edit", carHandler.GetEditCarForm)
+		protectedCar.PUT("/expenses/:id", carHandler.EditCarExpenseById)
+		protectedCar.DELETE("/expenses/:id", carHandler.DeleteCarExp)
+	}
 }

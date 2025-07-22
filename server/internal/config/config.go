@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -13,7 +15,14 @@ import (
 type Config struct {
 	ServerPort string
 	DB         DB
+	JWT        JWT
 	Mode       string
+}
+
+// JWT holds JWT-related configuration
+type JWT struct {
+	SecretKey       string
+	TokenExpiration time.Duration
 }
 
 type DB struct {
@@ -40,6 +49,21 @@ func LoadConfig() (*Config, error) {
 
 	testDBName := os.Getenv("TEST_DB_NAME")
 
+	// JWT configuration
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "your-secret-key-change-this-in-production"
+		log.Println("Warning: Using default JWT secret. Set JWT_SECRET environment variable in production.")
+	}
+
+	jwtExpirationStr := os.Getenv("JWT_EXPIRATION_HOURS")
+	jwtExpiration := 24 * time.Hour // Default to 24 hours
+	if jwtExpirationStr != "" {
+		if hours, err := strconv.Atoi(jwtExpirationStr); err == nil {
+			jwtExpiration = time.Duration(hours) * time.Hour
+		}
+	}
+
 	// Construct the database connection string.
 	dbConnString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		dbUser, dbPass, dbHost, dbPort, dbName)
@@ -56,7 +80,11 @@ func LoadConfig() (*Config, error) {
 	return &Config{
 		ServerPort: serverPort,
 		DB:         DB,
-		Mode:       mode,
+		JWT: JWT{
+			SecretKey:       jwtSecret,
+			TokenExpiration: jwtExpiration,
+		},
+		Mode: mode,
 	}, nil
 }
 

@@ -51,7 +51,7 @@ func main() {
 
 	router.Static("/static", sPath)
 
-	handlers.RegisterRoutes(router, db)
+	handlers.RegisterRoutes(router, db, cfg)
 
 	// --- Start the server ---
 	port := os.Getenv("APP_PORT")

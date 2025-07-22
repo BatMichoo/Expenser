@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type CarExpense struct {
 	ID            int       `form:"id"`
@@ -10,6 +14,7 @@ type CarExpense struct {
 	Date          time.Time `form:"date" binding:"required"`
 	Notes         string    `form:"notes"`
 	CreatedAt     time.Time `form:"createdAt"`
+	CreatedBy     uuid.UUID
 }
 
 type CarExpenseType struct {

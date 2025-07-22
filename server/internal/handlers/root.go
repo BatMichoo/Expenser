@@ -12,9 +12,15 @@ type RootHandler struct {
 	DB *database.DB
 }
 
+type HeaderOptions struct {
+	IsLoggedIn bool
+	IsOOB      bool
+}
+
 type RootLayout struct {
 	TemplateName    string
 	TemplateContent any
+	HeaderOpts      *HeaderOptions
 }
 
 func NewRootHandler(db *database.DB) *RootHandler {
@@ -24,6 +30,8 @@ func NewRootHandler(db *database.DB) *RootHandler {
 }
 
 func (h *RootHandler) GetRoot(c *gin.Context) {
+	authC, _ := c.Cookie("auth_token")
+	isLoggedIn := authC != ""
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	if isHtmxRequest {
@@ -31,6 +39,9 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 	} else {
 		rl := &RootLayout{
 			TemplateName: utilities.Templates.Pages.Index,
+			HeaderOpts: &HeaderOptions{
+				IsLoggedIn: isLoggedIn,
+			},
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}

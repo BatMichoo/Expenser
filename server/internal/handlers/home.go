@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // HomeHandler provides HTTP handlers for managing home-related expenses.
@@ -87,6 +88,9 @@ type CreateHomeExpResponse struct {
 // and then returns updated summary data (highest and monthly total)
 // to refresh the UI.
 func (h *HomeHandler) CreateHomeExpense(c *gin.Context) {
+	userIDstr, _ := c.Get("user_id")
+	userID, _ := userIDstr.(uuid.UUID)
+
 	utilTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
 	if err != nil {
 		// TODO: Handle error page
@@ -108,6 +112,7 @@ func (h *HomeHandler) CreateHomeExpense(c *gin.Context) {
 	notes := c.Request.PostFormValue("notes")
 
 	newExpense := &models.HomeExpense{
+		CreatedBy:     userID,
 		Amount:        amount,
 		UtilityTypeID: utilTypeID,
 		ExpenseDate:   date,
@@ -124,7 +129,7 @@ func (h *HomeHandler) CreateHomeExpense(c *gin.Context) {
 
 	timeNow := time.Now()
 
-	highestExp, expType, err := h.DB.GetHighestHomeExpenseForMonth(timeNow.Month())
+	highestExp, expType, err := h.DB.GetHighestHomeExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		// TODO: Handle error page
 		fmt.Printf("error fetching highest expense: %v", err)
@@ -132,7 +137,7 @@ func (h *HomeHandler) CreateHomeExpense(c *gin.Context) {
 		return
 	}
 
-	montlyTotal, err := h.DB.GetTotalHomeExpenseForMonth(timeNow.Month())
+	montlyTotal, err := h.DB.GetTotalHomeExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		// TODO: Handle error page
 		fmt.Printf("error fetching total expense: %v", err)
@@ -169,7 +174,10 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 	month := dateNow.Month()
 	year := dateNow.Year()
 
-	highestExpense, utilType, err := h.DB.GetHighestHomeExpenseForMonth(month)
+	userIDstr, _ := c.Get("user_id")
+	userID, _ := userIDstr.(uuid.UUID)
+
+	highestExpense, utilType, err := h.DB.GetHighestHomeExpenseForMonth(month, userID)
 	if err != nil {
 		// TODO: Handle error page
 		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
@@ -177,7 +185,7 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 		return
 	}
 
-	monthlyExpense, err := h.DB.GetTotalHomeExpenseForMonth(month)
+	monthlyExpense, err := h.DB.GetTotalHomeExpenseForMonth(month, userID)
 	if err != nil {
 		// TODO: Handle error page
 		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
@@ -185,7 +193,7 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 		return
 	}
 
-	recentExpenses, err := h.DB.GetHomeExpensesForMonth(month, year)
+	recentExpenses, err := h.DB.GetHomeExpensesForMonth(month, year, userID)
 	if err != nil {
 		fmt.Printf("Error fetching expenses %v", err)
 		// TODO: Handle error page
@@ -217,6 +225,9 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 		rl := &RootLayout{
 			TemplateName:    utilities.Templates.Pages.Home,
 			TemplateContent: pageData,
+			HeaderOpts: &HeaderOptions{
+				IsLoggedIn: true,
+			},
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
@@ -337,8 +348,10 @@ func (h *HomeHandler) EditHomeExpenseById(c *gin.Context) {
 	}
 
 	timeNow := time.Now()
+	userIDstr, _ := c.Get("user_id")
+	userID, _ := userIDstr.(uuid.UUID)
 
-	highestExp, expType, err := h.DB.GetHighestHomeExpenseForMonth(timeNow.Month())
+	highestExp, expType, err := h.DB.GetHighestHomeExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		// TODO: Handle error page: Failed to fetch highest expense after edit.
 		fmt.Printf("error fetching highest expense: %v", err)
@@ -346,7 +359,7 @@ func (h *HomeHandler) EditHomeExpenseById(c *gin.Context) {
 		return
 	}
 
-	montlyTotal, err := h.DB.GetTotalHomeExpenseForMonth(timeNow.Month())
+	montlyTotal, err := h.DB.GetTotalHomeExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		// TODO: Handle error page: Failed to fetch monthly total after edit.
 		fmt.Printf("error fetching total expense: %v", err)
@@ -400,8 +413,10 @@ func (h *HomeHandler) DeleteHomeExp(c *gin.Context) {
 	}
 	timeNow := time.Now()
 	month := timeNow.Month()
+	userIDstr, _ := c.Get("user_id")
+	userID, _ := userIDstr.(uuid.UUID)
 
-	monthlyExpense, err := h.DB.GetTotalHomeExpenseForMonth(month)
+	monthlyExpense, err := h.DB.GetTotalHomeExpenseForMonth(month, userID)
 	if err != nil {
 		// TODO: Handle error page: Failed to fetch monthly total after delete.
 		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
@@ -409,7 +424,7 @@ func (h *HomeHandler) DeleteHomeExp(c *gin.Context) {
 		return
 	}
 
-	highestExpense, utilType, err := h.DB.GetHighestHomeExpenseForMonth(month)
+	highestExpense, utilType, err := h.DB.GetHighestHomeExpenseForMonth(month, userID)
 	if err != nil {
 		// TODO: Handle error page: Failed to fetch highest expense after delete.
 		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
