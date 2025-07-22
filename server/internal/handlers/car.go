@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type CarHandler struct {
@@ -27,7 +28,10 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 	month := dateNow.Month()
 	year := dateNow.Year()
 
-	highestExpense, utilType, err := h.DB.GetHighestCarExpenseForMonth(month)
+	userIDstr, _ := c.Get("user_id")
+	userID, _ := userIDstr.(uuid.UUID)
+
+	highestExpense, utilType, err := h.DB.GetHighestCarExpenseForMonth(month, userID)
 	if err != nil {
 		// TODO: Handle error page
 		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
@@ -35,7 +39,7 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 		return
 	}
 
-	monthlyExpense, err := h.DB.GetTotalCarExpenseForMonth(month)
+	monthlyExpense, err := h.DB.GetTotalCarExpenseForMonth(month, userID)
 	if err != nil {
 		// TODO: Handle error page
 		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
@@ -43,7 +47,7 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 		return
 	}
 
-	recentExpenses, err := h.DB.GetCarExpensesForMonth(month, year)
+	recentExpenses, err := h.DB.GetCarExpensesForMonth(month, year, userID)
 	if err != nil {
 		fmt.Printf("Error fetching expenses %v", err)
 		// TODO: Handle error page
@@ -125,11 +129,15 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 	}
 	notes := c.Request.PostFormValue("notes")
 
+	userIDstr, _ := c.Get("user_id")
+	userID, _ := userIDstr.(uuid.UUID)
+
 	newExpense := &models.CarExpense{
 		Amount:        amount,
 		ExpenseTypeID: expTypeID,
 		Date:          date,
 		Notes:         notes,
+		CreatedBy:     userID,
 	}
 
 	err = h.DB.CreateCarExpense(newExpense)
@@ -142,7 +150,7 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 
 	timeNow := time.Now()
 
-	highestExp, expType, err := h.DB.GetHighestCarExpenseForMonth(timeNow.Month())
+	highestExp, expType, err := h.DB.GetHighestCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		// TODO: Handle error page
 		fmt.Printf("error fetching highest expense: %v", err)
@@ -150,7 +158,7 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 		return
 	}
 
-	montlyTotal, err := h.DB.GetTotalCarExpenseForMonth(timeNow.Month())
+	montlyTotal, err := h.DB.GetTotalCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		// TODO: Handle error page
 		fmt.Printf("error fetching total expense: %v", err)
@@ -287,7 +295,10 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 
 	timeNow := time.Now()
 
-	highestExp, expType, err := h.DB.GetHighestCarExpenseForMonth(timeNow.Month())
+	userIDstr, _ := c.Get("user_id")
+	userID, _ := userIDstr.(uuid.UUID)
+
+	highestExp, expType, err := h.DB.GetHighestCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		// TODO: Handle error page: Failed to fetch highest expense after edit.
 		fmt.Printf("error fetching highest expense: %v", err)
@@ -295,7 +306,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 		return
 	}
 
-	montlyTotal, err := h.DB.GetTotalCarExpenseForMonth(timeNow.Month())
+	montlyTotal, err := h.DB.GetTotalCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		// TODO: Handle error page: Failed to fetch monthly total after edit.
 		fmt.Printf("error fetching total expense: %v", err)
@@ -350,7 +361,10 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 	timeNow := time.Now()
 	month := timeNow.Month()
 
-	monthlyExpense, err := h.DB.GetTotalCarExpenseForMonth(month)
+	userIDstr, _ := c.Get("user_id")
+	userID, _ := userIDstr.(uuid.UUID)
+
+	monthlyExpense, err := h.DB.GetTotalCarExpenseForMonth(month, userID)
 	if err != nil {
 		// TODO: Handle error page: Failed to fetch monthly total after delete.
 		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
@@ -358,7 +372,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 		return
 	}
 
-	highestExpense, utilType, err := h.DB.GetHighestCarExpenseForMonth(month)
+	highestExpense, utilType, err := h.DB.GetHighestCarExpenseForMonth(month, userID)
 	if err != nil {
 		// TODO: Handle error page: Failed to fetch highest expense after delete.
 		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})

@@ -10,7 +10,7 @@
 </head>
 
 <body>
-  {{ template "header" . }}
+  {{ template "header" .HeaderOpts }}
   <div class="container">
     <!-- Main Content Area for Loaded Trackers -->
     <!-- This is where HTMX will swap the content for different trackers -->
@@ -18,8 +18,10 @@
       <!-- Initial content for the landing page, or default tracker overview -->
       {{ if eq .TemplateName "home-page" }} {{ template "home-page"
       .TemplateContent }} {{ else if eq .TemplateName "car-page" }} {{
-      template "car-page" .TemplateContent }} {{ else }} {{ template
-      "index-page" . }} {{ end }}
+      template "car-page" .TemplateContent }} {{ else if eq .TemplateName
+      "login-page" }} {{ template "login-page" .TemplateContent }} {{ else if
+      eq .TemplateName "register-page" }} {{ template "register-page"
+      .TemplateContent }} {{ else }} {{ template "index-page" . }} {{ end }}
     </div>
   </div>
   <footer>

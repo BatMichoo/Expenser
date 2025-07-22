@@ -5,6 +5,8 @@ import (
 	"expenser/internal/models"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func (db *DB) GetCarExpenseTypes() (*[]models.CarExpenseType, error) {
@@ -38,17 +40,18 @@ func (db *DB) GetCarExpenseTypes() (*[]models.CarExpenseType, error) {
 	return &expenseTypes, nil
 }
 
-func (db *DB) GetTotalCarExpenseForMonth(month time.Month) (float64, error) {
+func (db *DB) GetTotalCarExpenseForMonth(month time.Month, userId uuid.UUID) (float64, error) {
 	currentYear := time.Now().Year()
 	query := `
 		SELECT SUM(amount) FROM car_expenses
-		WHERE EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2
+		WHERE EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2 AND created_by = $3
 		`
 
 	var totalAmount sql.NullFloat64
 	err := db.conn.QueryRow(query,
 		int(month),
 		currentYear,
+		userId,
 	).Scan(&totalAmount)
 
 	if err != nil {
@@ -61,7 +64,7 @@ func (db *DB) GetTotalCarExpenseForMonth(month time.Month) (float64, error) {
 	return totalAmount.Float64, nil
 }
 
-func (db *DB) GetHighestCarExpenseForMonth(month time.Month) (float64, string, error) {
+func (db *DB) GetHighestCarExpenseForMonth(month time.Month, userId uuid.UUID) (float64, string, error) {
 	currentYear := time.Now().Year()
 	query := `
 		SELECT
@@ -72,7 +75,7 @@ func (db *DB) GetHighestCarExpenseForMonth(month time.Month) (float64, string, e
 		JOIN
 			car_expense_types ct ON ce.car_expense_type_id = ct.id
 		WHERE
-			EXTRACT(MONTH FROM ce.expense_date) = $1 AND EXTRACT(YEAR FROM ce.expense_date) = $2
+			EXTRACT(MONTH FROM ce.expense_date) = $1 AND EXTRACT(YEAR FROM ce.expense_date) = $2 AND ce.created_by = $3
 		ORDER BY
 			ce.amount DESC
 		LIMIT 1;
@@ -84,6 +87,7 @@ func (db *DB) GetHighestCarExpenseForMonth(month time.Month) (float64, string, e
 	err := db.conn.QueryRow(query,
 		int(month),
 		currentYear,
+		userId,
 	).Scan(&highestExpense, &utilType)
 
 	if err != nil {
@@ -105,7 +109,8 @@ func (db *DB) GetCarExpenseByID(id int) (*models.CarExpense, error) {
 			ce.amount,
 			ce.expense_date,
 			ce.notes,
-			ce.created_at
+			ce.created_at,
+			ce.created_by
 		FROM
 			car_expenses ce
 		JOIN
@@ -123,13 +128,14 @@ func (db *DB) GetCarExpenseByID(id int) (*models.CarExpense, error) {
 		&expense.Amount,
 		&expense.Date,
 		&expense.Notes,
-		&expense.CreatedAt)
+		&expense.CreatedAt,
+		&expense.CreatedBy)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get car expense: %w\n", err)
+		return nil, fmt.Errorf("failed to get car expense: %w", err)
 	}
 
 	return &expense, nil
@@ -138,8 +144,8 @@ func (db *DB) GetCarExpenseByID(id int) (*models.CarExpense, error) {
 // Creates a new entry of a home expense. Automatically handles utility type FK.
 func (db *DB) CreateCarExpense(input *models.CarExpense) error {
 	query := `
-		INSERT INTO car_expenses (car_expense_type_id, amount, expense_date, notes)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO car_expenses (car_expense_type_id, amount, expense_date, notes, created_by)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at, (SELECT name FROM car_expense_types WHERE id = car_expense_type_id);
 	`
 
@@ -148,23 +154,24 @@ func (db *DB) CreateCarExpense(input *models.CarExpense) error {
 		input.Amount,
 		input.Date,
 		input.Notes,
+		input.CreatedBy,
 	).Scan(&input.ID, &input.CreatedAt, &input.Type)
 
 	if err != nil {
-		return fmt.Errorf("failed to create car expense: %w\n", err)
+		return fmt.Errorf("failed to create car expense: %w", err)
 	}
 
 	return nil
 }
 
-func (db *DB) GetCarExpensesForMonth(month time.Month, year int) (*[]models.CarExpense, error) {
+func (db *DB) GetCarExpensesForMonth(month time.Month, year int, userId uuid.UUID) (*[]models.CarExpense, error) {
 	query := `
 		SELECT ce.id, ct.name, ce.amount, ce.expense_date, ce.notes, ce.created_at
 			FROM car_expenses ce
 		JOIN
 			car_expense_types ct ON ce.car_expense_type_id = ct.id
 		WHERE
-			EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2
+			EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2 AND ce.created_by = $3
 		ORDER BY 
 			ce.expense_date DESC;
 	`
@@ -173,6 +180,7 @@ func (db *DB) GetCarExpensesForMonth(month time.Month, year int) (*[]models.CarE
 	rows, err := db.conn.Query(query,
 		int(month),
 		year,
+		userId,
 	)
 
 	if err != nil {
@@ -203,15 +211,22 @@ func (db *DB) GetCarExpensesForMonth(month time.Month, year int) (*[]models.CarE
 	return &expenses, nil
 }
 
-func (db *DB) GetCarExpensesForYear(year int) (*[]models.CarExpense, error) {
+func (db *DB) GetCarExpensesForYear(year int, userId uuid.UUID) (*[]models.CarExpense, error) {
 	query := `
-		SELECT * FROM car_expenses
-		WHERE EXTRACT(YEAR FROM expense_date) = $1
+		SELECT ce.id, ct.name, ce.amount, ce.expense_date, ce.notes, ce.created_at
+			FROM car_expenses ce
+		JOIN
+			car_expense_types ct ON ce.car_expense_type_id = ct.id
+		WHERE
+			 EXTRACT(YEAR FROM expense_date) = $1 AND ce.created_by = $2
+		ORDER BY 
+			ce.expense_date DESC;
 	`
 
 	var expenses []models.CarExpense
 	rows, err := db.conn.Query(query,
 		year,
+		userId,
 	)
 
 	if err != nil {
@@ -242,14 +257,19 @@ func (db *DB) GetCarExpensesForYear(year int) (*[]models.CarExpense, error) {
 	return &expenses, nil
 }
 
-func (db *DB) GetCarExpensesByType(utility string) (*[]models.CarExpense, error) {
+func (db *DB) GetCarExpensesByType(utility string, userId uuid.UUID) (*[]models.CarExpense, error) {
 	query := `
-		SELECT * FROM car_expenses
-		WHERE car_expense_type_id = (SELECT id FROM car_expense_types WHERE name = $1)`
+		SELECT ce.id, ct.name, ce.amount, ce.expense_date, ce.notes, ce.created_at
+			FROM car_expenses ce
+		JOIN
+			car_expense_types ct ON ce.car_expense_type_id = ct.id
+		WHERE
+			ct.name = $1 AND ce.created_by = $2`
 
 	var expenses []models.CarExpense
 	rows, err := db.conn.Query(query,
 		utility,
+		userId,
 	)
 
 	if err != nil {

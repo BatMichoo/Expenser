@@ -1,0 +1,44 @@
+{{ define "register-success"}}
+<div class="redirect-message-container" style="
+    text-align: center;
+    padding: 50px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    margin: 50px auto;
+  ">
+  <h2>Redirecting...</h2>
+  <p>
+    You will be redirected to the login page in
+    <span id="countdown">5</span> seconds.
+  </p>
+  <p>
+    If you are not redirected automatically,
+    <a href="/login">click here to proceed</a>.
+  </p>
+
+  <script>
+    // Get the countdown element
+    const countdownElement = document.getElementById("countdown");
+    let countdown = 5;
+
+    // Update the countdown every second
+    const intervalId = setInterval(() => {
+      countdown--;
+      if (countdownElement) {
+        countdownElement.textContent = countdown;
+      }
+
+      if (countdown <= 0) {
+        clearInterval(intervalId); // Stop the countdown
+        window.location.href = "/login"; // Perform the redirect
+      }
+    }, 1000); // Every 1000 milliseconds (1 second)
+
+    // Optional: A meta refresh tag for basic fallback (less flexible but works without JS)
+    // This should be in the <head> if it's a full page, but included here for completeness
+    // <meta http-equiv="refresh" content="5;url=/login">
+  </script>
+</div>
+{{ end }}

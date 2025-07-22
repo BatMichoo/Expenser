@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,7 +24,7 @@ func TestCreateHomeExpense(t *testing.T) {
 	type testCase struct {
 		name     string
 		input    *models.HomeExpense
-		setup    func(t *testing.T)
+		setup    func(t *testing.T) uuid.UUID
 		wantErr  bool
 		validate func(t *testing.T, got *models.HomeExpense)
 	}
@@ -31,8 +32,11 @@ func TestCreateHomeExpense(t *testing.T) {
 	expenseDate := time.Now()
 	tests := []testCase{
 		{
-			name:  "Valid",
-			setup: func(t *testing.T) {},
+			name: "Valid",
+			setup: func(t *testing.T) uuid.UUID {
+				testDB.CreateUser(TestUserRegisterModel)
+				return TestUserRegisterModel.ID
+			},
 			input: &models.HomeExpense{
 				Amount:        250.00,
 				ExpenseDate:   expenseDate,
@@ -48,8 +52,11 @@ func TestCreateHomeExpense(t *testing.T) {
 			},
 		},
 		{
-			name:  "Invalid utility type",
-			setup: func(t *testing.T) {},
+			name: "Invalid utility type",
+			setup: func(t *testing.T) uuid.UUID {
+				testDB.CreateUser(TestUserRegisterModel)
+				return TestUserRegisterModel.ID
+			},
 			input: &models.HomeExpense{
 				Amount:        250.00,
 				ExpenseDate:   expenseDate,
@@ -65,6 +72,9 @@ func TestCreateHomeExpense(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ResetTestDB(testDB)
+
+			userId := tt.setup(t)
+			tt.input.CreatedBy = userId
 
 			err := testDB.CreateHomeExpense(tt.input)
 			if tt.wantErr {
@@ -104,11 +114,13 @@ func TestEditHomeExpense(t *testing.T) {
 		{
 			name: "Valid",
 			setup: func(t *testing.T) int {
+				testDB.CreateUser(TestUserRegisterModel)
 				initial := &models.HomeExpense{
 					Amount:        150.00,
 					ExpenseDate:   expenseDate.Add(time.Hour * 24),
 					UtilityTypeID: 1,
 					Notes:         "Test 1234567",
+					CreatedBy:     TestUserRegisterModel.ID,
 				}
 
 				err := testDB.CreateHomeExpense(initial)
@@ -179,11 +191,13 @@ func TestGetHomeExpense(t *testing.T) {
 		{
 			name: "Existing Expense",
 			setup: func(t *testing.T) int {
+				testDB.CreateUser(TestUserRegisterModel)
 				expense := &models.HomeExpense{
 					Amount:        250.00,
 					ExpenseDate:   expenseDate,
 					UtilityTypeID: 3,
 					Notes:         "Test 1234",
+					CreatedBy:     TestUserRegisterModel.ID,
 				}
 
 				err := testDB.CreateHomeExpense(expense)
@@ -206,11 +220,13 @@ func TestGetHomeExpense(t *testing.T) {
 		{
 			name: "Missing expense",
 			setup: func(t *testing.T) int {
+				testDB.CreateUser(TestUserRegisterModel)
 				expense := &models.HomeExpense{
 					Amount:        250.00,
 					ExpenseDate:   expenseDate,
 					UtilityTypeID: 3,
 					Notes:         "Test 1234",
+					CreatedBy:     TestUserRegisterModel.ID,
 				}
 
 				err := testDB.CreateHomeExpense(expense)
@@ -269,7 +285,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 
 	type testCase struct {
 		name       string
-		funcToTest func() (*[]models.HomeExpense, error)
+		funcToTest func(userId uuid.UUID) (*[]models.HomeExpense, error)
 		expected   []models.HomeExpense
 		setup      func(t *testing.T)
 		wantErr    bool
@@ -280,28 +296,32 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 	tests := []testCase{
 		{
 			name: "Expenses for month",
-			funcToTest: func() (*[]models.HomeExpense, error) {
-				return testDB.GetHomeExpensesForMonth(expenseDate.Month(), expenseDate.Year())
+			funcToTest: func(userId uuid.UUID) (*[]models.HomeExpense, error) {
+				return testDB.GetHomeExpensesForMonth(expenseDate.Month(), expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
+				testDB.CreateUser(TestUserRegisterModel)
 				expenses := []models.HomeExpense{
 					{
 						Amount:        250.00,
 						ExpenseDate:   expenseDate.Add(time.Duration(31 * 24 * time.Hour)),
 						UtilityTypeID: 3,
 						Notes:         "Test 1234",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 					{
 						Amount:        350.00,
 						ExpenseDate:   expenseDate,
 						UtilityTypeID: 2,
 						Notes:         "Test 12345",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 					{
 						Amount:        450.00,
 						ExpenseDate:   expenseDate,
 						UtilityTypeID: 5,
 						Notes:         "Test 123456",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 				}
 
@@ -336,28 +356,32 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 		},
 		{
 			name: "Expenses for year",
-			funcToTest: func() (*[]models.HomeExpense, error) {
-				return testDB.GetHomeExpensesForYear(expenseDate.Year())
+			funcToTest: func(userId uuid.UUID) (*[]models.HomeExpense, error) {
+				return testDB.GetHomeExpensesForYear(expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
+				testDB.CreateUser(TestUserRegisterModel)
 				expenses := []models.HomeExpense{
 					{
 						Amount:        250.00,
 						ExpenseDate:   expenseDate,
 						UtilityTypeID: 3,
 						Notes:         "Test 1234",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 					{
 						Amount:        350.00,
 						ExpenseDate:   expenseDate.Add(time.Duration(365 * 31 * 24 * time.Hour)),
 						UtilityTypeID: 2,
 						Notes:         "Test 12345",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 					{
 						Amount:        450.00,
 						ExpenseDate:   expenseDate.Add(time.Duration(365 * 31 * 24 * time.Hour)),
 						UtilityTypeID: 5,
 						Notes:         "Test 123456",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 				}
 
@@ -400,7 +424,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			got, err := tt.funcToTest()
+			got, err := tt.funcToTest(TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 
 			assert.NotNil(t, got)
@@ -421,7 +445,7 @@ func TestGetTotalHomeExpenseMonth(t *testing.T) {
 
 	type testCase struct {
 		name       string
-		funcToTest func() (float64, error)
+		funcToTest func(userId uuid.UUID) (float64, error)
 		expected   float64
 		setup      func(t *testing.T)
 		wantErr    bool
@@ -432,28 +456,32 @@ func TestGetTotalHomeExpenseMonth(t *testing.T) {
 	tests := []testCase{
 		{
 			name: "One Expense for month",
-			funcToTest: func() (float64, error) {
-				return testDB.GetTotalHomeExpenseForMonth(expenseDate.Month())
+			funcToTest: func(userId uuid.UUID) (float64, error) {
+				return testDB.GetTotalHomeExpenseForMonth(expenseDate.Month(), userId)
 			},
 			setup: func(t *testing.T) {
+				testDB.CreateUser(TestUserRegisterModel)
 				expenses := []models.HomeExpense{
 					{
 						Amount:        250.00,
 						ExpenseDate:   expenseDate,
 						UtilityTypeID: 3,
 						Notes:         "Test 1234",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 					{
 						Amount:        350.00,
 						ExpenseDate:   expenseDate.Add(time.Duration(31 * 24 * time.Hour)),
 						UtilityTypeID: 2,
 						Notes:         "Test 12345",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 					{
 						Amount:        450.00,
 						ExpenseDate:   expenseDate.Add(time.Duration(31 * 24 * time.Hour)),
 						UtilityTypeID: 5,
 						Notes:         "Test 123456",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 				}
 
@@ -472,28 +500,32 @@ func TestGetTotalHomeExpenseMonth(t *testing.T) {
 		},
 		{
 			name: "No Expenses for month",
-			funcToTest: func() (float64, error) {
-				return testDB.GetTotalHomeExpenseForMonth(expenseDate.Month())
+			funcToTest: func(userId uuid.UUID) (float64, error) {
+				return testDB.GetTotalHomeExpenseForMonth(expenseDate.Month(), userId)
 			},
 			setup: func(t *testing.T) {
+				testDB.CreateUser(TestUserRegisterModel)
 				expenses := []models.HomeExpense{
 					{
 						Amount:        250.00,
 						ExpenseDate:   expenseDate.AddDate(0, -1, 0),
 						UtilityTypeID: 3,
 						Notes:         "Test 1234",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 					{
 						Amount:        350.00,
 						ExpenseDate:   expenseDate.Add(time.Duration(31 * 24 * time.Hour)),
 						UtilityTypeID: 2,
 						Notes:         "Test 12345",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 					{
 						Amount:        450.00,
 						ExpenseDate:   expenseDate.Add(time.Duration(31 * 24 * time.Hour)),
 						UtilityTypeID: 5,
 						Notes:         "Test 123456",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 				}
 
@@ -524,7 +556,7 @@ func TestGetTotalHomeExpenseMonth(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			got, err := tt.funcToTest()
+			got, err := tt.funcToTest(TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 
 			assert.NotNil(t, got)
@@ -545,7 +577,7 @@ func TestGetHighestHomeExpenseMonth(t *testing.T) {
 
 	type testCase struct {
 		name       string
-		funcToTest func() (float64, string, error)
+		funcToTest func(userId uuid.UUID) (float64, string, error)
 		setup      func(t *testing.T) (float64, string)
 		wantErr    bool
 		validate   func(t *testing.T, expA float64, expT string, gotA float64, gotT string)
@@ -555,28 +587,32 @@ func TestGetHighestHomeExpenseMonth(t *testing.T) {
 	tests := []testCase{
 		{
 			name: "Highest Expense for month",
-			funcToTest: func() (float64, string, error) {
-				return testDB.GetHighestHomeExpenseForMonth(expenseDate.Month())
+			funcToTest: func(userId uuid.UUID) (float64, string, error) {
+				return testDB.GetHighestHomeExpenseForMonth(expenseDate.Month(), userId)
 			},
 			setup: func(t *testing.T) (float64, string) {
+				testDB.CreateUser(TestUserRegisterModel)
 				expenses := []models.HomeExpense{
 					{
 						Amount:        250.00,
 						ExpenseDate:   expenseDate.Add(time.Duration(30 * 24 * time.Hour)),
 						UtilityTypeID: 3,
 						Notes:         "Test 1234",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 					{
 						Amount:        350.00,
 						ExpenseDate:   expenseDate,
 						UtilityTypeID: 2,
 						Notes:         "Test 12345",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 					{
 						Amount:        450.00,
 						ExpenseDate:   expenseDate,
 						UtilityTypeID: 5,
 						Notes:         "Test 123456",
+						CreatedBy:     TestUserRegisterModel.ID,
 					},
 				}
 
@@ -609,7 +645,7 @@ func TestGetHighestHomeExpenseMonth(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			gotA, gotT, err := tt.funcToTest()
+			gotA, gotT, err := tt.funcToTest(TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 
 			assert.NotNil(t, gotT)
@@ -647,6 +683,8 @@ func TestDeleteHomeExpense(t *testing.T) {
 				Notes:         "Test 1234",
 			},
 			setup: func(t *testing.T, he *models.HomeExpense) {
+				testDB.CreateUser(TestUserRegisterModel)
+				he.CreatedBy = TestUserRegisterModel.ID
 				err := testDB.CreateHomeExpense(he)
 				if err != nil {
 					t.Skipf("Error setting up deleting existing expense test: %v", err)
@@ -660,6 +698,8 @@ func TestDeleteHomeExpense(t *testing.T) {
 		{
 			name: "No existing expense",
 			setup: func(t *testing.T, he *models.HomeExpense) {
+				testDB.CreateUser(TestUserRegisterModel)
+				he.CreatedBy = TestUserRegisterModel.ID
 				he.ID = 15000
 			},
 			input: &models.HomeExpense{

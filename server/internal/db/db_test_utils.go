@@ -3,12 +3,18 @@ package database
 import (
 	"database/sql"
 	"expenser/internal/config"
+	"expenser/internal/models"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/pressly/goose"
 )
+
+var TestUserRegisterModel *models.User = &models.User{
+	Username:     "TestTestov",
+	PasswordHash: "$2a$10$dd94r0Lws8SW1EkbozUIq.1rBSkHyrjO0phxhZ4BUM8DLvi6dX8Z6",
+}
 
 func InitTestDB(cfg *config.Config) *DB {
 	fmt.Printf("Connecting to test DB: %s\n", cfg.DB.TestDBConnString)
@@ -22,7 +28,7 @@ func InitTestDB(cfg *config.Config) *DB {
 }
 
 func ResetTestDB(tdb *DB) {
-	_, err := tdb.conn.Exec(`TRUNCATE home_expenses, car_expenses RESTART IDENTITY CASCADE`)
+	_, err := tdb.conn.Exec(`TRUNCATE home_expenses, car_expenses, users RESTART IDENTITY CASCADE`)
 	if err != nil {
 		log.Printf("\n Failed to truncate test DB; \n err: %v \n", err)
 	}
@@ -30,14 +36,12 @@ func ResetTestDB(tdb *DB) {
 }
 
 func connectTestDB(cfg *config.Config) (*DB, error) {
-	// TODO: (Vanio) dont use hardcoded string for the conn
 	adminDB, err := sql.Open("postgres", cfg.DB.DBConnString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to admin DB: %w", err)
 	}
 	defer adminDB.Close()
 
-	// TODO: (Vanio) remove this part ->
 	// Check if test DB exists
 	var exists bool
 	checkQuery := `SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)`
@@ -57,8 +61,6 @@ func connectTestDB(cfg *config.Config) (*DB, error) {
 	} else {
 		fmt.Println("Test DB already exists")
 	}
-
-	// TODO: (Vanio) REMOVE <-
 
 	// Apply migrations to test DB
 	testDBConn, err := sql.Open("postgres", cfg.DB.TestDBConnString)

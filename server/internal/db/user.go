@@ -5,20 +5,21 @@ import (
 	"expenser/internal/models"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // CreateUser creates a new user in the database
 func (db *DB) CreateUser(user *models.User) error {
 	query := `
-		INSERT INTO users (username, email, password_hash, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO users (username, password_hash, created_at, updated_at)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at, updated_at`
 
 	now := time.Now()
 	err := db.conn.QueryRow(
 		query,
 		user.Username,
-		user.Email,
 		user.PasswordHash,
 		now,
 		now,
@@ -32,9 +33,9 @@ func (db *DB) CreateUser(user *models.User) error {
 }
 
 // GetUserByID retrieves a user by their ID
-func (db *DB) GetUserByID(id int) (*models.User, error) {
+func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
 	query := `
-		SELECT id, username, email, password_hash, created_at, updated_at
+		SELECT id, username, password_hash, created_at, updated_at
 		FROM users
 		WHERE id = $1`
 
@@ -42,7 +43,6 @@ func (db *DB) GetUserByID(id int) (*models.User, error) {
 	err := db.conn.QueryRow(query, id).Scan(
 		&user.ID,
 		&user.Username,
-		&user.Email,
 		&user.PasswordHash,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -61,7 +61,7 @@ func (db *DB) GetUserByID(id int) (*models.User, error) {
 // GetUserByUsername retrieves a user by their username
 func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 	query := `
-		SELECT id, username, email, password_hash, created_at, updated_at
+		SELECT id, username, password_hash, created_at, updated_at
 		FROM users
 		WHERE username = $1`
 
@@ -69,7 +69,6 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 	err := db.conn.QueryRow(query, username).Scan(
 		&user.ID,
 		&user.Username,
-		&user.Email,
 		&user.PasswordHash,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -88,7 +87,7 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 // GetUserByEmail retrieves a user by their email
 func (db *DB) GetUserByEmail(email string) (*models.User, error) {
 	query := `
-		SELECT id, username, email, password_hash, created_at, updated_at
+		SELECT id, username, password_hash, created_at, updated_at
 		FROM users
 		WHERE email = $1`
 
@@ -96,7 +95,6 @@ func (db *DB) GetUserByEmail(email string) (*models.User, error) {
 	err := db.conn.QueryRow(query, email).Scan(
 		&user.ID,
 		&user.Username,
-		&user.Email,
 		&user.PasswordHash,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -116,32 +114,28 @@ func (db *DB) GetUserByEmail(email string) (*models.User, error) {
 func (db *DB) UpdateUser(user *models.User) error {
 	query := `
 		UPDATE users
-		SET username = $1, email = $2, password_hash = $3, updated_at = $4
-		WHERE id = $5
-		RETURNING updated_at`
+		SET username = $1, password_hash = $2, updated_at = $3
+		WHERE id = $4
+		`
 
-	now := time.Now()
-	err := db.conn.QueryRow(
+	user.UpdatedAt = time.Now()
+	row := db.conn.QueryRow(
 		query,
 		user.Username,
-		user.Email,
 		user.PasswordHash,
-		now,
+		user.UpdatedAt,
 		user.ID,
-	).Scan(&user.UpdatedAt)
+	)
 
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return fmt.Errorf("user not found")
-		}
-		return fmt.Errorf("failed to update user: %w", err)
+	if err := row.Err(); err != nil {
+		return fmt.Errorf("user not found: %w", err)
 	}
 
 	return nil
 }
 
 // DeleteUser deletes a user from the database
-func (db *DB) DeleteUser(id int) error {
+func (db *DB) DeleteUser(id uuid.UUID) error {
 	query := `DELETE FROM users WHERE id = $1`
 
 	result, err := db.conn.Exec(query, id)
@@ -164,7 +158,7 @@ func (db *DB) DeleteUser(id int) error {
 // ListUsers retrieves all users from the database (for admin purposes)
 func (db *DB) ListUsers(limit, offset int) ([]*models.User, error) {
 	query := `
-		SELECT id, username, email, password_hash, created_at, updated_at
+		SELECT id, username, password_hash, created_at, updated_at
 		FROM users
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2`
@@ -181,7 +175,6 @@ func (db *DB) ListUsers(limit, offset int) ([]*models.User, error) {
 		err := rows.Scan(
 			&user.ID,
 			&user.Username,
-			&user.Email,
 			&user.PasswordHash,
 			&user.CreatedAt,
 			&user.UpdatedAt,
@@ -213,11 +206,11 @@ func (db *DB) GetUserCount() (int, error) {
 }
 
 // UserExists checks if a user exists by username or email
-func (db *DB) UserExists(username, email string) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 OR email = $2)`
+func (db *DB) UserExists(username string) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)`
 
 	var exists bool
-	err := db.conn.QueryRow(query, username, email).Scan(&exists)
+	err := db.conn.QueryRow(query, username).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("failed to check if user exists: %w", err)
 	}
