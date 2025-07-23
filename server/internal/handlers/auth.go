@@ -6,6 +6,7 @@ import (
 	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -128,12 +129,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("auth_token", token, int(24*time.Hour), "/", "localhost", false, true)
+	domain := os.Getenv("LAN_DOMAIN")
+
+	if domain == "" {
+		domain = "localhost"
+	}
+
+	c.SetCookie("auth_token", token, int(24*time.Hour), "/", domain, false, true)
 	c.HTML(http.StatusOK, utilities.Templates.Responses.LoginSuccess, &HeaderOptions{
 		IsLoggedIn: true,
 		IsOOB:      true,
 	})
-
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
