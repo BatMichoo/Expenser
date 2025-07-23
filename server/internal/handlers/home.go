@@ -174,7 +174,7 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 	month := dateNow.Month()
 	year := dateNow.Year()
 
-	userIDstr, _ := c.Get("user_id")
+	userIDstr, exists := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
 	highestExpense, utilType, err := h.DB.GetHighestHomeExpenseForMonth(month, userID)
@@ -226,7 +226,7 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 			TemplateName:    utilities.Templates.Pages.Home,
 			TemplateContent: pageData,
 			HeaderOpts: &HeaderOptions{
-				IsLoggedIn: true,
+				IsLoggedIn: exists,
 			},
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
