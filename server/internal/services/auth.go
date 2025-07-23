@@ -23,6 +23,11 @@ type AuthService struct {
 	tokenExpiration time.Duration
 }
 
+type Token struct {
+	Value      string
+	Expiration time.Duration
+}
+
 func NewAuthService(secretKey string, tokenExp time.Duration) *AuthService {
 	return &AuthService{
 		secretKey:       []byte(secretKey),
@@ -31,7 +36,7 @@ func NewAuthService(secretKey string, tokenExp time.Duration) *AuthService {
 }
 
 // GenerateToken creates a new JWT token for the given user
-func (as *AuthService) GenerateToken(user *models.User) (string, error) {
+func (as *AuthService) GenerateToken(user *models.User) (*Token, error) {
 	claims := &JWTClaims{
 		UserID:   user.ID,
 		Username: user.Username,
@@ -45,7 +50,16 @@ func (as *AuthService) GenerateToken(user *models.User) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(as.secretKey)
+	signedToken, err := token.SignedString(as.secretKey)
+
+	if err != nil {
+		return nil, fmt.Errorf("couldn't generate token %w", err)
+	}
+
+	return &Token{
+		Value:      signedToken,
+		Expiration: as.tokenExpiration,
+	}, nil
 }
 
 // ValidateToken validates and parses a JWT token

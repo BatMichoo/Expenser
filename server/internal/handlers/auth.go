@@ -7,7 +7,6 @@ import (
 	"expenser/internal/utilities"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -82,7 +81,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	c.Header("Authorization", "Bearer "+token)
+	c.Header("Authorization", "Bearer "+token.Value)
 	c.HTML(http.StatusCreated, utilities.Templates.Pages.Index, user)
 }
 
@@ -135,7 +134,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		domain = "localhost"
 	}
 
-	c.SetCookie("auth_token", token, int(24*time.Hour), "/", domain, false, true)
+	c.SetCookie("auth_token", token.Value, int(token.Expiration), "/", domain, false, true)
 	c.HTML(http.StatusOK, utilities.Templates.Responses.LoginSuccess, &HeaderOptions{
 		IsLoggedIn: true,
 		IsOOB:      true,

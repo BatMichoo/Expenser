@@ -6,16 +6,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="../../../static/css/styles.css" />
+  <link rel="icon" type="image/png" href="../../../static/favicon.png" />
   <title>My Expense Trackers</title>
 </head>
 
 <body>
   {{ template "header" .HeaderOpts }}
   <div class="container">
-    <!-- Main Content Area for Loaded Trackers -->
-    <!-- This is where HTMX will swap the content for different trackers -->
     <div id="tracker-content">
-      <!-- Initial content for the landing page, or default tracker overview -->
       {{ if eq .TemplateName "home-page" }} {{ template "home-page"
       .TemplateContent }} {{ else if eq .TemplateName "car-page" }} {{
       template "car-page" .TemplateContent }} {{ else if eq .TemplateName
@@ -30,7 +28,6 @@
   <dialog id="dialog-modal" hx-on::after-swap="document.getElementById('dialog-modal').showModal()"></dialog>
 </body>
 
-<!-- HTMX script must be loaded after the body content -->
 <script src="../,,/../static/js/htmx.min.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
@@ -67,7 +64,6 @@
       }
     });
 
-    // Tracker Navigation Button Active State Logic
     const trackerNavButtons = document.querySelectorAll(
       ".tracker-nav-button",
     );
@@ -83,34 +79,25 @@
       });
     };
 
-    // Set initial active button based on current URL path
-    // Default to '/home-utilities' if it's the root or no specific path
     const initialTrackerPath =
       window.location.pathname === "/"
         ? "/home-utilities"
         : window.location.pathname;
     setActiveTrackerNavButton(initialTrackerPath);
 
-    // HTMX event listeners for updating active button state
     document.body.addEventListener("htmx:afterSwap", (event) => {
-      // This event fires after HTMX has swapped content and updated the URL
       setActiveTrackerNavButton(window.location.pathname);
     });
 
     document.body.addEventListener("htmx:historyCacheMiss", (event) => {
-      // This event fires when navigating through browser history and HTMX needs to re-request content
       setActiveTrackerNavButton(window.location.pathname);
     });
 
-    // Initial load of content (optional, to load Home Utilities by default)
-    // You might want to trigger the first HTMX request on page load
-    // For example, simulate a click on the 'Home Utilities' button if the path is '/'
     if (window.location.pathname === "/") {
       const homeUtilitiesButton = document.querySelector(
         '.tracker-nav-button[data-path="/home-utilities"]',
       );
       if (homeUtilitiesButton) {
-        // Trigger the HTMX request
         htmx.trigger(homeUtilitiesButton, "click");
       }
     }
