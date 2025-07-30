@@ -1,5 +1,6 @@
 :root {
   --bg-color-light: #f9fafb;
+  --bg-color-light-acc: #f9fafbcd;
   --bg-color-dark: #1a202c;
   --bg-color-dark-acc: #374151;
   --tx-color-light: #374151;
@@ -198,7 +199,7 @@ body.dark #theme-toggle .moon {
 }
 
 /* Tracker Navigation */
-.tracker-navigation {
+#tracker-navigation {
   display: flex;
   gap: 1em;
   justify-content: center;
@@ -209,7 +210,7 @@ body.dark #theme-toggle .moon {
 
 /* Mobile adjustments for Tracker Navigation */
 @media (max-width: 767px) {
-  .tracker-navigation {
+  #tracker-navigation {
     flex-direction: column;
     /* Stack buttons vertically on mobile */
     gap: 0.5em;
@@ -352,6 +353,20 @@ body.dark footer {
   border: 1px solid #ddd;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.redirect-message-container {
+  background-color: var(--bg-color-light-acc);
+  text-align: center;
+  padding: 50px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  margin: 50px auto;
+}
+
+body.dark .redirect-message-container {
+  background-color: var(--bg-color-dark-acc);
 }
 
 .register-form-container h2 {

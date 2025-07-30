@@ -26,6 +26,7 @@
     <p>&copy; 2025 My Expense Trackers Suite. All rights reserved.</p>
   </footer>
   <dialog id="dialog-modal" hx-on::after-swap="document.getElementById('dialog-modal').showModal()"></dialog>
+  <dialog id="error-modal" hx-on::after-swap="document.getElementById('error-modal').showModal()"></dialog>
 </body>
 
 <script src="../,,/../static/js/htmx.min.js"></script>
@@ -34,7 +35,7 @@
     const themeToggle = document.getElementById("theme-toggle");
     const body = document.body;
 
-    const setTheme = (theme) => {
+    function setTheme(theme) {
       if (theme === "dark") {
         body.classList.add("dark");
         localStorage.setItem("theme", "dark");
@@ -42,7 +43,7 @@
         body.classList.remove("dark");
         localStorage.setItem("theme", "light");
       }
-    };
+    }
 
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme) {

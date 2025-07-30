@@ -105,7 +105,7 @@ func (h *HomeHandler) CreateHomeExpense(c *gin.Context) {
 	}
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
 	if err != nil {
-
+		// TODO: Handle error page
 		c.HTML(http.StatusBadRequest, "error", err)
 		return
 	}

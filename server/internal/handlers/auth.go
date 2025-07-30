@@ -81,8 +81,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	c.Header("Authorization", "Bearer "+token.Value)
-	c.HTML(http.StatusCreated, utilities.Templates.Pages.Index, user)
+	domain := os.Getenv("LAN_DOMAIN")
+
+	if domain == "" {
+		domain = "localhost"
+	}
+
+	c.SetCookie("auth_token", token.Value, int(token.Expiration), "/", domain, false, true)
+	c.HTML(http.StatusCreated, utilities.Templates.Responses.RegisterSuccess, user)
 }
 
 func (h *AuthHandler) GetLogin(c *gin.Context) {

@@ -1,21 +1,13 @@
 {{ define "register-success"}}
-<div class="redirect-message-container" style="
-    text-align: center;
-    padding: 50px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    max-width: 500px;
-    margin: 50px auto;
-  ">
+<div class="redirect-message-container">
   <h2>Redirecting...</h2>
   <p>
-    You will be redirected to the login page in
+    You will be redirected to the home page in
     <span id="countdown">5</span> seconds.
   </p>
   <p>
     If you are not redirected automatically,
-    <a href="/login">click here to proceed</a>.
+    <a href="/">click here to proceed</a>.
   </p>
 
   <script>
@@ -32,7 +24,7 @@
 
       if (countdown <= 0) {
         clearInterval(intervalId); // Stop the countdown
-        window.location.href = "/login"; // Perform the redirect
+        window.location.href = "/"; // Perform the redirect
       }
     }, 1000); // Every 1000 milliseconds (1 second)
 

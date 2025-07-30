@@ -21,6 +21,8 @@ type HTMXComponents struct {
 	EditCarExpForm    string // EditExpForm is the name for the expense editing form component.
 	HomeExpRow        string
 	CarExpRow         string
+	TotalCard         string
+	HighestCard       string
 }
 
 // Responses defines the names for specific HTMX partial responses.
@@ -62,6 +64,8 @@ var components = &HTMXComponents{
 	EditHomeExpForm:   "edit-home-exp-form",
 	CreateCarExpForm:  "create-car-exp-form",
 	EditCarExpForm:    "edit-car-exp-form",
+	TotalCard:         "total-card",
+	HighestCard:       "highest-card",
 }
 
 // responses initializes the Responses struct with specific template identifiers.

@@ -18,18 +18,10 @@
 
   <div class="overview-container">
     <!-- Total Expenses Card -->
-    <div class="card total-expenses-card" id="total-expense">
-      <h3>Total Monthly Expenses</h3>
-      <p>{{ printf "%.2f" .MonthlyExpense.Amount }}</p>
-      <p>As of {{ .MonthlyExpense.Month }} 2025</p>
-    </div>
+    {{ template "total-card" .MonthlyExpense}}
 
     <!-- Highest Expense Category Card -->
-    <div class="card highest-expense-card" id="highest-expense">
-      <h3>Highest Expense</h3>
-      <p>{{ .HighestExpense.Type}}</p>
-      <p>Last month: {{ printf "%.2f" .HighestExpense.Amount}}</p>
-    </div>
+    {{ template "highest-card" .HighestExpense}}
   </div>
 </section>
 <!-- Recent Expenses List -->

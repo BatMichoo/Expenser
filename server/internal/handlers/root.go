@@ -30,7 +30,7 @@ func NewRootHandler(db *database.DB) *RootHandler {
 }
 
 func (h *RootHandler) GetRoot(c *gin.Context) {
-	_, exists := c.Get("user_id")
+	cookie, _ := c.Cookie("auth_token")
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	if isHtmxRequest {
@@ -39,7 +39,7 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 		rl := &RootLayout{
 			TemplateName: utilities.Templates.Pages.Index,
 			HeaderOpts: &HeaderOptions{
-				IsLoggedIn: exists,
+				IsLoggedIn: cookie != "",
 			},
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
