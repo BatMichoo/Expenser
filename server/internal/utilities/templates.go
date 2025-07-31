@@ -23,6 +23,7 @@ type HTMXComponents struct {
 	CarExpRow         string
 	TotalCard         string
 	HighestCard       string
+	ServerError       string
 }
 
 // Responses defines the names for specific HTMX partial responses.
@@ -66,6 +67,7 @@ var components = &HTMXComponents{
 	EditCarExpForm:    "edit-car-exp-form",
 	TotalCard:         "total-card",
 	HighestCard:       "highest-card",
+	ServerError:       "server-error",
 }
 
 // responses initializes the Responses struct with specific template identifiers.

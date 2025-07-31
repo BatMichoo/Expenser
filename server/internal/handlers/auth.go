@@ -6,7 +6,6 @@ import (
 	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"net/http"
-	"os"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -34,7 +33,7 @@ func (h *AuthHandler) GetRegister(c *gin.Context) {
 	} else {
 		rl := &RootLayout{
 			TemplateName: utilities.Templates.Pages.Register,
-			HeaderOpts:   &HeaderOptions{},
+			HeaderOpts:   &models.HeaderOptions{},
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
@@ -81,13 +80,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	domain := os.Getenv("LAN_DOMAIN")
-
-	if domain == "" {
-		domain = "localhost"
-	}
-
-	c.SetCookie("auth_token", token.Value, int(token.Expiration), "/", domain, false, true)
+	h.AuthService.SetCookie(token, c)
 	c.HTML(http.StatusCreated, utilities.Templates.Responses.RegisterSuccess, user)
 }
 
@@ -99,7 +92,7 @@ func (h *AuthHandler) GetLogin(c *gin.Context) {
 	} else {
 		rl := &RootLayout{
 			TemplateName: utilities.Templates.Pages.Login,
-			HeaderOpts:   &HeaderOptions{},
+			HeaderOpts:   &models.HeaderOptions{},
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
@@ -130,18 +123,13 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	// Generate JWT token
 	token, err := h.AuthService.GenerateToken(user)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Failed to generate authentication token"})
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ServerError, gin.H{"Error": "Failed to generate authentication token"})
 		return
 	}
 
-	domain := os.Getenv("LAN_DOMAIN")
+	h.AuthService.SetCookie(token, c)
 
-	if domain == "" {
-		domain = "localhost"
-	}
-
-	c.SetCookie("auth_token", token.Value, int(token.Expiration), "/", domain, false, true)
-	c.HTML(http.StatusOK, utilities.Templates.Responses.LoginSuccess, &HeaderOptions{
+	c.HTML(http.StatusOK, utilities.Templates.Responses.LoginSuccess, &models.HeaderOptions{
 		IsLoggedIn: true,
 		IsOOB:      true,
 	})
@@ -158,24 +146,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		true,
 	)
 
-	c.HTML(http.StatusOK, utilities.Templates.Responses.LoginSuccess, &HeaderOptions{
+	c.HTML(http.StatusOK, utilities.Templates.Responses.LoginSuccess, &models.HeaderOptions{
 		IsOOB: true,
 	})
-}
-
-// APIProfile returns the authenticated user's profile
-func (h *AuthHandler) Profile(c *gin.Context) {
-	// userID, username, email, exists := middleware.GetUserFromContext(c)
-	// if !exists {
-	// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
-	// 	return
-	// }
-	//
-	// c.JSON(http.StatusOK, gin.H{
-	// 	"user": gin.H{
-	// 		"id":       userID,
-	// 		"username": username,
-	// 		"email":    email,
-	// 	},
-	// })
 }

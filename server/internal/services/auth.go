@@ -4,8 +4,10 @@ import (
 	"errors"
 	"expenser/internal/models"
 	"fmt"
+	"os"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -33,6 +35,19 @@ func NewAuthService(secretKey string, tokenExp time.Duration) *AuthService {
 		secretKey:       []byte(secretKey),
 		tokenExpiration: tokenExp,
 	}
+}
+
+func (as *AuthService) SetCookie(t *Token, c *gin.Context) {
+	domain := os.Getenv("LAN_DOMAIN")
+
+	if domain == "" {
+		domain = "localhost"
+	}
+
+	secure := false
+	httpOnly := true
+
+	c.SetCookie("auth_token", t.Value, int(t.Expiration), "/", domain, secure, httpOnly)
 }
 
 // GenerateToken creates a new JWT token for the given user

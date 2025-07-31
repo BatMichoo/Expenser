@@ -1,0 +1,15 @@
+{{ define "server-error" }}
+<dialog
+  id="error-modal"
+  hx-on::after-swap="document.getElementById('error-modal').showModal()"
+  hx-swap-oob="true"
+>
+  <div>{{ .Error }}</div>
+  <button
+    type="button"
+    onClick="document.getElementById('error-modal').close()"
+  >
+    Ok
+  </button>
+</dialog>
+{{ end }}

@@ -11,10 +11,11 @@ import (
 
 func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 	// Public routes (no authentication required)
-	rootHandler := NewRootHandler(db)
+	as := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration)
+
+	rootHandler := NewRootHandler(db, as)
 	router.GET("/", rootHandler.GetRoot)
 
-	as := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration)
 	authHandler := NewAuthHandler(db, as)
 
 	router.GET("/login", authHandler.GetLogin)

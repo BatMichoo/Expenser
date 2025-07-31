@@ -79,7 +79,7 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 		rl := &RootLayout{
 			TemplateName:    utilities.Templates.Pages.Car,
 			TemplateContent: pageData,
-			HeaderOpts: &HeaderOptions{
+			HeaderOpts: &models.HeaderOptions{
 				IsLoggedIn: exists,
 			},
 		}

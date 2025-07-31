@@ -2,6 +2,8 @@ package handlers
 
 import (
 	database "expenser/internal/db"
+	"expenser/internal/models"
+	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"net/http"
 
@@ -10,27 +12,25 @@ import (
 
 type RootHandler struct {
 	DB *database.DB
-}
-
-type HeaderOptions struct {
-	IsLoggedIn bool
-	IsOOB      bool
+	AS *services.AuthService
 }
 
 type RootLayout struct {
 	TemplateName    string
 	TemplateContent any
-	HeaderOpts      *HeaderOptions
+	HeaderOpts      *models.HeaderOptions
 }
 
-func NewRootHandler(db *database.DB) *RootHandler {
+func NewRootHandler(db *database.DB, as *services.AuthService) *RootHandler {
 	return &RootHandler{
 		DB: db,
+		AS: as,
 	}
 }
 
 func (h *RootHandler) GetRoot(c *gin.Context) {
 	cookie, _ := c.Cookie("auth_token")
+	claims, _ := h.AS.ValidateToken(cookie)
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	if isHtmxRequest {
@@ -38,8 +38,8 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 	} else {
 		rl := &RootLayout{
 			TemplateName: utilities.Templates.Pages.Index,
-			HeaderOpts: &HeaderOptions{
-				IsLoggedIn: cookie != "",
+			HeaderOpts: &models.HeaderOptions{
+				IsLoggedIn: claims != nil,
 			},
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)

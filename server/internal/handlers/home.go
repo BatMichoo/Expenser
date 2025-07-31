@@ -225,7 +225,7 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 		rl := &RootLayout{
 			TemplateName:    utilities.Templates.Pages.Home,
 			TemplateContent: pageData,
-			HeaderOpts: &HeaderOptions{
+			HeaderOpts: &models.HeaderOptions{
 				IsLoggedIn: exists,
 			},
 		}
