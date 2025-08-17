@@ -225,7 +225,7 @@ body.dark #theme-toggle .moon {
 .tracker-nav-button {
   padding: 0.5em 1em;
   font-weight: 700;
-  border: 2px solid inherit;
+  border: 2px solid var(--bg-color-light-acc);
   border-radius: 0.5em;
   transition-property: background-color, color;
   transition-duration: 200ms;
@@ -250,6 +250,7 @@ body.dark #theme-toggle .moon {
 }
 
 body.dark .tracker-nav-button {
+  border-color: var(--bg-color-dark-acc);
   background-color: var(--bg-color-dark-acc);
   color: var(--tx-color-dark);
 }
@@ -286,7 +287,7 @@ body.dark .tracker-nav-button.active {
   text-align: center;
   align-content: center;
   flex-grow: 1;
-  min-width: 70%;
+  width: 90vw;
 }
 
 @media (min-width: 768px) {
@@ -306,25 +307,24 @@ body.dark .tracker-nav-button.active {
 }
 
 /* Main Content Area for Trackers */
-.tracker-content {
+#tracker-content {
+  height: 100%;
+  width: 100%;
   padding: 1.5em;
   border-radius: 0.5em;
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   transition-property: background-color;
   transition-duration: 300ms;
 }
 
 @media (min-width: 768px) {
-  .tracker-content {
+  #tracker-content {
     padding: 2em;
   }
 }
 
 /* Mobile adjustments for Tracker Content */
 @media (max-width: 767px) {
-  .tracker-content {
+  #tracker-content {
     padding: 1em;
     /* Reduce padding on mobile */
   }
@@ -445,7 +445,7 @@ body.dark .redirect-message-container {
 }
 
 #add-expense-section {
-  margin-bottom: 2.5em;
+  margin: 2.5em;
 }
 
 /* Mobile adjustments for Add Expense Section Button */
@@ -498,7 +498,6 @@ body.dark .redirect-message-container {
 
 /* Mobile adjustments for Section Headings */
 @media (max-width: 767px) {
-
   #overview-section h2,
   #recent-expenses-section h2,
   .new-expense-heading {
@@ -611,7 +610,7 @@ body.dark .new-expense-heading svg {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .new-expense-form> :last-child {
+  .new-expense-form > :last-child {
     grid-column-start: 1;
     grid-column-end: 3;
     display: flex;
@@ -767,27 +766,35 @@ body.dark .new-expense-form button:hover {
 
 /* Specific Card Backgrounds */
 .total-expenses-card {
-  background-image: linear-gradient(to bottom right,
-      var(--total-expenses-card-gradient-start-light),
-      var(--total-expenses-card-gradient-end-light));
+  background-image: linear-gradient(
+    to bottom right,
+    var(--total-expenses-card-gradient-start-light),
+    var(--total-expenses-card-gradient-end-light)
+  );
 }
 
 body.dark .total-expenses-card {
-  background-image: linear-gradient(to bottom right,
-      var(--total-expenses-card-gradient-start-dark),
-      var(--total-expenses-card-gradient-end-dark));
+  background-image: linear-gradient(
+    to bottom right,
+    var(--total-expenses-card-gradient-start-dark),
+    var(--total-expenses-card-gradient-end-dark)
+  );
 }
 
 .highest-expense-card {
-  background-image: linear-gradient(to bottom right,
-      var(--highest-expense-card-gradient-start-light),
-      var(--highest-expense-card-gradient-end-light));
+  background-image: linear-gradient(
+    to bottom right,
+    var(--highest-expense-card-gradient-start-light),
+    var(--highest-expense-card-gradient-end-light)
+  );
 }
 
 body.dark .highest-expense-card {
-  background-image: linear-gradient(to bottom right,
-      var(--highest-expense-card-gradient-start-dark),
-      var(--highest-expense-card-gradient-end-dark));
+  background-image: linear-gradient(
+    to bottom right,
+    var(--highest-expense-card-gradient-start-dark),
+    var(--highest-expense-card-gradient-end-dark)
+  );
 }
 
 /* Apply common table styles */
@@ -985,7 +992,6 @@ body.dark .table-action-button.red:hover {
 @media (max-width: 767px) {
   .welcome-section {
     padding: 1.5em 1em;
-    /* Reduce vertical and add horizontal padding */
   }
 }
 
@@ -1002,7 +1008,6 @@ body.dark .table-action-button.red:hover {
 @media (max-width: 767px) {
   .welcome-section h2 {
     font-size: 1.6em;
-    /* Adjust font size */
     line-height: 1.3;
     margin-bottom: 0.75em;
   }
@@ -1025,7 +1030,6 @@ body.dark .welcome-section h2 {
 @media (max-width: 767px) {
   .welcome-section p:nth-of-type(1) {
     font-size: 1em;
-    /* Adjust font size */
     line-height: 1.5;
     margin-bottom: 1em;
   }
@@ -1047,7 +1051,6 @@ body.dark .welcome-section p:nth-of-type(1) {
 @media (max-width: 767px) {
   .welcome-section p:nth-of-type(2) {
     font-size: 0.875em;
-    /* Adjust font size */
   }
 }
 
@@ -1071,7 +1074,6 @@ body.dark .welcome-section p:nth-of-type(2) {
 @media (max-width: 767px) {
   .welcome-section svg {
     width: 4em;
-    /* Smaller SVG on mobile */
     height: 4em;
     margin-top: 1em;
   }
@@ -1080,4 +1082,56 @@ body.dark .welcome-section p:nth-of-type(2) {
 /* Dark mode SVG icon styling */
 body.dark .welcome-section svg {
   color: var(--welcome-section-svg-color-dark);
+}
+
+#section-list,
+#section-content-list {
+  list-style: none;
+  display: flex;
+  padding-inline-start: 0em;
+}
+
+#section-list {
+  justify-content: center;
+  align-items: center;
+}
+
+#section-list li {
+  padding: 0.125em;
+  width: 33.33%;
+}
+
+.section-button {
+  display: block;
+  height: 2.75em;
+  text-align: center;
+}
+
+@media (min-width: 767px) {
+  .section-button {
+    font-size: 1.2em;
+  }
+}
+
+@media (max-width: 767px) {
+  .section-button {
+    padding: 0.65em;
+  }
+}
+
+#section-content-list {
+  flex-direction: column;
+}
+
+.section-item {
+  display: none;
+}
+
+#active.section-item {
+  display: block;
+}
+
+canvas {
+  width: 80vw;
+  height: 60vh;
 }

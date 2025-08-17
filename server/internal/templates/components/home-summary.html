@@ -1,0 +1,68 @@
+{{ define "home-summary" }}
+<section id="overview-section">
+  <h2>
+    <span>Dashboard Summary</span>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="7" height="9" x="3" y="3" rx="1" />
+      <rect width="7" height="5" x="14" y="3" rx="1" />
+      <rect width="7" height="9" x="14" y="12" rx="1" />
+      <rect width="7" height="5" x="3" y="16" rx="1" />
+    </svg>
+  </h2>
+  <div class="overview-container">
+    <!-- Total Expenses Card -->
+    {{ template "total-card" .MonthlyExpense}}
+
+    <!-- Highest Expense Category Card -->
+    {{ template "highest-card" .HighestExpense}}
+  </div>
+</section>
+<section id="add-expense-section">
+  <button type="submit" hx-get="/home/expenses/new" hx-target="#dialog-modal">
+    Add Expense
+  </button>
+</section>
+<section id="recent-expenses-section">
+  <h2>
+    <span>Recent Expenses</span>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 2v20c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2Z" />
+      <path d="M12 4.5h3" />
+      <path d="M8 8.5h8" />
+      <path d="M8 12.5h8" />
+      <path d="M8 16.5h8" />
+    </svg>
+  </h2>
+
+  <div class="overflow-x-auto">
+    <table class="expenses-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Utility</th>
+          <th>Amount in lv</th>
+          <th>Notes</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="recent-expenses">
+        {{ range .RecentExpenses }}
+        <!-- -->
+        {{ template "home-exp-row" . }}
+        <!-- -->
+        {{ end }}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2">Total:</td>
+          <td colspan="1">
+            <span id="total">{{ printf "%.2f" .MonthlyExpense.Amount }}</span>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</section>
+{{ end }}

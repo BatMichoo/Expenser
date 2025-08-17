@@ -219,9 +219,6 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Pages.Home, pageData)
 	} else {
-		// RootLayout is assumed to be a struct that wraps the template name and content
-		// for a full page render, typically including common layout elements.
-		// It's used when the request is not an HTMX partial request.
 		rl := &RootLayout{
 			TemplateName:    utilities.Templates.Pages.Home,
 			TemplateContent: pageData,
@@ -231,7 +228,6 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
-
 }
 
 // GetExpenseById retrieves a single home expense by its unique ID
