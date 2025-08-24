@@ -3,6 +3,7 @@ package handlers
 import (
 	database "expenser/internal/db"
 	"expenser/internal/models"
+	"expenser/internal/templates/functions"
 	"expenser/internal/utilities"
 	"fmt"
 	"net/http"
@@ -177,6 +178,17 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 	userIDstr, exists := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
+	section := c.Query("section")
+
+	if section == "chart" {
+		dates := gin.H{
+			"DateBefore": functions.DateOneMonthPrior(),
+			"DateNow":    functions.DateNow(),
+		}
+		c.HTML(http.StatusOK, utilities.Templates.Components.HomeChart, dates)
+		return
+	}
+
 	highestExpense, utilType, err := h.DB.GetHighestHomeExpenseForMonth(month, userID)
 	if err != nil {
 		// TODO: Handle error page
@@ -217,6 +229,11 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	if isHtmxRequest {
+		if section == "summary" {
+			c.HTML(http.StatusOK, utilities.Templates.Components.HomeSummary, pageData)
+			return
+		}
+
 		c.HTML(http.StatusOK, utilities.Templates.Pages.Home, pageData)
 	} else {
 		rl := &RootLayout{
@@ -228,6 +245,12 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
+}
+
+func (h *HomeHandler) GetHomeSection(c *gin.Context) {
+	section := c.Query("section")
+
+	c.HTML(http.StatusOK, fmt.Sprintf("home-%s", section), gin.H{})
 }
 
 // GetExpenseById retrieves a single home expense by its unique ID
@@ -324,8 +347,6 @@ func (h *HomeHandler) EditHomeExpenseById(c *gin.Context) {
 		return
 	}
 	notes := c.Request.PostFormValue("notes")
-
-	fmt.Printf("New Expense is : %v, %s, %v, %s\n", utilTypeID, date, amount, notes)
 
 	editExpense := &models.HomeExpense{
 		ID:            id,

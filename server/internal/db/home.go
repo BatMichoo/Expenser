@@ -341,3 +341,38 @@ func (db *DB) DeleteHomeExpense(id int) (bool, error) {
 
 	return true, nil
 }
+
+func (db *DB) GetExpensesByDates(start, end time.Time, userId uuid.UUID) (*[]models.HomeExpense, error) {
+	query := `
+		SELECT he.id, he.amount, ut.name FROM home_expenses he
+		JOIN utility_types ut ON he.utility_type_id = ut.id
+		WHERE created_by = $1 AND expense_date >= $2 AND expense_date <= $3
+		ORDER BY expense_date ASC
+	`
+	rows, err := db.conn.Query(query, userId, start, end)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching expenses: %v", err)
+	}
+
+	var expenses []models.HomeExpense
+
+	for rows.Next() {
+		err := rows.Err()
+		if err != nil {
+			return nil, fmt.Errorf("error fetching expenses: %v", err)
+		}
+
+		var exp models.HomeExpense
+		err = rows.Scan(&exp.ID,
+			&exp.Amount,
+			&exp.UtilityType,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("error scanning expenses: %v", err)
+		}
+		expenses = append(expenses, exp)
+	}
+
+	return &expenses, nil
+}

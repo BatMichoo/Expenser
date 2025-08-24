@@ -498,6 +498,7 @@ body.dark .redirect-message-container {
 
 /* Mobile adjustments for Section Headings */
 @media (max-width: 767px) {
+
   #overview-section h2,
   #recent-expenses-section h2,
   .new-expense-heading {
@@ -610,7 +611,7 @@ body.dark .new-expense-heading svg {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .new-expense-form > :last-child {
+  .new-expense-form> :last-child {
     grid-column-start: 1;
     grid-column-end: 3;
     display: flex;
@@ -766,35 +767,27 @@ body.dark .new-expense-form button:hover {
 
 /* Specific Card Backgrounds */
 .total-expenses-card {
-  background-image: linear-gradient(
-    to bottom right,
-    var(--total-expenses-card-gradient-start-light),
-    var(--total-expenses-card-gradient-end-light)
-  );
+  background-image: linear-gradient(to bottom right,
+      var(--total-expenses-card-gradient-start-light),
+      var(--total-expenses-card-gradient-end-light));
 }
 
 body.dark .total-expenses-card {
-  background-image: linear-gradient(
-    to bottom right,
-    var(--total-expenses-card-gradient-start-dark),
-    var(--total-expenses-card-gradient-end-dark)
-  );
+  background-image: linear-gradient(to bottom right,
+      var(--total-expenses-card-gradient-start-dark),
+      var(--total-expenses-card-gradient-end-dark));
 }
 
 .highest-expense-card {
-  background-image: linear-gradient(
-    to bottom right,
-    var(--highest-expense-card-gradient-start-light),
-    var(--highest-expense-card-gradient-end-light)
-  );
+  background-image: linear-gradient(to bottom right,
+      var(--highest-expense-card-gradient-start-light),
+      var(--highest-expense-card-gradient-end-light));
 }
 
 body.dark .highest-expense-card {
-  background-image: linear-gradient(
-    to bottom right,
-    var(--highest-expense-card-gradient-start-dark),
-    var(--highest-expense-card-gradient-end-dark)
-  );
+  background-image: linear-gradient(to bottom right,
+      var(--highest-expense-card-gradient-start-dark),
+      var(--highest-expense-card-gradient-end-dark));
 }
 
 /* Apply common table styles */
@@ -1119,19 +1112,59 @@ body.dark .welcome-section svg {
   }
 }
 
-#section-content-list {
-  flex-direction: column;
-}
-
-.section-item {
-  display: none;
-}
-
-#active.section-item {
-  display: block;
+#chart-section {
+  margin-top: 2em;
 }
 
 canvas {
-  width: 80vw;
-  height: 60vh;
+  max-width: 80vw;
+  max-height: 65vh;
+  min-width: 80vw;
+  min-height: 65vh;
+}
+
+#search-form {
+  padding: 1em;
+  box-shadow: 0.125em var(--bg-color-light-acc);
+  display: flex;
+  gap: 1em;
+  justify-content: center;
+  align-items: center;
+}
+
+#search-form input {
+  box-shadow: 0 0 0 0.125em solid var(--light-theme-toggle-focus-shadow);
+  text-align: center;
+  padding: 0.25em;
+  border-color: var(--bg-color-light-acc);
+  border-radius: 0.25em;
+}
+
+#search-form button {
+  padding: 0.35em 0.85em;
+  color: var(--btn-primary-color);
+  border: 0.25em solid var(--btn-primary-background-light);
+  border-radius: 0.25em;
+  background-color: var(--btn-primary-background-light);
+}
+
+#search-form button:hover {
+  border-color: var(--btn-primary-hover-light);
+}
+
+html.dark #search-form {}
+
+body.dark #search-form input {
+  background-color: inherit;
+  color: var(--tx-color-dark);
+  border-color: var(--bg-color-dark-acc);
+}
+
+body.dark #search-form button {
+  border-color: var(--btn-primary-background-dark);
+  background-color: var(--btn-primary-background-dark);
+}
+
+body.dark #search-form button:hover {
+  border-color: var(--btn-primary-hover-dark);
 }

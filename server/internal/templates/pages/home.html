@@ -1,39 +1,39 @@
 {{ define "home-page" }}
 <ul id="section-list">
   <li>
-    <span class="tracker-nav-button section-button active">Summary</span>
+    <span
+      hx-get="/home?section=summary"
+      hx-target="#section-content"
+      class="tracker-nav-button section-button active"
+      >Summary</span
+    >
   </li>
   <li>
-    <span class="tracker-nav-button section-button">Search</span>
+    <span
+      hx-get="/home?section=chart"
+      hx-target="#section-content"
+      class="tracker-nav-button section-button"
+      >Search</span
+    >
   </li>
 </ul>
-<ul id="section-content-list">
-  <li class="section-item" id="active">{{ template "home-summary" . }}</li>
-  <li class="section-item">{{ template "home-chart" . }}</li>
-</ul>
+<div id="section-content">{{ template "home-summary" . }}</div>
 <script>
-  const buttons = document.querySelectorAll(".section-button");
+  function activeButtons() {
+    const buttons = document.querySelectorAll(".section-button");
+    for (const button of buttons) {
+      button.addEventListener("click", () => {
+        buttons.forEach((b) => {
+          if (b.classList.contains("active")) {
+            b.classList.remove("active");
+          }
+        });
 
-  for (let i = 0; i < buttons.length; i++) {
-    const button = buttons[i];
-
-    button.addEventListener("click", () => {
-      const oldActive = document.getElementById("active");
-      if (oldActive) {
-        oldActive.id = "";
-      }
-
-      buttons.forEach((b) => {
-        if (b.classList.contains("active")) {
-          b.classList.remove("active");
-        }
+        button.classList.add("active");
       });
-
-      const sectionList = document.getElementById("section-content-list");
-      const content = sectionList.querySelectorAll(".section-item");
-      content[i].id = "active";
-      button.classList.add("active");
-    });
+    }
   }
+
+  activeButtons();
 </script>
 {{ end }}

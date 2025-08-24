@@ -24,6 +24,8 @@ type HTMXComponents struct {
 	TotalCard         string
 	HighestCard       string
 	ServerError       string
+	HomeChart         string
+	HomeSummary       string
 }
 
 // Responses defines the names for specific HTMX partial responses.
@@ -68,6 +70,8 @@ var components = &HTMXComponents{
 	TotalCard:         "total-card",
 	HighestCard:       "highest-card",
 	ServerError:       "server-error",
+	HomeChart:         "home-chart",
+	HomeSummary:       "home-summary",
 }
 
 // responses initializes the Responses struct with specific template identifiers.
