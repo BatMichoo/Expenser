@@ -22,8 +22,8 @@
         .then((r) => r.json())
         .then((apiData) => {
           if (!apiData || apiData.length === 0) {
-            if (canvas.myChart) {
-              canvas.myChart.destroy();
+            if (canvas.Chart) {
+              canvas.Chart.destroy();
             }
             return;
           }
@@ -33,11 +33,11 @@
 
           const ctx = canvas.getContext("2d");
 
-          if (canvas.myChart) {
-            canvas.myChart.destroy();
+          if (canvas.Chart) {
+            canvas.Chart.destroy();
           }
 
-          canvas.myChart = new Chart(ctx, {
+          canvas.Chart = new Chart(ctx, {
             type: "pie",
             data: {
               labels: labels,
@@ -85,7 +85,8 @@
               },
               plugins: {
                 legend: {
-                  display: false,
+                  display: true,
+                  position: "bottom",
                 },
                 title: {
                   display: true,
