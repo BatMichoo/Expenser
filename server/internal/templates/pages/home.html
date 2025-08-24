@@ -1,20 +1,16 @@
 {{ define "home-page" }}
 <ul id="section-list">
   <li>
-    <span
-      hx-get="/home?section=summary"
-      hx-target="#section-content"
-      class="tracker-nav-button section-button active"
-      >Summary</span
-    >
+    <button type="button" hx-get="/home?section=summary" hx-target="#section-content"
+      class="tracker-nav-button section-button active">
+      Summary
+    </button>
   </li>
   <li>
-    <span
-      hx-get="/home?section=chart"
-      hx-target="#section-content"
-      class="tracker-nav-button section-button"
-      >Search</span
-    >
+    <button type="button" hx-get="/home?section=chart" hx-target="#section-content"
+      class="tracker-nav-button section-button">
+      Search
+    </button>
   </li>
 </ul>
 <div id="section-content">{{ template "home-summary" . }}</div>
