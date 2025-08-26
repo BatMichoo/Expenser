@@ -3,7 +3,6 @@ package handlers
 import (
 	database "expenser/internal/db"
 	"expenser/internal/models"
-	"expenser/internal/templates/functions"
 	"expenser/internal/utilities"
 	"fmt"
 	"net/http"
@@ -181,9 +180,10 @@ func (h *HomeHandler) GetHome(c *gin.Context) {
 	section := c.Query("section")
 
 	if section == "chart" {
+		types, _ := h.DB.GetHomeUtilityTypes()
 		dates := gin.H{
-			"DateBefore": functions.DateOneMonthPrior(),
-			"DateNow":    functions.DateNow(),
+			"Year":  year,
+			"Types": types,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Components.HomeChart, dates)
 		return

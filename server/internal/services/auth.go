@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"expenser/internal/models"
 	"fmt"
 	"os"
@@ -26,8 +25,10 @@ type AuthService struct {
 }
 
 type Token struct {
-	Value      string
-	Expiration time.Duration
+	Value     string
+	Claims    *JWTClaims
+	Duration  time.Duration
+	ExpiresAt time.Time
 }
 
 func NewAuthService(secretKey string, tokenExp time.Duration) *AuthService {
@@ -47,52 +48,65 @@ func (as *AuthService) SetCookie(t *Token, c *gin.Context) {
 	secure := false
 	httpOnly := true
 
-	c.SetCookie("auth_token", t.Value, int(t.Expiration), "/", domain, secure, httpOnly)
+	c.SetCookie("auth_token", t.Value, int(t.Duration.Seconds()), "/", domain, secure, httpOnly)
 }
 
 // GenerateToken creates a new JWT token for the given user
 func (as *AuthService) GenerateToken(user *models.User) (*Token, error) {
+	timeNow := time.Now()
+	expAt := timeNow.Add(as.tokenExpiration)
 	claims := &JWTClaims{
 		UserID:   user.ID,
 		Username: user.Username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(as.tokenExpiration)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(expAt),
+			IssuedAt:  jwt.NewNumericDate(timeNow),
+			NotBefore: jwt.NewNumericDate(timeNow),
 			Issuer:    "expenser-app",
-			Subject:   fmt.Sprintf("user:%d", user.ID),
+			Subject:   fmt.Sprintf("user:%s", user.ID),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedToken, err := token.SignedString(as.secretKey)
+	token.Raw = signedToken
 
 	if err != nil {
 		return nil, fmt.Errorf("couldn't generate token %w", err)
 	}
 
 	return &Token{
-		Value:      signedToken,
-		Expiration: as.tokenExpiration,
+		Value:     signedToken,
+		Claims:    claims,
+		Duration:  as.tokenExpiration,
+		ExpiresAt: expAt,
 	}, nil
 }
 
 // ValidateToken validates and parses a JWT token
-func (a *AuthService) ValidateToken(tokenString string) (*JWTClaims, error) {
+func (as *AuthService) ValidateToken(tokenString string) (*Token, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return a.secretKey, nil
+		return as.secretKey, nil
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
-		return claims, nil
+	claims, ok := token.Claims.(*JWTClaims)
+	if !ok {
+		return nil, fmt.Errorf("could not get claims from token")
 	}
 
-	return nil, errors.New("invalid token")
+	expAt, _ := token.Claims.GetExpirationTime()
+
+	return &Token{
+		Value:     token.Raw,
+		Claims:    claims,
+		Duration:  as.tokenExpiration,
+		ExpiresAt: time.Unix(expAt.Unix(), 0),
+	}, nil
 }

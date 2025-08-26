@@ -5,6 +5,7 @@ import (
 	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -47,18 +48,25 @@ func (am *AuthMiddleware) AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		claims, err := am.authService.ValidateToken(tokenString)
+		token, err := am.authService.ValidateToken(tokenString)
 		if err != nil {
 			am.redirectToLogin(c)
 			c.Abort()
 			return
 		}
 
+		currentTime := time.Now()
+		diff := token.ExpiresAt.Sub(currentTime)
+
+		if time.Duration(diff.Hours()) < time.Duration(time.Hour.Hours()) {
+			am.authService.SetCookie(token, c)
+		}
+
 		// Store user information in context
-		c.Set("user_id", claims.UserID)
-		c.Set("username", claims.Username)
-		c.Set("email", claims.Email)
-		c.Set("user_claims", claims)
+		c.Set("user_id", token.Claims.UserID)
+		c.Set("username", token.Claims.Username)
+		c.Set("email", token.Claims.Email)
+		c.Set("user_claims", token.Claims)
 
 		c.Next()
 	}

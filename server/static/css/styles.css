@@ -286,7 +286,7 @@ body.dark .tracker-nav-button.active {
 
 @media (min-width: 768px) {
   .container {
-    padding: 2em;
+    padding: 1em 2em;
   }
 }
 
@@ -310,7 +310,7 @@ body.dark .tracker-nav-button.active {
 
 @media (min-width: 768px) {
   #tracker-content {
-    padding: 2em;
+    padding: 1em 2em;
   }
 }
 
@@ -1011,7 +1011,8 @@ canvas {
   margin-right: 0.5em;
 }
 
-#search-form input {
+#search-form input,
+select {
   font-size: 1.125em;
   box-shadow: var(--box-shadow-light);
   text-align: center;
@@ -1020,7 +1021,8 @@ canvas {
   border-radius: 0.25em;
 }
 
-body.dark #search-form input {
+body.dark #search-form input,
+body.dark #search-form select {
   background-color: var(--bg-color-dark-acc);
   color: var(--tx-color-dark);
 }

@@ -38,7 +38,6 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedHome.GET("/expenses/edit", homeHandler.GetEditHomeForm)
 		protectedHome.PUT("/expenses/:id", homeHandler.EditHomeExpenseById)
 		protectedHome.DELETE("/expenses/:id", homeHandler.DeleteHomeExp)
-		protectedHome.GET("/chart", chartHandler.FetchChartData)
 		protectedHome.GET("/chart/search", chartHandler.Search)
 	}
 

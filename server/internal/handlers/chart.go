@@ -2,10 +2,9 @@ package handlers
 
 import (
 	database "expenser/internal/db"
-	"expenser/internal/utilities"
+	"expenser/internal/models"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -21,31 +20,23 @@ func NewChartHandler(db *database.DB) *ChartHandler {
 	}
 }
 
-func (ch *ChartHandler) FetchChartData(c *gin.Context) {
-	monthStr := c.Query("month")
-	yearStr := c.Query("year")
-	month, _ := strconv.Atoi(monthStr)
-	year, _ := strconv.Atoi(yearStr)
-
-	userIDstr, _ := c.Get("user_id")
-	userID, _ := userIDstr.(uuid.UUID)
-
-	exp, _ := ch.DB.GetHomeExpensesForMonth(time.Month(month), year, userID)
-
-	c.JSON(http.StatusOK, exp)
-}
-
 func (ch *ChartHandler) Search(c *gin.Context) {
-	fromStr := c.Query("from")
-	toStr := c.Query("to")
+	typeStr := c.Query("type")
+	yearStr := c.Query("year")
 
 	userIDstr, _ := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
-	fromDate, _ := time.Parse(utilities.DateFormats.Input, fromStr)
-	toDate, _ := time.Parse(utilities.DateFormats.Input, toStr)
+	typeId, _ := strconv.Atoi(typeStr)
+	year, _ := strconv.Atoi(yearStr)
+	var exp *[]models.HomeExpense
+	var err error
 
-	exp, err := ch.DB.GetExpensesByDates(fromDate, toDate, userID)
+	if typeStr != "" {
+		exp, err = ch.DB.GetExpenseTypeForYear(typeId, year, userID)
+	} else {
+		exp, err = ch.DB.GetHomeExpensesForYear(year, userID)
+	}
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())

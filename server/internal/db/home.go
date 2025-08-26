@@ -212,8 +212,13 @@ func (db *DB) GetHomeExpensesForMonth(month time.Month, year int, userId uuid.UU
 
 func (db *DB) GetHomeExpensesForYear(year int, userId uuid.UUID) (*[]models.HomeExpense, error) {
 	query := `
-		SELECT * FROM home_expenses
-		WHERE EXTRACT(YEAR FROM expense_date) = $1 AND created_by = $2
+		SELECT
+			he.id, ut.name, he.amount, he.expense_date, he.notes, he.created_at, he.created_by
+			FROM home_expenses he
+		JOIN 
+			utility_types ut ON he.utility_type_id = ut.id
+		WHERE
+			EXTRACT(YEAR FROM expense_date) = $1 AND created_by = $2
 	`
 
 	var expenses []models.HomeExpense
@@ -238,8 +243,8 @@ func (db *DB) GetHomeExpensesForYear(year int, userId uuid.UUID) (*[]models.Home
 			&exp.Amount,
 			&exp.ExpenseDate,
 			&exp.Notes,
-			&exp.CreatedBy,
 			&exp.CreatedAt,
+			&exp.CreatedBy,
 		)
 
 		if err != nil {
@@ -280,6 +285,46 @@ func (db *DB) GetHomeExpensesByUtilityType(utility string, userId uuid.UUID) (*[
 			&exp.Notes,
 			&exp.CreatedAt,
 			&exp.CreatedBy,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("error scanning expenses: %v", err)
+		}
+		expenses = append(expenses, exp)
+	}
+
+	return &expenses, nil
+}
+
+func (db *DB) GetExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]models.HomeExpense, error) {
+	query := `
+		SELECT he.id, ut.name, he.amount, he.expense_date FROM home_expenses he
+		JOIN utility_types ut ON he.utility_type_id = ut.id 
+		WHERE he.utility_type_id = $1 AND he.created_by = $3 AND EXTRACT(YEAR FROM he.expense_date) = $2
+	`
+
+	var expenses []models.HomeExpense
+	rows, err := db.conn.Query(query,
+		utility,
+		year,
+		userId,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("error fetching expenses: %v", err)
+	}
+
+	for rows.Next() {
+		err := rows.Err()
+		if err != nil {
+			return nil, fmt.Errorf("error fetching expenses: %v", err)
+		}
+
+		var exp models.HomeExpense
+		err = rows.Scan(&exp.ID,
+			&exp.UtilityType,
+			&exp.Amount,
+			&exp.ExpenseDate,
 		)
 
 		if err != nil {
