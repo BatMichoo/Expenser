@@ -2,21 +2,6 @@ function getOptions() {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
-    // scales: {
-    //   y: {
-    //     beginAtZero: true,
-    //     title: {
-    //       display: true,
-    //       text: "Amount ($)",
-    //     },
-    //   },
-    //   x: {
-    //     title: {
-    //       display: true,
-    //       text: "Utility Type",
-    //     },
-    //   },
-    // },
     plugins: {
       legend: {
         display: true,
@@ -35,6 +20,13 @@ function createNewChart() {
   const canvas = document.getElementById("chart");
   const ctx = canvas.getContext("2d");
 
+  const theme = localStorage.getItem("theme");
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue(
+    `--tx-color-${theme}`,
+  );
+
+  Chart.defaults.color = textColor;
+
   const chart = new Chart(ctx, {
     type: "bar",
     data: {
@@ -42,7 +34,7 @@ function createNewChart() {
       datasets: [
         {
           // label: "Total Amount ($)",
-          data: 0,
+          data: [],
           borderWidth: 1,
         },
       ],
@@ -69,6 +61,7 @@ function updateChart() {
         if (canvas.Chart) {
           canvas.Chart.data.labels = [];
           canvas.Chart.data.datasets[0].data = [];
+          canvas.Chart.data.datasets.label = "";
           canvas.Chart.options.plugins.title.text = "No Results!";
           canvas.Chart.update();
         } else {
@@ -77,17 +70,43 @@ function updateChart() {
         return;
       }
 
-      const expensesData = apiData.reduce((acc, e) => {
-        if (acc[e.UtilityType]) {
-          acc[e.UtilityType].amount += e.Amount;
-        } else {
-          acc[e.UtilityType] = {
-            name: e.UtilityType,
-            amount: e.Amount,
-          };
-        }
-        return acc;
-      }, {});
+      let expensesData = {};
+
+      if (type.value == "") {
+        expensesData = apiData.reduce((acc, e) => {
+          if (acc[e.UtilityType]) {
+            acc[e.UtilityType].amount += e.Amount;
+          } else {
+            acc[e.UtilityType] = {
+              name: e.UtilityType,
+              amount: e.Amount,
+            };
+          }
+          return acc;
+        }, expensesData);
+      } else {
+        expensesData = apiData.reduce((acc, e) => {
+          if (acc[e.ExpenseDate]) {
+            acc[e.ExpenseDate].amount += e.Amount;
+          } else {
+            const options = {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            };
+            const displayDate = new Date(e.ExpenseDate).toLocaleDateString(
+              "en-GB",
+              options,
+            );
+            acc[e.ExpenseDate] = {
+              name: displayDate,
+              amount: e.Amount,
+              type: e.UtilityType,
+            };
+          }
+          return acc;
+        }, expensesData);
+      }
 
       const COLORS = {
         Water: "rgba(54, 162, 235, 0.6)",
@@ -102,25 +121,53 @@ function updateChart() {
       const labels = [];
       const amounts = [];
       const colors = [];
+      let dataSetLabel = "";
 
-      Object.keys(expensesData).forEach((k) => {
-        labels.push(k);
-        amounts.push(expensesData[k].amount);
-        colors.push(COLORS[k]);
-      });
+      if (type.value == "") {
+        Object.keys(expensesData).forEach((k) => {
+          labels.push(k);
+          amounts.push(expensesData[k].amount);
+          colors.push(COLORS[k]);
+        });
+        dataSetLabel = "Total of each expense:";
+      } else {
+        Object.keys(expensesData).forEach((k) => {
+          labels.push(expensesData[k].name);
+          amounts.push(expensesData[k].amount);
+          colors.push(COLORS[expensesData[k].type]);
+        });
+      }
 
       canvas.Chart.data.labels = labels;
       canvas.Chart.data.datasets[0].data = amounts;
       canvas.Chart.data.datasets[0].backgroundColor = colors;
       canvas.Chart.data.datasets[0].borderColor = colors;
-
-      if ((canvas.Chart.options.plugins.title.text = "No Results!")) {
+      canvas.Chart.options.plugins.legend.labels.generateLabels = updateLabels;
+      if (canvas.Chart.options.plugins.title.text === "No Results!") {
         canvas.Chart.options.plugins.title.text =
           "Home Expenses by Utility Type";
       }
       canvas.Chart.update();
     })
     .catch((error) => console.error("Error fetching data:", error));
+}
+
+function updateLabels(chart) {
+  const theme = localStorage.getItem("theme");
+  const legendTextColor = getComputedStyle(
+    document.documentElement,
+  ).getPropertyValue(`--tx-color-${theme}`);
+  const data = chart.data.datasets[0].data;
+  const labels = chart.data.labels;
+  const colors = chart.data.datasets[0].backgroundColor;
+  return labels.map((label, i) => ({
+    text: label,
+    fontColor: legendTextColor,
+    fillStyle: colors[i],
+    strokeStyle: colors[i],
+    lineWidth: 1,
+    hidden: chart.getDatasetMeta(0).data[i].hidden,
+  }));
 }
 
 function attachSearchListener() {

@@ -5,8 +5,7 @@
   --bg-color-dark-acc: #374151;
   --tx-color-light: #374151;
   --tx-color-dark: #e2e8f0;
-  --light-theme-toggle-focus-shadow: rgba(156, 163, 175, 0.5);
-  --dark-theme-toggle-focus-shadow: rgba(156, 163, 175, 0.5);
+  --theme-toggle-focus-shadow: rgba(156, 163, 175, 0.5);
   --box-shadow-light:
     0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --light-tracker-nav-button-hover-background: #ebf8ff;
@@ -25,13 +24,11 @@
   --btn-primary-focus-shadow-1: #3b82f6;
   --btn-primary-focus-shadow-2: rgba(59, 130, 246, 0.5);
   --btn-red-background-light: #dc2626;
-  --btn-red-color: #ffffff;
   --btn-red-hover-light: #991b1b;
   --btn-red-background-dark: #b91c1c;
   --btn-red-hover-dark: #7f1d1d;
   --btn-red-focus-shadow-1: #ef4444;
   --btn-red-focus-shadow-2: rgba(239, 68, 68, 0.5);
-  --section-heading-color-light: #6b7280;
   --overview-section-heading-svg-color-light: #3b82f6;
   --overview-section-heading-svg-color-dark: #60a5fa;
   --recent-expenses-section-heading-svg-color-light: #a855f7;
@@ -49,17 +46,6 @@
   --table-action-button-blue-hover-light: #1d4ed8;
   --table-action-button-blue-dark: #60a5fa;
   --table-action-button-blue-hover-dark: #93c5fd;
-  --form-label-color-light: #374151;
-  --form-label-color-dark: #d1d5db;
-  --form-input-border-light: #d1d5db;
-  --form-input-background-light: #ffffff;
-  --form-input-text-light: #374151;
-  --form-input-border-dark: #4b5563;
-  --form-input-background-dark: #374151;
-  --form-input-text-dark: #e5e7eb;
-  --new-expense-form-input-focus-border: #3b82f6;
-  --new-expense-form-input-focus-shadow-1: #3b82f6;
-  --new-expense-form-input-focus-shadow-2: rgba(59, 130, 246, 0.5);
   --welcome-section-heading-color-light: #374151;
   --welcome-section-heading-color-dark: #f3f4f6;
   --welcome-section-paragraph-1-color-light: #4b5563;
@@ -76,7 +62,6 @@
 
 body {
   margin: 0em auto;
-  width: 95vw;
   font:
     16px/1.5 "Inter",
     sans-serif;
@@ -102,7 +87,7 @@ body.dark {
 button {
   color: var(--btn-primary-color);
   background-color: var(--btn-primary-background-light);
-  border: 0.125em solid var(--btn-primary-background-light);
+  border: 0.2em solid var(--btn-primary-background-light);
   outline: none;
   border-radius: 0.5em;
   box-shadow: var(--box-shadow-light);
@@ -177,6 +162,10 @@ body.dark button:hover {
   align-items: center;
 }
 
+#theme-toggle:focus {
+  box-shadow: var(--theme-toggle-focus-shadow);
+}
+
 body.dark #theme-toggle {
   background-color: var(--bg-color-dark-acc);
   border-color: var(--bg-color-dark-acc);
@@ -185,10 +174,12 @@ body.dark #theme-toggle {
 
 #theme-toggle:hover {
   background-color: var(--light-tracker-nav-button-hover-background);
+  border-color: var(--btn-primary-hover-light);
 }
 
 body.dark #theme-toggle:hover {
   background-color: #4b5563;
+  border-color: var(--btn-primary-hover-dark);
 }
 
 #theme-toggle .sun {
@@ -341,7 +332,7 @@ body.dark footer {
   max-width: 50vw;
   margin: 50px auto;
   padding: 20px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--bg-color-light-acc);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -424,7 +415,7 @@ body.dark .redirect-message-container {
   font-size: 1.875em;
   line-height: 2.25em;
   font-weight: 700;
-  color: var(--section-heading-color-light);
+  color: var(--tx-color-light);
   margin-bottom: 1.5em;
   display: flex;
   gap: 0.5em;
@@ -648,11 +639,11 @@ body.dark .new-expense-form button:hover {
   box-shadow:
     0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  color: #ffffff;
   transition-property: background-color, color;
   transition-duration: 300ms;
   flex-basis: 25%;
-  min-height: 25vh;
+  min-height: 28vh;
+  color: var(--btn-primary-color);
 }
 
 /* Mobile adjustments for Cards */
@@ -967,6 +958,12 @@ body.dark .welcome-section svg {
   width: 33.33%;
 }
 
+@media (max-width: 767px) {
+  #section-list li {
+    width: 50%;
+  }
+}
+
 .section-button {
   display: block;
   height: 2.75em;
@@ -1003,12 +1000,24 @@ canvas {
   gap: 3em;
   justify-content: center;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 767px) {
+  #search-form {
+    gap: 1em;
+  }
+}
+
+#search-form div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 #search-form label {
   font-size: 1.125em;
   font-weight: 700;
-  margin-right: 0.5em;
 }
 
 #search-form input,
@@ -1027,7 +1036,18 @@ body.dark #search-form select {
   color: var(--tx-color-dark);
 }
 
-#search-form button {
+@media (max-width: 767px) {
+  #year {
+    max-width: 6em;
+  }
+}
+
+#year {
+  background-color: var(--bg-color-light-acc);
+}
+
+#chart-search {
   font-size: 1.1em;
   padding: 0.34em 2em;
+  align-self: flex-end;
 }

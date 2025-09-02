@@ -328,13 +328,13 @@ func (h *HomeHandler) EditHomeExpenseById(c *gin.Context) {
 		return
 	}
 
-	utilTypeID, err := strconv.Atoi(c.Request.PostFormValue("type"))
+	utilTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
 	if err != nil {
 		// TODO: Handle error page: Invalid date format.
 		c.HTML(http.StatusBadRequest, "error", err)
 		return
 	}
-	date, err := time.Parse("2006-01-02", c.Request.PostFormValue("date"))
+	date, err := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("date"))
 	if err != nil {
 		// TODO: Handle error page: Invalid date format.
 		c.HTML(http.StatusBadRequest, "error", err)

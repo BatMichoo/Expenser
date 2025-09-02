@@ -59,7 +59,7 @@ func TestCreateCarExpense(t *testing.T) {
 			input: &models.CarExpense{
 				Amount:        250.00,
 				Date:          expenseDate,
-				ExpenseTypeID: 7,
+				ExpenseTypeID: -1,
 				Notes:         "Test 1234",
 			},
 			wantErr: true,

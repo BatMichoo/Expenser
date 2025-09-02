@@ -119,7 +119,7 @@ func (db *DB) UpdateUser(user *models.User) error {
 		`
 
 	user.UpdatedAt = time.Now()
-	row := db.conn.QueryRow(
+	result, err := db.conn.Exec(
 		query,
 		user.Username,
 		user.PasswordHash,
@@ -127,8 +127,17 @@ func (db *DB) UpdateUser(user *models.User) error {
 		user.ID,
 	)
 
-	if err := row.Err(); err != nil {
-		return fmt.Errorf("user not found: %w", err)
+	if err != nil {
+		return err
+	}
+
+	rowsAff, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAff == 0 {
+		return fmt.Errorf("user not found")
 	}
 
 	return nil
