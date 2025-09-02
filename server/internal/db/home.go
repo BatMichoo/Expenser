@@ -301,6 +301,7 @@ func (db *DB) GetExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]mod
 		SELECT he.id, ut.name, he.amount, he.expense_date FROM home_expenses he
 		JOIN utility_types ut ON he.utility_type_id = ut.id 
 		WHERE he.utility_type_id = $1 AND he.created_by = $3 AND EXTRACT(YEAR FROM he.expense_date) = $2
+		ORDER BY he.expense_date
 	`
 
 	var expenses []models.HomeExpense

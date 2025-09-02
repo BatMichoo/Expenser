@@ -90,9 +90,8 @@ function updateChart() {
             acc[e.ExpenseDate].amount += e.Amount;
           } else {
             const options = {
-              year: "numeric",
-              month: "long",
               day: "numeric",
+              month: "long",
             };
             const displayDate = new Date(e.ExpenseDate).toLocaleDateString(
               "en-GB",
