@@ -1,19 +1,22 @@
 {{ define "home-page" }}
 <ul id="section-list">
   <li>
-    <button type="button" hx-get="/home?section=summary" hx-target="#section-content"
+    <button type="button" hx-get="/{{.Name}}?section=summary" hx-target="#section-content"
       class="tracker-nav-button section-button active">
       Summary
     </button>
   </li>
   <li>
-    <button type="button" hx-get="/home?section=chart" hx-target="#section-content"
+    <button type="button" hx-get="/{{.Name}}?section=chart" hx-target="#section-content"
       class="tracker-nav-button section-button">
       Search
     </button>
   </li>
 </ul>
-<div id="section-content">{{ template "home-summary" . }}</div>
+<div id="section-content">
+  {{ if eq .Name "house" }} {{ template "house-summary" . }} {{ else }} {{
+  template "car-summary" . }} {{ end }}
+</div>
 <script>
   function activeButtons() {
     const buttons = document.querySelectorAll(".section-button");

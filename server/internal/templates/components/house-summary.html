@@ -1,10 +1,4 @@
-{{ define "car-page" }}
-<!-- This content is designed to be loaded into a parent div (e.g., #tracker-content) via HTMX -->
-<section id="add-expense-section">
-  <button type="submit" hx-get="/car/expenses/new" hx-target="#dialog-modal">
-    Add Expense
-  </button>
-</section>
+{{ define "house-summary" }}
 <section id="overview-section">
   <h2>
     <span>Dashboard Summary</span>
@@ -16,7 +10,6 @@
       <rect width="7" height="5" x="3" y="16" rx="1" />
     </svg>
   </h2>
-
   <div class="overview-container">
     <!-- Total Expenses Card -->
     {{ template "total-card" .MonthlyExpense}}
@@ -25,7 +18,11 @@
     {{ template "highest-card" .HighestExpense}}
   </div>
 </section>
-<!-- Recent Expenses List -->
+<section id="add-expense-section">
+  <button type="submit" hx-get="/house/expenses/new" hx-target="#dialog-modal">
+    Add Expense
+  </button>
+</section>
 <section id="recent-expenses-section">
   <h2>
     <span>Recent Expenses</span>
@@ -44,14 +41,18 @@
       <thead>
         <tr>
           <th>Date</th>
-          <th>Type</th>
+          <th>Utility</th>
           <th>Amount in lv</th>
           <th>Notes</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody id="recent-expenses">
-        {{ range .RecentExpenses }} {{ template "car-exp-row" . }} {{ end }}
+        {{ range .RecentExpenses }}
+        <!-- -->
+        {{ template "house-exp-row" . }}
+        <!-- -->
+        {{ end }}
       </tbody>
       <tfoot>
         <tr>

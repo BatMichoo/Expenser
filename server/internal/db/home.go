@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (db *DB) GetHomeUtilityTypes() (*[]models.HomeUtilityType, error) {
+func (db *DB) GetHouseUtilityTypes() (*[]models.HomeUtilityType, error) {
 	query := `
 		SELECT * FROM utility_types 
 		`
@@ -40,7 +40,7 @@ func (db *DB) GetHomeUtilityTypes() (*[]models.HomeUtilityType, error) {
 	return &expenseTypes, nil
 }
 
-func (db *DB) GetTotalHomeExpenseForMonth(month time.Month, userId uuid.UUID) (float64, error) {
+func (db *DB) GetTotalHouseExpenseForMonth(month time.Month, userId uuid.UUID) (float64, error) {
 	currentYear := time.Now().Year()
 	query := `
 		SELECT SUM(amount) FROM home_expenses
@@ -64,11 +64,11 @@ func (db *DB) GetTotalHomeExpenseForMonth(month time.Month, userId uuid.UUID) (f
 	return totalAmount.Float64, nil
 }
 
-func (db *DB) GetHighestHomeExpenseForMonth(month time.Month, userId uuid.UUID) (float64, string, error) {
+func (db *DB) GetHighestHouseExpenseForMonth(month time.Month, userId uuid.UUID) (float64, string, error) {
 	currentYear := time.Now().Year()
 	query := `
 		SELECT
-			he.amount,
+			SUM(he.amount) AS amount,
 			ut.name
 		FROM
 			home_expenses he
@@ -76,8 +76,10 @@ func (db *DB) GetHighestHomeExpenseForMonth(month time.Month, userId uuid.UUID) 
 			utility_types ut ON he.utility_type_id = ut.id
 		WHERE
 			EXTRACT(MONTH FROM he.expense_date) = $1 AND EXTRACT(YEAR FROM he.expense_date) = $2 AND created_by = $3
+		GROUP BY
+			ut.name
 		ORDER BY
-			he.amount DESC
+			amount DESC
 		LIMIT 1;
 	`
 
@@ -101,7 +103,7 @@ func (db *DB) GetHighestHomeExpenseForMonth(month time.Month, userId uuid.UUID) 
 }
 
 // Retrieves home expense by Id, returns error upon failure.
-func (db *DB) GetHomeExpenseByID(id int) (*models.HomeExpense, error) {
+func (db *DB) GetHouseExpenseByID(id int) (*models.HouseExpense, error) {
 	query := `
 		SELECT
 			he.id,
@@ -118,7 +120,7 @@ func (db *DB) GetHomeExpenseByID(id int) (*models.HomeExpense, error) {
 			he.id = $1;
 	`
 
-	var expense models.HomeExpense
+	var expense models.HouseExpense
 	err := db.conn.QueryRow(query,
 		id,
 	).Scan(
@@ -140,7 +142,7 @@ func (db *DB) GetHomeExpenseByID(id int) (*models.HomeExpense, error) {
 }
 
 // Creates a new entry of a home expense. Automatically handles utility type FK.
-func (db *DB) CreateHomeExpense(input *models.HomeExpense) error {
+func (db *DB) CreateHouseExpense(input *models.HouseExpense) error {
 	query := `
 		INSERT INTO home_expenses (utility_type_id, amount, expense_date, notes, created_by)
 		VALUES ($1, $2, $3, $4, $5)
@@ -162,7 +164,7 @@ func (db *DB) CreateHomeExpense(input *models.HomeExpense) error {
 	return nil
 }
 
-func (db *DB) GetHomeExpensesForMonth(month time.Month, year int, userId uuid.UUID) (*[]models.HomeExpense, error) {
+func (db *DB) GetHouseExpensesForMonth(month time.Month, year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT he.id, ut.name, he.amount, he.expense_date, he.notes, he.created_at, he.created_by
 			FROM home_expenses he
@@ -174,7 +176,7 @@ func (db *DB) GetHomeExpensesForMonth(month time.Month, year int, userId uuid.UU
 			he.expense_date DESC;
 	`
 
-	var expenses []models.HomeExpense
+	var expenses []models.HouseExpense
 	rows, err := db.conn.Query(query,
 		int(month),
 		year,
@@ -191,7 +193,7 @@ func (db *DB) GetHomeExpensesForMonth(month time.Month, year int, userId uuid.UU
 			return nil, fmt.Errorf("failed to fetch expenses: %v", err)
 		}
 
-		var exp models.HomeExpense
+		var exp models.HouseExpense
 		err = rows.Scan(&exp.ID,
 			&exp.UtilityType,
 			&exp.Amount,
@@ -210,7 +212,7 @@ func (db *DB) GetHomeExpensesForMonth(month time.Month, year int, userId uuid.UU
 	return &expenses, nil
 }
 
-func (db *DB) GetHomeExpensesForYear(year int, userId uuid.UUID) (*[]models.HomeExpense, error) {
+func (db *DB) GetHouseExpensesForYear(year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT
 			he.id, ut.name, he.amount, he.expense_date, he.notes, he.created_at, he.created_by
@@ -221,7 +223,7 @@ func (db *DB) GetHomeExpensesForYear(year int, userId uuid.UUID) (*[]models.Home
 			EXTRACT(YEAR FROM expense_date) = $1 AND created_by = $2
 	`
 
-	var expenses []models.HomeExpense
+	var expenses []models.HouseExpense
 	rows, err := db.conn.Query(query,
 		year,
 		userId,
@@ -237,7 +239,7 @@ func (db *DB) GetHomeExpensesForYear(year int, userId uuid.UUID) (*[]models.Home
 			return nil, fmt.Errorf("error fetching expenses: %v", err)
 		}
 
-		var exp models.HomeExpense
+		var exp models.HouseExpense
 		err = rows.Scan(&exp.ID,
 			&exp.UtilityType,
 			&exp.Amount,
@@ -256,12 +258,12 @@ func (db *DB) GetHomeExpensesForYear(year int, userId uuid.UUID) (*[]models.Home
 	return &expenses, nil
 }
 
-func (db *DB) GetHomeExpensesByUtilityType(utility string, userId uuid.UUID) (*[]models.HomeExpense, error) {
+func (db *DB) GetHomeExpensesByUtilityType(utility string, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT * FROM home_expenses
 		WHERE utility_type_id = (SELECT id FROM utility_types WHERE name = $1) AND created_by = $2`
 
-	var expenses []models.HomeExpense
+	var expenses []models.HouseExpense
 	rows, err := db.conn.Query(query,
 		utility,
 		userId,
@@ -277,7 +279,7 @@ func (db *DB) GetHomeExpensesByUtilityType(utility string, userId uuid.UUID) (*[
 			return nil, fmt.Errorf("error fetching expenses: %v", err)
 		}
 
-		var exp models.HomeExpense
+		var exp models.HouseExpense
 		err = rows.Scan(&exp.ID,
 			&exp.UtilityType,
 			&exp.Amount,
@@ -296,14 +298,14 @@ func (db *DB) GetHomeExpensesByUtilityType(utility string, userId uuid.UUID) (*[
 	return &expenses, nil
 }
 
-func (db *DB) GetExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]models.HomeExpense, error) {
+func (db *DB) GetHouseExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT he.id, ut.name, he.amount, he.expense_date FROM home_expenses he
 		JOIN utility_types ut ON he.utility_type_id = ut.id 
 		WHERE he.utility_type_id = $1 AND he.created_by = $3 AND EXTRACT(YEAR FROM he.expense_date) = $2
 	`
 
-	var expenses []models.HomeExpense
+	var expenses []models.HouseExpense
 	rows, err := db.conn.Query(query,
 		utility,
 		year,
@@ -320,7 +322,7 @@ func (db *DB) GetExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]mod
 			return nil, fmt.Errorf("error fetching expenses: %v", err)
 		}
 
-		var exp models.HomeExpense
+		var exp models.HouseExpense
 		err = rows.Scan(&exp.ID,
 			&exp.UtilityType,
 			&exp.Amount,
@@ -336,7 +338,7 @@ func (db *DB) GetExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]mod
 	return &expenses, nil
 }
 
-func (db *DB) EditHomeExpense(editExpense *models.HomeExpense) error {
+func (db *DB) EditHouseExpense(editExpense *models.HouseExpense) error {
 	query := `
 		UPDATE home_expenses
 		SET
@@ -362,7 +364,7 @@ func (db *DB) EditHomeExpense(editExpense *models.HomeExpense) error {
 	return nil
 }
 
-func (db *DB) DeleteHomeExpense(id int) (bool, error) {
+func (db *DB) DeleteHouseExpense(id int) (bool, error) {
 	query := `
 		DELETE FROM home_expenses
 		WHERE id = $1`
@@ -387,7 +389,7 @@ func (db *DB) DeleteHomeExpense(id int) (bool, error) {
 	return true, nil
 }
 
-func (db *DB) GetExpensesByDates(start, end time.Time, userId uuid.UUID) (*[]models.HomeExpense, error) {
+func (db *DB) GetHomeExpensesByDates(start, end time.Time, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT he.id, he.amount, ut.name FROM home_expenses he
 		JOIN utility_types ut ON he.utility_type_id = ut.id
@@ -399,7 +401,7 @@ func (db *DB) GetExpensesByDates(start, end time.Time, userId uuid.UUID) (*[]mod
 		return nil, fmt.Errorf("error fetching expenses: %v", err)
 	}
 
-	var expenses []models.HomeExpense
+	var expenses []models.HouseExpense
 
 	for rows.Next() {
 		err := rows.Err()
@@ -407,7 +409,7 @@ func (db *DB) GetExpensesByDates(start, end time.Time, userId uuid.UUID) (*[]mod
 			return nil, fmt.Errorf("error fetching expenses: %v", err)
 		}
 
-		var exp models.HomeExpense
+		var exp models.HouseExpense
 		err = rows.Scan(&exp.ID,
 			&exp.Amount,
 			&exp.UtilityType,

@@ -1046,7 +1046,7 @@ body.dark #search-form select {
   background-color: var(--bg-color-light-acc);
 }
 
-#chart-search {
+.chart-search {
   font-size: 1.1em;
   padding: 0.34em 2em;
   align-self: flex-end;

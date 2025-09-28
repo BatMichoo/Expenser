@@ -1,4 +1,4 @@
-{{ define "home-chart" }}
+{{ define "exp-chart" }}
 <section id="chart-section">
   <div>
     <form id="search-form">
@@ -15,10 +15,12 @@
         <label for="year">Year</label>
         <input type="number" id="year" value="{{ .Year }}" />
       </div>
-      <button type="button" id="chart-search">Search</button>
+      <button type="button" class="chart-search" id="{{.Type}}-chart-search">
+        Search
+      </button>
     </form>
   </div>
   <canvas id="chart"></canvas>
-  <script src="../../../static/js/chart-script.js"></script>
+  <script type="module" src="../../../static/js/{{.Type}}-chart.js"></script>
 </section>
 {{ end }}

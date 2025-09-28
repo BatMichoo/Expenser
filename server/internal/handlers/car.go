@@ -13,6 +13,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type CarData struct {
+	Name           string
+	MonthlyExpense *MonthlyExpense      // MonthlyExpense summarizes the total spending for the current month.
+	HighestExpense *HighestExpense      // HighestExpense identifies the single largest expense in the current month.
+	RecentExpenses *[]models.CarExpense // RecentExpenses lists individual expenses for the current month.
+}
+
 type CarHandler struct {
 	DB *database.DB
 }
@@ -31,10 +38,22 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 	userIDstr, exists := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
+	section := c.Query("section")
+
+	if section == "chart" {
+		types, _ := h.DB.GetCarExpenseTypes()
+		chartData := gin.H{
+			"Type":  "car",
+			"Year":  year,
+			"Types": types,
+		}
+		c.HTML(http.StatusOK, utilities.Templates.Components.Chart, chartData)
+		return
+	}
+
 	highestExpense, utilType, err := h.DB.GetHighestCarExpenseForMonth(month, userID)
 	if err != nil {
 		// TODO: Handle error page
-		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
 		c.HTML(http.StatusInternalServerError, "error", err)
 		return
 	}
@@ -42,7 +61,6 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 	monthlyExpense, err := h.DB.GetTotalCarExpenseForMonth(month, userID)
 	if err != nil {
 		// TODO: Handle error page
-		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
 		c.HTML(http.StatusInternalServerError, "error", err)
 		return
 	}
@@ -51,12 +69,12 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 	if err != nil {
 		fmt.Printf("Error fetching expenses %v", err)
 		// TODO: Handle error page
-		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
 		c.HTML(http.StatusInternalServerError, "error", err)
 		return
 	}
 
 	pageData := &CarData{
+		Name: "car",
 		MonthlyExpense: &MonthlyExpense{
 			Amount: monthlyExpense,
 			Month:  month.String(),
@@ -71,13 +89,15 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	if isHtmxRequest {
-		c.HTML(http.StatusOK, utilities.Templates.Pages.Car, pageData)
+		if section == "summary" {
+			c.HTML(http.StatusOK, utilities.Templates.Components.CarSummary, pageData)
+			return
+		}
+
+		c.HTML(http.StatusOK, utilities.Templates.Pages.Home, pageData)
 	} else {
-		// RootLayout is assumed to be a struct that wraps the template name and content
-		// for a full page render, typically including common layout elements.
-		// It's used when the request is not an HTMX partial request.
 		rl := &RootLayout{
-			TemplateName:    utilities.Templates.Pages.Car,
+			TemplateName:    utilities.Templates.Pages.Home,
 			TemplateContent: pageData,
 			HeaderOpts: &models.HeaderOptions{
 				IsLoggedIn: exists,
@@ -278,8 +298,6 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 	}
 	notes := c.Request.PostFormValue("notes")
 
-	fmt.Printf("New Expense is : %v, %s, %v, %s\n", expTypeID, date, amount, notes)
-
 	editExpense := &models.CarExpense{
 		ID:            id,
 		Amount:        amount,
@@ -384,6 +402,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 	}
 
 	pageData := &CarData{
+		Name: "car",
 		MonthlyExpense: &MonthlyExpense{
 			Amount: monthlyExpense,
 			Month:  month.String(),

@@ -1,4 +1,4 @@
-{{ define "home-summary" }}
+{{ define "car-summary" }}
 <section id="overview-section">
   <h2>
     <span>Dashboard Summary</span>
@@ -10,6 +10,7 @@
       <rect width="7" height="5" x="3" y="16" rx="1" />
     </svg>
   </h2>
+
   <div class="overview-container">
     <!-- Total Expenses Card -->
     {{ template "total-card" .MonthlyExpense}}
@@ -19,10 +20,11 @@
   </div>
 </section>
 <section id="add-expense-section">
-  <button type="submit" hx-get="/home/expenses/new" hx-target="#dialog-modal">
+  <button type="submit" hx-get="/car/expenses/new" hx-target="#dialog-modal">
     Add Expense
   </button>
 </section>
+<!-- Recent Expenses List -->
 <section id="recent-expenses-section">
   <h2>
     <span>Recent Expenses</span>
@@ -41,18 +43,14 @@
       <thead>
         <tr>
           <th>Date</th>
-          <th>Utility</th>
+          <th>Type</th>
           <th>Amount in lv</th>
           <th>Notes</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody id="recent-expenses">
-        {{ range .RecentExpenses }}
-        <!-- -->
-        {{ template "home-exp-row" . }}
-        <!-- -->
-        {{ end }}
+        {{ range .RecentExpenses }} {{ template "car-exp-row" . }} {{ end }}
       </tbody>
       <tfoot>
         <tr>
