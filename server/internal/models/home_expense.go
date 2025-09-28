@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type HomeExpense struct {
+type HouseExpense struct {
 	ID            int       `form:"id"`
 	UtilityTypeID int       `form:"typeID"`
 	UtilityType   string    `form:"type" binding:"required"`

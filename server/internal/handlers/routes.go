@@ -27,18 +27,18 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 	am := middleware.NewAuthMiddleware(as)
 	chartHandler := NewChartHandler(db)
 
-	homeHandler := NewHomeHandler(db)
-	protectedHome := router.Group("/home")
+	houseHandler := NewHouseHandler(db)
+	protectedHouse := router.Group("/house")
 	{
-		protectedHome.Use(am.AuthMiddleware())
+		protectedHouse.Use(am.AuthMiddleware())
 
-		protectedHome.GET("", homeHandler.GetHome)
-		protectedHome.GET("/expenses/new", homeHandler.GetCreateHomeForm)
-		protectedHome.POST("/expenses", homeHandler.CreateHomeExpense)
-		protectedHome.GET("/expenses/edit", homeHandler.GetEditHomeForm)
-		protectedHome.PUT("/expenses/:id", homeHandler.EditHomeExpenseById)
-		protectedHome.DELETE("/expenses/:id", homeHandler.DeleteHomeExp)
-		protectedHome.GET("/chart/search", chartHandler.Search)
+		protectedHouse.GET("", houseHandler.GetHome)
+		protectedHouse.GET("/expenses/new", houseHandler.GetCreateHouseForm)
+		protectedHouse.POST("/expenses", houseHandler.CreateHouseExpense)
+		protectedHouse.GET("/expenses/edit", houseHandler.GetEditHouseForm)
+		protectedHouse.PUT("/expenses/:id", houseHandler.EditHouseExpenseById)
+		protectedHouse.DELETE("/expenses/:id", houseHandler.DeleteHouseExp)
+		protectedHouse.GET("/chart/search", chartHandler.HouseSearch)
 	}
 
 	carHandler := NewCarHandler(db)
@@ -52,6 +52,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedCar.GET("/expenses/edit", carHandler.GetEditCarForm)
 		protectedCar.PUT("/expenses/:id", carHandler.EditCarExpenseById)
 		protectedCar.DELETE("/expenses/:id", carHandler.DeleteCarExp)
+		protectedCar.GET("/chart/search", chartHandler.CarSearch)
 	}
 
 }

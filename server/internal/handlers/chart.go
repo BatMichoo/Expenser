@@ -20,7 +20,7 @@ func NewChartHandler(db *database.DB) *ChartHandler {
 	}
 }
 
-func (ch *ChartHandler) Search(c *gin.Context) {
+func (ch *ChartHandler) HouseSearch(c *gin.Context) {
 	typeStr := c.Query("type")
 	yearStr := c.Query("year")
 
@@ -29,13 +29,39 @@ func (ch *ChartHandler) Search(c *gin.Context) {
 
 	typeId, _ := strconv.Atoi(typeStr)
 	year, _ := strconv.Atoi(yearStr)
-	var exp *[]models.HomeExpense
+	var exp *[]models.HouseExpense
 	var err error
 
 	if typeStr != "" {
-		exp, err = ch.DB.GetExpenseTypeForYear(typeId, year, userID)
+		exp, err = ch.DB.GetHouseExpenseTypeForYear(typeId, year, userID)
 	} else {
-		exp, err = ch.DB.GetHomeExpensesForYear(year, userID)
+		exp, err = ch.DB.GetHouseExpensesForYear(year, userID)
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, exp)
+}
+
+func (ch *ChartHandler) CarSearch(c *gin.Context) {
+	typeStr := c.Query("type")
+	yearStr := c.Query("year")
+
+	userIDstr, _ := c.Get("user_id")
+	userID, _ := userIDstr.(uuid.UUID)
+
+	typeId, _ := strconv.Atoi(typeStr)
+	year, _ := strconv.Atoi(yearStr)
+	var exp *[]models.CarExpense
+	var err error
+
+	if typeStr != "" {
+		exp, err = ch.DB.GetCarExpenseTypeForYear(typeId, year, userID)
+	} else {
+		exp, err = ch.DB.GetCarExpensesForYear(year, userID)
 	}
 
 	if err != nil {

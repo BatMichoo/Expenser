@@ -68,7 +68,7 @@ func (db *DB) GetHighestCarExpenseForMonth(month time.Month, userId uuid.UUID) (
 	currentYear := time.Now().Year()
 	query := `
 		SELECT
-			ce.amount,
+			SUM(ce.amount) AS amount,
 			ct.name
 		FROM
 			car_expenses ce
@@ -76,8 +76,10 @@ func (db *DB) GetHighestCarExpenseForMonth(month time.Month, userId uuid.UUID) (
 			car_expense_types ct ON ce.car_expense_type_id = ct.id
 		WHERE
 			EXTRACT(MONTH FROM ce.expense_date) = $1 AND EXTRACT(YEAR FROM ce.expense_date) = $2 AND ce.created_by = $3
+		GROUP BY
+			ct.name
 		ORDER BY
-			ce.amount DESC
+			amount DESC
 		LIMIT 1;
 	`
 
@@ -349,4 +351,79 @@ func (db *DB) DeleteCarExpense(id int) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (db *DB) GetCarExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]models.CarExpense, error) {
+	query := `
+		SELECT ce.id, ct.name, ce.amount, ce.expense_date FROM car_expenses ce
+		JOIN car_expense_types ct ON ce.car_expense_type_id = ct.id 
+		WHERE ce.car_expense_type_id = $1 AND ce.created_by = $3 AND EXTRACT(YEAR FROM ce.expense_date) = $2
+	`
+
+	var expenses []models.CarExpense
+	rows, err := db.conn.Query(query,
+		utility,
+		year,
+		userId,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("error fetching expenses: %v", err)
+	}
+
+	for rows.Next() {
+		err := rows.Err()
+		if err != nil {
+			return nil, fmt.Errorf("error fetching expenses: %v", err)
+		}
+
+		var exp models.CarExpense
+		err = rows.Scan(&exp.ID,
+			&exp.Type,
+			&exp.Amount,
+			&exp.Date,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("error scanning expenses: %v", err)
+		}
+		expenses = append(expenses, exp)
+	}
+
+	return &expenses, nil
+}
+
+func (db *DB) GetCarExpensesByDates(start, end time.Time, userId uuid.UUID) (*[]models.CarExpense, error) {
+	query := `
+		SELECT ce.id, ce.amount, ct.name FROM car_expenses ce
+		JOIN car_expense_types ct ON ce.utility_type_id = ct.id
+		WHERE created_by = $1 AND expense_date >= $2 AND expense_date <= $3
+		ORDER BY expense_date ASC
+	`
+	rows, err := db.conn.Query(query, userId, start, end)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching expenses: %v", err)
+	}
+
+	var expenses []models.CarExpense
+
+	for rows.Next() {
+		err := rows.Err()
+		if err != nil {
+			return nil, fmt.Errorf("error fetching expenses: %v", err)
+		}
+
+		var exp models.CarExpense
+		err = rows.Scan(&exp.ID,
+			&exp.Amount,
+			&exp.Type,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("error scanning expenses: %v", err)
+		}
+		expenses = append(expenses, exp)
+	}
+
+	return &expenses, nil
 }
