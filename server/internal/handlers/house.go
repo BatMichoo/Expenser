@@ -62,7 +62,7 @@ func NewHouseHandler(db *database.DB) *HouseHandler {
 func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) {
 	expTypes, err := h.DB.GetHouseUtilityTypes()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error", "")
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, err.Error())
 		return
 	}
 	c.HTML(http.StatusOK, utilities.Templates.Components.CreateHouseExpForm, expTypes)
@@ -88,20 +88,17 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 
 	utilTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
 	if err != nil {
-		// TODO: Handle error page
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 	date, err := time.Parse("2006-01-02", c.Request.PostFormValue("date"))
 	if err != nil {
-		// TODO: Handle error page
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
 	if err != nil {
-		// TODO: Handle error page
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 	notes := c.Request.PostFormValue("notes")
@@ -116,9 +113,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 
 	err = h.DB.CreateHouseExpense(newExpense)
 	if err != nil {
-		// TODO: Handle error page
-		fmt.Printf("error creating: %v", err)
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
@@ -126,17 +121,13 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 
 	highestExp, expType, err := h.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
-		// TODO: Handle error page
-		fmt.Printf("error fetching highest expense: %v", err)
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
 	montlyTotal, err := h.DB.GetTotalHouseExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
-		// TODO: Handle error page
-		fmt.Printf("error fetching total expense: %v", err)
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
@@ -192,23 +183,19 @@ func (h *HouseHandler) GetHome(c *gin.Context) {
 
 	highestExpense, utilType, err := h.DB.GetHighestHouseExpenseForMonth(month, userID)
 	if err != nil {
-		// TODO: Handle error page
-		c.HTML(http.StatusInternalServerError, "error", err)
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, err)
 		return
 	}
 
 	monthlyExpense, err := h.DB.GetTotalHouseExpenseForMonth(month, userID)
 	if err != nil {
-		// TODO: Handle error page
-		c.HTML(http.StatusInternalServerError, "error", err)
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, err)
 		return
 	}
 
 	recentExpenses, err := h.DB.GetHouseExpensesForMonth(month, year, userID)
 	if err != nil {
-		fmt.Printf("Error fetching expenses %v", err)
-		// TODO: Handle error page
-		c.HTML(http.StatusInternalServerError, "error", err)
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, err)
 		return
 	}
 
@@ -258,16 +245,14 @@ func (h *HouseHandler) GetHomeSection(c *gin.Context) {
 func (h *HouseHandler) GetExpenseById(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		// TODO: Handle error page: Invalid ID format.
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
 	exp, err := h.DB.GetHouseExpenseByID(id)
 
 	if err != nil {
-		// TODO: Handle error page: Expense not found or database error.
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
@@ -287,22 +272,19 @@ type EditFormData struct {
 func (h *HouseHandler) GetEditHouseForm(c *gin.Context) {
 	id, err := strconv.Atoi(c.Query("id"))
 	if err != nil {
-		// TODO: Handle error page: Invalid ID format.
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
 	exp, err := h.DB.GetHouseExpenseByID(id)
 	if err != nil {
-		// TODO: Handle error page: Expense not found or database error.
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
 	expTypes, err := h.DB.GetHouseUtilityTypes()
 	if err != nil {
-		// TODO: Handle error page: Expense not found or database error.
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
@@ -322,27 +304,23 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) {
 func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		// TODO: Handle error page: Invalid ID format.
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
 	utilTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
 	if err != nil {
-		// TODO: Handle error page: Invalid date format.
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 	date, err := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("date"))
 	if err != nil {
-		// TODO: Handle error page: Invalid date format.
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
 	if err != nil {
-		// TODO: Handle error page: Invalid amount format.
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 	notes := c.Request.PostFormValue("notes")
@@ -357,9 +335,7 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 
 	err = h.DB.EditHouseExpense(editExpense)
 	if err != nil {
-		// TODO: Handle error page: Database update failed.
-		fmt.Printf("error editing: %v", err)
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
@@ -369,17 +345,13 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 
 	highestExp, expType, err := h.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
-		// TODO: Handle error page: Failed to fetch highest expense after edit.
-		fmt.Printf("error fetching highest expense: %v", err)
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
 	montlyTotal, err := h.DB.GetTotalHouseExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
-		// TODO: Handle error page: Failed to fetch monthly total after edit.
-		fmt.Printf("error fetching total expense: %v", err)
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
@@ -410,15 +382,13 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		// TODO: Handle error page: Invalid ID format.
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
 	res, err := h.DB.DeleteHouseExpense(id)
 	if err != nil {
-		// TODO: Handle error page: Database deletion failed.
-		c.HTML(http.StatusBadRequest, "error", err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
 		return
 	}
 
@@ -434,17 +404,13 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
 
 	monthlyExpense, err := h.DB.GetTotalHouseExpenseForMonth(month, userID)
 	if err != nil {
-		// TODO: Handle error page: Failed to fetch monthly total after delete.
-		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
-		c.HTML(http.StatusInternalServerError, "error", err)
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, err)
 		return
 	}
 
 	highestExpense, utilType, err := h.DB.GetHighestHouseExpenseForMonth(month, userID)
 	if err != nil {
-		// TODO: Handle error page: Failed to fetch highest expense after delete.
-		// c.HTML(http.StatusInternalServerError, "error", map[string]any{})
-		c.HTML(http.StatusInternalServerError, "error", err)
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, err)
 		return
 	}
 

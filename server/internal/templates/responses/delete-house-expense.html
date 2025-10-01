@@ -1,4 +1,4 @@
-{{ define "delete-home-exp" }} {{ with .MonthlyExpense }} {{ template
+{{ define "delete-house-exp" }} {{ with .MonthlyExpense }} {{ template
 "total-card" . }} {{ end }} {{ with .HighestExpense }} {{ template
 "highest-card" . }} {{ end }}
 <span id="total" hx-swap-oob="true">{{ .MonthlyExpense.Amount }}</span>

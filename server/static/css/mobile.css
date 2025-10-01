@@ -55,6 +55,7 @@
 }
 
 @media (max-width: 767px) {
+
   #overview-section h2,
   #recent-expenses-section h2,
   .new-expense-heading {
@@ -72,7 +73,7 @@
 }
 
 @media (max-width: 767px) {
-  #dialog-modal {
+  #action-dialog {
     min-width: 90%;
     margin: 1em;
     max-height: 90vh;

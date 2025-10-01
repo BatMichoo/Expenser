@@ -1,0 +1,32 @@
+{{ define "error-dialog" }}
+<dialog
+  id="error-modal"
+  hx-swap-oob="true"
+  open
+  hx-on::after-settle="initializeDialogTimer(this, 5000)"
+>
+  <div class="modal-container">
+    <section>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        height="24px"
+        width="24px"
+      >
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <span>An error has occured!</span>
+    </section>
+    <p>{{ .Error }}</p>
+    <button type="button" onClick="hideErrorDialog()">Ok</button>
+    <progress id="countdown-progress" max="500" value="500"></progress>
+  </div>
+</dialog>
+{{ end }}

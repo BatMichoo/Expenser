@@ -22,7 +22,7 @@ type HTMXComponents struct {
 	CarExpRow          string
 	TotalCard          string
 	HighestCard        string
-	ServerError        string
+	Error              string
 	Chart              string
 	HouseSummary       string
 	CarSummary         string
@@ -38,7 +38,6 @@ type Responses struct {
 	CreateCarExp    string // CreateHomeExp is the name for the response partial after creating a home expense.
 	UpdateCarExp    string // UpdateHomeExp is the name for the response partial after updating a home expense.
 	DeleteCarExp    string // DeleteHomeExp is the name for the response partial after deleting a home expense.
-	LoginSuccess    string
 	RegisterSuccess string
 }
 
@@ -69,7 +68,7 @@ var components = &HTMXComponents{
 	EditCarExpForm:     "edit-car-exp-form",
 	TotalCard:          "total-card",
 	HighestCard:        "highest-card",
-	ServerError:        "server-error",
+	Error:              "error-dialog",
 	Chart:              "exp-chart",
 	HouseSummary:       "house-summary",
 	CarSummary:         "car-summary",
@@ -82,7 +81,6 @@ var responses = &Responses{
 	DeleteHouseExp:  "delete-house-exp",
 	CreateCarExp:    "create-car-exp",
 	DeleteCarExp:    "delete-car-exp",
-	LoginSuccess:    "login-success",
 	RegisterSuccess: "register-success",
 }
 
