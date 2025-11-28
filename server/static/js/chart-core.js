@@ -30,10 +30,18 @@ function createNewChart(config = {}) {
   const canvas = document.getElementById("chart");
   const ctx = canvas.getContext("2d");
 
+  let textColor = "#3a4763";
+
   const theme = localStorage.getItem("theme");
-  const textColor = getComputedStyle(document.documentElement).getPropertyValue(
-    `--tx-color-${theme}`,
-  );
+  // const textColor = getComputedStyle(document.documentElement).getPropertyValue(
+  //   `--text-muted`,
+  // );
+
+  if (theme === "dark") {
+    textColor = "#9eaece";
+  }
+
+  console.log(textColor);
 
   Chart.defaults.color = textColor;
 

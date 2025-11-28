@@ -1,39 +1,38 @@
 {{ define "root" }}
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="htmx-config"
-      content='{"responseHandling": [{"code": ".*", "swap": true}]}'
-    />
-    <link rel="stylesheet" href="../../../static/css/styles.css" />
-    <link rel="icon" type="image/png" href="../../../static/favicon.png" />
-    <title>Expense Tracker</title>
-  </head>
 
-  <body>
-    {{ template "header" .HeaderOpts }}
-    <div class="container">
-      <div id="tracker-content">
-        {{ if eq .TemplateName "home-page" }} {{ template "home-page"
-        .TemplateContent }} {{ else if eq .TemplateName "login-page" }} {{
-        template "login-page" .TemplateContent }} {{ else if eq .TemplateName
-        "register-page" }} {{ template "register-page" .TemplateContent }} {{
-        else }} {{ template "index-page" . }} {{ end }}
-      </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="htmx-config" content='{"responseHandling": [{"code": ".*", "swap": true}]}' />
+  <link rel="stylesheet" href="../../../static/css/styles.css" />
+  <link rel="icon" type="image/png" href="../../../static/favicon.png" />
+  <title>Expense Tracker</title>
+</head>
+
+<body>
+  {{ template "header" .HeaderOpts }}
+  <div class="container">
+    <div id="tracker-content">
+      {{ if eq .TemplateName "home-page" }} {{ template "home-page"
+      .TemplateContent }} {{ else if eq .TemplateName "login-page" }} {{
+      template "login-page" .TemplateContent }} {{ else if eq .TemplateName
+      "register-page" }} {{ template "register-page" .TemplateContent }} {{
+      else }} {{ template "index-page" . }} {{ end }}
     </div>
-    <footer>
-      <p>&copy; 2025 Expense Tracker Suite. All rights reserved.</p>
-    </footer>
-    <dialog id="action-dialog"></dialog>
-    <div id="backdrop"></div>
-    <dialog id="error-modal" hx-on::after-swap="this.show()"></dialog>
-  </body>
+  </div>
+  <footer>
+    <p>&copy; 2025 Expense Tracker Suite. All rights reserved.</p>
+  </footer>
+  <dialog id="action-dialog"></dialog>
+  <div id="backdrop"></div>
+  <dialog id="error-modal" hx-on::after-swap="this.show()"></dialog>
+</body>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="../,,/../static/js/htmx.min.js"></script>
-  <script src="../../../static/js/main.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="../,,/../static/js/htmx.min.js"></script>
+<script src="../../../static/js/main.js" defer></script>
+
 </html>
 {{ end }}

@@ -33,6 +33,12 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         setTheme("dark");
       }
+
+      // const chart = document.getElementById("chart");
+      // if (chart) {
+      //   chart.
+      //
+      // }
     });
   }
 
@@ -81,7 +87,6 @@ function showCustomDialog() {
     console.error("Dialog or Backdrop element missing.");
     return;
   }
-  backdrop.style.display = "block";
   backdrop.classList.add("blurred-content");
 
   dialog.show();
@@ -92,7 +97,6 @@ function hideCustomDialog() {
     console.error("Dialog or Backdrop element missing.");
     return;
   }
-  backdrop.style.display = "none";
   backdrop.classList.remove("blurred-content");
 
   dialog.close();

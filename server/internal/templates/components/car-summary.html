@@ -75,7 +75,14 @@
         </tr>
       </thead>
       <tbody id="recent-expenses">
-        {{ range .RecentExpenses }} {{ template "car-exp-row" . }} {{ end }}
+        {{ if .RecentExpenses }} {{ range .RecentExpenses }} {{ template
+        "car-exp-row" . }} {{ end }} {{ else }}
+        <tr>
+          <td colspan="5">
+            <p>No recent expenses found.</p>
+          </td>
+        </tr>
+        {{ end }}
       </tbody>
       <tfoot>
         <tr>

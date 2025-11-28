@@ -3,7 +3,7 @@
   id="error-modal"
   hx-swap-oob="true"
   open
-  hx-on::after-settle="initializeDialogTimer(this, 5000)"
+  hx-on::after-settle="initializeDialogTimer(this, 5000); document.getElementById('err-confirm-btn').focus()"
 >
   <div class="modal-container">
     <section>
@@ -25,7 +25,9 @@
       <span>An error has occured!</span>
     </section>
     <p>{{ .Error }}</p>
-    <button type="button" onClick="hideErrorDialog()">Ok</button>
+    <button id="err-confirm-btn" type="button" onClick="hideErrorDialog()">
+      Ok
+    </button>
     <progress id="countdown-progress" max="500" value="500"></progress>
   </div>
 </dialog>

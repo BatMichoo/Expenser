@@ -73,10 +73,13 @@
         </tr>
       </thead>
       <tbody id="recent-expenses">
-        {{ range .RecentExpenses }}
-        <!-- -->
-        {{ template "house-exp-row" . }}
-        <!-- -->
+        {{ if .RecentExpenses }} {{ range .RecentExpenses }} {{ template
+        "house-exp-row" . }} {{ end }} {{ else }}
+        <tr>
+          <td colspan="5">
+            <p>No recent expenses found.</p>
+          </td>
+        </tr>
         {{ end }}
       </tbody>
       <tfoot>

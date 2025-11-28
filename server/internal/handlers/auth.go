@@ -31,7 +31,7 @@ func (h *AuthHandler) GetRegister(c *gin.Context) {
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Pages.Register, gin.H{})
 	} else {
-		rl := &RootLayout{
+		rl := &models.RootLayout{
 			TemplateName: utilities.Templates.Pages.Register,
 			HeaderOpts:   &models.HeaderOptions{},
 		}
@@ -90,7 +90,7 @@ func (h *AuthHandler) GetLogin(c *gin.Context) {
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Pages.Login, gin.H{})
 	} else {
-		rl := &RootLayout{
+		rl := &models.RootLayout{
 			TemplateName: utilities.Templates.Pages.Login,
 			HeaderOpts:   &models.HeaderOptions{},
 		}

@@ -32,10 +32,14 @@ func (am *AuthMiddleware) extractTokenFromCookie(c *gin.Context) (string, error)
 
 func (am *AuthMiddleware) redirectToLogin(c *gin.Context) {
 	c.Header("HX-Redirect", "/login")
-	c.HTML(http.StatusOK, utilities.Templates.Components.Header, &models.HeaderOptions{
-		IsLoggedIn: false,
-		IsOOB:      true,
-	})
+	rl := &models.RootLayout{
+		TemplateName: utilities.Templates.Pages.Login,
+		HeaderOpts: &models.HeaderOptions{
+			IsLoggedIn: false,
+			IsOOB:      true,
+		},
+	}
+	c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 }
 
 // AuthMiddleware creates a middleware function that validates JWT tokens

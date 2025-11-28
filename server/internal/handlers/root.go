@@ -15,12 +15,6 @@ type RootHandler struct {
 	AS *services.AuthService
 }
 
-type RootLayout struct {
-	TemplateName    string
-	TemplateContent any
-	HeaderOpts      *models.HeaderOptions
-}
-
 func NewRootHandler(db *database.DB, as *services.AuthService) *RootHandler {
 	return &RootHandler{
 		DB: db,
@@ -36,7 +30,7 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Pages.Index, gin.H{})
 	} else {
-		rl := &RootLayout{
+		rl := &models.RootLayout{
 			TemplateName: utilities.Templates.Pages.Index,
 			HeaderOpts: &models.HeaderOptions{
 				IsLoggedIn: claims != nil,

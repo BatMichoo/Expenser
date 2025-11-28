@@ -91,7 +91,7 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 
 		c.HTML(http.StatusOK, utilities.Templates.Pages.Home, pageData)
 	} else {
-		rl := &RootLayout{
+		rl := &models.RootLayout{
 			TemplateName:    utilities.Templates.Pages.Home,
 			TemplateContent: pageData,
 			HeaderOpts: &models.HeaderOptions{
