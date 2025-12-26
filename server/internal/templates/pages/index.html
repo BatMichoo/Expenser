@@ -18,10 +18,11 @@
   <div class="container">
     <div id="tracker-content">
       {{ if eq .TemplateName "house-page" }} {{ template "house-page"
-      .TemplateContent }} {{ else if eq .TemplateName "login-page" }} {{
-      template "login-page" .TemplateContent }} {{ else if eq .TemplateName
-      "register-page" }} {{ template "register-page" .TemplateContent }} {{
-      else }} {{ template "index-page" . }} {{ end }}
+      .TemplateContent }} {{ else if eq .TemplateName "car-page" }} {{
+      template "car-page" .TemplateContent }} {{ else if eq .TemplateName
+      "login-page" }} {{ template "login-page" .TemplateContent }} {{ else if
+      eq .TemplateName "register-page" }} {{ template "register-page"
+      .TemplateContent }} {{ else }} {{ template "index-page" . }} {{ end }}
     </div>
   </div>
   <footer>

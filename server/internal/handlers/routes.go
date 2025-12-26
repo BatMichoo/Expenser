@@ -54,14 +54,16 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedCar.Use(am.AuthMiddleware())
 
 		protectedCar.GET("", carHandler.GetHome)
-		protectedCar.GET("/expenses/new", carHandler.GetCreateCarForm)
-		protectedCar.POST("/expenses", carHandler.CreateCarExpense)
-		protectedCar.GET("/expenses/edit", carHandler.GetEditCarForm)
-		protectedCar.PUT("/expenses/:id", carHandler.EditCarExpenseById)
-		protectedCar.DELETE("/expenses/:id", carHandler.DeleteCarExp)
+		protectedCar.GET("/current", carHandler.GetCurrentMonth)
+		protectedCar.GET("/search", searchHandler.GetSearch)
+		protectedCar.POST("/search", searchHandler.GetResultsCar)
 		protectedCar.GET("/chart", chartHandler.CarRoot)
 		protectedCar.GET("/chart/search", chartHandler.CarSearch)
-		// protectedCar.GET("/expenses/search", searchHandler.GetSearch)
+		protectedCar.GET("/expenses/new", carHandler.GetCreateCarForm)
+		protectedCar.POST("/expenses", carHandler.CreateCarExpense)
+		protectedCar.GET("/expenses/edit/:id", carHandler.GetEditCarForm)
+		protectedCar.PUT("/expenses/:id", carHandler.EditCarExpenseById)
+		protectedCar.GET("/expenses/delete/:id", carHandler.GetDeleteConfirm)
+		protectedCar.DELETE("/expenses/:id", carHandler.DeleteCarExp)
 	}
-
 }

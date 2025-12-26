@@ -14,10 +14,10 @@ type HTMXComponents struct {
 	Header             string // Header is the name for the application's header component.
 	Footer             string // Footer is the name for the application's footer component.
 	CreateHouseExpForm string // CreateExpForm is the name for the expense creation form component.
-	NewHouseExp        string // NewExp is the name for the new expense component (often a row or card).
-	EditHouseExpForm   string // EditExpForm is the name for the expense editing form component.
 	CreateCarExpForm   string // CreateExpForm is the name for the expense creation form component.
+	NewHouseExp        string // NewExp is the name for the new expense component (often a row or card).
 	NewCarExp          string // NewExp is the name for the new expense component (often a row or card).
+	EditHouseExpForm   string // EditExpForm is the name for the expense editing form component.
 	EditCarExpForm     string // EditExpForm is the name for the expense editing form component.
 	HouseExpRow        string
 	CarExpRow          string
@@ -29,7 +29,7 @@ type HTMXComponents struct {
 	ModalConfirm       string
 	Chart              string
 	HouseCurrent       string
-	CarSummary         string
+	CarCurrent         string
 	Dialog             string
 	Search             string
 	SearchResultsHouse string
@@ -81,7 +81,7 @@ var components = &HTMXComponents{
 	ModalConfirm:       "confirm-modal",
 	Chart:              "exp-chart",
 	HouseCurrent:       "house-current",
-	CarSummary:         "car-summary",
+	CarCurrent:         "car-current",
 	Dialog:             "dialog",
 	Search:             "search",
 	SearchResultsHouse: "search-results-house",

@@ -2,4 +2,4 @@
 "total-card" . }} {{ end }} {{ with .HighestExpense }} {{ template
 "highest-card" . }} {{ end }}
 <span id="total" hx-swap-oob="true">{{ .MonthlyExpense.Amount }}</span>
-{{ template "modal" }} {{end}}
+{{ template "success-modal" .Modal }} {{end}}

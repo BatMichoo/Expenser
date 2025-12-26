@@ -14,7 +14,7 @@
     }">
     <div>
       <label for="utilityType">Utility Type</label>
-      <select id="utilityType" name="typeID">
+      <select id="utilityType" name="typeID" required>
         <option value="">Select a Utility</option>
         {{range .}}
         <option value="{{ .ID }}">{{ .Name}}</option>

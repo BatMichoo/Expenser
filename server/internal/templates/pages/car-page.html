@@ -1,5 +1,5 @@
 {{ define "car-page" }} {{ template "car-section-buttons "}}
-<div id="section-content">{{ template "car-summary" . }}</div>
+<div id="section-content">{{ template "car-current" . }}</div>
 <script>
   function activeButtons() {
     const buttons = document.querySelectorAll(".section-button");

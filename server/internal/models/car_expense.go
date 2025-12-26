@@ -21,3 +21,13 @@ type CarExpenseType struct {
 	ID   int
 	Name string
 }
+
+// CarExpResponse is the data structure returned to the client
+// after a new expense has been successfully created.
+// It includes details of the newly created expense and updated summary data.
+type CarExpResponse struct {
+	Expense        *CarExpense     // Expense is the newly created car expense record.
+	MonthlyExpense *MonthlyExpense // MonthlyExpense provides the updated total for the current month.
+	HighestExpense *HighestExpense // HighestExpense provides the updated highest expense for the current month.
+	Modal          *ModalContent
+}

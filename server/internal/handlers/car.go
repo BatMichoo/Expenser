@@ -5,6 +5,7 @@ import (
 	"expenser/internal/models"
 	"expenser/internal/utilities"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
 	"time"
@@ -38,19 +39,6 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 	userIDstr, exists := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
-	// section := c.Query("section")
-	//
-	// if section == "chart" {
-	// 	types, _ := h.DB.GetCarExpenseTypes()
-	// 	chartData := gin.H{
-	// 		"Type":  "car",
-	// 		"Year":  year,
-	// 		"Types": types,
-	// 	}
-	// 	c.HTML(http.StatusOK, utilities.Templates.Components.Chart, chartData)
-	// 	return
-	// }
-
 	highestExpense, utilType, err := h.DB.GetHighestCarExpenseForMonth(month, userID)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Modal, err)
@@ -70,7 +58,7 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 	}
 
 	pageData := &CarData{
-		Name: "car",
+		Name: "current",
 		MonthlyExpense: &models.MonthlyExpense{
 			Amount: monthlyExpense,
 			Month:  month.String(),
@@ -85,12 +73,76 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	if isHtmxRequest {
-		// if section == "summary" {
-		// c.HTML(http.StatusOK, utilities.Templates.Components.CarSummary, pageData)
-		// return
-		// }
-
 		c.HTML(http.StatusOK, utilities.Templates.Pages.Car, pageData)
+		return
+	} else {
+		rl := &models.RootLayout{
+			TemplateName:    utilities.Templates.Pages.Car,
+			TemplateContent: pageData,
+			HeaderOpts: &models.HeaderOptions{
+				IsLoggedIn: exists,
+			},
+		}
+		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
+	}
+}
+
+func (h *CarHandler) GetCurrentMonth(c *gin.Context) {
+	dateNow := time.Now()
+	month := dateNow.Month()
+	year := dateNow.Year()
+
+	userIDstr, exists := c.Get("user_id")
+	userID, _ := userIDstr.(uuid.UUID)
+
+	highestExpense, utilType, err := h.DB.GetHighestCarExpenseForMonth(month, userID)
+	if err != nil {
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: "500: Error fetching highest car expense.",
+		}
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		return
+	}
+
+	monthlyExpense, err := h.DB.GetTotalCarExpenseForMonth(month, userID)
+	if err != nil {
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: "500: Error fetching total car expense.",
+		}
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		return
+	}
+
+	recentExpenses, err := h.DB.GetCarExpensesForMonth(month, year, userID)
+	if err != nil {
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: "500: Error fetching recent car expenses.",
+		}
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		return
+	}
+
+	pageData := &CarData{
+		Name: "current",
+		MonthlyExpense: &models.MonthlyExpense{
+			Amount: monthlyExpense,
+			Month:  month.String(),
+		},
+		HighestExpense: &models.HighestExpense{
+			Amount: highestExpense,
+			Type:   utilType,
+		},
+		RecentExpenses: recentExpenses,
+	}
+
+	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+
+	if isHtmxRequest {
+		c.HTML(http.StatusOK, utilities.Templates.Components.CarCurrent, pageData)
+		return
 	} else {
 		rl := &models.RootLayout{
 			TemplateName:    utilities.Templates.Pages.Car,
@@ -134,19 +186,21 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
+
 	date, err := time.Parse("2006-01-02", c.Request.PostFormValue("date"))
 	if err != nil {
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
+
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
 	if err != nil {
 
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
-	notes := c.Request.PostFormValue("notes")
 
+	notes := c.Request.PostFormValue("notes")
 	userIDstr, _ := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
@@ -208,7 +262,6 @@ func (h *CarHandler) GetCarExpenseById(c *gin.Context) {
 	}
 
 	exp, err := h.DB.GetCarExpenseByID(id)
-
 	if err != nil {
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
@@ -228,7 +281,7 @@ type EditCarFormData struct {
 // for editing a specific home expense.
 // It expects the expense ID to be provided as a query parameter.
 func (h *CarHandler) GetEditCarForm(c *gin.Context) {
-	id, err := strconv.Atoi(c.Query("id"))
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
@@ -271,18 +324,20 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
+
 	date, err := time.Parse("2006-01-02", c.Request.PostFormValue("date"))
 	if err != nil {
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
+
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
 	if err != nil {
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
-	notes := c.Request.PostFormValue("notes")
 
+	notes := c.Request.PostFormValue("notes")
 	editExpense := &models.CarExpense{
 		ID:            id,
 		Amount:        amount,
@@ -337,6 +392,28 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 
 // INFO: DELETE
 
+func (h *CarHandler) GetDeleteConfirm(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: "400: Bad Request. Couldn't get ID.",
+		}
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		return
+	}
+
+	content := &models.ModalConfirmContent{
+		Title:    "Are you sure you want to delete this?",
+		Method:   "DELETE",
+		Endpoint: template.URL(fmt.Sprintf("/car/expenses/%v", id)),
+		Target:   fmt.Sprintf("#exp-%v", id),
+		Message:  fmt.Sprintf("Please confirm if you want to delete expense with ID: %v", id),
+	}
+	c.HTML(http.StatusOK, utilities.Templates.Components.ModalConfirm, content)
+	return
+}
+
 // DeleteCarExp handles the HTTP DELETE request to remove a home expense by its ID.
 // After successfully deleting the expense, it updates and returns
 // the current month's total and highest expense summaries to reflect the change.
@@ -360,6 +437,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 		c.HTML(http.StatusNoContent, "", gin.H{})
 		return
 	}
+
 	timeNow := time.Now()
 	month := timeNow.Month()
 
@@ -378,8 +456,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 		return
 	}
 
-	pageData := &CarData{
-		Name: "car",
+	pageData := &models.CarExpResponse{
 		MonthlyExpense: &models.MonthlyExpense{
 			Amount: monthlyExpense,
 			Month:  month.String(),
@@ -389,6 +466,10 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 			Amount: highestExpense,
 			Type:   utilType,
 			IsOOB:  true,
+		},
+		Modal: &models.ModalContent{
+			Title:   "Successfully deleted expense!",
+			Message: fmt.Sprintf("Expense with ID: %v deleted!", id),
 		},
 	}
 
