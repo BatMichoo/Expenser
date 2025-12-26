@@ -2,17 +2,8 @@
 <div>
   <h2 class="new-expense-heading">
     Edit Expense {{ $Expense.UtilityType }}
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="28"
-      height="28"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <line x1="12" y1="1" x2="12" y2="23" />
       <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
     </svg>
@@ -22,14 +13,7 @@
       <label for="utilityType">Utility Type</label>
       <select id="utilityType" name="typeID">
         {{range .Types }}
-        <option
-          value="{{ .ID }}"
-          {{if
-          eq
-          $Expense.UtilityType
-          .Name
-          }}selected{{end}}
-        >
+        <option value="{{ .ID }}" {{if eq $Expense.UtilityType .Name }}selected{{end}}>
           {{ .Name}}
         </option>
         {{end}}
@@ -37,53 +21,27 @@
     </div>
     <div>
       <label for="amount">Amount ($)</label>
-      <input
-        type="number"
-        id="amount"
-        name="amount"
-        step="0.01"
-        min="0"
-        value="{{ $Expense.Amount }}"
-        required
-        placeholder="e.g., 75.50"
-      />
+      <input type="number" id="amount" name="amount" step="0.01" min="0" value="{{ $Expense.Amount }}" required
+        placeholder="e.g., 75.50" />
     </div>
     <div>
       <label for="expenseDate">Date</label>
-      <input
-        type="date"
-        id="expenseDate"
-        name="date"
-        required
-        value='{{ $Expense.ExpenseDate.Format "2006-01-02" }}'
-      />
+      <input type="date" id="expenseDate" name="date" required value='{{ $Expense.ExpenseDate.Format "2006-01-02" }}' />
     </div>
     <div>
       <label for="notes">Notes (Optional)</label>
-      <textarea
-        id="notes"
-        name="notes"
-        rows="3"
-        placeholder="Any extra information regarding the expense"
-      >
-        {{ $Expense.Notes }}</textarea
-      >
+      <textarea id="notes" name="notes" rows="3" placeholder="Any extra information regarding the expense">
+        {{ $Expense.Notes }}</textarea>
     </div>
     <div>
-      <button type="button" class="btn-primary" onClick="hideCustomDialog();">
-        Cancel
-      </button>
-      <button
-        type="submit"
-        class="btn-primary"
-        hx-put="/house/expenses/{{ $Expense.ID }}"
-        hx-target="#exp-{{ $Expense.ID }}"
-        hx-swap="outerHTML"
-        hx-on::after-request="if(event.detail.successful) {
-        hideCustomDialog();
-    }"
-      >
+      <button type="submit" class="btn-primary" hx-put="/house/expenses/{{ $Expense.ID }}"
+        hx-target="#exp-{{ $Expense.ID }}" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) {
+        hideDialog();
+    }">
         Edit Expense
+      </button>
+      <button type="button" class="btn-primary" onClick="hideDialog();">
+        Cancel
       </button>
     </div>
   </form>

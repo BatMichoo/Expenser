@@ -82,7 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
 const dialog = document.getElementById("action-dialog");
 const backdrop = document.getElementById("backdrop");
 
-function showCustomDialog() {
+function showDialog() {
   if (!dialog || !backdrop) {
     console.error("Dialog or Backdrop element missing.");
     return;
@@ -92,7 +92,7 @@ function showCustomDialog() {
   dialog.show();
 }
 
-function hideCustomDialog() {
+function hideDialog() {
   if (!dialog || !backdrop) {
     console.error("Dialog or Backdrop element missing.");
     return;
@@ -101,17 +101,19 @@ function hideCustomDialog() {
 
   dialog.close();
   dialog.textContent = "";
+
+  console.log("Hiding dialog!");
 }
 
 // Backdrop Click Listener
 if (backdrop) {
-  backdrop.addEventListener("click", hideCustomDialog);
+  backdrop.addEventListener("click", hideDialog);
 }
 
 // --- Progress Bar Countdown Logic ---
 
 // Function to start the progress bar countdown
-function startProgressCountdown(progressElement, durationMs, dialogElement) {
+function startProgressCountdown(progressElement, dialogElement, durationMs) {
   const totalDurationMs = durationMs || 5000;
   const intervalTimeMs = 10;
   const maxVal = totalDurationMs / intervalTimeMs;
@@ -146,17 +148,23 @@ function startProgressCountdown(progressElement, durationMs, dialogElement) {
   progressElement.countdownTimer = interval;
 }
 
-function initializeDialogTimer(dialogElement, durationMs) {
-  const progressElement = dialogElement.querySelector("#countdown-progress");
+function showModal(modal, durationMs) {
+  modal.show();
 
+  const btn = document.getElementById("confirm-btn");
+  if (btn) {
+    btn.focus();
+  }
+
+  const progressElement = modal.querySelector("#countdown-progress");
   if (progressElement) {
-    startProgressCountdown(progressElement, durationMs, dialogElement);
+    startProgressCountdown(progressElement, modal, durationMs);
   }
 }
 
 // Function to safely hide the error dialog (called by the manual Close button)
-function hideErrorDialog() {
-  const dialog = document.getElementById("error-modal");
+function hideModal() {
+  const dialog = document.getElementById("modal");
   if (dialog) {
     // Find the progress bar and clear its timer if running
     const progressElement = dialog.querySelector("#countdown-progress");

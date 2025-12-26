@@ -7,6 +7,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="htmx-config" content='{"responseHandling": [{"code": ".*", "swap": true}]}' />
   <link rel="stylesheet" href="../../../static/css/styles.css" />
+  <link rel="stylesheet" href="../../../static/css/mobile.css" />
+  <link rel="stylesheet" href="../../../static/css/tablet.css" />
   <link rel="icon" type="image/png" href="../../../static/favicon.png" />
   <title>Expense Tracker</title>
 </head>
@@ -15,7 +17,7 @@
   {{ template "header" .HeaderOpts }}
   <div class="container">
     <div id="tracker-content">
-      {{ if eq .TemplateName "home-page" }} {{ template "home-page"
+      {{ if eq .TemplateName "house-page" }} {{ template "house-page"
       .TemplateContent }} {{ else if eq .TemplateName "login-page" }} {{
       template "login-page" .TemplateContent }} {{ else if eq .TemplateName
       "register-page" }} {{ template "register-page" .TemplateContent }} {{
@@ -25,9 +27,9 @@
   <footer>
     <p>&copy; 2025 Expense Tracker Suite. All rights reserved.</p>
   </footer>
-  <dialog id="action-dialog"></dialog>
+  <dialog id="action-dialog" hx-on::after-settle="showDialog(this)"></dialog>
   <div id="backdrop"></div>
-  <dialog id="error-modal" hx-on::after-swap="this.show()"></dialog>
+  <dialog id="modal" hx-on::after-settle="showModal(this)"></dialog>
 </body>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

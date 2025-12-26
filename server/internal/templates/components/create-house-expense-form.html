@@ -8,7 +8,10 @@
       <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
     </svg>
   </h2>
-  <form class="new-expense-form" hx-post="/house/expenses" hx-target="#recent-expenses" hx-swap="afterbegin">
+  <form class="new-expense-form" hx-post="/house/expenses" hx-target="#recent-expenses" hx-swap="afterbegin"
+    hx-on::after-request="if(event.detail.successful) {
+        hideDialog();
+    }">
     <div>
       <label for="utilityType">Utility Type</label>
       <select id="utilityType" name="typeID">
@@ -31,10 +34,8 @@
       <textarea id="notes" name="notes" rows="3" placeholder="e.g., Q2 2025 bill"></textarea>
     </div>
     <div>
-      <button type="submit" class="btn-primary" h-on:htmx:onsuccess="hideCustomDialog()">
-        Add Expense
-      </button>
-      <button type="button" class="btn-primary" onClick="hideCustomDialog();">
+      <button type="submit" class="btn-primary">Add Expense</button>
+      <button type="button" class="btn-primary" onClick="hideDialog();">
         Cancel
       </button>
     </div>

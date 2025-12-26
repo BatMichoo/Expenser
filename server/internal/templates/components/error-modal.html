@@ -1,0 +1,18 @@
+{{ define "error-modal" }}
+<dialog id="modal" hx-swap-oob="true" open hx-on::after-settle="showModal(this)">
+  <div class="modal-container error">
+    <section>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round" height="24px" width="24px">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <span>{{ .Title }}</span>
+    </section>
+    <p>{{ .Message}}</p>
+    <button id="confirm-btn" type="button" onClick="hideModal()">Ok</button>
+    <progress id="countdown-progress" max="500" value="500"></progress>
+  </div>
+</dialog>
+{{ end }}

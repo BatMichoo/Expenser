@@ -1,0 +1,17 @@
+{{ define "success-modal" }}
+<dialog id="modal" hx-swap-oob="true" open hx-on::after-settle="showModal(this)">
+  <div class="modal-container success">
+    <section>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"
+        height="24px" width="24px" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M9 12l2 2 4-4"></path>
+      </svg>
+      <span>{{ .Title}}</span>
+    </section>
+    <p>{{ .Message}}</p>
+    <button id="confirm-btn" type="button" onClick="hideModal()">Ok</button>
+    <progress id="countdown-progress" max="200" value="200"></progress>
+  </div>
+</dialog>
+{{ end }}

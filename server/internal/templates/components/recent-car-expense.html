@@ -5,7 +5,7 @@
   <td>{{ printf "%.2f" .Amount }}</td>
   <td>{{ .Notes }}</td>
   <td>
-    <button class="table-action-button blue" hx-get="/car/expenses/edit?id={{ .ID }}" hx-target="#dialog-modal">
+    <button class="table-action-button blue" hx-get="/car/expenses/edit?id={{ .ID }}" hx-target="#action-dialog">
       Edit
     </button>
     <button class="table-action-button red" hx-confirm="Are you sure you want to delete this expense?"

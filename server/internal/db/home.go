@@ -40,8 +40,9 @@ func (db *DB) GetHouseUtilityTypes() (*[]models.HomeUtilityType, error) {
 	return &expenseTypes, nil
 }
 
-func (db *DB) GetTotalHouseExpenseForMonth(month time.Month, userId uuid.UUID) (float64, error) {
-	currentYear := time.Now().Year()
+func (db *DB) GetTotalHouseExpenseForMonth(date time.Time, userId uuid.UUID) (float64, error) {
+	year := date.Year()
+	month := date.Month()
 	query := `
 		SELECT SUM(amount) FROM home_expenses
 		WHERE EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2 AND created_by = $3
@@ -50,7 +51,7 @@ func (db *DB) GetTotalHouseExpenseForMonth(month time.Month, userId uuid.UUID) (
 	var totalAmount sql.NullFloat64
 	err := db.conn.QueryRow(query,
 		int(month),
-		currentYear,
+		year,
 		userId,
 	).Scan(&totalAmount)
 

@@ -1,0 +1,10 @@
+{{ define "search-results-house" }} {{ if .Expenses }} {{ range .Expenses }} {{
+template "house-exp-row" . }} {{ end }} {{ else }}
+<tr>
+  <td colspan="5">
+    <p>No recent expenses found.</p>
+  </td>
+</tr>
+{{ end }}
+<span id="total" hx-swap-oob="true">{{ printf "%.2f" .Total }}</span>
+{{ end }}

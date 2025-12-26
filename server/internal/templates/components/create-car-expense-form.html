@@ -10,7 +10,7 @@
   </h2>
   <form class="new-expense-form" hx-post="/car/expenses" hx-target="#recent-expenses" hx-swap="afterbegin"
     hx-on::after-request="if(event.detail.successful) {
-        hideCustomDialog();
+        hideDialog();
     }">
     <div>
       <label for="utilityType">Expense Type</label>
@@ -35,7 +35,7 @@
     </div>
     <div>
       <button type="submit" class="btn-primary">Add Expense</button>
-      <button type="button" class="btn-primary" onClick="hideCustomDialog();">
+      <button type="button" class="btn-primary" onClick="hideDialog();">
         Cancel
       </button>
     </div>

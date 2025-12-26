@@ -1,0 +1,21 @@
+{{ define "house-page" }} {{ template "house-section-buttons "}}
+<div id="section-content">{{ template "house-current" . }}</div>
+<script>
+  function activeButtons() {
+    const buttons = document.querySelectorAll(".section-button");
+    for (const button of buttons) {
+      button.addEventListener("click", () => {
+        buttons.forEach((b) => {
+          if (b.classList.contains("active")) {
+            b.classList.remove("active");
+          }
+        });
+
+        button.classList.add("active");
+      });
+    }
+  }
+
+  activeButtons();
+</script>
+{{ end }}

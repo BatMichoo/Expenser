@@ -14,6 +14,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 	as := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration)
 
 	rootHandler := NewRootHandler(db, as)
+	router.NoRoute(rootHandler.NotFound)
 	router.GET("/", rootHandler.GetRoot)
 
 	authHandler := NewAuthHandler(db, as)
@@ -26,6 +27,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 
 	am := middleware.NewAuthMiddleware(as)
 	chartHandler := NewChartHandler(db)
+	searchHandler := NewSearchHandler(db)
 
 	houseHandler := NewHouseHandler(db)
 	protectedHouse := router.Group("/house")
@@ -33,12 +35,17 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedHouse.Use(am.AuthMiddleware())
 
 		protectedHouse.GET("", houseHandler.GetHome)
+		protectedHouse.GET("/current", houseHandler.GetCurrentMonth)
+		protectedHouse.GET("/search", searchHandler.GetSearch)
+		protectedHouse.POST("/search", searchHandler.GetResultsHouse)
+		protectedHouse.GET("/chart", chartHandler.HouseRoot)
+		protectedHouse.GET("/chart/search", chartHandler.HouseSearch)
 		protectedHouse.GET("/expenses/new", houseHandler.GetCreateHouseForm)
 		protectedHouse.POST("/expenses", houseHandler.CreateHouseExpense)
-		protectedHouse.GET("/expenses/edit", houseHandler.GetEditHouseForm)
+		protectedHouse.GET("/expenses/edit/:id", houseHandler.GetEditHouseForm)
 		protectedHouse.PUT("/expenses/:id", houseHandler.EditHouseExpenseById)
+		protectedHouse.GET("/expenses/delete/:id", houseHandler.GetDeleteConfirm)
 		protectedHouse.DELETE("/expenses/:id", houseHandler.DeleteHouseExp)
-		protectedHouse.GET("/chart/search", chartHandler.HouseSearch)
 	}
 
 	carHandler := NewCarHandler(db)
@@ -52,7 +59,9 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedCar.GET("/expenses/edit", carHandler.GetEditCarForm)
 		protectedCar.PUT("/expenses/:id", carHandler.EditCarExpenseById)
 		protectedCar.DELETE("/expenses/:id", carHandler.DeleteCarExp)
+		protectedCar.GET("/chart", chartHandler.CarRoot)
 		protectedCar.GET("/chart/search", chartHandler.CarSearch)
+		// protectedCar.GET("/expenses/search", searchHandler.GetSearch)
 	}
 
 }

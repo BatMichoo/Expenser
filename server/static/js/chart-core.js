@@ -43,7 +43,8 @@ function createNewChart(config = {}) {
 
   console.log(textColor);
 
-  Chart.defaults.color = textColor;
+  // Chart.defaults.color = textColor;
+  // Chart.defaults.plugins.legend.labels.color = textColor;
 
   const chart = new Chart(ctx, {
     type: "bar",
@@ -175,16 +176,15 @@ function updateChart(config) {
 }
 
 function updateLabels(chart, config) {
-  const theme = localStorage.getItem("theme");
-  const legendTextColor = getComputedStyle(
-    document.documentElement,
-  ).getPropertyValue(`--tx-color-${theme}`);
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue(
+    `--text-muted`,
+  );
   const data = chart.data.datasets[0].data;
   const labels = chart.data.labels;
   const colors = chart.data.datasets[0].backgroundColor;
   return labels.map((label, i) => ({
     text: label,
-    fontColor: legendTextColor,
+    fontColor: textColor,
     fillStyle: colors[i],
     strokeStyle: colors[i],
     lineWidth: 1,

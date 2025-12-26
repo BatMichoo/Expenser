@@ -39,3 +39,25 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
 }
+
+func (h *RootHandler) NotFound(c *gin.Context) {
+	cookie, _ := c.Cookie("auth_token")
+	claims, _ := h.AS.ValidateToken(cookie)
+	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+
+	if isHtmxRequest {
+		content := &models.ModalContent{
+			Title:   "404: Page not found!",
+			Message: "The requested page does not exist",
+		}
+		c.HTML(http.StatusNotFound, utilities.Templates.Components.ModalError, content)
+	} else {
+		rl := &models.RootLayout{
+			TemplateName: utilities.Templates.Pages.Index,
+			HeaderOpts: &models.HeaderOptions{
+				IsLoggedIn: claims != nil,
+			},
+		}
+		c.HTML(http.StatusNotFound, utilities.Templates.Root, rl)
+	}
+}

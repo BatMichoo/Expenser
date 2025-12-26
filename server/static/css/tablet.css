@@ -1,44 +1,25 @@
-@media (min-width: 767px) {
-  .container {
-    padding: 2em;
-  }
-}
+/* @media (min-width: 767px) { */
+/* } */
+/**/
+/* @media (min-width: 767px) { */
+/*   .section-button { */
+/*     font-size: 1.2em; */
+/*   } */
+/* } */
 
-@media (min-width: 767px) {
-  #tracker-content {
-    padding: 2em;
+@media (min-width: 767px) and (max-width: 1400px) {
+  .card {
+    min-height: 15vh;
   }
-}
 
-@media (min-width: 767px) {
   .new-expense-form {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .new-expense-form > :last-child {
+  .new-expense-form> :last-child {
     grid-column-start: 1;
     grid-column-end: 3;
     display: flex;
     gap: 1em;
-  }
-}
-
-@media (min-width: 767px) {
-  .expenses-table tbody :last-child td {
-    border-bottom: 2px solid var(--footer-color-dark);
-  }
-
-  body.dark .expenses-table tbody :last-child td {
-    border-bottom: 2px solid var(--dark-tracker-nav-button-active-border);
-  }
-
-  body.dark .expenses-table thead :last-child th {
-    border-bottom: 2px solid var(--dark-tracker-nav-button-active-border);
-  }
-}
-
-@media (min-width: 767px) {
-  .section-button {
-    font-size: 1.2em;
   }
 }

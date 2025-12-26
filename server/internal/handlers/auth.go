@@ -44,21 +44,33 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	var regData models.UserRegistration
 
 	if err := c.ShouldBind(&regData); err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, gin.H{"Error": "Invalid request data: " + err.Error()})
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: "400: Invalid request data.",
+		}
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	// Check if user already exists
 	existingUser, _ := h.DB.GetUserByUsername(regData.Username)
 	if existingUser != nil {
-		c.HTML(http.StatusConflict, utilities.Templates.Components.Error, gin.H{"Error": "Username already exists"})
+		content := &models.ModalContent{
+			Title:   "Username already exists!",
+			Message: "400: Invalid request data.",
+		}
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(regData.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, gin.H{"Error": "Failed to process password"})
+		content := &models.ModalContent{
+			Title:   "Failed to process password!",
+			Message: "500: Internal server error.",
+		}
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
@@ -69,14 +81,22 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	if err := h.DB.CreateUser(user); err != nil {
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, gin.H{"Error": "Failed to create user account"})
+		content := &models.ModalContent{
+			Title:   "Failed to create user account!",
+			Message: "500: Internal server error.",
+		}
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	// Generate JWT token
 	token, err := h.AuthService.GenerateToken(user)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, gin.H{"Error": "Failed to generate authentication token"})
+		content := &models.ModalContent{
+			Title:   "Failed to generate authentication token!",
+			Message: "500: Internal server error.",
+		}
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
@@ -103,27 +123,43 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var loginData models.UserLogin
 
 	if err := c.ShouldBind(&loginData); err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, gin.H{"Error": "Invalid request data: " + err.Error()})
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: "400: Invalid request data.",
+		}
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	// Get user from database
 	user, err := h.DB.GetUserByUsername(loginData.Username)
 	if err != nil {
-		c.HTML(http.StatusUnauthorized, utilities.Templates.Components.Error, gin.H{"Error": "Invalid username or password"})
+		content := &models.ModalContent{
+			Title:   "Invalid credentials!",
+			Message: "401: Unauthorized.",
+		}
+		c.HTML(http.StatusUnauthorized, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginData.Password)); err != nil {
-		c.HTML(http.StatusUnauthorized, utilities.Templates.Components.Error, gin.H{"Error": "Invalid username or password"})
+		content := &models.ModalContent{
+			Title:   "Invalid credentials!",
+			Message: "401: Unauthorized.",
+		}
+		c.HTML(http.StatusUnauthorized, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	// Generate JWT token
 	token, err := h.AuthService.GenerateToken(user)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, gin.H{"Error": "Failed to generate authentication token"})
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: "500: Failed to get authentication token.",
+		}
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
 	}
 

@@ -457,7 +457,7 @@ func TestGetTotalHomeExpenseMonth(t *testing.T) {
 		{
 			name: "One Expense for month",
 			funcToTest: func(userId uuid.UUID) (float64, error) {
-				return testDB.GetTotalHouseExpenseForMonth(expenseDate.Month(), userId)
+				return testDB.GetTotalHouseExpenseForMonth(expenseDate, userId)
 			},
 			setup: func(t *testing.T) {
 				testDB.CreateUser(TestUserRegisterModel)
@@ -501,7 +501,7 @@ func TestGetTotalHomeExpenseMonth(t *testing.T) {
 		{
 			name: "No Expenses for month",
 			funcToTest: func(userId uuid.UUID) (float64, error) {
-				return testDB.GetTotalHouseExpenseForMonth(expenseDate.Month(), userId)
+				return testDB.GetTotalHouseExpenseForMonth(expenseDate, userId)
 			},
 			setup: func(t *testing.T) {
 				testDB.CreateUser(TestUserRegisterModel)

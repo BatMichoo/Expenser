@@ -5,7 +5,8 @@ type Pages struct {
 	Index    string // Index is the name for the main index page template.
 	Register string
 	Login    string
-	Home     string // Home is the name for the expense page template.
+	House    string // Home is the name for the expense page template.
+	Car      string
 }
 
 // HTMXComponents defines the names for reusable HTMX-specific UI components.
@@ -22,11 +23,16 @@ type HTMXComponents struct {
 	CarExpRow          string
 	TotalCard          string
 	HighestCard        string
-	Error              string
-	Chart              string
-	HouseSummary       string
-	CarSummary         string
 	Modal              string
+	ModalSuccess       string
+	ModalError         string
+	ModalConfirm       string
+	Chart              string
+	HouseCurrent       string
+	CarSummary         string
+	Dialog             string
+	Search             string
+	SearchResultsHouse string
 }
 
 // Responses defines the names for specific HTMX partial responses.
@@ -54,7 +60,8 @@ var pages = &Pages{
 	Index:    "index-page",
 	Register: "register-page",
 	Login:    "login-page",
-	Home:     "home-page",
+	House:    "house-page",
+	Car:      "car-page",
 }
 
 var components = &HTMXComponents{
@@ -68,11 +75,16 @@ var components = &HTMXComponents{
 	EditCarExpForm:     "edit-car-exp-form",
 	TotalCard:          "total-card",
 	HighestCard:        "highest-card",
-	Error:              "error-dialog",
-	Chart:              "exp-chart",
-	HouseSummary:       "house-summary",
-	CarSummary:         "car-summary",
 	Modal:              "modal",
+	ModalSuccess:       "success-modal",
+	ModalError:         "error-modal",
+	ModalConfirm:       "confirm-modal",
+	Chart:              "exp-chart",
+	HouseCurrent:       "house-current",
+	CarSummary:         "car-summary",
+	Dialog:             "dialog",
+	Search:             "search",
+	SearchResultsHouse: "search-results-house",
 }
 
 // responses initializes the Responses struct with specific template identifiers.

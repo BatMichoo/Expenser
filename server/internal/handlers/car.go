@@ -4,6 +4,7 @@ import (
 	database "expenser/internal/db"
 	"expenser/internal/models"
 	"expenser/internal/utilities"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,9 +15,9 @@ import (
 
 type CarData struct {
 	Name           string
-	MonthlyExpense *MonthlyExpense      // MonthlyExpense summarizes the total spending for the current month.
-	HighestExpense *HighestExpense      // HighestExpense identifies the single largest expense in the current month.
-	RecentExpenses *[]models.CarExpense // RecentExpenses lists individual expenses for the current month.
+	MonthlyExpense *models.MonthlyExpense // MonthlyExpense summarizes the total spending for the current month.
+	HighestExpense *models.HighestExpense // HighestExpense identifies the single largest expense in the current month.
+	RecentExpenses *[]models.CarExpense   // RecentExpenses lists individual expenses for the current month.
 }
 
 type CarHandler struct {
@@ -37,44 +38,44 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 	userIDstr, exists := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
-	section := c.Query("section")
-
-	if section == "chart" {
-		types, _ := h.DB.GetCarExpenseTypes()
-		chartData := gin.H{
-			"Type":  "car",
-			"Year":  year,
-			"Types": types,
-		}
-		c.HTML(http.StatusOK, utilities.Templates.Components.Chart, chartData)
-		return
-	}
+	// section := c.Query("section")
+	//
+	// if section == "chart" {
+	// 	types, _ := h.DB.GetCarExpenseTypes()
+	// 	chartData := gin.H{
+	// 		"Type":  "car",
+	// 		"Year":  year,
+	// 		"Types": types,
+	// 	}
+	// 	c.HTML(http.StatusOK, utilities.Templates.Components.Chart, chartData)
+	// 	return
+	// }
 
 	highestExpense, utilType, err := h.DB.GetHighestCarExpenseForMonth(month, userID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	monthlyExpense, err := h.DB.GetTotalCarExpenseForMonth(month, userID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	recentExpenses, err := h.DB.GetCarExpensesForMonth(month, year, userID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	pageData := &CarData{
 		Name: "car",
-		MonthlyExpense: &MonthlyExpense{
+		MonthlyExpense: &models.MonthlyExpense{
 			Amount: monthlyExpense,
 			Month:  month.String(),
 		},
-		HighestExpense: &HighestExpense{
+		HighestExpense: &models.HighestExpense{
 			Amount: highestExpense,
 			Type:   utilType,
 		},
@@ -84,15 +85,15 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	if isHtmxRequest {
-		if section == "summary" {
-			c.HTML(http.StatusOK, utilities.Templates.Components.CarSummary, pageData)
-			return
-		}
+		// if section == "summary" {
+		// c.HTML(http.StatusOK, utilities.Templates.Components.CarSummary, pageData)
+		// return
+		// }
 
-		c.HTML(http.StatusOK, utilities.Templates.Pages.Home, pageData)
+		c.HTML(http.StatusOK, utilities.Templates.Pages.Car, pageData)
 	} else {
 		rl := &models.RootLayout{
-			TemplateName:    utilities.Templates.Pages.Home,
+			TemplateName:    utilities.Templates.Pages.Car,
 			TemplateContent: pageData,
 			HeaderOpts: &models.HeaderOptions{
 				IsLoggedIn: exists,
@@ -105,7 +106,7 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 func (h *CarHandler) GetCreateCarForm(c *gin.Context) {
 	expTypes, err := h.DB.GetCarExpenseTypes()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Modal, err)
 		return
 	}
 
@@ -116,9 +117,10 @@ func (h *CarHandler) GetCreateCarForm(c *gin.Context) {
 // after a new expense has been successfully created.
 // It includes details of the newly created expense and updated summary data.
 type CreateCarExpResponse struct {
-	Expense        *models.CarExpense // Expense is the newly created car expense record.
-	MonthlyExpense *MonthlyExpense    // MonthlyExpense provides the updated total for the current month.
-	HighestExpense *HighestExpense    // HighestExpense provides the updated highest expense for the current month.
+	Expense        *models.CarExpense     // Expense is the newly created car expense record.
+	MonthlyExpense *models.MonthlyExpense // MonthlyExpense provides the updated total for the current month.
+	HighestExpense *models.HighestExpense // HighestExpense provides the updated highest expense for the current month.
+	Modal          *models.ModalContent
 }
 
 // CreateCarExpense handles the HTTP POST request to create a new home expense.
@@ -129,18 +131,18 @@ type CreateCarExpResponse struct {
 func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 	expTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 	date, err := time.Parse("2006-01-02", c.Request.PostFormValue("date"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
 	if err != nil {
 
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 	notes := c.Request.PostFormValue("notes")
@@ -158,7 +160,7 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 
 	err = h.DB.CreateCarExpense(newExpense)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
@@ -166,27 +168,31 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 
 	highestExp, expType, err := h.DB.GetHighestCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	montlyTotal, err := h.DB.GetTotalCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	crExpResp := &CreateCarExpResponse{
 		Expense: newExpense,
-		HighestExpense: &HighestExpense{
+		HighestExpense: &models.HighestExpense{
 			Amount: highestExp,
 			Type:   expType,
 			IsOOB:  true,
 		},
-		MonthlyExpense: &MonthlyExpense{
+		MonthlyExpense: &models.MonthlyExpense{
 			Amount: montlyTotal,
 			Month:  timeNow.Month().String(),
 			IsOOB:  true,
+		},
+		Modal: &models.ModalContent{
+			Title:   "Successful expense creation.",
+			Message: fmt.Sprintf("%s: %v BGN", newExpense.Type, newExpense.Amount),
 		},
 	}
 
@@ -197,14 +203,14 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 func (h *CarHandler) GetCarExpenseById(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	exp, err := h.DB.GetCarExpenseByID(id)
 
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
@@ -224,19 +230,19 @@ type EditCarFormData struct {
 func (h *CarHandler) GetEditCarForm(c *gin.Context) {
 	id, err := strconv.Atoi(c.Query("id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	exp, err := h.DB.GetCarExpenseByID(id)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	expTypes, err := h.DB.GetCarExpenseTypes()
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
@@ -256,23 +262,23 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) {
 func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	expTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 	date, err := time.Parse("2006-01-02", c.Request.PostFormValue("date"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 	notes := c.Request.PostFormValue("notes")
@@ -287,7 +293,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 
 	err = h.DB.EditCarExpense(editExpense)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
@@ -298,27 +304,31 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 
 	highestExp, expType, err := h.DB.GetHighestCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	montlyTotal, err := h.DB.GetTotalCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	edExpResp := &CreateCarExpResponse{
 		Expense: editExpense,
-		HighestExpense: &HighestExpense{
+		HighestExpense: &models.HighestExpense{
 			Amount: highestExp,
 			Type:   expType,
 			IsOOB:  true,
 		},
-		MonthlyExpense: &MonthlyExpense{
+		MonthlyExpense: &models.MonthlyExpense{
 			Amount: montlyTotal,
 			Month:  timeNow.Month().String(),
 			IsOOB:  true,
+		},
+		Modal: &models.ModalContent{
+			Title:   "Successful expense update.",
+			Message: fmt.Sprintf("%s: %v BGN", editExpense.Type, editExpense.Amount),
 		},
 	}
 
@@ -335,13 +345,13 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	res, err := h.DB.DeleteCarExpense(id)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
 		return
 	}
 
@@ -358,24 +368,24 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 
 	monthlyExpense, err := h.DB.GetTotalCarExpenseForMonth(month, userID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	highestExpense, utilType, err := h.DB.GetHighestCarExpenseForMonth(month, userID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Error, err)
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Modal, err)
 		return
 	}
 
 	pageData := &CarData{
 		Name: "car",
-		MonthlyExpense: &MonthlyExpense{
+		MonthlyExpense: &models.MonthlyExpense{
 			Amount: monthlyExpense,
 			Month:  month.String(),
 			IsOOB:  true,
 		},
-		HighestExpense: &HighestExpense{
+		HighestExpense: &models.HighestExpense{
 			Amount: highestExpense,
 			Type:   utilType,
 			IsOOB:  true,
