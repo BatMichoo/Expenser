@@ -7,7 +7,7 @@
   </p>
   <p>
     If you are not redirected automatically,
-    <a href="/">click here to proceed</a>.
+    <a href="./">click here to proceed</a>.
   </p>
 
   <script>
@@ -24,13 +24,13 @@
 
       if (countdown <= 0) {
         clearInterval(intervalId); // Stop the countdown
-        window.location.href = "/"; // Perform the redirect
+        window.location.href = "./"; // Perform the redirect
       }
     }, 1000); // Every 1000 milliseconds (1 second)
 
     // Optional: A meta refresh tag for basic fallback (less flexible but works without JS)
     // This should be in the <head> if it's a full page, but included here for completeness
-    // <meta http-equiv="refresh" content="5;url=/login">
+    // <meta http-equiv="refresh" content="5;url=./login">
   </script>
 </div>
 {{ end }}

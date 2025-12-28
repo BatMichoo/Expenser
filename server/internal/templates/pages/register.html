@@ -1,7 +1,7 @@
 {{ define "register-page"}}
 <div class="register-form-container">
   <h2>Register New Account</h2>
-  <form hx-post="/register" hx-target="#tracker-content">
+  <form hx-post="./register" hx-target="#tracker-content">
     <div class="form-group">
       <label for="username">Username:</label>
       <input type="text" id="username" name="username" class="form-control" placeholder="Choose a username"

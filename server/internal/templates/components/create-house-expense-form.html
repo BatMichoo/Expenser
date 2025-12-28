@@ -8,7 +8,7 @@
       <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
     </svg>
   </h2>
-  <form class="new-expense-form" hx-post="/house/expenses" hx-target="#recent-expenses" hx-swap="afterbegin"
+  <form class="new-expense-form" hx-post="./house/expenses" hx-target="#recent-expenses" hx-swap="afterbegin"
     hx-on::after-request="if(event.detail.successful) {
         hideDialog();
     }">

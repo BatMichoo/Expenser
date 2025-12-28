@@ -35,7 +35,7 @@
         }}</textarea>
     </div>
     <div>
-      <button type="submit" class="btn-primary" hx-put="/car/expenses/{{ $Expense.ID }}"
+      <button type="submit" class="btn-primary" hx-put="./car/expenses/{{ $Expense.ID }}"
         hx-target="#exp-{{ $Expense.ID }}" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) {
         hideDialog();
     }">

@@ -45,10 +45,16 @@ func (as *AuthService) SetCookie(t *Token, c *gin.Context) {
 		domain = "localhost"
 	}
 
-	secure := false
+	secure := true
 	httpOnly := true
 
-	c.SetCookie("auth_token", t.Value, int(t.Duration.Seconds()), "/", domain, secure, httpOnly)
+	prefix := c.Request.Header.Get("X-Forwarded-Prefix")
+	if prefix == "" {
+		prefix = "/expenser"
+	}
+	url := prefix
+
+	c.SetCookie("auth_token", t.Value, int(t.Duration.Seconds()), url, domain, secure, httpOnly)
 }
 
 // GenerateToken creates a new JWT token for the given user

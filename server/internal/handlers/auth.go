@@ -164,21 +164,30 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	h.AuthService.SetCookie(token, c)
-	c.Header("HX-Redirect", "/")
+	c.Header("HX-Redirect", "./")
 	c.Status(http.StatusOK)
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
+	prefix := c.Request.Header.Get("X-Forwarded-Prefix")
+	if prefix == "" {
+		prefix = "/expenser"
+	}
+	cookiePath := prefix
+
+	secure := true
+	httpOnly := true
+
 	c.SetCookie(
 		"auth_token",
 		"",
 		-1,
-		"/",
+		cookiePath,
 		"",
-		false,
-		true,
+		secure,
+		httpOnly,
 	)
 
-	c.Header("HX-Redirect", "/")
+	c.Header("HX-Redirect", "./")
 	c.Status(http.StatusOK)
 }

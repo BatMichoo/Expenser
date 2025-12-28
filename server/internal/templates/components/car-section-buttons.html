@@ -1,18 +1,18 @@
 {{ define "car-section-buttons "}}
 <ul id="section-list">
   <li>
-    <button type="button" hx-get="/car/current" hx-target="#section-content"
+    <button type="button" hx-get="./car/current" hx-target="#section-content"
       class="tracker-nav-button section-button active">
       Current
     </button>
   </li>
   <li>
-    <button type="button" hx-get="/car/search" hx-target="#section-content" class="tracker-nav-button section-button">
+    <button type="button" hx-get="./car/search" hx-target="#section-content" class="tracker-nav-button section-button">
       Search
     </button>
   </li>
   <li>
-    <button type="button" hx-get="/car/chart" hx-target="#section-content" class="tracker-nav-button section-button">
+    <button type="button" hx-get="./car/chart" hx-target="#section-content" class="tracker-nav-button section-button">
       Chart
     </button>
   </li>

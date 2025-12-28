@@ -48,9 +48,24 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 
   const setActiveTrackerNavButton = (path) => {
+    // Get the prefix from the base tag, e.g., "/expenser"
+    const baseHref =
+      document.querySelector("base")?.getAttribute("href") || "/";
+    const prefix = baseHref.replace(/\/$/, "");
+
+    // Remove the prefix from the current path to get the "inner" path
+    // e.g., "/expenser/settings" -> "/settings"
+    let internalPath = path;
+    if (prefix && internalPath.startsWith(prefix)) {
+      internalPath = internalPath.substring(prefix.length);
+    }
+
+    // Ensure internalPath starts with / and ends without /
+    if (!internalPath.startsWith("/")) internalPath = "/" + internalPath;
+    const normalizedPath = internalPath.replace(/\/$/, "");
     trackerNavButtons.forEach((button) => {
       const buttonPath = button.getAttribute("data-path");
-      const normalizedPath = path.replace(/\/$/, "");
+      const normalizedPath = internalPath.replace(/\/$/, "");
 
       if (
         buttonPath === normalizedPath ||

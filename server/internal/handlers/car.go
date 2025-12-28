@@ -406,7 +406,7 @@ func (h *CarHandler) GetDeleteConfirm(c *gin.Context) {
 	content := &models.ModalConfirmContent{
 		Title:    "Are you sure you want to delete this?",
 		Method:   "DELETE",
-		Endpoint: template.URL(fmt.Sprintf("/car/expenses/%v", id)),
+		Endpoint: template.URL(fmt.Sprintf("./car/expenses/%v", id)),
 		Target:   fmt.Sprintf("#exp-%v", id),
 		Message:  fmt.Sprintf("Please confirm if you want to delete expense with ID: %v", id),
 	}
