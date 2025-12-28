@@ -10,7 +10,7 @@
       <rect width="7" height="5" x="3" y="16" rx="1" />
     </svg>
   </h2>
-  <form id="search-form" hx-target="#results" hx-post="./house/search">
+  <form id="search-form" hx-target="#results" hx-post="./{{ if .IsCar }}car{{ else }}house{{ end }}/search">
     <div>
       <label for="date">Date</label>
       <input type="month" id="date" name="date" value="{{ .CurrentMonth }}" />
@@ -34,7 +34,7 @@
         <thead>
           <tr>
             <th>Date</th>
-            <th>Utility</th>
+            <th>{{ if .IsCar }}Type{{ else }}Utility{{ end }}</th>
             <th>Amount in lv</th>
             <th>Notes</th>
             <th>Actions</th>

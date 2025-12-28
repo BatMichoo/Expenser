@@ -1,6 +1,6 @@
 {{ define "navigation" }}
 <nav id="tracker-navigation" {{ if .IsOOB}} hx-swap-oob="true" {{ end }}>
-  {{ if .IsLoggedIn}}
+  {{ if .IsLoggedIn }}
   <button class="tracker-nav-button" hx-get="./house" hx-target="#tracker-content" hx-push-url="true"
     data-path="/house">
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"

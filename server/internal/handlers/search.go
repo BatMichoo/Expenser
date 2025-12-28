@@ -5,6 +5,7 @@ import (
 	"expenser/internal/models"
 	"expenser/internal/utilities"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,8 +24,12 @@ func NewSearchHandler(db *database.DB) *SearchHandler {
 }
 
 func (h *SearchHandler) GetSearch(c *gin.Context) {
+	path := c.Request.URL.Path
+	isCar := strings.Contains(path, "car")
+
 	c.HTML(http.StatusOK, utilities.Templates.Components.Search, gin.H{
 		"CurrentMonth": time.Now().Format("2006-01"),
+		"IsCar":        isCar,
 	})
 }
 
@@ -83,6 +88,11 @@ func (h *SearchHandler) GetResultsCar(c *gin.Context) {
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
+	total, err := h.DB.GetTotalCarExpenseForMonth(date.Month(), userID)
 
-	c.HTML(http.StatusOK, utilities.Templates.Components.Search, expenses)
+	results := gin.H{
+		"Expenses": expenses,
+		"Total":    total,
+	}
+	c.HTML(http.StatusOK, utilities.Templates.Components.SearchResultsCar, results)
 }

@@ -33,6 +33,7 @@ type HTMXComponents struct {
 	Dialog             string
 	Search             string
 	SearchResultsHouse string
+	SearchResultsCar   string
 }
 
 // Responses defines the names for specific HTMX partial responses.
@@ -85,6 +86,7 @@ var components = &HTMXComponents{
 	Dialog:             "dialog",
 	Search:             "search",
 	SearchResultsHouse: "search-results-house",
+	SearchResultsCar:   "search-results-car",
 }
 
 // responses initializes the Responses struct with specific template identifiers.
