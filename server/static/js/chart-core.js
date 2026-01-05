@@ -77,7 +77,7 @@ function updateChart(config) {
   const year = document.getElementById("year");
   const canvas = document.getElementById("chart");
 
-  const queryString = `${prefix}/chart/search?type=${type.value}&year=${year.value}`;
+  const queryString = `/${prefix}/chart/search?type=${type.value}&year=${year.value}`;
 
   fetch(queryString)
     .then((r) => r.json())

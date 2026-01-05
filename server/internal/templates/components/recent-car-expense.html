@@ -5,10 +5,10 @@
   <td>{{ printf "%.2f" .Amount }}</td>
   <td>{{ .Notes }}</td>
   <td>
-    <button class="table-action-button blue" hx-get="./car/expenses/edit/{{ .ID }}" hx-target="#action-dialog">
+    <button class="table-action-button blue" hx-get="/car/expenses/edit/{{ .ID }}" hx-target="#action-dialog">
       Edit
     </button>
-    <button class="table-action-button red" hx-get="./car/expenses/delete/{{ .ID }}" hx-target="#action-dialog">
+    <button class="table-action-button red" hx-get="/car/expenses/delete/{{ .ID }}" hx-target="#action-dialog">
       Delete
     </button>
   </td>
