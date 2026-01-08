@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home Server</title>
+  <style>
+    body {
+      font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+        Arial, sans-serif;
+      background-color: #f4f7f6;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+      color: #2c3e50;
+    }
+
+    p {
+      color: #7f8c8d;
+      margin-bottom: 2rem;
+    }
+
+    .service-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .service-item {
+      margin: 10px 0;
+    }
+
+    .service-link {
+      display: block;
+      padding: 12px;
+      background: #3498db;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: background 0.3s;
+      font-weight: bold;
+    }
+
+    .service-link:hover {
+      background: #2980b9;
+    }
+
+    .footer {
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: #bdc3c7;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Home Server</h1>
+    <p>Direct entry to available services.</p>
+
+    <ul class="service-list">
+      <li class="service-item">
+        <a href="https://expenser.homeserver.lan" class="service-link">Expenser App</a>
+      </li>
+    </ul>
+
+    <div class="footer">Node: homeserver.lan</div>
+  </div>
+</body>
+
+</html>
