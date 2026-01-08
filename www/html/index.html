@@ -1,89 +1,305 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Home Server</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
+    :root {
+      --primary: #6366f1;
+      --bg-gradient: linear-gradient(-45deg,
+          #ee7752,
+          #e73c7e,
+          #23a6d5,
+          #23d5ab);
+      --card-bg: rgba(255, 255, 255, 0.7);
+      --text-main: #1f2937;
+      --text-muted: #6b7280;
+      --link-bg: rgba(255, 255, 255, 0.5);
+      --link-border: rgba(255, 255, 255, 0.3);
+      --icon-bg: rgba(99, 102, 241, 0.1);
+    }
+
+    [data-theme="dark"] {
+      --bg-gradient:
+        linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+        linear-gradient(-45deg, #4338ca, #7e22ce, #1d4ed8, #0f766e);
+      --card-bg: rgba(15, 23, 42, 0.7);
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --link-bg: rgba(30, 41, 59, 0.5);
+      --link-border: rgba(255, 255, 255, 0.1);
+      --icon-bg: rgba(255, 255, 255, 0.05);
+    }
+
     body {
       font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-        Arial, sans-serif;
-      background-color: #f4f7f6;
-      color: #333;
+        "Inter",
+        -apple-system,
+        sans-serif;
+      background: var(--bg-gradient);
+      background-size: 400% 400%;
+      animation: gradient 15s ease infinite;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
       margin: 0;
+      color: var(--text-main);
+      overflow: hidden;
     }
 
-    .container {
-      background: white;
-      padding: 2rem;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    @keyframes gradient {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .glass-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 3rem;
+      border-radius: 32px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
       text-align: center;
-      max-width: 400px;
+      max-width: 420px;
       width: 90%;
+      position: relative;
+      transform-style: preserve-3d;
+      transform: perspective(1000px);
     }
 
-    h1 {
-      margin-bottom: 0.5rem;
-      color: #2c3e50;
+    .clock {
+      font-size: 3.5rem;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: -2px;
+      transform: translateZ(50px);
     }
 
-    p {
-      color: #7f8c8d;
+    .date {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--primary);
       margin-bottom: 2rem;
-    }
-
-    .service-list {
-      list-style: none;
-      padding: 0;
-    }
-
-    .service-item {
-      margin: 10px 0;
+      font-weight: 700;
+      transform: translateZ(30px);
     }
 
     .service-link {
-      display: block;
-      padding: 12px;
-      background: #3498db;
-      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem;
+      background: var(--link-bg);
+      color: var(--text-main);
       text-decoration: none;
-      border-radius: 6px;
-      transition: background 0.3s;
-      font-weight: bold;
+      border-radius: 16px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid var(--link-border);
+      transform: translateZ(20px);
     }
 
     .service-link:hover {
-      background: #2980b9;
+      background: var(--primary);
+      color: white;
+      transform: translateZ(40px) scale(1.05);
     }
 
-    .footer {
+    .quick-links {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
       margin-top: 2rem;
-      font-size: 0.8rem;
-      color: #bdc3c7;
+      transform: translateZ(25px);
+    }
+
+    .quick-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 45px;
+      height: 45px;
+      background: var(--icon-bg);
+      border-radius: 12px;
+      color: var(--text-main);
+      text-decoration: none;
+      transition: all 0.2s;
+      border: 1px solid var(--link-border);
+    }
+
+    .quick-item:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-3px);
+    }
+
+    .status-dot {
+      --status-color: #ef4444;
+      /* Default Red */
+      width: 10px;
+      height: 10px;
+      background: var(--status-color);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--status-color);
+      animation: pulse 2s infinite;
+      transition:
+        background 0.3s ease,
+        box-shadow 0.3s ease;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 var(--status-color);
+      }
+
+      70% {
+        transform: scale(1);
+        /* Adding 0.7 opacity via hex or using rgba if you prefer */
+        box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+        /* We update the box-shadow color in JS to match the theme */
+      }
+
+      100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+      }
+    }
+
+    .theme-toggle {
+      position: absolute;
+      top: 25px;
+      right: 25px;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      padding: 8px;
+      border-radius: 10px;
+      color: var(--text-main);
+      z-index: 100;
     }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <h1>Home Server</h1>
-    <p>Direct entry to available services.</p>
+  <div class="glass-card" data-tilt data-tilt-max="5" data-tilt-speed="400" data-tilt-glare="true"
+    data-tilt-max-glare="0.1">
+    <button class="theme-toggle" id="theme-btn">
+      <i data-lucide="moon" id="theme-icon"></i>
+    </button>
 
-    <ul class="service-list">
-      <li class="service-item">
-        <a href="https://expenser.homeserver.lan" class="service-link">Expenser App</a>
-      </li>
-    </ul>
+    <div id="clock" class="clock">00:00</div>
+    <div id="date" class="date">LOADING...</div>
 
-    <div class="footer">Node: homeserver.lan</div>
+    <a href="https://expenser.homeserver.lan" class="service-link">
+      <div style="display: flex; align-items: center; gap: 15px">
+        <i data-lucide="wallet"></i>
+        <span style="font-weight: 600">Expenser App</span>
+      </div>
+      <div id="status-expenser" class="status-dot"></div>
+    </a>
+
+    <div class="quick-links">
+      <a href="#" class="quick-item" title="Settings"><i data-lucide="settings"></i></a>
+      <a href="#" class="quick-item" title="Terminal"><i data-lucide="terminal"></i></a>
+      <a href="#" class="quick-item" title="Logs"><i data-lucide="file-text"></i></a>
+      <a href="#" class="quick-item" title="Stats"><i data-lucide="activity"></i></a>
+    </div>
+
+    <div style="
+          margin-top: 2rem;
+          font-size: 0.7rem;
+          opacity: 0.4;
+          letter-spacing: 1px;
+          transform: translateZ(10px);
+        ">
+      SYSTEM SECURE • NODE 01
+    </div>
   </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.0/vanilla-tilt.min.js"></script>
+  <script>
+    lucide.createIcons();
+
+    // 24-Hour Clock Logic
+    function updateClock() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, "0");
+      const minutes = String(now.getMinutes()).padStart(2, "0");
+      document.getElementById("clock").textContent = `${hours}:${minutes}`;
+      document.getElementById("date").textContent = now.toLocaleDateString(
+        [],
+        {weekday: "long", month: "short", day: "numeric"},
+      );
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Theme Toggle
+    const themeBtn = document.getElementById("theme-btn");
+    themeBtn.addEventListener("click", () => {
+      const isDark =
+        document.documentElement.getAttribute("data-theme") === "dark";
+      document.documentElement.setAttribute(
+        "data-theme",
+        isDark ? "light" : "dark",
+      );
+      document
+        .getElementById("theme-icon")
+        .setAttribute("data-lucide", isDark ? "moon" : "sun");
+      lucide.createIcons();
+    });
+
+    async function updateServiceStatus() {
+      const statusDot = document.getElementById("status-expenser");
+      const serviceUrl = "https://expenser.homeserver.lan/static/favicon.png";
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(serviceUrl, {
+          method: "HEAD", // Lightweight request
+          //mode: "no-cors", // Required to bypass strict CORS if API doesn't allow OPTIONS
+          signal: controller.signal,
+        });
+
+        if (response.ok) {
+          // SUCCESS: Green status
+          statusDot.style.setProperty("--status-color", "#10b981");
+          statusDot.style.background = "#10b981";
+          statusDot.style.boxShadow = "0 0 12px #10b981";
+        } else {
+          statusDot.style.setProperty("--status-color", "#ef4444");
+          statusDot.style.background = "#ef4444";
+          statusDot.style.boxShadow = "0 0 12px #ef4444";
+        }
+      } catch (error) {
+        // FAILURE: Red status
+        statusDot.style.setProperty("--status-color", "#ef4444");
+        statusDot.style.background = "#ef4444";
+        statusDot.style.boxShadow = "0 0 12px #ef4444";
+        console.warn("Ping failed for Expenser:", error.name);
+      }
+    }
+
+    updateServiceStatus();
+    setInterval(updateServiceStatus, 30000);
+  </script>
 </body>
 
 </html>
