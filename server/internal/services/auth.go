@@ -45,7 +45,7 @@ func (as *AuthService) SetCookie(t *Token, c *gin.Context) {
 		domain = "localhost"
 	}
 
-	secure := false
+	secure := true
 	httpOnly := true
 
 	c.SetCookie("auth_token", t.Value, int(t.Duration.Seconds()), "/", domain, secure, httpOnly)
