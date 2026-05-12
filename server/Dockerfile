@@ -18,9 +18,9 @@ COPY --from=builder /app/bin/web-app .
 
 RUN chmod +x web-app
 
-COPY internal/templates/ internal/templates/
 COPY internal/i18n/ internal/i18n/
-COPY internal/db/migrations/ internal/db/migrations/
+COPY internal/templates/ internal/templates/
+COPY internal/db/ internal/db/
 COPY static/ static/
 
 EXPOSE 8080
