@@ -1,4 +1,4 @@
-{{ define "car-page" }} {{ template "car-section-buttons "}}
+{{ define "car-page" }} {{ template "car-section-buttons" . }}
 <div id="section-content">{{ template "car-current" . }}</div>
 <script>
   function activeButtons() {

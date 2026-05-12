@@ -119,9 +119,36 @@ button:hover {
   text-align: center;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 0 1em;
   width: 98vw;
   max-height: 6vh;
+}
+
+.header-left, .header-right {
+  display: flex;
+  align-items: center;
+}
+
+.header-right {
+  gap: 1em;
+}
+
+.language-switcher select {
+  background-color: var(--bg-light);
+  color: var(--text-sec);
+  border: 2px solid transparent;
+  border-bottom-left-radius: 0.5em;
+  border-bottom-right-radius: 0.5em;
+  padding: 0.3em;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  box-shadow: var(--shadow);
+}
+
+.language-switcher select:hover {
+  border-color: var(--highlight-sec);
 }
 
 .header-section h3 {

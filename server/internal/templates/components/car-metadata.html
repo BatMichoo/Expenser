@@ -1,0 +1,68 @@
+{{ define "car-metadata-fuel" }}
+<div class="metadata-group">
+  <div>
+    <label for="liters">{{ T .Lang "metadata.liters" }}</label>
+    <input type="number" id="liters" name="liters" step="0.01" min="0" placeholder="e.g., 45.5" value="{{ if .Metadata }}{{ .Metadata.Liters }}{{ end }}" />
+  </div>
+  <div>
+    <label for="pricePerLiter">{{ T .Lang "metadata.price_per_liter" }}</label>
+    <input type="number" id="pricePerLiter" name="pricePerLiter" step="0.01" min="0" placeholder="e.g., 2.65" value="{{ if .Metadata }}{{ .Metadata.PricePerLiter }}{{ end }}" />
+  </div>
+</div>
+{{ end }}
+
+{{ define "car-metadata-maintenance" }}
+<div class="metadata-group">
+  <div class="checkbox-group">
+    <label>{{ T .Lang "metadata.parts" }}</label>
+    <div class="checkbox-items">
+      {{ $parts := emptySlice }}
+      {{ if .Metadata }}{{ $parts = .Metadata.Parts }}{{ end }}
+      <label><input type="checkbox" name="parts" value="Oil" {{ if contains $parts "Oil" }}checked{{ end }}> Oil</label>
+      <label><input type="checkbox" name="parts" value="Filters" {{ if contains $parts "Filters" }}checked{{ end }}> Filters</label>
+      <label><input type="checkbox" name="parts" value="Brakes" {{ if contains $parts "Brakes" }}checked{{ end }}> Brakes</label>
+      <label><input type="checkbox" name="parts" value="Tires" {{ if contains $parts "Tires" }}checked{{ end }}> Tires</label>
+      <label><input type="checkbox" name="parts" value="Battery" {{ if contains $parts "Battery" }}checked{{ end }}> Battery</label>
+      <label><input type="checkbox" name="parts" value="Spark Plugs" {{ if contains $parts "Spark Plugs" }}checked{{ end }}> Spark Plugs</label>
+    </div>
+  </div>
+  <div>
+    <label for="otherParts">{{ T .Lang "metadata.other_parts" }}</label>
+    <input type="text" id="otherParts" name="otherParts" placeholder="e.g., Wipers, Bulbs" value="" />
+  </div>
+  <div>
+    <label for="laborCost">{{ T .Lang "metadata.labor_cost" }}</label>
+    <input type="number" id="laborCost" name="laborCost" step="0.01" min="0" placeholder="e.g., 50.0" value="{{ if .Metadata }}{{ .Metadata.LaborCost }}{{ end }}" />
+  </div>
+</div>
+{{ end }}
+
+{{ define "car-metadata-insurance" }}
+<div class="metadata-group">
+  <div>
+    <label for="provider">{{ T .Lang "metadata.provider" }}</label>
+    <input type="text" id="provider" name="provider" placeholder="e.g., Allianz" value="{{ if .Metadata }}{{ .Metadata.Provider }}{{ end }}" />
+  </div>
+  <div>
+    <label for="coverageType">{{ T .Lang "metadata.coverage_type" }}</label>
+    <input type="text" id="coverageType" name="coverageType" placeholder="e.g., Full Casco" value="{{ if .Metadata }}{{ .Metadata.CoverageType }}{{ end }}" />
+  </div>
+  <div>
+    <label for="validUntil">{{ T .Lang "metadata.valid_until" }}</label>
+    <input type="date" id="validUntil" name="validUntil" value="{{ if .Metadata }}{{ .Metadata.ValidUntil.Format "2006-01-02" }}{{ end }}" />
+  </div>
+</div>
+{{ end }}
+
+{{ define "car-metadata-parkingtolls" }}
+<div class="metadata-group">
+  <div>
+    <label for="location">{{ T .Lang "metadata.location" }}</label>
+    <input type="text" id="location" name="location" placeholder="e.g., Blue Zone - Sofia" value="{{ if .Metadata }}{{ .Metadata.Location }}{{ end }}" />
+  </div>
+  <div>
+    <label for="duration">{{ T .Lang "metadata.duration" }}</label>
+    <input type="text" id="duration" name="duration" placeholder="e.g., 2 hours" value="{{ if .Metadata }}{{ .Metadata.Duration }}{{ end }}" />
+  </div>
+</div>
+{{ end }}

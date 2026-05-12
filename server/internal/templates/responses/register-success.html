@@ -1,13 +1,13 @@
 {{ define "register-success"}}
 <div class="redirect-message-container">
-  <h2>Redirecting...</h2>
+  <h2>{{ T .Lang "register.redirecting" }}</h2>
   <p>
-    You will be redirected to the home page in
-    <span id="countdown">5</span> seconds.
+    {{ T .Lang "register.redirect_msg" }}
+    <span id="countdown">5</span> {{ T .Lang "register.seconds" }}.
   </p>
   <p>
-    If you are not redirected automatically,
-    <a href="/">click here to proceed</a>.
+    {{ T .Lang "register.manual_redirect" }}
+    <a href="/">{{ T .Lang "register.click_here" }}</a>.
   </p>
 
   <script>
@@ -27,10 +27,6 @@
         window.location.href = "/"; // Perform the redirect
       }
     }, 1000); // Every 1000 milliseconds (1 second)
-
-    // Optional: A meta refresh tag for basic fallback (less flexible but works without JS)
-    // This should be in the <head> if it's a full page, but included here for completeness
-    // <meta http-equiv="refresh" content="5;url=/login">
   </script>
 </div>
 {{ end }}

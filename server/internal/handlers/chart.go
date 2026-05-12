@@ -31,6 +31,7 @@ func (ch *ChartHandler) HouseRoot(c *gin.Context) {
 		"Type":  "house",
 		"Year":  year,
 		"Types": types,
+		"Lang":  c.GetString("lang"),
 	}
 	c.HTML(http.StatusOK, utilities.Templates.Components.Chart, chartData)
 }
@@ -70,6 +71,7 @@ func (ch *ChartHandler) CarRoot(c *gin.Context) {
 		"Type":  "car",
 		"Year":  year,
 		"Types": types,
+		"Lang":  c.GetString("lang"),
 	}
 	c.HTML(http.StatusOK, utilities.Templates.Components.Chart, chartData)
 }

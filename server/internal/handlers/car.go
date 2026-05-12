@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	database "expenser/internal/db"
 	"expenser/internal/models"
 	"expenser/internal/utilities"
@@ -8,6 +9,7 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -58,15 +60,18 @@ func (h *CarHandler) getCarPageData(c *gin.Context) (*models.CarData, bool, erro
 			Type:   utilType,
 		},
 		RecentExpenses: recentExpenses,
+		Lang:           c.GetString("lang"),
 	}, exists, nil
 }
 
 func (h *CarHandler) GetHome(c *gin.Context) {
+	lang := c.GetString("lang")
 	pageData, exists, err := h.getCarPageData(c)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("500: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
@@ -83,18 +88,22 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 			TemplateContent: pageData,
 			HeaderOpts: &models.HeaderOptions{
 				IsLoggedIn: exists,
+				Lang:       lang,
 			},
+			Lang: lang,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
 }
 
 func (h *CarHandler) GetCurrentMonth(c *gin.Context) {
+	lang := c.GetString("lang")
 	pageData, exists, err := h.getCarPageData(c)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("500: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
@@ -111,24 +120,100 @@ func (h *CarHandler) GetCurrentMonth(c *gin.Context) {
 			TemplateContent: pageData,
 			HeaderOpts: &models.HeaderOptions{
 				IsLoggedIn: exists,
+				Lang:       lang,
 			},
+			Lang: lang,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
 }
 
 func (h *CarHandler) GetCreateCarForm(c *gin.Context) {
+	lang := c.GetString("lang")
 	expTypes, err := h.DB.GetCarExpenseTypes()
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("500: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
-	c.HTML(http.StatusOK, utilities.Templates.Components.CreateCarExpForm, expTypes)
+	c.HTML(http.StatusOK, utilities.Templates.Components.CreateCarExpForm, gin.H{
+		"Types": expTypes,
+		"Lang":  lang,
+	})
+}
+
+func (h *CarHandler) parseCarMetadata(c *gin.Context, typeID int) json.RawMessage {
+	var metadata interface{}
+
+	switch typeID {
+	case 1: // Fuel
+		liters, _ := strconv.ParseFloat(c.Request.PostFormValue("liters"), 64)
+		price, _ := strconv.ParseFloat(c.Request.PostFormValue("pricePerLiter"), 64)
+		metadata = models.FuelMetadata{
+			Liters:        liters,
+			PricePerLiter: price,
+		}
+	case 2: // Maintenance/Repair
+		parts := c.Request.PostForm["parts"]
+		otherParts := c.Request.PostFormValue("otherParts")
+		if otherParts != "" {
+			for _, p := range strings.Split(otherParts, ",") {
+				trimmed := strings.TrimSpace(p)
+				if trimmed != "" {
+					parts = append(parts, trimmed)
+				}
+			}
+		}
+		labor, _ := strconv.ParseFloat(c.Request.PostFormValue("laborCost"), 64)
+		metadata = models.MaintenanceMetadata{
+			Parts:     parts,
+			LaborCost: labor,
+		}
+	case 3: // Insurance
+		validUntil, _ := time.Parse("2006-01-02", c.Request.PostFormValue("validUntil"))
+		metadata = models.InsuranceMetadata{
+			Provider:     c.Request.PostFormValue("provider"),
+			CoverageType: c.Request.PostFormValue("coverageType"),
+			ValidUntil:   validUntil,
+		}
+	case 5: // Parking/Tolls
+		metadata = models.ParkingTollsMetadata{
+			Location: c.Request.PostFormValue("location"),
+			Duration: c.Request.PostFormValue("duration"),
+		}
+	default:
+		return nil
+	}
+
+	data, _ := json.Marshal(metadata)
+	return data
+}
+
+// GetMetadataFields returns the HTML fragment for specific metadata fields based on typeID
+func (h *CarHandler) GetMetadataFields(c *gin.Context) {
+	typeID, _ := strconv.Atoi(c.Query("typeID"))
+
+	var templateName string
+	switch typeID {
+	case 1:
+		templateName = "car-metadata-fuel"
+	case 2:
+		templateName = "car-metadata-maintenance"
+	case 3:
+		templateName = "car-metadata-insurance"
+	case 5:
+		templateName = "car-metadata-parkingtolls"
+	default:
+		c.Status(http.StatusOK)
+		return
+	}
+
+	c.HTML(http.StatusOK, templateName, gin.H{"Lang": c.GetString("lang")})
 }
 
 // CreateCarExpense handles the HTTP POST request to create a new home expense.
@@ -137,11 +222,13 @@ func (h *CarHandler) GetCreateCarForm(c *gin.Context) {
 // and then returns updated summary data (highest and monthly total)
 // to refresh the UI.
 func (h *CarHandler) CreateCarExpense(c *gin.Context) {
+	lang := c.GetString("lang")
 	expTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -150,8 +237,9 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 	date, err := time.Parse("2006-01-02", c.Request.PostFormValue("date"))
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -160,14 +248,17 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	notes := c.Request.PostFormValue("notes")
+	metadata := h.parseCarMetadata(c, expTypeID)
+
 	userIDstr, _ := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
@@ -176,14 +267,16 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 		ExpenseTypeID: expTypeID,
 		Date:          date,
 		Notes:         notes,
+		Metadata:      metadata,
 		CreatedBy:     userID,
 	}
 
 	err = h.DB.CreateCarExpense(newExpense)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -194,8 +287,9 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 	highestExp, expType, err := h.DB.GetHighestCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -204,8 +298,9 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 	montlyTotal, err := h.DB.GetTotalCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -224,9 +319,11 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 			IsOOB:  true,
 		},
 		Modal: &models.ModalContent{
-			Title:   "Successful expense creation.",
+			Title:   utilities.T(lang, "modal.create_success"),
 			Message: fmt.Sprintf("%s: %v BGN", newExpense.Type, newExpense.Amount),
+			Lang:    lang,
 		},
+		Lang: lang,
 	}
 
 	c.HTML(http.StatusCreated, utilities.Templates.Responses.CreateCarExp, crExpResp)
@@ -234,11 +331,13 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 
 // TODO: Find a use for this
 func (h *CarHandler) GetCarExpenseById(c *gin.Context) {
+	lang := c.GetString("lang")
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -247,8 +346,9 @@ func (h *CarHandler) GetCarExpenseById(c *gin.Context) {
 	exp, err := h.DB.GetCarExpenseByID(id)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -263,11 +363,13 @@ func (h *CarHandler) GetCarExpenseById(c *gin.Context) {
 // for editing a specific home expense.
 // It expects the expense ID to be provided as a query parameter.
 func (h *CarHandler) GetEditCarForm(c *gin.Context) {
+	lang := c.GetString("lang")
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -276,8 +378,9 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) {
 	exp, err := h.DB.GetCarExpenseByID(id)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -286,16 +389,19 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) {
 	expTypes, err := h.DB.GetCarExpenseTypes()
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	formData := &models.EditCarFormData{
-		Expense: exp,
-		Types:   expTypes,
+		Expense:  exp,
+		Types:    expTypes,
+		Metadata: exp.UnmarshalMetadata(),
+		Lang:     lang,
 	}
 
 	c.HTML(http.StatusOK, utilities.Templates.Components.EditCarExpForm, formData)
@@ -307,11 +413,13 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) {
 // and then returns updated summary data (highest and monthly total)
 // to refresh the UI.
 func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
+	lang := c.GetString("lang")
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -320,8 +428,9 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 	expTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -330,8 +439,9 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 	date, err := time.Parse("2006-01-02", c.Request.PostFormValue("date"))
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -340,27 +450,32 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	notes := c.Request.PostFormValue("notes")
+	metadata := h.parseCarMetadata(c, expTypeID)
+
 	editExpense := &models.CarExpense{
 		ID:            id,
 		Amount:        amount,
 		ExpenseTypeID: expTypeID,
 		Date:          date,
 		Notes:         notes,
+		Metadata:      metadata,
 	}
 
 	err = h.DB.EditCarExpense(editExpense)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -374,8 +489,9 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 	highestExp, expType, err := h.DB.GetHighestCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -384,8 +500,9 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 	montlyTotal, err := h.DB.GetTotalCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -404,9 +521,11 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 			IsOOB:  true,
 		},
 		Modal: &models.ModalContent{
-			Title:   "Successful expense update.",
+			Title:   utilities.T(lang, "modal.update_success"),
 			Message: fmt.Sprintf("%s: %v BGN", editExpense.Type, editExpense.Amount),
+			Lang:    lang,
 		},
+		Lang: lang,
 	}
 
 	c.HTML(http.StatusCreated, utilities.Templates.Responses.CreateCarExp, edExpResp)
@@ -415,22 +534,25 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 // INFO: DELETE
 
 func (h *CarHandler) GetDeleteConfirm(c *gin.Context) {
+	lang := c.GetString("lang")
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	content := &models.ModalConfirmContent{
-		Title:    "Are you sure you want to delete this?",
+		Title:    utilities.T(lang, "modal.delete_confirm"),
 		Method:   "DELETE",
 		Endpoint: template.URL(fmt.Sprintf("/car/expenses/%v", id)),
 		Target:   fmt.Sprintf("#exp-%v", id),
-		Message:  fmt.Sprintf("Please confirm if you want to delete expense with ID: %v", id),
+		Message:  fmt.Sprintf(utilities.T(lang, "modal.delete_message"), id),
+		Lang:     lang,
 	}
 	c.HTML(http.StatusOK, utilities.Templates.Components.ModalConfirm, content)
 }
@@ -441,11 +563,13 @@ func (h *CarHandler) GetDeleteConfirm(c *gin.Context) {
 // It responds with 204 No Content if the expense was not found or not deleted,
 // or 200 OK with updated summary data otherwise.
 func (h *CarHandler) DeleteCarExp(c *gin.Context) {
+	lang := c.GetString("lang")
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -454,8 +578,9 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 	res, err := h.DB.DeleteCarExpense(id)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("400: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -476,8 +601,9 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 	monthlyExpense, err := h.DB.GetTotalCarExpenseForMonth(month, userID)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("500: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
@@ -486,8 +612,9 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 	highestExpense, utilType, err := h.DB.GetHighestCarExpenseForMonth(month, userID)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("500: %v", err),
+			Lang:    lang,
 		}
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
@@ -505,9 +632,11 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 			IsOOB:  true,
 		},
 		Modal: &models.ModalContent{
-			Title:   "Successfully deleted expense!",
-			Message: fmt.Sprintf("Expense with ID: %v deleted!", id),
+			Title:   utilities.T(lang, "modal.delete_success"),
+			Message: fmt.Sprintf(utilities.T(lang, "modal.delete_success_message"), id),
+			Lang:    lang,
 		},
+		Lang: lang,
 	}
 
 	c.HTML(http.StatusOK, utilities.Templates.Responses.DeleteCarExp, pageData)

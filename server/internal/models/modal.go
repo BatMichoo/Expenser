@@ -5,6 +5,7 @@ import "html/template"
 type ModalContent struct {
 	Title   string
 	Message string
+	Lang    string
 }
 
 type ModalConfirmContent struct {
@@ -13,4 +14,5 @@ type ModalConfirmContent struct {
 	Method   string
 	Endpoint template.URL
 	Message  string
+	Lang     string
 }

@@ -1,7 +1,9 @@
 {{ define "highest-card" }}
-<div class="card highest-expense-card" id="highest-expense" {{ if .IsOOB }}hx-swap-oob="true" {{ end }}>
-  <h3>Highest Expense</h3>
-  <p>{{ .Type}}</p>
-  <p>This month: {{ printf "%.2f" .Amount}}</p>
+{{ if .Exp }}
+<div class="card highest-expense-card" id="highest-expense" {{ if .Exp.IsOOB }}hx-swap-oob="true" {{ end }}>
+  <h3>{{ T .Lang "card.highest_expense" }}</h3>
+  <p>{{ .Exp.Type }}</p>
+  <p>{{ T .Lang "card.this_month" }}: {{ printf "%.2f" .Exp.Amount }}</p>
 </div>
+{{ end }}
 {{ end }}

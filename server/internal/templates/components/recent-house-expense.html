@@ -1,15 +1,16 @@
 {{ define "house-exp-row" }}
-<tr id="exp-{{ .ID }}">
-  <td>{{ .ExpenseDate.Format "02.01.2006" }}</td>
-  <td>{{ .UtilityType }}</td>
-  <td>{{ printf "%.2f" .Amount }}</td>
-  <td>{{ .Notes }}</td>
+<tr id="exp-{{ .Exp.ID }}">
+  <td>{{ .Exp.ExpenseDate.Format "02.01.2006" }}</td>
+  <td>{{ .Exp.UtilityType }}</td>
+  <td>{{ printf "%.2f" .Exp.Amount }}</td>
+  <td>{{ .Exp.FormattedMetadata }}</td>
+  <td>{{ .Exp.Notes }}</td>
   <td>
-    <button class="table-action-button blue" hx-get="/house/expenses/edit/{{ .ID }}" hx-target="#action-dialog">
-      Edit
+    <button class="table-action-button blue" hx-get="/house/expenses/edit/{{ .Exp.ID }}" hx-target="#action-dialog">
+      {{ T .Lang "common.edit" }}
     </button>
-    <button class="table-action-button red" hx-get="/house/expenses/delete/{{ .ID }}" hx-target="#action-dialog">
-      Delete
+    <button class="table-action-button red" hx-get="/house/expenses/delete/{{ .Exp.ID }}" hx-target="#action-dialog">
+      {{ T .Lang "common.delete" }}
     </button>
   </td>
 </tr>

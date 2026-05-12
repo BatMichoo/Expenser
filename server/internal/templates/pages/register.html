@@ -1,28 +1,32 @@
 {{ define "register-page"}}
 <div class="register-form-container">
-  <h2>Register New Account</h2>
+  <h2>{{ T .Lang "register.title" }}</h2>
   <form hx-post="/register" hx-target="#tracker-content">
     <div class="form-group">
-      <label for="username">Username:</label>
-      <input type="text" id="username" name="username" class="form-control" placeholder="Choose a username"
+      <label for="username">{{ T .Lang "login.username" }}:</label>
+      <input type="text" id="username" name="username" class="form-control" placeholder='{{ T .Lang "login.username_placeholder" }}'
         minlength="3" maxlength="50" required />
     </div>
 
     <div class="form-group">
-      <label for="password">Password:</label>
-      <input type="password" id="password" name="password" class="form-control" placeholder="Choose a password"
+      <label for="password">{{ T .Lang "login.password" }}:</label>
+      <input type="password" id="password" name="password" class="form-control" placeholder='{{ T .Lang "login.password_placeholder" }}'
         minlength="6" required />
     </div>
 
     <div class="form-group">
-      <label for="confirm_password">Confirm Password:</label>
+      <label for="confirm_password">{{ T .Lang "register.confirm_password" }}:</label>
       <input type="password" id="confirm_password" name="confirm_password" class="form-control"
-        placeholder="Confirm your password" minlength="6" required />
+        placeholder='{{ T .Lang "register.confirm_password" }}' minlength="6" required />
       <small id="password-match-feedback" style="color: red"></small>
     </div>
 
-    <button type="submit" class="btn btn-primary">Register</button>
+    <button type="submit" class="btn btn-primary">{{ T .Lang "register.submit" }}</button>
   </form>
+  <p class="auth-switch">
+    {{ T .Lang "register.have_account" }}
+    <a hx-get="/login" hx-target="#tracker-content" hx-push-url="true">{{ T .Lang "register.login_link" }}</a>
+  </p>
 </div>
 
 <script>
@@ -30,14 +34,15 @@
     const passwordField = document.getElementById("password");
     const confirmPasswordField = document.getElementById("confirm_password");
     const feedback = document.getElementById("password-match-feedback");
+    const errorMsg = '{{ T .Lang "register.password_mismatch" }}';
 
     function checkPasswords() {
       if (
         passwordField.value !== confirmPasswordField.value &&
         confirmPasswordField.value !== ""
       ) {
-        feedback.textContent = "Passwords do not match!";
-        confirmPasswordField.setCustomValidity("Passwords do not match");
+        feedback.textContent = errorMsg;
+        confirmPasswordField.setCustomValidity(errorMsg);
       } else {
         feedback.textContent = "";
         confirmPasswordField.setCustomValidity("");

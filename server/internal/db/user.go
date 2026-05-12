@@ -12,15 +12,19 @@ import (
 // CreateUser creates a new user in the database
 func (db *DB) CreateUser(user *models.User) error {
 	query := `
-		INSERT INTO users (username, password_hash, created_at, updated_at)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO users (username, password_hash, preferred_language, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at, updated_at`
 
 	now := time.Now()
+	if user.PreferredLanguage == "" {
+		user.PreferredLanguage = "en"
+	}
 	err := db.conn.QueryRow(
 		query,
 		user.Username,
 		user.PasswordHash,
+		user.PreferredLanguage,
 		now,
 		now,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
@@ -35,7 +39,7 @@ func (db *DB) CreateUser(user *models.User) error {
 // GetUserByID retrieves a user by their ID
 func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
 	query := `
-		SELECT id, username, password_hash, created_at, updated_at
+		SELECT id, username, password_hash, preferred_language, created_at, updated_at
 		FROM users
 		WHERE id = $1`
 
@@ -44,6 +48,7 @@ func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
+		&user.PreferredLanguage,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -61,7 +66,7 @@ func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
 // GetUserByUsername retrieves a user by their username
 func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 	query := `
-		SELECT id, username, password_hash, created_at, updated_at
+		SELECT id, username, password_hash, preferred_language, created_at, updated_at
 		FROM users
 		WHERE username = $1`
 
@@ -70,6 +75,7 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
+		&user.PreferredLanguage,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -87,7 +93,7 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 // GetUserByEmail retrieves a user by their email
 func (db *DB) GetUserByEmail(email string) (*models.User, error) {
 	query := `
-		SELECT id, username, password_hash, created_at, updated_at
+		SELECT id, username, password_hash, preferred_language, created_at, updated_at
 		FROM users
 		WHERE email = $1`
 
@@ -96,6 +102,7 @@ func (db *DB) GetUserByEmail(email string) (*models.User, error) {
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
+		&user.PreferredLanguage,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -108,6 +115,13 @@ func (db *DB) GetUserByEmail(email string) (*models.User, error) {
 	}
 
 	return user, nil
+}
+
+// UpdateUserLanguage updates the preferred language for a user
+func (db *DB) UpdateUserLanguage(userID uuid.UUID, lang string) error {
+	query := `UPDATE users SET preferred_language = $1, updated_at = $2 WHERE id = $3`
+	_, err := db.conn.Exec(query, lang, time.Now(), userID)
+	return err
 }
 
 // UpdateUser updates an existing user in the database
@@ -167,7 +181,7 @@ func (db *DB) DeleteUser(id uuid.UUID) error {
 // ListUsers retrieves all users from the database (for admin purposes)
 func (db *DB) ListUsers(limit, offset int) ([]*models.User, error) {
 	query := `
-		SELECT id, username, password_hash, created_at, updated_at
+		SELECT id, username, password_hash, preferred_language, created_at, updated_at
 		FROM users
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2`
@@ -185,6 +199,7 @@ func (db *DB) ListUsers(limit, offset int) ([]*models.User, error) {
 			&user.ID,
 			&user.Username,
 			&user.PasswordHash,
+			&user.PreferredLanguage,
 			&user.CreatedAt,
 			&user.UpdatedAt,
 		)

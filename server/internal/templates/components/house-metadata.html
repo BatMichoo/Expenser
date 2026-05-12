@@ -1,0 +1,59 @@
+{{ define "house-metadata-electricity" }}
+<div class="metadata-group">
+  <div>
+    <label for="kWhDay">{{ T .Lang "metadata.kWh_day" }}</label>
+    <input type="number" id="kWhDay" name="kWhDay" step="0.01" min="0" placeholder='{{ T .Lang "form.amount_placeholder" }}' value="{{ if .Metadata }}{{ .Metadata.KWhDay }}{{ end }}" />
+  </div>
+  <div>
+    <label for="priceDay">{{ T .Lang "metadata.price_day" }}</label>
+    <input type="number" id="priceDay" name="priceDay" step="0.0001" min="0" placeholder="e.g., 0.2541" value="{{ if .Metadata }}{{ .Metadata.PriceDay }}{{ end }}" />
+  </div>
+  <div>
+    <label for="kWhNight">{{ T .Lang "metadata.kWh_night" }}</label>
+    <input type="number" id="kWhNight" name="kWhNight" step="0.01" min="0" placeholder='{{ T .Lang "form.amount_placeholder" }}' value="{{ if .Metadata }}{{ .Metadata.KWhNight }}{{ end }}" />
+  </div>
+  <div>
+    <label for="priceNight">{{ T .Lang "metadata.price_night" }}</label>
+    <input type="number" id="priceNight" name="priceNight" step="0.0001" min="0" placeholder="e.g., 0.1241" value="{{ if .Metadata }}{{ .Metadata.PriceNight }}{{ end }}" />
+  </div>
+</div>
+{{ end }}
+
+{{ define "house-metadata-water" }}
+<div class="metadata-group">
+  <div>
+    <label for="quantity">{{ T .Lang "metadata.quantity" }} (m³)</label>
+    <input type="number" id="quantity" name="quantity" step="0.01" min="0" placeholder="e.g., 12.5" value="{{ if .Metadata }}{{ .Metadata.Quantity }}{{ end }}" />
+  </div>
+  <div>
+    <label for="pricePerUnit">{{ T .Lang "metadata.price_per_unit" }}</label>
+    <input type="number" id="pricePerUnit" name="pricePerUnit" step="0.01" min="0" placeholder="e.g., 3.50" value="{{ if .Metadata }}{{ .Metadata.PricePerUnit }}{{ end }}" />
+  </div>
+</div>
+{{ end }}
+
+{{ define "house-metadata-gas" }}
+<div class="metadata-group">
+  <div>
+    <label for="quantity">{{ T .Lang "metadata.quantity" }}</label>
+    <input type="number" id="quantity" name="quantity" step="0.01" min="0" placeholder="e.g., 500.0" value="{{ if .Metadata }}{{ .Metadata.Quantity }}{{ end }}" />
+  </div>
+  <div>
+    <label for="pricePerUnit">{{ T .Lang "metadata.price_per_unit" }}</label>
+    <input type="number" id="pricePerUnit" name="pricePerUnit" step="0.01" min="0" placeholder="e.g., 0.15" value="{{ if .Metadata }}{{ .Metadata.PricePerUnit }}{{ end }}" />
+  </div>
+</div>
+{{ end }}
+
+{{ define "house-metadata-internettv" }}
+<div class="metadata-group">
+  <div>
+    <label for="provider">{{ T .Lang "metadata.provider" }}</label>
+    <input type="text" id="provider" name="provider" placeholder="e.g., Vivacom" value="{{ if .Metadata }}{{ .Metadata.Provider }}{{ end }}" />
+  </div>
+  <div>
+    <label for="plan">{{ T .Lang "metadata.plan" }}</label>
+    <input type="text" id="plan" name="plan" placeholder="e.g., Fiber 100" value="{{ if .Metadata }}{{ .Metadata.Plan }}{{ end }}" />
+  </div>
+</div>
+{{ end }}

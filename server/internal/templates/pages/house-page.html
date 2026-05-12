@@ -1,4 +1,4 @@
-{{ define "house-page" }} {{ template "house-section-buttons "}}
+{{ define "house-page" }} {{ template "house-section-buttons" . }}
 <div id="section-content">{{ template "house-current" . }}</div>
 <script>
   function activeButtons() {

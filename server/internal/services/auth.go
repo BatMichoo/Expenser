@@ -12,9 +12,10 @@ import (
 
 // JWTClaims represents the claims stored in the JWT token
 type JWTClaims struct {
-	UserID   uuid.UUID
-	Username string
-	Email    string
+	UserID            uuid.UUID
+	Username          string
+	Email             string
+	PreferredLanguage string
 	jwt.RegisteredClaims
 }
 
@@ -66,8 +67,9 @@ func (as *AuthService) GenerateToken(user *models.User) (*Token, error) {
 	timeNow := time.Now()
 	expAt := timeNow.Add(as.tokenExpiration)
 	claims := &JWTClaims{
-		UserID:   user.ID,
-		Username: user.Username,
+		UserID:            user.ID,
+		Username:          user.Username,
+		PreferredLanguage: user.PreferredLanguage,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expAt),
 			IssuedAt:  jwt.NewNumericDate(timeNow),

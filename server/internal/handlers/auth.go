@@ -29,11 +29,16 @@ func (h *AuthHandler) GetRegister(c *gin.Context) {
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	if isHtmxRequest {
-		c.HTML(http.StatusOK, utilities.Templates.Pages.Register, gin.H{})
+		c.HTML(http.StatusOK, utilities.Templates.Pages.Register, gin.H{
+			"Lang": c.GetString("lang"),
+		})
 	} else {
 		rl := &models.RootLayout{
 			TemplateName: utilities.Templates.Pages.Register,
-			HeaderOpts:   &models.HeaderOptions{},
+			HeaderOpts: &models.HeaderOptions{
+				Lang: c.GetString("lang"),
+			},
+			Lang: c.GetString("lang"),
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
@@ -41,12 +46,14 @@ func (h *AuthHandler) GetRegister(c *gin.Context) {
 
 // APIRegister handles user registration via API
 func (h *AuthHandler) Register(c *gin.Context) {
+	lang := c.GetString("lang")
 	var regData models.UserRegistration
 
 	if err := c.ShouldBind(&regData); err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "400: Invalid request data.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -56,8 +63,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	existingUser, _ := h.DB.GetUserByUsername(regData.Username)
 	if existingUser != nil {
 		content := &models.ModalContent{
-			Title:   "Username already exists!",
+			Title:   utilities.T(lang, "auth.username_exists"),
 			Message: "400: Invalid request data.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -67,8 +75,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(regData.Password), bcrypt.DefaultCost)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Failed to process password!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "500: Internal server error.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
@@ -82,8 +91,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	if err := h.DB.CreateUser(user); err != nil {
 		content := &models.ModalContent{
-			Title:   "Failed to create user account!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "500: Internal server error.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
@@ -93,26 +103,35 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	token, err := h.AuthService.GenerateToken(user)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Failed to generate authentication token!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "500: Internal server error.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	h.AuthService.SetCookie(token, c)
-	c.HTML(http.StatusCreated, utilities.Templates.Responses.RegisterSuccess, user)
+	c.HTML(http.StatusCreated, utilities.Templates.Responses.RegisterSuccess, gin.H{
+		"User": user,
+		"Lang": lang,
+	})
 }
 
 func (h *AuthHandler) GetLogin(c *gin.Context) {
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	if isHtmxRequest {
-		c.HTML(http.StatusOK, utilities.Templates.Pages.Login, gin.H{})
+		c.HTML(http.StatusOK, utilities.Templates.Pages.Login, gin.H{
+			"Lang": c.GetString("lang"),
+		})
 	} else {
 		rl := &models.RootLayout{
 			TemplateName: utilities.Templates.Pages.Login,
-			HeaderOpts:   &models.HeaderOptions{},
+			HeaderOpts: &models.HeaderOptions{
+				Lang: c.GetString("lang"),
+			},
+			Lang: c.GetString("lang"),
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
@@ -120,12 +139,14 @@ func (h *AuthHandler) GetLogin(c *gin.Context) {
 
 // APILogin handles user login via API
 func (h *AuthHandler) Login(c *gin.Context) {
+	lang := c.GetString("lang")
 	var loginData models.UserLogin
 
 	if err := c.ShouldBind(&loginData); err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "400: Invalid request data.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -135,8 +156,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	user, err := h.DB.GetUserByUsername(loginData.Username)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Invalid credentials!",
+			Title:   utilities.T(lang, "auth.invalid_credentials"),
 			Message: "401: Unauthorized.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusUnauthorized, utilities.Templates.Components.ModalError, content)
 		return
@@ -145,8 +167,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginData.Password)); err != nil {
 		content := &models.ModalContent{
-			Title:   "Invalid credentials!",
+			Title:   utilities.T(lang, "auth.invalid_credentials"),
 			Message: "401: Unauthorized.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusUnauthorized, utilities.Templates.Components.ModalError, content)
 		return
@@ -156,8 +179,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	token, err := h.AuthService.GenerateToken(user)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "500: Failed to get authentication token.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return

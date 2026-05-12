@@ -13,9 +13,12 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 	// Public routes (no authentication required)
 	as := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration, cfg.LanDomain)
 
+	router.Use(middleware.I18nMiddleware(as))
+
 	rootHandler := NewRootHandler(db, as)
 	router.NoRoute(rootHandler.NotFound)
 	router.GET("/", rootHandler.GetRoot)
+	router.POST("/settings/language", rootHandler.ChangeLanguage)
 
 	authHandler := NewAuthHandler(db, as)
 
@@ -41,6 +44,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedHouse.GET("/chart", chartHandler.HouseRoot)
 		protectedHouse.GET("/chart/search", chartHandler.HouseSearch)
 		protectedHouse.GET("/expenses/new", houseHandler.GetCreateHouseForm)
+		protectedHouse.GET("/expenses/metadata", houseHandler.GetMetadataFields)
 		protectedHouse.POST("/expenses", houseHandler.CreateHouseExpense)
 		protectedHouse.GET("/expenses/edit/:id", houseHandler.GetEditHouseForm)
 		protectedHouse.PUT("/expenses/:id", houseHandler.EditHouseExpenseById)
@@ -60,6 +64,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedCar.GET("/chart", chartHandler.CarRoot)
 		protectedCar.GET("/chart/search", chartHandler.CarSearch)
 		protectedCar.GET("/expenses/new", carHandler.GetCreateCarForm)
+		protectedCar.GET("/expenses/metadata", carHandler.GetMetadataFields)
 		protectedCar.POST("/expenses", carHandler.CreateCarExpense)
 		protectedCar.GET("/expenses/edit/:id", carHandler.GetEditCarForm)
 		protectedCar.PUT("/expenses/:id", carHandler.EditCarExpenseById)

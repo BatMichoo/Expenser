@@ -1,19 +1,19 @@
-{{ define "car-section-buttons "}}
+{{ define "car-section-buttons" }}
 <ul id="section-list">
   <li>
     <button type="button" hx-get="/car/current" hx-target="#section-content"
       class="tracker-nav-button section-button active">
-      Current
+      {{ T .Lang "common.current" }}
     </button>
   </li>
   <li>
     <button type="button" hx-get="/car/search" hx-target="#section-content" class="tracker-nav-button section-button">
-      Search
+      {{ T .Lang "search.title" }}
     </button>
   </li>
   <li>
     <button type="button" hx-get="/car/chart" hx-target="#section-content" class="tracker-nav-button section-button">
-      Chart
+      {{ T .Lang "common.chart" }}
     </button>
   </li>
 </ul>

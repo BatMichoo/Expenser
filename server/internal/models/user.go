@@ -9,9 +9,10 @@ import (
 // User represents a user in the system
 type User struct {
 	ID           uuid.UUID
-	Username     string `form:"username" binding:"required,min=3,max=50"`
-	PasswordHash string
-	CreatedAt    time.Time
+	Username          string `form:"username" binding:"required,min=3,max=50"`
+	PasswordHash      string
+	PreferredLanguage string
+	CreatedAt         time.Time
 	UpdatedAt    time.Time
 }
 

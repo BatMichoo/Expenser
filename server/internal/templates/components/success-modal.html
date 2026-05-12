@@ -10,7 +10,7 @@
       <span>{{ .Title}}</span>
     </section>
     <p>{{ .Message}}</p>
-    <button id="confirm-btn" type="button" onClick="hideModal()">Ok</button>
+    <button id="confirm-btn" type="button" onClick="hideModal()">{{ T .Lang "modal.confirm_btn" }}</button>
     <progress id="countdown-progress" max="200" value="200"></progress>
   </div>
 </dialog>

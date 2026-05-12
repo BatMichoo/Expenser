@@ -37,7 +37,9 @@ func (am *AuthMiddleware) redirectToLogin(c *gin.Context) {
 		HeaderOpts: &models.HeaderOptions{
 			IsLoggedIn: false,
 			IsOOB:      true,
+			Lang:       c.GetString("lang"),
 		},
+		Lang: c.GetString("lang"),
 	}
 	c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 }

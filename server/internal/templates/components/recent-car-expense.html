@@ -1,15 +1,16 @@
 {{ define "car-exp-row" }}
-<tr id="exp-{{ .ID }}">
-  <td>{{ .Date.Format "02.01.2006" }}</td>
-  <td>{{ .Type }}</td>
-  <td>{{ printf "%.2f" .Amount }}</td>
-  <td>{{ .Notes }}</td>
+<tr id="exp-{{ .Exp.ID }}">
+  <td>{{ .Exp.Date.Format "02.01.2006" }}</td>
+  <td>{{ .Exp.Type }}</td>
+  <td>{{ printf "%.2f" .Exp.Amount }}</td>
+  <td>{{ .Exp.FormattedMetadata }}</td>
+  <td>{{ .Exp.Notes }}</td>
   <td>
-    <button class="table-action-button blue" hx-get="/car/expenses/edit/{{ .ID }}" hx-target="#action-dialog">
-      Edit
+    <button class="table-action-button blue" hx-get="/car/expenses/edit/{{ .Exp.ID }}" hx-target="#action-dialog">
+      {{ T .Lang "common.edit" }}
     </button>
-    <button class="table-action-button red" hx-get="/car/expenses/delete/{{ .ID }}" hx-target="#action-dialog">
-      Delete
+    <button class="table-action-button red" hx-get="/car/expenses/delete/{{ .Exp.ID }}" hx-target="#action-dialog">
+      {{ T .Lang "common.delete" }}
     </button>
   </td>
 </tr>

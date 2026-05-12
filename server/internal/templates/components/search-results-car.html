@@ -1,8 +1,8 @@
 {{ define "search-results-car" }} {{ if .Expenses }} {{ range .Expenses }} {{
-template "car-exp-row" . }} {{ end }} {{ else }}
+template "car-exp-row" (dict "Exp" . "Lang" $.Lang) }} {{ end }} {{ else }}
 <tr>
-  <td colspan="5">
-    <p>No recent expenses found.</p>
+  <td colspan="6">
+    <p>{{ T .Lang "search.no_results" }}</p>
   </td>
 </tr>
 {{ end }}

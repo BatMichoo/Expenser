@@ -15,20 +15,9 @@
       end }} hx-target="{{ .Target }}" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) {
         hideDialog();
     }">
-      Ok
+      {{ T .Lang "modal.confirm_btn" }}
     </button>
-    <button id="cancel-btn" type="button" onClick="hideDialog()">Cancel</button>
+    <button id="cancel-btn" type="button" onClick="hideDialog()">{{ T .Lang "modal.cancel_btn" }}</button>
   </div>
-  <!-- <progress id="countdown-progress" max="200" value="200"></progress> -->
 </div>
-<!-- <script> -->
-<!--   const confirmBtn = document.getElementById("confirm-btn"); -->
-<!--   if (confirmBtn) { -->
-<!--     confirmBtn.blur(); -->
-<!--   } -->
-<!--   const cancelBtn = document.getElementById("cancel-btn"); -->
-<!--   if (cancelBtn) { -->
-<!--     cancelBtn.focus(); -->
-<!--   } -->
-<!-- </script> -->
 {{ end }}

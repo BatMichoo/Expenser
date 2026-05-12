@@ -1,7 +1,7 @@
 {{ define "house-current" }}
 <section id="overview-section">
   <h2>
-    <span>Dashboard Current Month</span>
+    <span>{{ T .Lang "house.title" }}</span>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect width="7" height="9" x="3" y="3" rx="1" />
@@ -12,20 +12,20 @@
   </h2>
   <div class="overview-container">
     <!-- Total Expenses Card -->
-    {{ template "total-card" .MonthlyExpense}}
+    {{ template "total-card" (dict "Exp" .MonthlyExpense "Lang" .Lang)}}
 
     <!-- Highest Expense Category Card -->
-    {{ template "highest-card" .HighestExpense}}
+    {{ template "highest-card" (dict "Exp" .HighestExpense "Lang" .Lang)}}
   </div>
 </section>
 <section id="add-expense-section">
   <button type="submit" hx-get="house/expenses/new" hx-target="#action-dialog">
-    Add Expense
+    {{ T .Lang "common.add" }}
   </button>
 </section>
 <section id="recent-expenses-section">
   <h2>
-    <span>Recent Expenses</span>
+    <span>{{ T .Lang "common.recent_expenses" }}</span>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M4 2v20c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2Z" />
@@ -40,26 +40,28 @@
     <table class="expenses-table">
       <thead>
         <tr>
-          <th>Date</th>
-          <th>Utility</th>
-          <th>Amount in lv</th>
-          <th>Notes</th>
-          <th>Actions</th>
+          <th>{{ T .Lang "common.date" }}</th>
+          <th>{{ T .Lang "form.utility_type" }}</th>
+          <th>{{ T .Lang "common.amount" }} (lv)</th>
+          <th>{{ T .Lang "common.details" }}</th>
+          <th>{{ T .Lang "common.notes" }}</th>
+          <th>{{ T .Lang "common.actions" }}</th>
         </tr>
       </thead>
       <tbody id="recent-expenses">
         {{ if .RecentExpenses }} {{ range .RecentExpenses }} {{ template
-        "house-exp-row" . }} {{ end }} {{ else }}
+        "house-exp-row" (dict "Exp" . "Lang" $.Lang) }} {{ end }} {{ else }}
         <tr>
-          <td colspan="5">
-            <p>No recent expenses found.</p>
+          <td colspan="6">
+            <p>{{ T .Lang "search.no_results" }}</p>
           </td>
         </tr>
         {{ end }}
       </tbody>
+
       <tfoot>
         <tr>
-          <td colspan="2">Total:</td>
+          <td colspan="2">{{ T .Lang "common.total" }}:</td>
           <td colspan="1">
             <span id="total">{{ printf "%.2f" .MonthlyExpense.Amount }}</span>
           </td>

@@ -4,4 +4,5 @@ type RootLayout struct {
 	TemplateName    string
 	TemplateContent any
 	HeaderOpts      *HeaderOptions
+	Lang            string
 }

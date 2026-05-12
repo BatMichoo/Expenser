@@ -4,6 +4,7 @@ import (
 	"expenser/internal/config"
 	database "expenser/internal/db"
 	"expenser/internal/handlers"
+	"expenser/internal/utilities"
 	"fmt"
 	"html/template"
 	"log"
@@ -30,12 +31,51 @@ func main() {
 		tPath = "internal/templates/**/*.html"
 	}
 
-	t := template.Must(template.ParseGlob(tPath))
+	funcMap := template.FuncMap{
+		"contains": func(slice interface{}, item string) bool {
+			s, ok := slice.([]string)
+			if !ok {
+				return false
+			}
+			for _, val := range s {
+				if val == item {
+					return true
+				}
+			}
+			return false
+		},
+		"T": func(lang, key string) string {
+			return utilities.T(lang, key)
+		},
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("invalid dict call")
+			}
+			dict := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict keys must be strings")
+				}
+				dict[key] = values[i+1]
+			}
+			return dict, nil
+		},
+		"emptySlice": func() []string {
+			return []string{}
+		},
+	}
+
+	t := template.Must(template.New("").Funcs(funcMap).ParseGlob(tPath))
 	router.SetHTMLTemplate(t) // Tell Gin to use this template set
 
 	db, err := database.InitDatabase(cfg)
 	if err != nil {
 		log.Fatalln("Couldn't initialize database.")
+	}
+
+	if err := utilities.InitI18n(); err != nil {
+		log.Fatalf("Couldn't initialize i18n: %v", err)
 	}
 
 	var sPath string

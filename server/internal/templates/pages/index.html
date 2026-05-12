@@ -1,6 +1,6 @@
 {{ define "root" }}
 <!doctype html>
-<html lang="en">
+<html lang="{{ .Lang }}">
 
 <head>
   <meta charset="UTF-8" />
@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="../../../static/css/mobile.css" />
   <link rel="stylesheet" href="../../../static/css/tablet.css" />
   <link rel="icon" type="image/png" href="../../../static/favicon.png" />
-  <title>Expense Tracker</title>
+  <title>{{ T .Lang "header.title" }}</title>
 </head>
 
 <body>
@@ -26,7 +26,7 @@
     </div>
   </div>
   <footer>
-    <p>&copy; 2025 Expense Tracker Suite. All rights reserved.</p>
+    <p>&copy; 2025 {{ T .Lang "header.title" }} Suite. {{ T .Lang "footer.rights" }}</p>
   </footer>
   <dialog id="action-dialog" hx-on::after-settle="showDialog(this)"></dialog>
   <div id="backdrop"></div>

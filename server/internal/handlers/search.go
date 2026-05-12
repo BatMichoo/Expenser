@@ -30,18 +30,21 @@ func (h *SearchHandler) GetSearch(c *gin.Context) {
 	c.HTML(http.StatusOK, utilities.Templates.Components.Search, gin.H{
 		"CurrentMonth": time.Now().Format("2006-01"),
 		"IsCar":        isCar,
+		"Lang":         c.GetString("lang"),
 	})
 }
 
 func (h *SearchHandler) GetResultsHouse(c *gin.Context) {
+	lang := c.GetString("lang")
 	userIDstr, _ := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
 	date, err := time.Parse(utilities.DateFormats.MonthOnly, c.Request.PostFormValue("date"))
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "400: Bad Request on date.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -51,8 +54,9 @@ func (h *SearchHandler) GetResultsHouse(c *gin.Context) {
 	total, err := h.DB.GetTotalHouseExpenseForMonth(date, userID)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "400: Bad Request.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -61,19 +65,22 @@ func (h *SearchHandler) GetResultsHouse(c *gin.Context) {
 	results := gin.H{
 		"Expenses": expenses,
 		"Total":    total,
+		"Lang":     lang,
 	}
 	c.HTML(http.StatusOK, utilities.Templates.Components.SearchResultsHouse, results)
 }
 
 func (h *SearchHandler) GetResultsCar(c *gin.Context) {
+	lang := c.GetString("lang")
 	userIDstr, _ := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
 	date, err := time.Parse(utilities.DateFormats.MonthOnly, c.Request.PostFormValue("date"))
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "400: Bad Request on date.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -82,8 +89,9 @@ func (h *SearchHandler) GetResultsCar(c *gin.Context) {
 	expenses, err := h.DB.GetCarExpensesForMonth(date.Month(), date.Year(), userID)
 	if err != nil {
 		content := &models.ModalContent{
-			Title:   "Something went wrong!",
+			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "400: Bad Request on date.",
+			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -93,6 +101,7 @@ func (h *SearchHandler) GetResultsCar(c *gin.Context) {
 	results := gin.H{
 		"Expenses": expenses,
 		"Total":    total,
+		"Lang":     lang,
 	}
 	c.HTML(http.StatusOK, utilities.Templates.Components.SearchResultsCar, results)
 }

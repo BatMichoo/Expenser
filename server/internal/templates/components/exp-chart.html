@@ -3,20 +3,20 @@
   <div>
     <form id="search-form">
       <div>
-        <label for="type">Type</label>
+        <label for="type">{{ T .Lang "form.expense_type" }}</label>
         <select id="type">
-          <option value="">All</option>
+          <option value="">{{ T .Lang "common.all" }}</option>
           {{ range .Types }}
           <option value="{{ .ID }}">{{ .Name }}</option>
           {{ end }}
         </select>
       </div>
       <div>
-        <label for="year">Year</label>
+        <label for="year">{{ T .Lang "common.year" }}</label>
         <input type="number" id="year" value="{{ .Year }}" />
       </div>
       <button type="button" class="chart-search" id="{{.Type}}-chart-search">
-        Search
+        {{ T .Lang "search.title" }}
       </button>
     </form>
   </div>

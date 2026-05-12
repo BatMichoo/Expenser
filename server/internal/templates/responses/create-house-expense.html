@@ -1,6 +1,6 @@
-{{ define "create-house-exp" }} {{ template "house-exp-row" .Expense }} {{ with
-.MonthlyExpense }} {{ template "total-card" . }} {{ end }} {{ with
-.HighestExpense }} {{ template "highest-card" . }} {{ end }}
+{{ define "create-house-exp" }} {{ template "house-exp-row" (dict "Exp" .Expense "Lang" .Lang) }} 
+{{ if .MonthlyExpense }}{{ template "total-card" (dict "Exp" .MonthlyExpense "Lang" .Lang) }}{{ end }} 
+{{ if .HighestExpense }}{{ template "highest-card" (dict "Exp" .HighestExpense "Lang" .Lang) }}{{ end }}
 
 <span id="total" hx-swap-oob="true">{{ printf "%.2f" .MonthlyExpense.Amount }}</span>
 {{ template "success-modal" .Modal }} {{end}}
