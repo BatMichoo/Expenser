@@ -3,7 +3,6 @@ package services
 import (
 	"expenser/internal/models"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,6 +21,7 @@ type JWTClaims struct {
 type AuthService struct {
 	secretKey       []byte
 	tokenExpiration time.Duration
+	lanDomain       string
 }
 
 type Token struct {
@@ -31,24 +31,34 @@ type Token struct {
 	ExpiresAt time.Time
 }
 
-func NewAuthService(secretKey string, tokenExp time.Duration) *AuthService {
+func NewAuthService(secretKey string, tokenExp time.Duration, lanDomain string) *AuthService {
 	return &AuthService{
 		secretKey:       []byte(secretKey),
 		tokenExpiration: tokenExp,
+		lanDomain:       lanDomain,
 	}
 }
 
 func (as *AuthService) SetCookie(t *Token, c *gin.Context) {
-	domain := os.Getenv("LAN_DOMAIN")
-
-	if domain == "" {
-		domain = "localhost"
-	}
-
 	secure := true
 	httpOnly := true
 
-	c.SetCookie("auth_token", t.Value, int(t.Duration.Seconds()), "/", domain, secure, httpOnly)
+	c.SetCookie("auth_token", t.Value, int(t.Duration.Seconds()), "/", as.lanDomain, secure, httpOnly)
+}
+
+func (as *AuthService) ClearCookie(c *gin.Context) {
+	secure := true
+	httpOnly := true
+
+	c.SetCookie(
+		"auth_token",
+		"",
+		-1,
+		"/",
+		as.lanDomain,
+		secure,
+		httpOnly,
+	)
 }
 
 // GenerateToken creates a new JWT token for the given user

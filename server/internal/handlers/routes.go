@@ -11,7 +11,7 @@ import (
 
 func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 	// Public routes (no authentication required)
-	as := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration)
+	as := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration, cfg.LanDomain)
 
 	rootHandler := NewRootHandler(db, as)
 	router.NoRoute(rootHandler.NotFound)

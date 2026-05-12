@@ -31,3 +31,15 @@ type HouseExpResponse struct {
 	HighestExpense *HighestExpense // HighestExpense provides the updated highest expense for the current month.
 	Modal          *ModalContent
 }
+
+type HouseData struct {
+	Name           string
+	MonthlyExpense *MonthlyExpense // MonthlyExpense summarizes the total spending for the current month.
+	HighestExpense *HighestExpense // HighestExpense identifies the single largest expense in the current month.
+	RecentExpenses *[]HouseExpense // RecentExpenses lists individual expenses for the current month.
+}
+
+type EditHouseFormData struct {
+	Expense *HouseExpense
+	Types   *[]HomeUtilityType
+}

@@ -31,3 +31,15 @@ type CarExpResponse struct {
 	HighestExpense *HighestExpense // HighestExpense provides the updated highest expense for the current month.
 	Modal          *ModalContent
 }
+
+type CarData struct {
+	Name           string
+	MonthlyExpense *MonthlyExpense // MonthlyExpense summarizes the total spending for the current month.
+	HighestExpense *HighestExpense // HighestExpense identifies the single largest expense in the current month.
+	RecentExpenses *[]CarExpense   // RecentExpenses lists individual expenses for the current month.
+}
+
+type EditCarFormData struct {
+	Expense *CarExpense
+	Types   *[]CarExpenseType
+}

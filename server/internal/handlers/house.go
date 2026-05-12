@@ -14,17 +14,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// HouseData is a composite struct holding all the necessary data
-// to render the main home page view, including monthly summaries and recent expenses.
-type HouseData struct {
-	Name           string
-	MonthlyExpense *models.MonthlyExpense // MonthlyExpense summarizes the total spending for the current month.
-	HighestExpense *models.HighestExpense // HighestExpense identifies the single largest expense in the current month.
-	RecentExpenses *[]models.HouseExpense // RecentExpenses lists individual expenses for the current month.
-}
-
-// HouseHandler provides HTTP handlers for managing home-related expenses.
-// It encapsulates database operations and renders HTML templates for a web interface.
 type HouseHandler struct {
 	DB *database.DB // DB is the database client used for expense operations.
 }
@@ -37,6 +26,43 @@ func NewHouseHandler(db *database.DB) *HouseHandler {
 	}
 }
 
+func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, bool, error) {
+	dateNow := time.Now()
+	month := dateNow.Month()
+	year := dateNow.Year()
+
+	userIDstr, exists := c.Get("user_id")
+	userID, _ := userIDstr.(uuid.UUID)
+
+	highestExpense, utilType, err := h.DB.GetHighestHouseExpenseForMonth(month, userID)
+	if err != nil {
+		return nil, exists, fmt.Errorf("error fetching highest house expense: %w", err)
+	}
+
+	monthlyExpense, err := h.DB.GetTotalHouseExpenseForMonth(dateNow, userID)
+	if err != nil {
+		return nil, exists, fmt.Errorf("error fetching total house expense: %w", err)
+	}
+
+	recentExpenses, err := h.DB.GetHouseExpensesForMonth(month, year, userID)
+	if err != nil {
+		return nil, exists, fmt.Errorf("error fetching recent house expenses: %w", err)
+	}
+
+	return &models.HouseData{
+		Name: "current",
+		MonthlyExpense: &models.MonthlyExpense{
+			Amount: monthlyExpense,
+			Month:  month.String(),
+		},
+		HighestExpense: &models.HighestExpense{
+			Amount: highestExpense,
+			Type:   utilType,
+		},
+		RecentExpenses: recentExpenses,
+	}, exists, nil
+}
+
 // INFO: CREATE
 
 // GetCreateHouseForm renders the HTML form for users to input details
@@ -47,7 +73,7 @@ func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "500: Internal Server Error :(",
+			Message: fmt.Sprintf("500: %v", err),
 		}
 
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
@@ -70,7 +96,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "400: Bad Request on type ID.",
+			Message: fmt.Sprintf("400: %v", err),
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -80,7 +106,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "400: Bad Request on date.",
+			Message: fmt.Sprintf("400: %v", err),
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -90,7 +116,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "400: Bad Request on amount.",
+			Message: fmt.Sprintf("400: %v", err),
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -110,7 +136,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "400: Error creating new house expense.",
+			Message: fmt.Sprintf("400: %v", err),
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -122,7 +148,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "400: Error fetching highest house expense.",
+			Message: fmt.Sprintf("400: %v", err),
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -132,7 +158,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "400: Error fetching highest house expense.",
+			Message: fmt.Sprintf("400: %v", err),
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -172,61 +198,20 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 // It intelligently renders either the full page layout or a partial HTML
 // snippet based on whether the request is an HTMX request.
 func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
-	dateNow := time.Now()
-	month := dateNow.Month()
-	year := dateNow.Year()
-
-	userIDstr, exists := c.Get("user_id")
-	userID, _ := userIDstr.(uuid.UUID)
-
-	highestExpense, utilType, err := h.DB.GetHighestHouseExpenseForMonth(month, userID)
+	pageData, exists, err := h.getHousePageData(c)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "500: Error fetching highest house expense.",
+			Message: fmt.Sprintf("500: %v", err),
 		}
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
-	}
-
-	monthlyExpense, err := h.DB.GetTotalHouseExpenseForMonth(dateNow, userID)
-	if err != nil {
-		content := &models.ModalContent{
-			Title:   "Something went wrong!",
-			Message: "500: Error fetching total house expense.",
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
-		return
-	}
-
-	recentExpenses, err := h.DB.GetHouseExpensesForMonth(month, year, userID)
-	if err != nil {
-		content := &models.ModalContent{
-			Title:   "Something went wrong!",
-			Message: "500: Error fetching recent house expenses.",
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
-		return
-	}
-
-	pageData := &HouseData{
-		Name: "current",
-		MonthlyExpense: &models.MonthlyExpense{
-			Amount: monthlyExpense,
-			Month:  month.String(),
-		},
-		HighestExpense: &models.HighestExpense{
-			Amount: highestExpense,
-			Type:   utilType,
-		},
-		RecentExpenses: recentExpenses,
 	}
 
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Components.HouseCurrent, pageData)
-		fmt.Println("HTMX request!")
 		return
 	} else {
 		rl := &models.RootLayout{
@@ -246,54 +231,14 @@ func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
 // It intelligently renders either the full page layout or a partial HTML
 // snippet based on whether the request is an HTMX request.
 func (h *HouseHandler) GetHome(c *gin.Context) {
-	dateNow := time.Now()
-	month := dateNow.Month()
-	year := dateNow.Year()
-
-	userIDstr, exists := c.Get("user_id")
-	userID, _ := userIDstr.(uuid.UUID)
-
-	highestExpense, utilType, err := h.DB.GetHighestHouseExpenseForMonth(month, userID)
+	pageData, exists, err := h.getHousePageData(c)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "500: Error fetching highest house expense.",
+			Message: fmt.Sprintf("500: %v", err),
 		}
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
-	}
-
-	monthlyExpense, err := h.DB.GetTotalHouseExpenseForMonth(dateNow, userID)
-	if err != nil {
-		content := &models.ModalContent{
-			Title:   "Something went wrong!",
-			Message: "500: Error fetching total house expense.",
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
-		return
-	}
-
-	recentExpenses, err := h.DB.GetHouseExpensesForMonth(month, year, userID)
-	if err != nil {
-		content := &models.ModalContent{
-			Title:   "Something went wrong!",
-			Message: "500: Error fetching recent house expenses.",
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
-		return
-	}
-
-	pageData := &HouseData{
-		Name: "current",
-		MonthlyExpense: &models.MonthlyExpense{
-			Amount: monthlyExpense,
-			Month:  month.String(),
-		},
-		HighestExpense: &models.HighestExpense{
-			Amount: highestExpense,
-			Type:   utilType,
-		},
-		RecentExpenses: recentExpenses,
 	}
 
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
@@ -327,7 +272,7 @@ func (h *HouseHandler) GetExpenseById(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "400: Bad Request on ID.",
+			Message: fmt.Sprintf("400: %v", err),
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -336,7 +281,11 @@ func (h *HouseHandler) GetExpenseById(c *gin.Context) {
 	exp, err := h.DB.GetHouseExpenseByID(id)
 
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: fmt.Sprintf("400: %v", err),
+		}
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
@@ -344,11 +293,6 @@ func (h *HouseHandler) GetExpenseById(c *gin.Context) {
 }
 
 // INFO: UPDATE
-
-type EditFormData struct {
-	Expense *models.HouseExpense
-	Types   *[]models.HomeUtilityType
-}
 
 // GetEditHouseForm renders the HTML form pre-filled with existing expense data
 // for editing a specific home expense.
@@ -358,7 +302,7 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "400: Bad Request on ID.",
+			Message: fmt.Sprintf("400: %v", err),
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -366,17 +310,25 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) {
 
 	exp, err := h.DB.GetHouseExpenseByID(id)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: fmt.Sprintf("400: %v", err),
+		}
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	expTypes, err := h.DB.GetHouseUtilityTypes()
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: fmt.Sprintf("400: %v", err),
+		}
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
-	formData := &EditFormData{
+	formData := &models.EditHouseFormData{
 		Expense: exp,
 		Types:   expTypes,
 	}
@@ -392,18 +344,30 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) {
 func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: fmt.Sprintf("400: %v", err),
+		}
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	utilTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: fmt.Sprintf("400: %v", err),
+		}
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 	date, err := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("date"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: fmt.Sprintf("400: %v", err),
+		}
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
@@ -429,7 +393,7 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "400: Bad Request. Couldn't update expense",
+			Message: fmt.Sprintf("400: %v", err),
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -441,13 +405,21 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 
 	highestExp, expType, err := h.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: fmt.Sprintf("400: %v", err),
+		}
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	montlyTotal, err := h.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.Modal, err)
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: fmt.Sprintf("400: %v", err),
+		}
+		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
@@ -479,7 +451,7 @@ func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "400: Bad Request. Couldn't get ID.",
+			Message: fmt.Sprintf("400: %v", err),
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -493,7 +465,6 @@ func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) {
 		Message:  fmt.Sprintf("Please confirm if you want to delete expense with ID: %v", id),
 	}
 	c.HTML(http.StatusOK, utilities.Templates.Components.ModalConfirm, content)
-	return
 }
 
 // DeleteHouseExp handles the HTTP DELETE request to remove a home expense by its ID.
@@ -506,7 +477,7 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "400: Bad Request. Couldn't delete expense",
+			Message: fmt.Sprintf("400: %v", err),
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -516,7 +487,7 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   "Something went wrong!",
-			Message: "400: Bad Request. Couldn't delete expense",
+			Message: fmt.Sprintf("400: %v", err),
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
@@ -525,12 +496,6 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
 	if !res {
 		// If res is false, it means the expense was not found or not deleted.
 		c.HTML(http.StatusNoContent, "", gin.H{})
-
-		content := &models.ModalContent{
-			Title:   "Something went wrong!",
-			Message: "204: No Content. Couldn't find expense or it doesn't exist.",
-		}
-		c.HTML(http.StatusNoContent, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
@@ -541,13 +506,21 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
 
 	monthlyExpense, err := h.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Modal, err)
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: fmt.Sprintf("500: %v", err),
+		}
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
 	highestExpense, utilType, err := h.DB.GetHighestHouseExpenseForMonth(month, userID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.Modal, err)
+		content := &models.ModalContent{
+			Title:   "Something went wrong!",
+			Message: fmt.Sprintf("500: %v", err),
+		}
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
 	}
 

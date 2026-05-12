@@ -6,7 +6,6 @@ import (
 	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"net/http"
-	"os"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -170,24 +169,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	domain := os.Getenv("LAN_DOMAIN")
-
-	if domain == "" {
-		domain = "localhost"
-	}
-
-	secure := true
-	httpOnly := true
-
-	c.SetCookie(
-		"auth_token",
-		"",
-		-1,
-		"/",
-		domain,
-		secure,
-		httpOnly,
-	)
+	h.AuthService.ClearCookie(c)
 
 	c.Header("HX-Redirect", "/")
 	c.Status(http.StatusOK)

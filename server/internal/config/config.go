@@ -14,6 +14,7 @@ import (
 // Config struct to hold application configuration.
 type Config struct {
 	ServerPort string
+	LanDomain  string
 	DB         DB
 	JWT        JWT
 	Mode       string
@@ -38,6 +39,11 @@ func LoadConfig() (*Config, error) {
 	envPath := filepath.Join(GetProjectRootDir(), ".env.development")
 	if err := godotenv.Load(envPath); err != nil {
 		log.Printf("No .env.development file found at %s, using environment variables\n", envPath)
+	}
+
+	lanDomain := os.Getenv("LAN_DOMAIN")
+	if lanDomain == "" {
+		lanDomain = "localhost"
 	}
 
 	dbUser := os.Getenv("DB_USER")
@@ -79,6 +85,7 @@ func LoadConfig() (*Config, error) {
 
 	return &Config{
 		ServerPort: serverPort,
+		LanDomain:  lanDomain,
 		DB:         DB,
 		JWT: JWT{
 			SecretKey:       jwtSecret,
