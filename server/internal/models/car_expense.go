@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"expenser/internal/utilities"
 	"fmt"
 	"strings"
 	"time"
@@ -21,7 +22,7 @@ type CarExpense struct {
 	CreatedBy     uuid.UUID
 }
 
-func (c CarExpense) FormattedMetadata() string {
+func (c CarExpense) FormattedMetadata(lang string) string {
 	if len(c.Metadata) == 0 {
 		return ""
 	}
@@ -34,7 +35,11 @@ func (c CarExpense) FormattedMetadata() string {
 	case 2: // Maintenance
 		var m MaintenanceMetadata
 		json.Unmarshal(c.Metadata, &m)
-		return fmt.Sprintf("Parts: %s, Labor: %.2f", strings.Join(m.Parts, ", "), m.LaborCost)
+		translatedParts := make([]string, len(m.Parts))
+		for i, part := range m.Parts {
+			translatedParts[i] = utilities.T(lang, "parts."+part)
+		}
+		return fmt.Sprintf("Part: %s, Labor: %.2f", strings.Join(translatedParts, ", "), m.LaborCost)
 	case 3: // Insurance
 		var m InsuranceMetadata
 		json.Unmarshal(c.Metadata, &m)
@@ -43,6 +48,10 @@ func (c CarExpense) FormattedMetadata() string {
 		var m ParkingTollsMetadata
 		json.Unmarshal(c.Metadata, &m)
 		return fmt.Sprintf("%s (%s)", m.Location, m.Duration)
+	case 6: // Other
+		var m OtherMetadata
+		json.Unmarshal(c.Metadata, &m)
+		return m.CustomName
 	}
 	return ""
 }
@@ -66,6 +75,10 @@ func (c CarExpense) UnmarshalMetadata() interface{} {
 		return m
 	case 5:
 		var m ParkingTollsMetadata
+		json.Unmarshal(c.Metadata, &m)
+		return m
+	case 6:
+		var m OtherMetadata
 		json.Unmarshal(c.Metadata, &m)
 		return m
 	}

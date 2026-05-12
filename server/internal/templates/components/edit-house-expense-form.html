@@ -1,7 +1,7 @@
 {{ define "edit-house-exp-form" }} {{ $Expense := .Expense}}
 <div>
   <h2 class="new-expense-heading">
-    {{ T .Lang "form.edit" }}: {{ $Expense.UtilityType }}
+    {{ T .Lang "form.edit" }}: {{ T .Lang (print "type." $Expense.UtilityType) }}
     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <line x1="12" y1="1" x2="12" y2="23" />
@@ -15,7 +15,7 @@
         hx-swap="innerHTML">
         {{range .Types }}
         <option value="{{ .ID }}" {{if eq $Expense.UtilityTypeID .ID }}selected{{end}}>
-          {{ .Name}}
+          {{ T $.Lang (print "type." .Name) }}
         </option>
         {{end}}
       </select>
@@ -26,6 +26,7 @@
         {{ if eq $Expense.UtilityTypeID 2 }}{{ template "house-metadata-water" (dict "Metadata" .Metadata "Lang" $.Lang) }}{{ end }}
         {{ if eq $Expense.UtilityTypeID 3 }}{{ template "house-metadata-gas" (dict "Metadata" .Metadata "Lang" $.Lang) }}{{ end }}
         {{ if or (eq $Expense.UtilityTypeID 4) (eq $Expense.UtilityTypeID 5) }}{{ template "house-metadata-internettv" (dict "Metadata" .Metadata "Lang" $.Lang) }}{{ end }}
+        {{ if eq $Expense.UtilityTypeID 7 }}{{ template "house-metadata-other" (dict "Metadata" .Metadata "Lang" $.Lang) }}{{ end }}
       {{ end }}
     </div>
     <div>

@@ -57,3 +57,12 @@
   </div>
 </div>
 {{ end }}
+
+{{ define "house-metadata-other" }}
+<div class="metadata-group">
+  <div>
+    <label for="customName">{{ T .Lang "metadata.custom_name" }}</label>
+    <input type="text" id="customName" name="customName" placeholder="e.g., Waste management" value="{{ if .Metadata }}{{ .Metadata.CustomName }}{{ end }}" required />
+  </div>
+</div>
+{{ end }}

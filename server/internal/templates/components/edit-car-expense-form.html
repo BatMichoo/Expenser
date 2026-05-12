@@ -1,7 +1,7 @@
 {{ define "edit-car-exp-form" }} {{ $Expense := .Expense}}
 <div>
   <h2 class="new-expense-heading">
-    {{ T .Lang "form.edit" }}: {{ $Expense.Type }}
+    {{ T .Lang "form.edit" }}: {{ T .Lang (print "type." $Expense.Type) }}
     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <line x1="12" y1="1" x2="12" y2="23" />
@@ -15,7 +15,7 @@
         hx-swap="innerHTML">
         {{range .Types }}
         <option value="{{ .ID }}" {{if eq $Expense.ExpenseTypeID .ID }}selected{{end}}>
-          {{ .Name}}
+          {{ T $.Lang (print "type." .Name) }}
         </option>
         {{ end }}
       </select>
@@ -26,6 +26,7 @@
         {{ if eq $Expense.ExpenseTypeID 2 }}{{ template "car-metadata-maintenance" (dict "Metadata" .Metadata "Lang" $.Lang) }}{{ end }}
         {{ if eq $Expense.ExpenseTypeID 3 }}{{ template "car-metadata-insurance" (dict "Metadata" .Metadata "Lang" $.Lang) }}{{ end }}
         {{ if eq $Expense.ExpenseTypeID 5 }}{{ template "car-metadata-parkingtolls" (dict "Metadata" .Metadata "Lang" $.Lang) }}{{ end }}
+        {{ if eq $Expense.ExpenseTypeID 6 }}{{ template "car-metadata-other" (dict "Metadata" .Metadata "Lang" $.Lang) }}{{ end }}
       {{ end }}
     </div>
     <div>

@@ -13,22 +13,23 @@
 
 {{ define "car-metadata-maintenance" }}
 <div class="metadata-group">
-  <div class="checkbox-group">
-    <label>{{ T .Lang "metadata.parts" }}</label>
-    <div class="checkbox-items">
+  <div>
+    <label for="parts">{{ T .Lang "metadata.parts" }}</label>
+    <select id="parts" name="parts">
+      <option value="">{{ T .Lang "form.select_type" }}</option>
       {{ $parts := emptySlice }}
       {{ if .Metadata }}{{ $parts = .Metadata.Parts }}{{ end }}
-      <label><input type="checkbox" name="parts" value="Oil" {{ if contains $parts "Oil" }}checked{{ end }}> Oil</label>
-      <label><input type="checkbox" name="parts" value="Filters" {{ if contains $parts "Filters" }}checked{{ end }}> Filters</label>
-      <label><input type="checkbox" name="parts" value="Brakes" {{ if contains $parts "Brakes" }}checked{{ end }}> Brakes</label>
-      <label><input type="checkbox" name="parts" value="Tires" {{ if contains $parts "Tires" }}checked{{ end }}> Tires</label>
-      <label><input type="checkbox" name="parts" value="Battery" {{ if contains $parts "Battery" }}checked{{ end }}> Battery</label>
-      <label><input type="checkbox" name="parts" value="Spark Plugs" {{ if contains $parts "Spark Plugs" }}checked{{ end }}> Spark Plugs</label>
-    </div>
+      <option value="Oil" {{ if contains $parts "Oil" }}selected{{ end }}>{{ T .Lang "parts.Oil" }}</option>
+      <option value="Filters" {{ if contains $parts "Filters" }}selected{{ end }}>{{ T .Lang "parts.Filters" }}</option>
+      <option value="Brakes" {{ if contains $parts "Brakes" }}selected{{ end }}>{{ T .Lang "parts.Brakes" }}</option>
+      <option value="Tires" {{ if contains $parts "Tires" }}selected{{ end }}>{{ T .Lang "parts.Tires" }}</option>
+      <option value="Battery" {{ if contains $parts "Battery" }}selected{{ end }}>{{ T .Lang "parts.Battery" }}</option>
+      <option value="Spark Plugs" {{ if contains $parts "Spark Plugs" }}selected{{ end }}>{{ T .Lang "parts.Spark Plugs" }}</option>
+    </select>
   </div>
   <div>
     <label for="otherParts">{{ T .Lang "metadata.other_parts" }}</label>
-    <input type="text" id="otherParts" name="otherParts" placeholder="e.g., Wipers, Bulbs" value="" />
+    <input type="text" id="otherParts" name="otherParts" placeholder="e.g., Wipers" value="" />
   </div>
   <div>
     <label for="laborCost">{{ T .Lang "metadata.labor_cost" }}</label>
@@ -63,6 +64,15 @@
   <div>
     <label for="duration">{{ T .Lang "metadata.duration" }}</label>
     <input type="text" id="duration" name="duration" placeholder="e.g., 2 hours" value="{{ if .Metadata }}{{ .Metadata.Duration }}{{ end }}" />
+  </div>
+</div>
+{{ end }}
+
+{{ define "car-metadata-other" }}
+<div class="metadata-group">
+  <div>
+    <label for="customName">{{ T .Lang "metadata.custom_name" }}</label>
+    <input type="text" id="customName" name="customName" placeholder="e.g., Vignette" value="{{ if .Metadata }}{{ .Metadata.CustomName }}{{ end }}" required />
   </div>
 </div>
 {{ end }}

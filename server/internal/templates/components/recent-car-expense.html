@@ -1,9 +1,9 @@
 {{ define "car-exp-row" }}
 <tr id="exp-{{ .Exp.ID }}">
   <td>{{ .Exp.Date.Format "02.01.2006" }}</td>
-  <td>{{ .Exp.Type }}</td>
+  <td>{{ T .Lang (print "type." .Exp.Type) }}</td>
   <td>{{ printf "%.2f" .Exp.Amount }}</td>
-  <td>{{ .Exp.FormattedMetadata }}</td>
+  <td>{{ .Exp.FormattedMetadata .Lang }}</td>
   <td>{{ .Exp.Notes }}</td>
   <td>
     <button class="table-action-button blue" hx-get="/car/expenses/edit/{{ .Exp.ID }}" hx-target="#action-dialog">

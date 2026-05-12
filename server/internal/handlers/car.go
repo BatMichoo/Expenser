@@ -159,7 +159,11 @@ func (h *CarHandler) parseCarMetadata(c *gin.Context, typeID int) json.RawMessag
 			PricePerLiter: price,
 		}
 	case 2: // Maintenance/Repair
-		parts := c.Request.PostForm["parts"]
+		var parts []string
+		selectedPart := c.Request.PostFormValue("parts")
+		if selectedPart != "" {
+			parts = append(parts, selectedPart)
+		}
 		otherParts := c.Request.PostFormValue("otherParts")
 		if otherParts != "" {
 			for _, p := range strings.Split(otherParts, ",") {
@@ -186,6 +190,10 @@ func (h *CarHandler) parseCarMetadata(c *gin.Context, typeID int) json.RawMessag
 			Location: c.Request.PostFormValue("location"),
 			Duration: c.Request.PostFormValue("duration"),
 		}
+	case 6: // Other
+		metadata = models.OtherMetadata{
+			CustomName: c.Request.PostFormValue("customName"),
+		}
 	default:
 		return nil
 	}
@@ -208,6 +216,8 @@ func (h *CarHandler) GetMetadataFields(c *gin.Context) {
 		templateName = "car-metadata-insurance"
 	case 5:
 		templateName = "car-metadata-parkingtolls"
+	case 6:
+		templateName = "car-metadata-other"
 	default:
 		c.Status(http.StatusOK)
 		return

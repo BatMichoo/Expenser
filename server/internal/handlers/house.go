@@ -124,6 +124,10 @@ func (h *HouseHandler) parseHouseMetadata(c *gin.Context, typeID int) json.RawMe
 			Provider: c.Request.PostFormValue("provider"),
 			Plan:     c.Request.PostFormValue("plan"),
 		}
+	case 7: // Other
+		metadata = models.OtherMetadata{
+			CustomName: c.Request.PostFormValue("customName"),
+		}
 	default:
 		return nil
 	}
@@ -147,6 +151,8 @@ func (h *HouseHandler) GetMetadataFields(c *gin.Context) {
 		templateName = "house-metadata-gas"
 	case 4, 5:
 		templateName = "house-metadata-internettv"
+	case 7:
+		templateName = "house-metadata-other"
 	default:
 		c.Status(http.StatusOK)
 		return

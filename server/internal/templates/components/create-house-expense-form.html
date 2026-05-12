@@ -18,21 +18,21 @@
         hx-swap="innerHTML">
         <option value="">{{ T .Lang "form.select_utility" }}</option>
         {{range .Types }}
-        <option value="{{ .ID }}">{{ .Name}}</option>
+        <option value="{{ .ID }}">{{ T $.Lang (print "type." .Name) }}</option>
         {{end}}
       </select>
     </div>
     <div id="metadata-fields"></div>
     <div>
-      <label for="amount">{{ T .Lang "form.amount" }} (lv)</label>
+      <label for="amount">{{ T .Lang "common.amount" }} (lv)</label>
       <input type="number" id="amount" name="amount" step="0.01" min="0" required placeholder='{{ T .Lang "form.amount_placeholder" }}' />
     </div>
     <div>
-      <label for="expenseDate">{{ T .Lang "form.date" }}</label>
+      <label for="expenseDate">{{ T .Lang "common.date" }}</label>
       <input type="date" id="expenseDate" name="date" required />
     </div>
     <div>
-      <label for="notes">{{ T .Lang "form.notes" }}</label>
+      <label for="notes">{{ T .Lang "common.notes" }}</label>
       <textarea id="notes" name="notes" rows="3" placeholder='{{ T .Lang "form.notes_placeholder" }}'></textarea>
     </div>
     <div>

@@ -18,7 +18,7 @@
         hx-swap="innerHTML">
         <option value="">{{ T .Lang "form.select_type" }}</option>
         {{range .Types}}
-        <option value="{{ .ID }}">{{ .Name}}</option>
+        <option value="{{ .ID }}">{{ T $.Lang (print "type." .Name) }}</option>
         {{end}}
       </select>
     </div>

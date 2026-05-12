@@ -20,7 +20,7 @@ type HouseExpense struct {
 	CreatedBy     uuid.UUID
 }
 
-func (h HouseExpense) FormattedMetadata() string {
+func (h HouseExpense) FormattedMetadata(lang string) string {
 	if len(h.Metadata) == 0 {
 		return ""
 	}
@@ -42,6 +42,10 @@ func (h HouseExpense) FormattedMetadata() string {
 		var m InternetTVMetadata
 		json.Unmarshal(h.Metadata, &m)
 		return fmt.Sprintf("%s - %s", m.Provider, m.Plan)
+	case 7: // Other
+		var m OtherMetadata
+		json.Unmarshal(h.Metadata, &m)
+		return m.CustomName
 	}
 	return ""
 }
@@ -65,6 +69,10 @@ func (h HouseExpense) UnmarshalMetadata() interface{} {
 		return m
 	case 4, 5:
 		var m InternetTVMetadata
+		json.Unmarshal(h.Metadata, &m)
+		return m
+	case 7:
+		var m OtherMetadata
 		json.Unmarshal(h.Metadata, &m)
 		return m
 	}

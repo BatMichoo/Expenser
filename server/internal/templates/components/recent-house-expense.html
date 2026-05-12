@@ -1,9 +1,9 @@
 {{ define "house-exp-row" }}
 <tr id="exp-{{ .Exp.ID }}">
   <td>{{ .Exp.ExpenseDate.Format "02.01.2006" }}</td>
-  <td>{{ .Exp.UtilityType }}</td>
+  <td>{{ T .Lang (print "type." .Exp.UtilityType) }}</td>
   <td>{{ printf "%.2f" .Exp.Amount }}</td>
-  <td>{{ .Exp.FormattedMetadata }}</td>
+  <td>{{ .Exp.FormattedMetadata .Lang }}</td>
   <td>{{ .Exp.Notes }}</td>
   <td>
     <button class="table-action-button blue" hx-get="/house/expenses/edit/{{ .Exp.ID }}" hx-target="#action-dialog">
