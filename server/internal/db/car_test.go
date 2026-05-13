@@ -42,8 +42,8 @@ func TestCreateCarExpense(t *testing.T) {
 				Date:          expenseDate,
 				ExpenseTypeID: 1,
 				Notes:         "Test 1234",
+				Metadata:      []byte("{}"),
 			},
-			wantErr: false,
 			validate: func(t *testing.T, got *models.CarExpense) {
 				assert.Equal(t, 250.00, got.Amount)
 				assert.Equal(t, expenseDate.Local().Round(time.Second), got.Date.Local().Round(time.Second))
@@ -59,8 +59,9 @@ func TestCreateCarExpense(t *testing.T) {
 			input: &models.CarExpense{
 				Amount:        250.00,
 				Date:          expenseDate,
-				ExpenseTypeID: -1,
+				ExpenseTypeID: 999,
 				Notes:         "Test 1234",
+				Metadata:      []byte("{}"),
 			},
 			wantErr: true,
 			validate: func(t *testing.T, got *models.CarExpense) {
@@ -119,6 +120,7 @@ func TestEditCarExpense(t *testing.T) {
 					ExpenseTypeID: 1,
 					Notes:         "Test 1234567",
 					CreatedBy:     TestUserRegisterModel.ID,
+					Metadata:      []byte("{}"),
 				}
 
 				err := testDB.CreateCarExpense(initial)
@@ -134,8 +136,8 @@ func TestEditCarExpense(t *testing.T) {
 				Date:          expenseDate,
 				ExpenseTypeID: 3,
 				Notes:         "Test 1234",
+				Metadata:      []byte("{}"),
 			},
-			wantErr: false,
 			validate: func(t *testing.T, got *models.CarExpense) {
 				assert.Equal(t, 250.00, got.Amount)
 				assert.Equal(t, expenseDate.Local().Round(time.Second), got.Date.Local().Round(time.Second))
@@ -197,6 +199,7 @@ func TestGetCarExpense(t *testing.T) {
 					ExpenseTypeID: 1,
 					Notes:         "Test 1234",
 					CreatedBy:     TestUserRegisterModel.ID,
+					Metadata:      []byte("{}"),
 				}
 
 				err := testDB.CreateCarExpense(expense)
@@ -227,6 +230,7 @@ func TestGetCarExpense(t *testing.T) {
 					ExpenseTypeID: 1,
 					Notes:         "Test 1234",
 					CreatedBy:     TestUserRegisterModel.ID,
+					Metadata:      []byte("{}"),
 				}
 
 				err := testDB.CreateCarExpense(expense)
@@ -239,10 +243,10 @@ func TestGetCarExpense(t *testing.T) {
 			input: &models.CarExpense{
 				Amount:        250.00,
 				Date:          expenseDate,
-				ExpenseTypeID: 7,
+				ExpenseTypeID: 3,
 				Notes:         "Test 1234",
+				Metadata:      []byte("{}"),
 			},
-			wantErr: false,
 			wantNil: true,
 		},
 	}
@@ -308,6 +312,7 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 						ExpenseTypeID: 1,
 						Notes:         "Test 1234",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        350.00,
@@ -315,6 +320,7 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 						ExpenseTypeID: 3,
 						Notes:         "Test 12345",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        450.00,
@@ -322,6 +328,7 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 						ExpenseTypeID: 6,
 						Notes:         "Test 123456",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 				}
 
@@ -334,16 +341,18 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 			},
 			expected: []models.CarExpense{
 				{
-					Amount: 350.00,
-					Date:   expenseDate.Add(time.Duration(30 * 24 * time.Hour)),
-					Type:   "Insurance",
-					Notes:  "Test 12345",
+					Amount:   350.00,
+					Date:     expenseDate.Add(time.Duration(30 * 24 * time.Hour)),
+					Type:     "Insurance",
+					Notes:    "Test 12345",
+					Metadata: []byte("{}"),
 				},
 				{
-					Amount: 450.00,
-					Date:   expenseDate.Add(time.Duration(30 * 24 * time.Hour)),
-					Type:   "Other",
-					Notes:  "Test 123456",
+					Amount:   450.00,
+					Date:     expenseDate.Add(time.Duration(30 * 24 * time.Hour)),
+					Type:     "Other",
+					Notes:    "Test 123456",
+					Metadata: []byte("{}"),
 				},
 			},
 			wantErr: false,
@@ -368,6 +377,7 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 						ExpenseTypeID: 1,
 						Notes:         "Test 1234",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        350.00,
@@ -375,6 +385,7 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 						ExpenseTypeID: 3,
 						Notes:         "Test 12345",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        450.00,
@@ -382,6 +393,7 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 						ExpenseTypeID: 6,
 						Notes:         "Test 123456",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 				}
 
@@ -394,10 +406,11 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 			},
 			expected: []models.CarExpense{
 				{
-					Amount: 250.00,
-					Date:   expenseDate,
-					Type:   "Fuel",
-					Notes:  "Test 1234",
+					Amount:   250.00,
+					Date:     expenseDate,
+					Type:     "Fuel",
+					Notes:    "Test 1234",
+					Metadata: []byte("{}"),
 				},
 			},
 			wantErr: false,
@@ -468,6 +481,7 @@ func TestGetTotalCarExpenseMonth(t *testing.T) {
 						ExpenseTypeID: 1,
 						Notes:         "Test 1234",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        350.00,
@@ -475,6 +489,7 @@ func TestGetTotalCarExpenseMonth(t *testing.T) {
 						ExpenseTypeID: 3,
 						Notes:         "Test 12345",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        450.00,
@@ -482,6 +497,7 @@ func TestGetTotalCarExpenseMonth(t *testing.T) {
 						ExpenseTypeID: 6,
 						Notes:         "Test 123456",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 				}
 
@@ -512,6 +528,7 @@ func TestGetTotalCarExpenseMonth(t *testing.T) {
 						ExpenseTypeID: 1,
 						Notes:         "Test 1234",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        350.00,
@@ -519,6 +536,7 @@ func TestGetTotalCarExpenseMonth(t *testing.T) {
 						ExpenseTypeID: 3,
 						Notes:         "Test 12345",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        450.00,
@@ -526,6 +544,7 @@ func TestGetTotalCarExpenseMonth(t *testing.T) {
 						ExpenseTypeID: 6,
 						Notes:         "Test 123456",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 				}
 
@@ -599,6 +618,7 @@ func TestGetHighestCarExpenseMonth(t *testing.T) {
 						ExpenseTypeID: 1,
 						Notes:         "Test 1234",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        350.00,
@@ -606,6 +626,7 @@ func TestGetHighestCarExpenseMonth(t *testing.T) {
 						ExpenseTypeID: 3,
 						Notes:         "Test 12345",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        450.00,
@@ -613,6 +634,7 @@ func TestGetHighestCarExpenseMonth(t *testing.T) {
 						ExpenseTypeID: 6,
 						Notes:         "Test 123456",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 				}
 
@@ -679,8 +701,9 @@ func TestDeleteCarExpense(t *testing.T) {
 			input: &models.CarExpense{
 				Amount:        250.00,
 				Date:          expenseDate,
-				ExpenseTypeID: 1,
+				ExpenseTypeID: 3,
 				Notes:         "Test 1234",
+				Metadata:      []byte("{}"),
 			},
 			setup: func(t *testing.T, he *models.CarExpense) {
 				testDB.CreateUser(TestUserRegisterModel)
@@ -705,10 +728,10 @@ func TestDeleteCarExpense(t *testing.T) {
 			input: &models.CarExpense{
 				Amount:        250.00,
 				Date:          expenseDate,
-				ExpenseTypeID: 7,
+				ExpenseTypeID: 3,
 				Notes:         "Test 1234",
+				Metadata:      []byte("{}"),
 			},
-			wantErr: false,
 			validate: func(t *testing.T, got bool) {
 				assert.False(t, got)
 			},

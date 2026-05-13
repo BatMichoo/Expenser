@@ -57,7 +57,7 @@ func (h *CarHandler) getCarPageData(c *gin.Context) (*models.CarData, bool, erro
 		},
 		HighestExpense: &models.HighestExpense{
 			Amount: highestExpense,
-			Type:   utilType,
+			Type:   strings.TrimSpace(utilType),
 		},
 		RecentExpenses: recentExpenses,
 		Lang:           c.GetString("lang"),
@@ -638,7 +638,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 		},
 		HighestExpense: &models.HighestExpense{
 			Amount: highestExpense,
-			Type:   utilType,
+			Type:   strings.TrimSpace(utilType),
 			IsOOB:  true,
 		},
 		Modal: &models.ModalContent{

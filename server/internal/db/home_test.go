@@ -42,6 +42,7 @@ func TestCreateHomeExpense(t *testing.T) {
 				ExpenseDate:   expenseDate,
 				UtilityTypeID: 3,
 				Notes:         "Test 1234",
+				Metadata:      []byte("{}"),
 			},
 			wantErr: false,
 			validate: func(t *testing.T, got *models.HouseExpense) {
@@ -62,6 +63,7 @@ func TestCreateHomeExpense(t *testing.T) {
 				ExpenseDate:   expenseDate,
 				UtilityTypeID: 0,
 				Notes:         "Test 1234",
+				Metadata:      []byte("{}"),
 			},
 			wantErr: true,
 			validate: func(t *testing.T, got *models.HouseExpense) {
@@ -121,6 +123,7 @@ func TestEditHomeExpense(t *testing.T) {
 					UtilityTypeID: 1,
 					Notes:         "Test 1234567",
 					CreatedBy:     TestUserRegisterModel.ID,
+					Metadata:      []byte("{}"),
 				}
 
 				err := testDB.CreateHouseExpense(initial)
@@ -135,6 +138,7 @@ func TestEditHomeExpense(t *testing.T) {
 				ExpenseDate:   expenseDate,
 				UtilityTypeID: 3,
 				Notes:         "Test 1234",
+				Metadata:      []byte("{}"),
 			},
 			wantErr: false,
 			validate: func(t *testing.T, got *models.HouseExpense) {
@@ -198,6 +202,7 @@ func TestGetHomeExpense(t *testing.T) {
 					UtilityTypeID: 3,
 					Notes:         "Test 1234",
 					CreatedBy:     TestUserRegisterModel.ID,
+					Metadata:      []byte("{}"),
 				}
 
 				err := testDB.CreateHouseExpense(expense)
@@ -227,6 +232,7 @@ func TestGetHomeExpense(t *testing.T) {
 					UtilityTypeID: 3,
 					Notes:         "Test 1234",
 					CreatedBy:     TestUserRegisterModel.ID,
+					Metadata:      []byte("{}"),
 				}
 
 				err := testDB.CreateHouseExpense(expense)
@@ -241,6 +247,7 @@ func TestGetHomeExpense(t *testing.T) {
 				ExpenseDate:   expenseDate,
 				UtilityTypeID: 0,
 				Notes:         "Test 1234",
+				Metadata:      []byte("{}"),
 			},
 			wantErr: false,
 			wantNil: true,
@@ -308,6 +315,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 						UtilityTypeID: 3,
 						Notes:         "Test 1234",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        350.00,
@@ -315,6 +323,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 						UtilityTypeID: 2,
 						Notes:         "Test 12345",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        450.00,
@@ -322,6 +331,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 						UtilityTypeID: 5,
 						Notes:         "Test 123456",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 				}
 
@@ -338,12 +348,14 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 					ExpenseDate: expenseDate.Add(time.Duration(30 * 24 * time.Hour)),
 					UtilityType: "Water",
 					Notes:       "Test 12345",
+					Metadata:    []byte("{}"),
 				},
 				{
 					Amount:      450.00,
 					ExpenseDate: expenseDate.Add(time.Duration(30 * 24 * time.Hour)),
 					UtilityType: "TV",
 					Notes:       "Test 123456",
+					Metadata:    []byte("{}"),
 				},
 			},
 			wantErr: false,
@@ -368,6 +380,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 						UtilityTypeID: 3,
 						Notes:         "Test 1234",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        350.00,
@@ -375,6 +388,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 						UtilityTypeID: 2,
 						Notes:         "Test 12345",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        450.00,
@@ -382,6 +396,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 						UtilityTypeID: 5,
 						Notes:         "Test 123456",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 				}
 
@@ -398,6 +413,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 					ExpenseDate: expenseDate,
 					UtilityType: "Gas",
 					Notes:       "Test 1234",
+					Metadata:    []byte("{}"),
 				},
 			},
 			wantErr: false,
@@ -468,6 +484,7 @@ func TestGetTotalHomeExpenseMonth(t *testing.T) {
 						UtilityTypeID: 3,
 						Notes:         "Test 1234",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        350.00,
@@ -475,6 +492,7 @@ func TestGetTotalHomeExpenseMonth(t *testing.T) {
 						UtilityTypeID: 2,
 						Notes:         "Test 12345",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        450.00,
@@ -482,6 +500,7 @@ func TestGetTotalHomeExpenseMonth(t *testing.T) {
 						UtilityTypeID: 5,
 						Notes:         "Test 123456",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 				}
 
@@ -512,6 +531,7 @@ func TestGetTotalHomeExpenseMonth(t *testing.T) {
 						UtilityTypeID: 3,
 						Notes:         "Test 1234",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        350.00,
@@ -519,6 +539,7 @@ func TestGetTotalHomeExpenseMonth(t *testing.T) {
 						UtilityTypeID: 2,
 						Notes:         "Test 12345",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        450.00,
@@ -526,6 +547,7 @@ func TestGetTotalHomeExpenseMonth(t *testing.T) {
 						UtilityTypeID: 5,
 						Notes:         "Test 123456",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 				}
 
@@ -599,6 +621,7 @@ func TestGetHighestHomeExpenseMonth(t *testing.T) {
 						UtilityTypeID: 3,
 						Notes:         "Test 1234",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        350.00,
@@ -606,6 +629,7 @@ func TestGetHighestHomeExpenseMonth(t *testing.T) {
 						UtilityTypeID: 2,
 						Notes:         "Test 12345",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 					{
 						Amount:        450.00,
@@ -613,6 +637,7 @@ func TestGetHighestHomeExpenseMonth(t *testing.T) {
 						UtilityTypeID: 5,
 						Notes:         "Test 123456",
 						CreatedBy:     TestUserRegisterModel.ID,
+						Metadata:      []byte("{}"),
 					},
 				}
 
@@ -681,6 +706,7 @@ func TestDeleteHomeExpense(t *testing.T) {
 				ExpenseDate:   expenseDate,
 				UtilityTypeID: 3,
 				Notes:         "Test 1234",
+				Metadata:      []byte("{}"),
 			},
 			setup: func(t *testing.T, he *models.HouseExpense) {
 				testDB.CreateUser(TestUserRegisterModel)
@@ -707,6 +733,7 @@ func TestDeleteHomeExpense(t *testing.T) {
 				ExpenseDate:   expenseDate,
 				UtilityTypeID: 0,
 				Notes:         "Test 1234",
+				Metadata:      []byte("{}"),
 			},
 			wantErr: false,
 			validate: func(t *testing.T, got bool) {

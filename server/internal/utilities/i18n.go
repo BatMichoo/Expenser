@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -57,6 +58,8 @@ func InitI18n() error {
 
 // T translates a key into the given language.
 func T(lang, key string) string {
+	key = strings.TrimSpace(key)
+
 	if lang == "" {
 		lang = defaultLang
 	}

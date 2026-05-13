@@ -27,19 +27,33 @@
   --info: oklch(0.75 var(--chroma-alert) 260);
 
   --text: oklch(var(--lightness-text) var(--chroma-text) var(--hue));
-  --text-muted: oklch(var(--lightness-text-muted) var(--chroma-text) var(--hue));
+  --text-muted: oklch(
+    var(--lightness-text-muted) var(--chroma-text) var(--hue)
+  );
 
-  --text-sec: oklch(var(--lightness-text) var(--chroma-text) var(--hue-secondary));
-  --text-muted-sec: oklch(var(--lightness-text-muted) var(--chroma-text) var(--hue-secondary));
+  --text-sec: oklch(
+    var(--lightness-text) var(--chroma-text) var(--hue-secondary)
+  );
+  --text-muted-sec: oklch(
+    var(--lightness-text-muted) var(--chroma-text) var(--hue-secondary)
+  );
 
   --bg-light: oklch(var(--lightness-bg-light) var(--chroma-bg) var(--hue));
   --bg: oklch(var(--lightness-bg) var(--chroma-bg) var(--hue));
   --bg-dark: oklch(var(--lightness-bg-dark) var(--chroma-bg) var(--hue));
 
-  --bg-sec: oklch(var(--lightness-secondary) var(--chroma-secondary) var(--hue-secondary));
+  --bg-sec: oklch(
+    var(--lightness-secondary) var(--chroma-secondary) var(--hue-secondary)
+  );
 
-  --hover: oklch(var(--lightness-highlight-secondary) var(--chroma-secondary) var(--hue-highlight-secondary));
-  --highlight-sec: oklch(var(--lightness-highlight-secondary) calc(var(--chroma-secondary) + 0.1) var(--hue-highlight-secondary));
+  --hover: oklch(
+    var(--lightness-highlight-secondary) var(--chroma-secondary)
+      var(--hue-highlight-secondary)
+  );
+  --highlight-sec: oklch(
+    var(--lightness-highlight-secondary) calc(var(--chroma-secondary) + 0.1)
+      var(--hue-highlight-secondary)
+  );
 }
 
 body.dark {
@@ -54,17 +68,31 @@ body.dark {
   --lightness-highlight-secondary: 0.5;
 
   --text: oklch(var(--lightness-text) var(--chroma-text) var(--hue));
-  --text-muted: oklch(var(--lightness-text-muted) var(--chroma-text) var(--hue));
-  --text-sec: oklch(var(--lightness-text) var(--chroma-text) var(--hue-secondary));
-  --text-muted-sec: oklch(var(--lightness-text-muted) var(--chroma-text) var(--hue-secondary));
+  --text-muted: oklch(
+    var(--lightness-text-muted) var(--chroma-text) var(--hue)
+  );
+  --text-sec: oklch(
+    var(--lightness-text) var(--chroma-text) var(--hue-secondary)
+  );
+  --text-muted-sec: oklch(
+    var(--lightness-text-muted) var(--chroma-text) var(--hue-secondary)
+  );
   --bg-light: oklch(var(--lightness-bg-light) var(--chroma-bg) var(--hue));
   --bg: oklch(var(--lightness-bg) var(--chroma-bg) var(--hue));
   --bg-dark: oklch(var(--lightness-bg-dark) var(--chroma-bg) var(--hue));
 
-  --bg-sec: oklch(var(--lightness-secondary) var(--chroma-secondary) var(--hue-secondary));
+  --bg-sec: oklch(
+    var(--lightness-secondary) var(--chroma-secondary) var(--hue-secondary)
+  );
 
-  --hover: oklch(var(--lightness-highlight-secondary) var(--chroma-secondary) var(--hue-highlight-secondary));
-  --highlight-sec: oklch(var(--lightness-highlight-secondary) var(--chroma-secondary) var(--hue-highlight-secondary));
+  --hover: oklch(
+    var(--lightness-highlight-secondary) var(--chroma-secondary)
+      var(--hue-highlight-secondary)
+  );
+  --highlight-sec: oklch(
+    var(--lightness-highlight-secondary) var(--chroma-secondary)
+      var(--hue-highlight-secondary)
+  );
 }
 
 * {
@@ -125,7 +153,8 @@ button:hover {
   max-height: 6vh;
 }
 
-.header-left, .header-right {
+.header-left,
+.header-right {
   display: flex;
   align-items: center;
 }
@@ -135,20 +164,24 @@ button:hover {
 }
 
 .language-switcher select {
-  background-color: var(--bg-light);
   color: var(--text-sec);
+  background:
+    linear-gradient(to bottom, var(--bg-dark), var(--bg-light)) padding-box,
+    linear-gradient(to bottom, var(--bg-dark), var(--bg-light)) border-box;
   border: 2px solid transparent;
-  border-bottom-left-radius: 0.5em;
-  border-bottom-right-radius: 0.5em;
-  padding: 0.3em;
-  font-weight: 700;
+  border-radius: 0.5em;
+  width: 100%;
   cursor: pointer;
-  outline: none;
+  font-weight: 500;
   box-shadow: var(--shadow);
 }
 
 .language-switcher select:hover {
+  border-radius: 0.5em;
   border-color: var(--highlight-sec);
+  background:
+    linear-gradient(to top, var(--bg-dark), var(--bg-light)) padding-box,
+    linear-gradient(to top, var(--bg-dark), var(--bg-light)) border-box;
 }
 
 .header-section h3 {
@@ -365,7 +398,9 @@ body.dark #recent-expenses-section h2 svg {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: oklch(var(--lightness-bg-dark) var(--chroma-bg) var(--hue) / 0.6);
+  background-color: oklch(
+    var(--lightness-bg-dark) var(--chroma-bg) var(--hue) / 0.6
+  );
   z-index: 9998;
   transition: opacity 0.3s ease;
 }
@@ -489,7 +524,7 @@ body.dark #recent-expenses-section h2 svg {
   gap: 1em;
 }
 
-.new-expense-form> :last-child {
+.new-expense-form > :last-child {
   grid-column-start: 1;
   grid-column-end: 3;
   display: flex;
@@ -552,27 +587,35 @@ body.dark #recent-expenses-section h2 svg {
 
 /* Specific Card Backgrounds */
 .total-expenses-card {
-  background-image: linear-gradient(to bottom right,
-      oklch(72.8% 0.168 257.7),
-      oklch(53.9% 0.205 261.2));
+  background-image: linear-gradient(
+    to bottom right,
+    oklch(72.8% 0.168 257.7),
+    oklch(53.9% 0.205 261.2)
+  );
 }
 
 body.dark .total-expenses-card {
-  background-image: linear-gradient(to bottom right,
-      oklch(33.9% 0.205 261.2),
-      oklch(52.8% 0.168 257.7));
+  background-image: linear-gradient(
+    to bottom right,
+    oklch(33.9% 0.205 261.2),
+    oklch(52.8% 0.168 257.7)
+  );
 }
 
 .highest-expense-card {
-  background-image: linear-gradient(to bottom right,
-      oklch(72.8% 0.207 317.3),
-      oklch(53.9% 0.245 316.9));
+  background-image: linear-gradient(
+    to bottom right,
+    oklch(72.8% 0.207 317.3),
+    oklch(53.9% 0.245 316.9)
+  );
 }
 
 body.dark .highest-expense-card {
-  background-image: linear-gradient(to bottom right,
-      oklch(33.9% 0.207 317.3),
-      oklch(52.8% 0.245 316.9));
+  background-image: linear-gradient(
+    to bottom right,
+    oklch(33.9% 0.207 317.3),
+    oklch(52.8% 0.245 316.9)
+  );
 }
 
 /* Apply common table styles */

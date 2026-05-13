@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -58,7 +59,7 @@ func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, bool
 		},
 		HighestExpense: &models.HighestExpense{
 			Amount: highestExpense,
-			Type:   utilType,
+			Type:   strings.TrimSpace(utilType),
 		},
 		RecentExpenses: recentExpenses,
 		Lang:           c.GetString("lang"),
@@ -101,7 +102,7 @@ func (h *HouseHandler) parseHouseMetadata(c *gin.Context, typeID int) json.RawMe
 		priceNight, _ := strconv.ParseFloat(c.Request.PostFormValue("priceNight"), 64)
 		metadata = models.ElectricityMetadata{
 			KWhDay:     kWhDay,
-			KWhNight:    kWhNight,
+			KWhNight:   kWhNight,
 			PriceDay:   priceDay,
 			PriceNight: priceNight,
 		}
@@ -660,7 +661,7 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
 		},
 		HighestExpense: &models.HighestExpense{
 			Amount: highestExpense,
-			Type:   utilType,
+			Type:   strings.TrimSpace(utilType),
 			IsOOB:  true,
 		},
 		Modal: &models.ModalContent{
