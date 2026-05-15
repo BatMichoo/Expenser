@@ -27,7 +27,7 @@ func TestHighestCarExpenseDescriptionTranslation(t *testing.T) {
 		Date:          expenseDate,
 		ExpenseTypeID: 6, // Corresponds to "Other"
 		Notes:         "Test 123456",
-		Metadata:      nil,
+		Metadata:      []byte("{}"),
 		CreatedBy:     TestUserRegisterModel.ID,
 	}
 
