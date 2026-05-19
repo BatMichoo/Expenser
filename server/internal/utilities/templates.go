@@ -19,6 +19,7 @@ type HTMXComponents struct {
 	NewCarExp          string // NewExp is the name for the new expense component (often a row or card).
 	EditHouseExpForm   string // EditExpForm is the name for the expense editing form component.
 	EditCarExpForm     string // EditExpForm is the name for the expense editing form component.
+	EditGroceriesForm  string
 	HouseExpRow        string
 	CarExpRow          string
 	TotalCard          string
@@ -34,6 +35,7 @@ type HTMXComponents struct {
 	Search             string
 	SearchResultsHouse string
 	SearchResultsCar   string
+	GroceriesReceiptForm string
 }
 
 // Responses defines the names for specific HTMX partial responses.
@@ -46,6 +48,7 @@ type Responses struct {
 	UpdateCarExp    string // UpdateHomeExp is the name for the response partial after updating a home expense.
 	DeleteCarExp    string // DeleteHomeExp is the name for the response partial after deleting a home expense.
 	RegisterSuccess string
+	GroceriesReceiptResult string
 }
 
 // HTMLTemplates groups all template names used throughout the application.
@@ -87,15 +90,18 @@ var components = &HTMXComponents{
 	Search:             "search",
 	SearchResultsHouse: "search-results-house",
 	SearchResultsCar:   "search-results-car",
+	GroceriesReceiptForm: "groceries-receipt-form",
+	EditGroceriesForm:    "edit-groceries-form",
 }
 
 // responses initializes the Responses struct with specific template identifiers.
 var responses = &Responses{
-	CreateHouseExp:  "create-house-exp",
-	DeleteHouseExp:  "delete-house-exp",
-	CreateCarExp:    "create-car-exp",
-	DeleteCarExp:    "delete-car-exp",
-	RegisterSuccess: "register-success",
+	CreateHouseExp:         "create-house-exp",
+	DeleteHouseExp:         "delete-house-exp",
+	CreateCarExp:           "create-car-exp",
+	DeleteCarExp:           "delete-car-exp",
+	RegisterSuccess:        "register-success",
+	GroceriesReceiptResult: "groceries-receipt-result",
 }
 
 // Templates is the main exported variable that provides access to all

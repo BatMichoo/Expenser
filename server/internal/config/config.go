@@ -13,11 +13,12 @@ import (
 
 // Config struct to hold application configuration.
 type Config struct {
-	ServerPort string
-	LanDomain  string
-	DB         DB
-	JWT        JWT
-	Mode       string
+	ServerPort   string
+	LanDomain    string
+	DB           DB
+	JWT          JWT
+	Mode         string
+	GeminiAPIKey string
 }
 
 // JWT holds JWT-related configuration
@@ -52,6 +53,7 @@ func LoadConfig() (*Config, error) {
 	dbPort := os.Getenv("DB_PORT")
 	dbName := os.Getenv("DB_NAME")
 	serverPort := os.Getenv("SERVER_PORT")
+	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
 
 	testDBName := os.Getenv("TEST_DB_NAME")
 
@@ -70,11 +72,13 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
+	dbConnTemplate := "postgres://%s:%s@%s:%s/%s?sslmode=disable"
+
 	// Construct the database connection string.
-	dbConnString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+	dbConnString := fmt.Sprintf(dbConnTemplate,
 		dbUser, dbPass, dbHost, dbPort, dbName)
 
-	testDBConnString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+	testDBConnString := fmt.Sprintf(dbConnTemplate,
 		dbUser, dbPass, dbHost, dbPort, testDBName)
 
 	DB := DB{
@@ -91,7 +95,8 @@ func LoadConfig() (*Config, error) {
 			SecretKey:       jwtSecret,
 			TokenExpiration: jwtExpiration,
 		},
-		Mode: mode,
+		Mode:         mode,
+		GeminiAPIKey: geminiAPIKey,
 	}, nil
 }
 

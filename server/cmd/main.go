@@ -64,6 +64,24 @@ func main() {
 		"emptySlice": func() []string {
 			return []string{}
 		},
+		"float64": func(v interface{}) float64 {
+			switch i := v.(type) {
+			case float64:
+				return i
+			case int64:
+				return float64(i)
+			case int:
+				return float64(i)
+			default:
+				return 0.0
+			}
+		},
+		"div": func(a, b float64) float64 {
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
 	}
 
 	t := template.Must(template.New("").Funcs(funcMap).ParseGlob(tPath))

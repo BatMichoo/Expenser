@@ -41,7 +41,9 @@ func InitDatabase(cfg *config.Config) (*DB, error) {
 	fmt.Println("Migrations applied successfully.")
 
 	if err := db.Ping(); err != nil {
-		db.Close()
+		if db.Close() != nil {
+			return nil, fmt.Errorf("error: %s", err.Error())
+		}
 		return nil, fmt.Errorf("ping error: %w", err)
 	}
 	fmt.Println("Connected to the database!")

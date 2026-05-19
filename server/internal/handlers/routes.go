@@ -52,6 +52,18 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedHouse.DELETE("/expenses/:id", houseHandler.DeleteHouseExp)
 	}
 
+	groceriesHandler := NewGroceriesHandler(db, services.NewGeminiService(cfg.GeminiAPIKey))
+	protectedGroceries := router.Group("/groceries")
+	{
+		protectedGroceries.Use(am.AuthMiddleware())
+		protectedGroceries.POST("/upload", groceriesHandler.UploadReceipt)
+		protectedGroceries.POST("/confirm", groceriesHandler.ConfirmReceipt)
+		protectedGroceries.GET("", groceriesHandler.GetGroceriesHome)
+		protectedGroceries.GET("/form", groceriesHandler.GetGroceriesForm)
+		protectedGroceries.GET("/edit/:id", groceriesHandler.GetEditGroceriesForm)
+		protectedGroceries.PUT("/:id", groceriesHandler.EditGroceriesExpense)
+		protectedGroceries.DELETE("/:id", groceriesHandler.DeleteGroceriesExpense)
+	}
 	carHandler := NewCarHandler(db)
 	protectedCar := router.Group("/car")
 	{
