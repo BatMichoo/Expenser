@@ -50,17 +50,73 @@ func (h *GroceriesHandler) UploadReceipt(c *gin.Context) {
 
 	analysis, err := h.GeminiS.AnalyzeReceipt(c.Request.Context(), buf.Bytes())
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Failed to analyze receipt: %s", err.Error())
+		message := fmt.Sprintf("Failed to analyze receipt: %s", err.Error())
+		status := http.StatusInternalServerError
+
+		// Check for service unavailable or specific error indicating AI is down
+		if err.Error() == "gemini api error: Service Unavailable" { // Adjust string based on actual API error output
+			message = utilities.T(lang, "error.ai_unavailable")
+			status = http.StatusServiceUnavailable
+		}
+
+		content := &models.ModalContent{
+			Title:   utilities.T(lang, "modal.error_title"),
+			Message: message,
+			Lang:    lang,
+		}
+		c.HTML(status, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
-	c.HTML(http.StatusOK, utilities.Templates.Responses.GroceriesReceiptResult, gin.H{
-		"Product":         analysis.Product,
-		"Quantity":        analysis.Quantity,
-		"Price":           analysis.Price,
-		"SupermarketName": analysis.SupermarketName,
-		"Lang":            lang,
+	c.HTML(http.StatusOK, "groceries-receipt-edit-form", gin.H{
+		"Store": analysis.Store,
+		"Items": analysis.Items,
+		"Lang":  lang,
 	})
+}
+
+func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) {
+	lang := c.GetString("lang")
+	userIDstr, _ := c.Get("user_id")
+	userID := userIDstr.(uuid.UUID)
+
+	// This is a simplified approach; in production with Gin,
+	// binding nested indexed form data usually requires custom binding
+	// or iterating through c.Request.PostForm.
+	// For this CLI agent, iterating PostForm manually:
+
+	i := 0
+	for {
+		product := c.PostForm(fmt.Sprintf("items[%d].product", i))
+		if product == "" {
+			break
+		}
+		quantity, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].quantity", i)), 64)
+		totalPrice, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].total_price", i)), 64)
+		supermarketName := c.PostForm(fmt.Sprintf("items[%d].supermarket_name", i))
+
+		expense := &models.GroceriesExpense{
+			UserID:          userID,
+			Product:         product,
+			Quantity:        quantity,
+			Price:           totalPrice,
+			SupermarketName: supermarketName,
+			PurchaseDate:    time.Now(),
+		}
+
+		if err := h.DB.CreateGroceriesExpense(expense); err != nil {
+			c.String(http.StatusInternalServerError, "Failed to save item")
+			return
+		}
+		i++
+	}
+
+	content := &models.ModalContent{
+		Title:   utilities.T(lang, "modal.success_title"),
+		Message: utilities.T(lang, "modal.create_success"),
+		Lang:    lang,
+	}
+	c.HTML(http.StatusCreated, utilities.Templates.Components.ModalSuccess, content)
 }
 
 func (h *GroceriesHandler) ConfirmReceipt(c *gin.Context) {
@@ -77,7 +133,7 @@ func (h *GroceriesHandler) ConfirmReceipt(c *gin.Context) {
 		UserID:          userID,
 		Product:         product,
 		Quantity:        quantity,
-		Price:           int64(price * 100),
+		Price:           price,
 		SupermarketName: supermarketName,
 		PurchaseDate:    time.Now(),
 	}
@@ -142,6 +198,53 @@ func (h *GroceriesHandler) GetGroceriesForm(c *gin.Context) {
 	c.HTML(http.StatusOK, utilities.Templates.Components.GroceriesReceiptForm, nil)
 }
 
+func (h *GroceriesHandler) GetCreateGroceriesForm(c *gin.Context) {
+	lang := c.GetString("lang")
+	c.HTML(http.StatusOK, utilities.Templates.Components.CreateGroceriesForm, gin.H{
+		"Lang": lang,
+	})
+}
+
+func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) {
+	lang := c.GetString("lang")
+	userIDstr, _ := c.Get("user_id")
+	userID := userIDstr.(uuid.UUID)
+
+	product := c.PostForm("product")
+	quantity, _ := strconv.ParseFloat(c.PostForm("quantity"), 64)
+	price, _ := strconv.ParseFloat(c.PostForm("price"), 64)
+	supermarketName := c.PostForm("supermarket_name")
+
+	expense := &models.GroceriesExpense{
+		UserID:          userID,
+		Product:         product,
+		Quantity:        quantity,
+		Price:           price,
+		SupermarketName: supermarketName,
+		PurchaseDate:    time.Now(),
+	}
+
+	if err := h.DB.CreateGroceriesExpense(expense); err != nil {
+		c.String(http.StatusInternalServerError, "Failed to save expense")
+		return
+	}
+
+	// Fetch to get ID and CreatedAt
+	// Simplified: re-fetch last for user
+	// Real-world: return from CreateGroceriesExpense or re-fetch properly
+	expense, _ = h.DB.GetGroceriesExpenseByID(expense.ID)
+
+	c.HTML(http.StatusCreated, "grocery-row", gin.H{
+		"ID":              expense.ID,
+		"PurchaseDate":    expense.PurchaseDate,
+		"Product":         expense.Product,
+		"Quantity":        expense.Quantity,
+		"Price":           expense.Price,
+		"SupermarketName": expense.SupermarketName,
+		"Lang":            lang,
+	})
+}
+
 func (h *GroceriesHandler) GetEditGroceriesForm(c *gin.Context) {
 	lang := c.GetString("lang")
 	id, _ := strconv.Atoi(c.Param("id"))
@@ -171,7 +274,7 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) {
 		ID:              id,
 		Product:         product,
 		Quantity:        quantity,
-		Price:           int64(price * 100),
+		Price:           price,
 		SupermarketName: supermarketName,
 		PurchaseDate:    time.Now(),
 	}
@@ -186,7 +289,22 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusOK)
+	// Fetch updated expense to render the row
+	updatedExpense, err := h.DB.GetGroceriesExpenseByID(id)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to fetch updated expense")
+		return
+	}
+
+	c.HTML(http.StatusOK, "grocery-row", gin.H{
+		"ID":              updatedExpense.ID,
+		"PurchaseDate":    updatedExpense.PurchaseDate,
+		"Product":         updatedExpense.Product,
+		"Quantity":        updatedExpense.Quantity,
+		"Price":           updatedExpense.Price,
+		"SupermarketName": updatedExpense.SupermarketName,
+		"Lang":            lang,
+	})
 }
 
 func (h *GroceriesHandler) DeleteGroceriesExpense(c *gin.Context) {

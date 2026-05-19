@@ -36,6 +36,7 @@ type HTMXComponents struct {
 	SearchResultsHouse string
 	SearchResultsCar   string
 	GroceriesReceiptForm string
+	CreateGroceriesForm  string
 }
 
 // Responses defines the names for specific HTMX partial responses.
@@ -92,6 +93,7 @@ var components = &HTMXComponents{
 	SearchResultsCar:   "search-results-car",
 	GroceriesReceiptForm: "groceries-receipt-form",
 	EditGroceriesForm:    "edit-groceries-form",
+	CreateGroceriesForm:  "create-groceries-form",
 }
 
 // responses initializes the Responses struct with specific template identifiers.

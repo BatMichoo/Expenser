@@ -57,9 +57,11 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 	{
 		protectedGroceries.Use(am.AuthMiddleware())
 		protectedGroceries.POST("/upload", groceriesHandler.UploadReceipt)
-		protectedGroceries.POST("/confirm", groceriesHandler.ConfirmReceipt)
+		protectedGroceries.POST("/confirm-batch", groceriesHandler.ConfirmBatchReceipt)
 		protectedGroceries.GET("", groceriesHandler.GetGroceriesHome)
+		protectedGroceries.POST("", groceriesHandler.PostCreateGroceriesExpense)
 		protectedGroceries.GET("/form", groceriesHandler.GetGroceriesForm)
+		protectedGroceries.GET("/create", groceriesHandler.GetCreateGroceriesForm)
 		protectedGroceries.GET("/edit/:id", groceriesHandler.GetEditGroceriesForm)
 		protectedGroceries.PUT("/:id", groceriesHandler.EditGroceriesExpense)
 		protectedGroceries.DELETE("/:id", groceriesHandler.DeleteGroceriesExpense)

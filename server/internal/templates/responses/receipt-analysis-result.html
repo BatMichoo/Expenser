@@ -1,18 +1,21 @@
 {{ define "groceries-receipt-result" }}
 <div class="receipt-result">
-    <h3>Extracted Receipt Data</h3>
+    <h3>Extracted Receipt Data: {{ .Store }}</h3>
     <form hx-post="/groceries/confirm" hx-target="#result" hx-swap="innerHTML">
-        <input type="hidden" name="product" value="{{ .Product }}">
-        <input type="hidden" name="quantity" value="{{ .Quantity }}">
-        <input type="hidden" name="price" value="{{ .Price }}">
-        <input type="hidden" name="supermarket_name" value="{{ .SupermarketName }}">
-        
-        <ul>
-            <li><strong>Product:</strong> {{ .Product }}</li>
-            <li><strong>Quantity:</strong> {{ .Quantity }}</li>
-            <li><strong>Price:</strong> {{ .Price }}</li>
-            <li><strong>Supermarket:</strong> {{ .SupermarketName }}</li>
-        </ul>
+        {{ range $index, $item := .Items }}
+        <div class="receipt-item">
+            <input type="hidden" name="product" value="{{ $item.Name }}">
+            <input type="hidden" name="quantity" value="{{ $item.Quantity }}">
+            <input type="hidden" name="price" value="{{ $item.TotalPrice }}">
+            <input type="hidden" name="supermarket_name" value="{{ $.Store }}">
+            
+            <ul>
+                <li><strong>Product:</strong> {{ $item.Name }}</li>
+                <li><strong>Quantity:</strong> {{ $item.Quantity }}</li>
+                <li><strong>Price:</strong> {{ $item.TotalPrice }}</li>
+            </ul>
+        </div>
+        {{ end }}
         <button type="submit" class="btn-primary">Confirm & Save</button>
     </form>
     <button hx-get="/groceries/form" hx-target="#result" hx-swap="innerHTML">Clear</button>

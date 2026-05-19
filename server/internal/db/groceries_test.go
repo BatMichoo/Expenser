@@ -13,7 +13,7 @@ func TestCreateGroceriesExpense(t *testing.T) {
 	defer ResetTestDB(db)
 
 	expense := &models.GroceriesExpense{
-		UserID:          "03ca7c92-364c-4420-865b-052a3c1df340",
+		UserID:          TestUserRegisterModel.ID,
 		Product:         "Milk",
 		Quantity:        1.0,
 		Price:           150,
@@ -38,7 +38,7 @@ func TestGroceriesCRUD(t *testing.T) {
 
 	// Create
 	expense := &models.GroceriesExpense{
-		UserID:          "03ca7c92-364c-4420-865b-052a3c1df340",
+		UserID:          TestUserRegisterModel.ID,
 		Product:         "Milk",
 		Quantity:        1.0,
 		Price:           150,
@@ -77,4 +77,3 @@ func TestGroceriesCRUD(t *testing.T) {
 		t.Error("Expected error getting deleted expense")
 	}
 }
-

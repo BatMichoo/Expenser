@@ -18,6 +18,7 @@
   "groceries.quantity": "Quantity",
   "groceries.price": "Price",
   "groceries.supermarket": "Supermarket",
+  "groceries.add": "Add Expense",
   "common.amount": "Amount",
   "common.date": "Date",
   "common.notes": "Notes",
@@ -126,5 +127,6 @@
   "modal.cancel_btn": "Cancel",
   "auth.username_exists": "Username already exists!",
   "auth.invalid_credentials": "Invalid credentials!",
-  "error.message": "A significant error has occurred!"
+  "error.message": "A significant error has occurred!",
+  "error.ai_unavailable": "AI service is currently unavailable. Please try again later."
 }

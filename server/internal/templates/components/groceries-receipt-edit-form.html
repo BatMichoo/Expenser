@@ -1,0 +1,74 @@
+{{ define "groceries-receipt-edit-form" }}
+<div class="receipt-edit-modal">
+  <h3>{{ .Store }}</h3>
+  <form
+    hx-post="/groceries/confirm-batch"
+    hx-target="#recent-expenses"
+    hx-swap="afterbegin"
+  >
+    <table class="expenses-table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Qty</th>
+          <th>Unit Price</th>
+          <th>Total Price</th>
+          <th>Supermarket</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $index, $item := .Items }}
+        <tr>
+          <td>
+            <input
+              type="text"
+              name="items[{{ $index }}].product"
+              value="{{ $item.Name }}"
+              required
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              name="items[{{ $index }}].quantity"
+              value="{{ $item.Quantity }}"
+              step="0.001"
+              required
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              name="items[{{ $index }}].unit_price"
+              value="{{ $item.UnitPrice }}"
+              step="0.01"
+              required
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              name="items[{{ $index }}].total_price"
+              value="{{ $item.TotalPrice }}"
+              step="0.01"
+              required
+            />
+          </td>
+          <td>
+            <input
+              type="hidden"
+              name="items[{{ $index }}].supermarket_name"
+              value="{{ $.Store }}"
+            />{{ $.Store }}
+          </td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    <button type="submit" class="btn-primary">Confirm & Save All</button>
+  </form>
+  <button hx-get="/groceries/form" hx-target="#result" hx-swap="innerHTML">
+    Clear
+  </button>
+</div>
+{{ end }}

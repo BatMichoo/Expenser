@@ -2,6 +2,9 @@
 <div class="tracker-page">
     <div class="page-header">
         <h1>{{ T .Lang "groceries.title" }}</h1>
+        <button class="btn-primary" hx-get="/groceries/create" hx-target="#action-dialog" hx-swap="innerHTML">
+            {{ T .Lang "groceries.add" }}
+        </button>
     </div>
     
     <div id="groceries-content">

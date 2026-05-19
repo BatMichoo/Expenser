@@ -22,10 +22,8 @@
       <span>{{ T .Lang "header.toggle_theme" }}</span>
     </button>
     <div class="language-switcher">
-      <select name="lang" hx-post="/settings/language" hx-trigger="change">
-        <option value="en" {{ if eq .Lang "en" }}selected{{ end }}>EN</option>
-        <option value="bg" {{ if eq .Lang "bg" }}selected{{ end }}>BG</option>
-      </select>
+      <button hx-post="/settings/language" hx-vals='{"lang": "en"}' class="lang-btn {{ if eq .Lang "en" }}active{{ end }}">🇺🇸</button>
+      <button hx-post="/settings/language" hx-vals='{"lang": "bg"}' class="lang-btn {{ if eq .Lang "bg" }}active{{ end }}">🇧🇬</button>
     </div>
   </div>
 

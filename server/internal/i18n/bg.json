@@ -18,6 +18,7 @@
   "groceries.quantity": "Количество",
   "groceries.price": "Цена",
   "groceries.supermarket": "Супермаркет",
+  "groceries.add": "Добави разход",
   "common.amount": "Сума",
   "common.date": "Дата",
   "common.notes": "Бележки",
@@ -126,5 +127,6 @@
   "modal.cancel_btn": "Отказ",
   "auth.username_exists": "Потребителското име вече съществува!",
   "auth.invalid_credentials": "Невалидни данни за вход!",
-  "error.message": "Възникна сериозна грешка!"
+  "error.message": "Възникна сериозна грешка!",
+  "error.ai_unavailable": "AI услугата временно не е достъпна. Моля, опитайте по-късно."
 }

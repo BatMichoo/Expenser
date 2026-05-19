@@ -11,7 +11,7 @@ type GroceriesExpense struct {
 	UserID          uuid.UUID `json:"user_id"`
 	Product         string    `json:"product"`
 	Quantity        float64   `json:"quantity"`
-	Price           int64     `json:"price"` // Price in cents
+	Price           float64   `json:"price"` // Price in euros
 	SupermarketName string    `json:"supermarket_name"`
 	PurchaseDate    time.Time `json:"purchase_date"`
 	CreatedAt       time.Time `json:"created_at"`

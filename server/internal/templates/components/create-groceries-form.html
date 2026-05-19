@@ -1,27 +1,27 @@
-{{ define "edit-groceries-form" }}
+{{ define "create-groceries-form" }}
 <form class="new-expense-form">
-    <h3>{{ T .Lang "form.edit" }}</h3>
+    <h3>{{ T .Lang "form.create" }}</h3>
     <div>
         <label for="product">{{ T .Lang "groceries.product" }}</label>
-        <input type="text" id="product" name="product" value="{{ .Expense.Product }}" required />
+        <input type="text" id="product" name="product" required />
     </div>
     <div>
         <label for="quantity">{{ T .Lang "groceries.quantity" }}</label>
-        <input type="number" id="quantity" name="quantity" step="0.1" value="{{ .Expense.Quantity }}" required />
+        <input type="number" id="quantity" name="quantity" step="0.1" required />
     </div>
     <div>
         <label for="price">{{ T .Lang "groceries.price" }}</label>
-        <input type="number" id="price" name="price" step="0.01" value="{{ printf "%.2f" .Expense.Price }}" required />
+        <input type="number" id="price" name="price" step="0.01" required />
     </div>
     <div>
         <label for="supermarket_name">{{ T .Lang "groceries.supermarket" }}</label>
-        <input type="text" id="supermarket_name" name="supermarket_name" value="{{ .Expense.SupermarketName }}" />
+        <input type="text" id="supermarket_name" name="supermarket_name" />
     </div>
     <div>
         <button type="submit" class="btn-primary" 
-            hx-put="/groceries/{{ .Expense.ID }}" 
-            hx-target="#grocery-{{ .Expense.ID }}" 
-            hx-swap="outerHTML" 
+            hx-post="/groceries" 
+            hx-target="#recent-expenses" 
+            hx-swap="afterbegin" 
             hx-on::after-request="if(event.detail.successful && event.target === this) hideDialog()">
             {{ T .Lang "common.save" }}
         </button>

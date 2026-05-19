@@ -833,3 +833,46 @@ select {
     linear-gradient(to bottom, var(--bg), var(--bg-light)) padding-box,
     linear-gradient(to bottom, var(--bg), var(--bg-light)) border-box;
 }
+
+.language-switcher {
+    margin-left: 1rem;
+}
+
+.lang-select {
+    background: var(--bg-sec);
+    color: var(--text-sec);
+    border: 1px solid var(--text-muted-sec);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.lang-select:hover {
+    background: var(--hover);
+}
+
+.language-switcher {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 1rem;
+}
+
+.lang-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    padding: 0.2rem;
+    font-size: 1.2rem;
+    transition: transform 0.2s;
+}
+
+.lang-btn:hover {
+    transform: scale(1.1);
+}
+
+.lang-btn.active {
+    border-color: var(--text-sec);
+    background: var(--bg-sec);
+    border-radius: 4px;
+}

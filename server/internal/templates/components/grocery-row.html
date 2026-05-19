@@ -1,0 +1,28 @@
+{{ define "grocery-row" }}
+<tr id="grocery-{{ .ID }}">
+    <td>{{ .PurchaseDate.Format "2006-01-02" }}</td>
+    <td>{{ .Product }}</td>
+    <td>{{ .Quantity }}</td>
+    <td>{{ printf "%.2f" .Price }}</td>
+    <td>{{ .SupermarketName }}</td>
+    <td>
+        <button
+            class="table-action-button blue"
+            hx-get="/groceries/edit/{{ .ID }}"
+            hx-target="#action-dialog"
+            hx-swap="innerHTML"
+        >
+            {{ T $.Lang "common.edit" }}
+        </button>
+        <button
+            class="table-action-button red"
+            hx-delete="/groceries/{{ .ID }}"
+            hx-target="#grocery-{{ .ID }}"
+            hx-swap="outerHTML"
+            hx-confirm='{{ T $.Lang "modal.delete_confirm" }}'
+        >
+            {{ T $.Lang "common.delete" }}
+        </button>
+    </td>
+</tr>
+{{ end }}
