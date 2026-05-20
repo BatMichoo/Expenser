@@ -1,13 +1,27 @@
 {{ define "groceries-receipt-form" }}
 <div>
   <h2>{{ T .Lang "groceries.upload_receipt" }}</h2>
-  <form class="new-expense-form" hx-post="/groceries/upload" hx-encoding="multipart/form-data" hx-target="#result" hx-swap="innerHTML">
+  <form
+    class="new-expense-form"
+    hx-post="/groceries/upload"
+    hx-encoding="multipart/form-data"
+    hx-target="#result"
+    hx-swap="innerHTML"
+  >
     <div>
       <label for="receipt">{{ T .Lang "groceries.select_file" }}</label>
-      <input type="file" id="receipt" name="receipt" accept="image/*,.pdf" required />
+      <input
+        type="file"
+        id="receipt"
+        name="receipt"
+        accept="image/*,.pdf"
+        required
+      />
     </div>
     <div>
-      <button type="submit" class="btn-primary">{{ T .Lang "common.upload" }}</button>
+      <button type="submit" class="btn-primary">
+        {{ T .Lang "common.upload" }}
+      </button>
     </div>
   </form>
   <div id="result"></div>

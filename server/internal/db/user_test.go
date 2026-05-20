@@ -56,8 +56,7 @@ func TestGetUserByID(t *testing.T) {
 				ResetTestDB(testDB)
 				return uuid.New() // Return a random, non-existent UUID
 			},
-			targetID: uuid.Nil, // Will be replaced by setup's return
-			wantErr:  true,
+			wantErr: true,
 			validate: func(t *testing.T, got *models.User) {
 				assert.Nil(t, got)
 			},
@@ -70,9 +69,8 @@ func TestGetUserByID(t *testing.T) {
 			// For "Non-Existing User" case, targetID comes from setup.
 			// For "Existing User", setup creates and returns the ID.
 			// We need to pass the ID obtained from setup to GetUserByID.
-			targetID := userID
 
-			got, err := testDB.GetUserByID(targetID)
+			got, err := testDB.GetUserByID(userID)
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "user not found")
@@ -82,7 +80,7 @@ func TestGetUserByID(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 			tt.validate(t, got)
-			assert.Equal(t, targetID, got.ID) // Confirm the ID matches
+			assert.Equal(t, userID, got.ID) // Confirm the ID matches
 		})
 	}
 }

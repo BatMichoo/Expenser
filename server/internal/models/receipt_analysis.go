@@ -5,6 +5,7 @@ type ReceiptItem struct {
 	Quantity   float64 `json:"quantity"`
 	UnitPrice  float64 `json:"unit_price"`
 	TotalPrice float64 `json:"total_price"`
+	Category   string  `json:"category"`
 }
 
 type Discount struct {

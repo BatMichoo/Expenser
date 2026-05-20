@@ -2,6 +2,14 @@
 <form class="new-expense-form">
     <h3>{{ T .Lang "form.edit" }}</h3>
     <div>
+        <label for="category_id">{{ T .Lang "groceries.category" }}</label>
+        <select id="category_id" name="category_id" required>
+            {{ range .Categories }}
+            <option value="{{ .ID }}" {{if eq $.Expense.CategoryID .ID }}selected{{end}}>{{ .Name }}</option>
+            {{ end }}
+        </select>
+    </div>
+    <div>
         <label for="product">{{ T .Lang "groceries.product" }}</label>
         <input type="text" id="product" name="product" value="{{ .Expense.Product }}" required />
     </div>
@@ -10,8 +18,12 @@
         <input type="number" id="quantity" name="quantity" step="0.1" value="{{ .Expense.Quantity }}" required />
     </div>
     <div>
-        <label for="price">{{ T .Lang "groceries.price" }}</label>
-        <input type="number" id="price" name="price" step="0.01" value="{{ printf "%.2f" .Expense.Price }}" required />
+        <label for="unit_price">{{ T .Lang "groceries.unit_price" }}</label>
+        <input type="number" id="unit_price" name="unit_price" step="0.01" value="{{ printf "%.2f" .Expense.UnitPrice }}" required />
+    </div>
+    <div>
+        <label for="total_price">{{ T .Lang "groceries.total_price" }}</label>
+        <input type="number" id="total_price" name="total_price" step="0.01" value="{{ printf "%.2f" .Expense.TotalPrice }}" required />
     </div>
     <div>
         <label for="supermarket_name">{{ T .Lang "groceries.supermarket" }}</label>
@@ -25,7 +37,7 @@
             hx-on::after-request="if(event.detail.successful && event.target === this) hideDialog()">
             {{ T .Lang "common.save" }}
         </button>
-        <button type="button" onclick="hideDialog()">{{ T .Lang "common.cancel" }}</button>
+        <button type="button" class="btn-secondary" onclick="hideDialog()">{{ T .Lang "common.cancel" }}</button>
     </div>
 </form>
 {{ end }}

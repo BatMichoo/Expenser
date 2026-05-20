@@ -28,9 +28,11 @@
       <thead>
         <tr>
           <th>{{ T .Lang "common.date" }}</th>
+          <th>{{ T .Lang "groceries.category" }}</th>
           <th>{{ T .Lang "groceries.product" }}</th>
           <th>{{ T .Lang "groceries.quantity" }}</th>
-          <th>{{ T .Lang "groceries.price" }}</th>
+          <th>{{ T .Lang "groceries.unit_price" }}</th>
+          <th>{{ T .Lang "groceries.total_price" }}</th>
           <th>{{ T .Lang "groceries.supermarket" }}</th>
           <th>{{ T .Lang "common.actions" }}</th>
         </tr>
@@ -39,9 +41,11 @@
         {{ range .Groceries }}
         <tr id="grocery-{{ .ID }}">
           <td>{{ .PurchaseDate.Format "2006-01-02" }}</td>
+          <td>{{ .CategoryName }}</td>
           <td>{{ .Product }}</td>
           <td>{{ .Quantity }}</td>
-          <td>{{ printf "%.2f" .Price }}</td>
+          <td>{{ printf "%.2f" .UnitPrice }}</td>
+          <td>{{ printf "%.2f" .TotalPrice }}</td>
           <td>{{ .SupermarketName }}</td>
           <td>
             <button
@@ -66,7 +70,7 @@
 
         {{ else }}
         <tr>
-          <td colspan="6">
+          <td colspan="8">
             <p>{{ T $.Lang "search.no_results" }}</p>
           </td>
         </tr>

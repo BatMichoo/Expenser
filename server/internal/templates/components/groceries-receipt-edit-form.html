@@ -9,6 +9,7 @@
     <table class="expenses-table">
       <thead>
         <tr>
+          <th>Category</th>
           <th>Product</th>
           <th>Qty</th>
           <th>Unit Price</th>
@@ -19,6 +20,13 @@
       <tbody>
         {{ range $index, $item := .Items }}
         <tr>
+          <td>
+            <select name="items[{{ $index }}].category_id" required>
+              {{ range $.Categories }}
+              <option value="{{ .ID }}" {{ if eq .Name $item.Category }}selected{{ else if and (eq $item.Category "") (eq .Name "Other") }}selected{{ end }}>{{ .Name }}</option>
+              {{ end }}
+            </select>
+          </td>
           <td>
             <input
               type="text"
@@ -65,10 +73,12 @@
         {{ end }}
       </tbody>
     </table>
-    <button type="submit" class="btn-primary">Confirm & Save All</button>
+    <div class="btn-container" style="margin-top: 1.5em;">
+      <button type="submit" class="btn-primary">Confirm & Save All</button>
+      <button type="button" class="btn-secondary" hx-get="/groceries/form" hx-target="#result" hx-swap="innerHTML">
+        Clear
+      </button>
+    </div>
   </form>
-  <button hx-get="/groceries/form" hx-target="#result" hx-swap="innerHTML">
-    Clear
-  </button>
 </div>
 {{ end }}

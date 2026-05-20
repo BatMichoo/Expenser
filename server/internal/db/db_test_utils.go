@@ -28,7 +28,7 @@ func InitTestDB(cfg *config.Config) *DB {
 }
 
 func ResetTestDB(tdb *DB) {
-	_, err := tdb.conn.Exec(`TRUNCATE home_expenses, car_expenses, users RESTART IDENTITY CASCADE`)
+	_, err := tdb.conn.Exec(`TRUNCATE home_expenses, car_expenses, groceries_expenses, users RESTART IDENTITY CASCADE`)
 	if err != nil {
 		log.Printf("\n Failed to truncate test DB; \n err: %v \n", err)
 	}

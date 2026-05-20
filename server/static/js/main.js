@@ -176,3 +176,32 @@ function hideModal() {
     dialog.textContent = "";
   }
 }
+
+function setupGroceryCalc(form) {
+  const qty = form.querySelector('[name="quantity"]');
+  const unit = form.querySelector('[name="unit_price"]');
+  const total = form.querySelector('[name="total_price"]');
+
+  if (!qty || !unit || !total) {
+    return;
+  }
+
+  const calc = () => {
+    const q = parseFloat(qty.value) || 0;
+    const u = parseFloat(unit.value) || 0;
+    total.value = (q * u).toFixed(2);
+  };
+
+  qty.addEventListener("input", calc);
+  unit.addEventListener("input", calc);
+}
+
+const actionDialog = document.getElementById("action-dialog");
+if (actionDialog) {
+  actionDialog.addEventListener("htmx:afterSettle", (event) => {
+    const form = event.target.querySelector(".new-expense-form");
+    if (form) {
+      setupGroceryCalc(form);
+    }
+  });
+}

@@ -68,10 +68,17 @@ func (h *GroceriesHandler) UploadReceipt(c *gin.Context) {
 		return
 	}
 
+	categories, err := h.DB.GetAllCategories()
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to load categories")
+		return
+	}
+
 	c.HTML(http.StatusOK, "groceries-receipt-edit-form", gin.H{
-		"Store": analysis.Store,
-		"Items": analysis.Items,
-		"Lang":  lang,
+		"Store":      analysis.Store,
+		"Items":      analysis.Items,
+		"Categories": categories,
+		"Lang":       lang,
 	})
 }
 
@@ -80,26 +87,29 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) {
 	userIDstr, _ := c.Get("user_id")
 	userID := userIDstr.(uuid.UUID)
 
-	// This is a simplified approach; in production with Gin,
-	// binding nested indexed form data usually requires custom binding
-	// or iterating through c.Request.PostForm.
-	// For this CLI agent, iterating PostForm manually:
-
 	i := 0
+	var expenses []models.GroceriesExpense
 	for {
+		categoryID, _ := strconv.Atoi(c.PostForm(fmt.Sprintf("items[%d].category_id", i)))
 		product := c.PostForm(fmt.Sprintf("items[%d].product", i))
 		if product == "" {
 			break
 		}
+		if categoryID == 0 {
+			categoryID = 7 // Default to 'Other' if not provided or empty
+		}
 		quantity, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].quantity", i)), 64)
+		unitPrice, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].unit_price", i)), 64)
 		totalPrice, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].total_price", i)), 64)
 		supermarketName := c.PostForm(fmt.Sprintf("items[%d].supermarket_name", i))
 
 		expense := &models.GroceriesExpense{
 			UserID:          userID,
+			CategoryID:      categoryID,
 			Product:         product,
 			Quantity:        quantity,
-			Price:           totalPrice,
+			UnitPrice:       unitPrice,
+			TotalPrice:      totalPrice,
 			SupermarketName: supermarketName,
 			PurchaseDate:    time.Now(),
 		}
@@ -107,6 +117,14 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) {
 		if err := h.DB.CreateGroceriesExpense(expense); err != nil {
 			c.String(http.StatusInternalServerError, "Failed to save item")
 			return
+		}
+
+		// Fetch the saved expense to get the CategoryName populated
+		dbExpense, err := h.DB.GetGroceriesExpenseByID(expense.ID)
+		if err == nil {
+			expenses = append(expenses, *dbExpense)
+		} else {
+			expenses = append(expenses, *expense)
 		}
 		i++
 	}
@@ -116,14 +134,21 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) {
 		Message: utilities.T(lang, "modal.create_success"),
 		Lang:    lang,
 	}
-	c.HTML(http.StatusCreated, utilities.Templates.Components.ModalSuccess, content)
+
+	c.HTML(http.StatusCreated, "confirm-batch-groceries", gin.H{
+		"Expenses": expenses,
+		"Modal":    content,
+		"Lang":     lang,
+	})
 }
 
 func (h *GroceriesHandler) ConfirmReceipt(c *gin.Context) {
 	lang := c.GetString("lang")
+	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
 	product := c.PostForm("product")
 	quantity, _ := strconv.ParseFloat(c.PostForm("quantity"), 64)
-	price, _ := strconv.ParseFloat(c.PostForm("price"), 64)
+	unitPrice, _ := strconv.ParseFloat(c.PostForm("unit_price"), 64)
+	totalPrice, _ := strconv.ParseFloat(c.PostForm("total_price"), 64)
 	supermarketName := c.PostForm("supermarket_name")
 
 	userIDstr, _ := c.Get("user_id")
@@ -131,9 +156,11 @@ func (h *GroceriesHandler) ConfirmReceipt(c *gin.Context) {
 
 	expense := &models.GroceriesExpense{
 		UserID:          userID,
+		CategoryID:      categoryID,
 		Product:         product,
 		Quantity:        quantity,
-		Price:           price,
+		UnitPrice:       unitPrice,
+		TotalPrice:      totalPrice,
 		SupermarketName: supermarketName,
 		PurchaseDate:    time.Now(),
 	}
@@ -200,8 +227,14 @@ func (h *GroceriesHandler) GetGroceriesForm(c *gin.Context) {
 
 func (h *GroceriesHandler) GetCreateGroceriesForm(c *gin.Context) {
 	lang := c.GetString("lang")
+	categories, err := h.DB.GetAllCategories()
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to load categories")
+		return
+	}
 	c.HTML(http.StatusOK, utilities.Templates.Components.CreateGroceriesForm, gin.H{
-		"Lang": lang,
+		"Lang":       lang,
+		"Categories": categories,
 	})
 }
 
@@ -210,16 +243,20 @@ func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) {
 	userIDstr, _ := c.Get("user_id")
 	userID := userIDstr.(uuid.UUID)
 
+	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
 	product := c.PostForm("product")
 	quantity, _ := strconv.ParseFloat(c.PostForm("quantity"), 64)
-	price, _ := strconv.ParseFloat(c.PostForm("price"), 64)
+	unitPrice, _ := strconv.ParseFloat(c.PostForm("unit_price"), 64)
+	totalPrice, _ := strconv.ParseFloat(c.PostForm("total_price"), 64)
 	supermarketName := c.PostForm("supermarket_name")
 
 	expense := &models.GroceriesExpense{
 		UserID:          userID,
+		CategoryID:      categoryID,
 		Product:         product,
 		Quantity:        quantity,
-		Price:           price,
+		UnitPrice:       unitPrice,
+		TotalPrice:      totalPrice,
 		SupermarketName: supermarketName,
 		PurchaseDate:    time.Now(),
 	}
@@ -229,20 +266,20 @@ func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) {
 		return
 	}
 
-	// Fetch to get ID and CreatedAt
-	// Simplified: re-fetch last for user
-	// Real-world: return from CreateGroceriesExpense or re-fetch properly
 	expense, _ = h.DB.GetGroceriesExpenseByID(expense.ID)
 
 	c.HTML(http.StatusCreated, "grocery-row", gin.H{
 		"ID":              expense.ID,
+		"CategoryName":    expense.CategoryName,
 		"PurchaseDate":    expense.PurchaseDate,
 		"Product":         expense.Product,
 		"Quantity":        expense.Quantity,
-		"Price":           expense.Price,
+		"UnitPrice":       expense.UnitPrice,
+		"TotalPrice":      expense.TotalPrice,
 		"SupermarketName": expense.SupermarketName,
 		"Lang":            lang,
 	})
+
 }
 
 func (h *GroceriesHandler) GetEditGroceriesForm(c *gin.Context) {
@@ -255,9 +292,16 @@ func (h *GroceriesHandler) GetEditGroceriesForm(c *gin.Context) {
 		return
 	}
 
+	categories, err := h.DB.GetAllCategories()
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to load categories")
+		return
+	}
+
 	c.HTML(http.StatusOK, utilities.Templates.Components.EditGroceriesForm, gin.H{
-		"Expense": expense,
-		"Lang":    lang,
+		"Expense":    expense,
+		"Categories": categories,
+		"Lang":       lang,
 	})
 }
 
@@ -265,16 +309,20 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) {
 	lang := c.GetString("lang")
 	id, _ := strconv.Atoi(c.Param("id"))
 
+	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
 	product := c.PostForm("product")
 	quantity, _ := strconv.ParseFloat(c.PostForm("quantity"), 64)
-	price, _ := strconv.ParseFloat(c.PostForm("price"), 64)
+	unitPrice, _ := strconv.ParseFloat(c.PostForm("unit_price"), 64)
+	totalPrice, _ := strconv.ParseFloat(c.PostForm("total_price"), 64)
 	supermarketName := c.PostForm("supermarket_name")
 
 	expense := &models.GroceriesExpense{
 		ID:              id,
+		CategoryID:      categoryID,
 		Product:         product,
 		Quantity:        quantity,
-		Price:           price,
+		UnitPrice:       unitPrice,
+		TotalPrice:      totalPrice,
 		SupermarketName: supermarketName,
 		PurchaseDate:    time.Now(),
 	}
@@ -298,10 +346,12 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "grocery-row", gin.H{
 		"ID":              updatedExpense.ID,
+		"CategoryName":    updatedExpense.CategoryName,
 		"PurchaseDate":    updatedExpense.PurchaseDate,
 		"Product":         updatedExpense.Product,
 		"Quantity":        updatedExpense.Quantity,
-		"Price":           updatedExpense.Price,
+		"UnitPrice":       updatedExpense.UnitPrice,
+		"TotalPrice":      updatedExpense.TotalPrice,
 		"SupermarketName": updatedExpense.SupermarketName,
 		"Lang":            lang,
 	})
