@@ -37,7 +37,7 @@ type DB struct {
 func LoadConfig() (*Config, error) {
 	mode := os.Getenv("MODE")
 
-	envPath := filepath.Join(GetProjectRootDir(), ".env.development")
+	envPath := filepath.Join(GetProjectRootDir(), ".env.dev")
 	if err := godotenv.Load(envPath); err != nil {
 		log.Printf("No .env.development file found at %s, using environment variables\n", envPath)
 	}
