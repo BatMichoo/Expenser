@@ -5,6 +5,7 @@ import (
 	database "expenser/internal/db"
 	"expenser/internal/middleware"
 	"expenser/internal/services"
+	"expenser/internal/services/gemini"
 
 	"github.com/gin-gonic/gin"
 )
@@ -52,7 +53,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedHouse.DELETE("/expenses/:id", houseHandler.DeleteHouseExp)
 	}
 
-	groceriesHandler := NewGroceriesHandler(db, services.NewGeminiService(cfg.GeminiAPIKey))
+	groceriesHandler := NewGroceriesHandler(db, gemini.NewGeminiService(cfg.GeminiAPIKey))
 	protectedGroceries := router.Group("/groceries")
 	{
 		protectedGroceries.Use(am.AuthMiddleware())

@@ -1,11 +1,13 @@
 package models
 
 type ReceiptItem struct {
-	Name       string  `json:"name"`
-	Quantity   float64 `json:"quantity"`
-	UnitPrice  float64 `json:"unit_price"`
-	TotalPrice float64 `json:"total_price"`
-	Category   string  `json:"category"`
+	Name            string  `json:"name"`
+	Quantity        float64 `json:"quantity"`
+	UnitPrice       float64 `json:"unit_price"`
+	DiscountPerUnit float64 `json:"discount_per_unit"`
+	TotalPrice      float64 `json:"total_price"`
+	TotalDiscount   float64 `json:"total_discount"`
+	Category        string  `json:"category"`
 }
 
 type Discount struct {

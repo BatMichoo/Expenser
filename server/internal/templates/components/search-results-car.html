@@ -1,7 +1,7 @@
 {{ define "search-results-car" }} {{ if .Expenses }} {{ range .Expenses }} {{
 template "car-exp-row" (dict "Exp" . "Lang" $.Lang) }} {{ end }} {{ else }}
 <tr>
-  <td colspan="6">
+  <td colspan="7">
     <p>{{ T .Lang "search.no_results" }}</p>
   </td>
 </tr>

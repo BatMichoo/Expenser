@@ -9,15 +9,16 @@ import (
 )
 
 type HouseExpense struct {
-	ID            int             `form:"id"`
-	UtilityTypeID int             `form:"typeID"`
-	UtilityType   string          `form:"type" binding:"required"`
-	Amount        float64         `form:"amount" binding:"required"`
-	ExpenseDate   time.Time       `form:"date" binding:"required"`
-	Notes         string          `form:"notes"`
-	Metadata      json.RawMessage `form:"metadata"`
-	CreatedAt     time.Time       `form:"createdAt"`
-	CreatedBy     uuid.UUID
+	ID             int             `form:"id"`
+	UtilityTypeID  int             `form:"typeID"`
+	UtilityType    string          `form:"type" binding:"required"`
+	Amount         float64         `form:"amount" binding:"required"`
+	DiscountAmount float64         `form:"discount_amount"`
+	ExpenseDate    time.Time       `form:"date" binding:"required"`
+	Notes          string          `form:"notes"`
+	Metadata       json.RawMessage `form:"metadata"`
+	CreatedAt      time.Time       `form:"createdAt"`
+	CreatedBy      uuid.UUID
 }
 
 func (h HouseExpense) FormattedMetadata(lang string) string {
@@ -82,7 +83,7 @@ func (h HouseExpense) UnmarshalMetadata() interface{} {
 // ElectricityMetadata represents detailed info for electricity bills
 type ElectricityMetadata struct {
 	KWhDay     float64 `json:"kWh_day"`
-	KWhNight    float64 `json:"kWh_night"`
+	KWhNight   float64 `json:"kWh_night"`
 	PriceDay   float64 `json:"price_day"`
 	PriceNight float64 `json:"price_night"`
 }

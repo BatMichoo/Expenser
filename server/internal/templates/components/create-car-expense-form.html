@@ -13,7 +13,7 @@
     hx-on::after-request="if(event.detail.successful && event.target === this) {
         hideDialog();
     }">
-    <div>
+    <div class="expense-type-field">
       <label for="utilityType">{{ T .Lang "form.expense_type" }}</label>
       <select id="utilityType" name="typeID" required hx-get="/car/expenses/metadata" hx-target="#metadata-fields"
         hx-swap="innerHTML">
@@ -23,24 +23,30 @@
         {{end}}
       </select>
     </div>
-    <div id="metadata-fields"></div>
-    <div>
-      <label for="amount">{{ T .Lang "common.amount" }}</label>
-      <input type="number" id="amount" name="amount" step="0.01" min="0" required placeholder='{{ T .Lang "form.amount_placeholder" }}' />
-    </div>
-    <div>
-      <label for="expenseDate">{{ T .Lang "common.date" }}</label>
-      <input type="date" id="expenseDate" name="date" required />
-    </div>
-    <div>
-      <label for="notes">{{ T .Lang "common.notes" }}</label>
-      <textarea id="notes" name="notes" rows="3" placeholder='{{ T .Lang "form.notes_placeholder" }}'></textarea>
-    </div>
-    <div>
-      <button type="submit" class="btn-primary">{{ T .Lang "common.add" }}</button>
-      <button type="button" class="btn-primary" onClick="hideDialog();">
-        {{ T .Lang "common.cancel" }}
-      </button>
+    <div id="expense-fields" hidden>
+      <div id="metadata-fields"></div>
+      <div>
+        <label for="amount">{{ T .Lang "common.amount" }}</label>
+        <input type="number" id="amount" name="amount" step="0.01" min="0" required placeholder='{{ T .Lang "form.amount_placeholder" }}' />
+      </div>
+      <div>
+        <label for="discountAmount">{{ T .Lang "common.discount" }}</label>
+        <input type="number" id="discountAmount" name="discount_amount" step="0.01" min="0" />
+      </div>
+      <div>
+        <label for="expenseDate">{{ T .Lang "common.date" }}</label>
+        <input type="date" id="expenseDate" name="date" required />
+      </div>
+      <div>
+        <label for="notes">{{ T .Lang "common.notes" }}</label>
+        <textarea id="notes" name="notes" rows="3" placeholder='{{ T .Lang "form.notes_placeholder" }}'></textarea>
+      </div>
+      <div>
+        <button type="submit" class="btn-primary">{{ T .Lang "common.add" }}</button>
+        <button type="button" class="btn-primary" onClick="hideDialog();">
+          {{ T .Lang "common.cancel" }}
+        </button>
+      </div>
     </div>
   </form>
 </div>

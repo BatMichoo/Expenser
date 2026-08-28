@@ -1,11 +1,13 @@
 {{ define "grocery-row" }}
 <tr id="grocery-{{ .ID }}">
   <td>{{ .PurchaseDate.Format "2006-01-02" }}</td>
-  <td>{{ .CategoryName }}</td>
+  <td>{{ T $.Lang (print "category." .CategoryName) }}</td>
   <td>{{ .Product }}</td>
   <td>{{ .Quantity }}</td>
   <td>{{ printf "%.2f" .UnitPrice }}</td>
+  <td>{{ printf "%.2f" .DiscountPerUnit }}</td>
   <td>{{ printf "%.2f" .TotalPrice }}</td>
+  <td>{{ printf "%.2f" .TotalDiscount }}</td>
   <td>{{ .SupermarketName }}</td>
   <td>
     <button

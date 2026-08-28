@@ -3,6 +3,7 @@
   <td>{{ .Exp.ExpenseDate.Format "02.01.2006" }}</td>
   <td>{{ T .Lang (print "type." .Exp.UtilityType) }}</td>
   <td>{{ printf "%.2f" .Exp.Amount }}</td>
+  <td>{{ printf "%.2f" .Exp.DiscountAmount }}</td>
   <td>{{ .Exp.FormattedMetadata .Lang }}</td>
   <td>{{ .Exp.Notes }}</td>
   <td>

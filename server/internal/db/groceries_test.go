@@ -43,6 +43,31 @@ func TestCreateGroceriesExpense(t *testing.T) {
 			validate: func(t *testing.T, got *models.GroceriesExpense) {
 				assert.Equal(t, "Milk", got.Product)
 				assert.Equal(t, 1.50, got.TotalPrice)
+				assert.Equal(t, 0.0, got.DiscountPerUnit)
+				assert.Equal(t, 0.0, got.TotalDiscount)
+			},
+		},
+		{
+			name: "WithDiscount",
+			setup: func(t *testing.T) {
+				testDB.CreateUser(TestUserRegisterModel)
+			},
+			input: &models.GroceriesExpense{
+				CategoryID:      1,
+				Product:         "Cheese",
+				Quantity:        2.0,
+				UnitPrice:       5.00,
+				DiscountPerUnit: 1.00,
+				TotalPrice:      8.00,
+				TotalDiscount:   2.00,
+				SupermarketName: "Lidl",
+				PurchaseDate:    time.Now(),
+			},
+			validate: func(t *testing.T, got *models.GroceriesExpense) {
+				assert.Equal(t, "Cheese", got.Product)
+				assert.Equal(t, 1.00, got.DiscountPerUnit)
+				assert.Equal(t, 8.00, got.TotalPrice)
+				assert.Equal(t, 2.00, got.TotalDiscount)
 			},
 		},
 	}
@@ -108,6 +133,8 @@ func TestGroceriesCRUD(t *testing.T) {
 			validate: func(t *testing.T, got *models.GroceriesExpense) {
 				assert.Equal(t, "Bread", got.Product)
 				assert.Equal(t, 2.00, got.TotalPrice)
+				assert.Equal(t, 0.50, got.DiscountPerUnit)
+				assert.Equal(t, 0.50, got.TotalDiscount)
 			},
 		},
 	}
@@ -121,6 +148,8 @@ func TestGroceriesCRUD(t *testing.T) {
 			expense, _ := testDB.GetGroceriesExpenseByID(id)
 			expense.Product = "Bread"
 			expense.TotalPrice = 2.00
+			expense.DiscountPerUnit = 0.50
+			expense.TotalDiscount = 0.50
 			err := testDB.EditGroceriesExpense(expense)
 			assert.NoError(t, err)
 

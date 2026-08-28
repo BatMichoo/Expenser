@@ -31,7 +31,7 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 	lang := c.GetString("lang")
 
 	if isHtmxRequest {
-		c.HTML(http.StatusOK, utilities.Templates.Pages.Index, gin.H{"Lang": lang})
+		c.HTML(http.StatusOK, utilities.Templates.Pages.Index, gin.H{"Lang": lang, "IsLoggedIn": claims != nil})
 	} else {
 		rl := &models.RootLayout{
 			TemplateName: utilities.Templates.Pages.Index,
@@ -39,7 +39,8 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 				IsLoggedIn: claims != nil,
 				Lang:       lang,
 			},
-			Lang: lang,
+			Lang:       lang,
+			IsLoggedIn: claims != nil,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
@@ -65,7 +66,8 @@ func (h *RootHandler) NotFound(c *gin.Context) {
 				IsLoggedIn: claims != nil,
 				Lang:       lang,
 			},
-			Lang: lang,
+			Lang:       lang,
+			IsLoggedIn: claims != nil,
 		}
 		c.HTML(http.StatusNotFound, utilities.Templates.Root, rl)
 	}

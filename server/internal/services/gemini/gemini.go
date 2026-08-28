@@ -1,4 +1,4 @@
-package services
+package gemini
 
 import (
 	"bytes"
@@ -33,48 +33,11 @@ func (gs *GeminiService) AnalyzeReceipt(ctx context.Context, receiptData []byte)
 	mimeType := http.DetectContentType(receiptData)
 	imageB64 := base64.StdEncoding.EncodeToString(receiptData)
 
-	prompt := `Extract the data from this receipt image and output it as a structured JSON object.
-
-	Crucial layout instruction for this specific receipt format: The multiplier line containing the quantity and unit price (e.g., 2.000 x 1.78) applies to the item printed on the line immediately below it, not the item above it. The total price for that item appears on the same line as the item name. If an item does not have a multiplier line preceding it, assume a quantity of 1 and that the unit price equals the total line price.
-
-	Categorization instruction: For each item in "items", assign a category in the "category" field. The value MUST be one of the following exact string values, matching case and spelling:
-	"Tomatoes", "Cucumbers", "Milk", "Pork", "Beef", "Chicken", "Eggs", "Cheese", "Bread", "Potatoes", "Apples", "Bananas", "Other".
-	If an item does not clearly fit into the specific food items listed, assign "Other". Do not use any other category names.
-
-	Use the following JSON schema:
-	{
-	  "store": "string",
-	  "address": "string",
-	  "vat_number": "string",
-	  "items": [
-	    {
-	      "name": "string",
-	      "quantity": number,
-	      "unit_price": number,
-	      "total_price": number,
-	      "category": "string"
-	    }
-	  ],
-	  "discounts": [
-	    {
-	      "description": "string",
-	      "amount": number
-	    }
-	  ],
-	  "totals": {
-	    "total_eur": number,
-	    "total_bgn": number,
-	    "exchange_rate": number
-	  }
-	}
-	Return only the valid, parsed JSON object without any additional formatting or markdown blocks.
-	`
-
 	requestBody := map[string]any{
 		"contents": []map[string]any{
 			{
 				"parts": []map[string]any{
-					{"text": prompt},
+					{"text": Prompts.GroceriesReceipt},
 					{
 						"inline_data": map[string]any{
 							"mime_type": mimeType,

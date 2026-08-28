@@ -532,6 +532,33 @@ body.dark #recent-expenses-section h2 svg {
   gap: 1em;
 }
 
+.new-expense-form .expense-type-field {
+  grid-column: 1 / -1;
+}
+
+.new-expense-form #expense-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1em;
+}
+
+.new-expense-form #expense-fields[hidden] {
+  display: none;
+}
+
+.new-expense-form #expense-fields > :last-child {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+}
+
+.new-expense-form #metadata-fields,
+.new-expense-form .metadata-group {
+  display: contents;
+}
+
 .new-expense-form label {
   display: block;
   font-size: 0.875em;

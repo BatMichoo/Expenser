@@ -196,12 +196,29 @@ function setupGroceryCalc(form) {
   unit.addEventListener("input", calc);
 }
 
+function setupExpenseTypeToggle(form) {
+  const typeSelect = form.querySelector("#utilityType");
+  const fields = form.querySelector("#expense-fields");
+
+  if (!typeSelect || !fields) {
+    return;
+  }
+
+  const toggle = () => {
+    fields.hidden = !typeSelect.value;
+  };
+
+  toggle();
+  typeSelect.addEventListener("change", toggle);
+}
+
 const actionDialog = document.getElementById("action-dialog");
 if (actionDialog) {
   actionDialog.addEventListener("htmx:afterSettle", (event) => {
     const form = event.target.querySelector(".new-expense-form");
     if (form) {
       setupGroceryCalc(form);
+      setupExpenseTypeToggle(form);
     }
   });
 }

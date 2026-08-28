@@ -109,6 +109,7 @@ func (db *DB) GetCarExpenseByID(id int) (*models.CarExpense, error) {
 			ce.id,
 			ct.name AS type,
 			ce.amount,
+			ce.discount_amount,
 			ce.expense_date,
 			ce.notes,
 			ce.metadata,
@@ -129,6 +130,7 @@ func (db *DB) GetCarExpenseByID(id int) (*models.CarExpense, error) {
 		&expense.ID,
 		&expense.Type,
 		&expense.Amount,
+		&expense.DiscountAmount,
 		&expense.Date,
 		&expense.Notes,
 		&expense.Metadata,
@@ -148,14 +150,15 @@ func (db *DB) GetCarExpenseByID(id int) (*models.CarExpense, error) {
 // Creates a new entry of a car expense. Automatically handles utility type FK.
 func (db *DB) CreateCarExpense(input *models.CarExpense) error {
 	query := `
-		INSERT INTO car_expenses (car_expense_type_id, amount, expense_date, notes, metadata, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO car_expenses (car_expense_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at, (SELECT name FROM car_expense_types WHERE id = car_expense_type_id);
 	`
 
 	err := db.conn.QueryRow(query,
 		input.ExpenseTypeID,
 		input.Amount,
+		input.DiscountAmount,
 		input.Date,
 		input.Notes,
 		input.Metadata,
@@ -171,13 +174,13 @@ func (db *DB) CreateCarExpense(input *models.CarExpense) error {
 
 func (db *DB) GetCarExpensesForMonth(month time.Month, year int, userId uuid.UUID) (*[]models.CarExpense, error) {
 	query := `
-		SELECT ce.id, ct.name, ce.amount, ce.expense_date, ce.notes, ce.metadata, ce.created_at
+		SELECT ce.id, ct.name, ce.amount, ce.discount_amount, ce.expense_date, ce.notes, ce.metadata, ce.created_at
 			FROM car_expenses ce
 		JOIN
 			car_expense_types ct ON ce.car_expense_type_id = ct.id
 		WHERE
 			EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2 AND ce.created_by = $3
-		ORDER BY 
+		ORDER BY
 			ce.expense_date DESC;
 	`
 
@@ -202,6 +205,7 @@ func (db *DB) GetCarExpensesForMonth(month time.Month, year int, userId uuid.UUI
 		err = rows.Scan(&exp.ID,
 			&exp.Type,
 			&exp.Amount,
+			&exp.DiscountAmount,
 			&exp.Date,
 			&exp.Notes,
 			&exp.Metadata,
@@ -314,9 +318,10 @@ func (db *DB) EditCarExpense(editExpense *models.CarExpense) error {
 		SET
 			car_expense_type_id = $2,
 			amount = $3,
-			expense_date = $4,
-			notes = $5,
-			metadata = $6
+			discount_amount = $4,
+			expense_date = $5,
+			notes = $6,
+			metadata = $7
 		WHERE id = $1
 		RETURNING (SELECT name FROM car_expense_types WHERE id = $2);
 	`
@@ -324,6 +329,7 @@ func (db *DB) EditCarExpense(editExpense *models.CarExpense) error {
 		editExpense.ID,
 		editExpense.ExpenseTypeID,
 		editExpense.Amount,
+		editExpense.DiscountAmount,
 		editExpense.Date,
 		editExpense.Notes,
 		editExpense.Metadata,

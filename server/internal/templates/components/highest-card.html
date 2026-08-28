@@ -2,7 +2,7 @@
 {{ if .Exp }}
 <div class="card highest-expense-card" id="highest-expense" {{ if .Exp.IsOOB }}hx-swap-oob="true" {{ end }}>
   <h3>{{ T .Lang "card.highest_expense" }}</h3>
-  <p>{{ T .Lang (print "type." .Exp.Type) }}</p>
+  <p>{{ if .Exp.Type }}{{ T .Lang (print "type." .Exp.Type) }}{{ end }}</p>
   <p>{{ T .Lang "card.this_month" }}: {{ printf "%.2f" .Exp.Amount }}</p>
 </div>
 {{ end }}

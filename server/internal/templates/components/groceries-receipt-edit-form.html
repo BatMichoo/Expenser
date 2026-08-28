@@ -13,7 +13,9 @@
           <th>Product</th>
           <th>Qty</th>
           <th>Unit Price</th>
+          <th>Discount/Unit</th>
           <th>Total Price</th>
+          <th>Total Discount</th>
           <th>Supermarket</th>
         </tr>
       </thead>
@@ -23,7 +25,7 @@
           <td>
             <select name="items[{{ $index }}].category_id" required>
               {{ range $.Categories }}
-              <option value="{{ .ID }}" {{ if eq .Name $item.Category }}selected{{ else if and (eq $item.Category "") (eq .Name "Other") }}selected{{ end }}>{{ .Name }}</option>
+              <option value="{{ .ID }}" {{ if eq .Name $item.Category }}selected{{ else if and (eq $item.Category "") (eq .Name "Other") }}selected{{ end }}>{{ T $.Lang (print "category." .Name) }}</option>
               {{ end }}
             </select>
           </td>
@@ -56,10 +58,26 @@
           <td>
             <input
               type="number"
+              name="items[{{ $index }}].discount_per_unit"
+              value="{{ $item.DiscountPerUnit }}"
+              step="0.01"
+            />
+          </td>
+          <td>
+            <input
+              type="number"
               name="items[{{ $index }}].total_price"
               value="{{ $item.TotalPrice }}"
               step="0.01"
               required
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              name="items[{{ $index }}].total_discount"
+              value="{{ $item.TotalDiscount }}"
+              step="0.01"
             />
           </td>
           <td>

@@ -1,6 +1,6 @@
 {{ define "confirm-batch-groceries" }}
   {{ range .Expenses }}
-    {{ template "grocery-row" (dict "ID" .ID "CategoryName" .CategoryName "PurchaseDate" .PurchaseDate "Product" .Product "Quantity" .Quantity "UnitPrice" .UnitPrice "TotalPrice" .TotalPrice "SupermarketName" .SupermarketName "Lang" $.Lang) }}
+    {{ template "grocery-row" (dict "ID" .ID "CategoryName" .CategoryName "PurchaseDate" .PurchaseDate "Product" .Product "Quantity" .Quantity "UnitPrice" .UnitPrice "DiscountPerUnit" .DiscountPerUnit "TotalPrice" .TotalPrice "TotalDiscount" .TotalDiscount "SupermarketName" .SupermarketName "Lang" $.Lang) }}
   {{ end }}
 
   <div id="result" hx-swap-oob="true"></div>

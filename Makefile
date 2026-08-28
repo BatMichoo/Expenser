@@ -1,9 +1,15 @@
-include .env
+-include .env
 
-.PHONY: start
+.PHONY: start dev-db dev-db-down
 
 start:
 	cd server/cmd && go run main.go
+
+dev-db:
+	docker compose --env-file server/.env.dev -f docker-compose.dev.yaml up -d
+
+dev-db-down:
+	docker compose --env-file server/.env.dev -f docker-compose.dev.yaml down
 
 CERTS_DIR := nginx/certs
 KEY_FILE := $(CERTS_DIR)/homeserver.lan.key

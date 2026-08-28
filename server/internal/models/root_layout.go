@@ -5,4 +5,5 @@ type RootLayout struct {
 	TemplateContent any
 	HeaderOpts      *HeaderOptions
 	Lang            string
+	IsLoggedIn      bool
 }

@@ -110,6 +110,7 @@ func (db *DB) GetHouseExpenseByID(id int) (*models.HouseExpense, error) {
 			he.id,
 			ut.name AS utility_name,
 			he.amount,
+			he.discount_amount,
 			he.expense_date,
 			he.notes,
 			he.metadata,
@@ -129,6 +130,7 @@ func (db *DB) GetHouseExpenseByID(id int) (*models.HouseExpense, error) {
 		&expense.ID,
 		&expense.UtilityType,
 		&expense.Amount,
+		&expense.DiscountAmount,
 		&expense.ExpenseDate,
 		&expense.Notes,
 		&expense.Metadata,
@@ -147,14 +149,15 @@ func (db *DB) GetHouseExpenseByID(id int) (*models.HouseExpense, error) {
 // Creates a new entry of a home expense. Automatically handles utility type FK.
 func (db *DB) CreateHouseExpense(input *models.HouseExpense) error {
 	query := `
-		INSERT INTO home_expenses (utility_type_id, amount, expense_date, notes, metadata, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO home_expenses (utility_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at, (SELECT name FROM utility_types WHERE id = utility_type_id);
 	`
 
 	err := db.conn.QueryRow(query,
 		input.UtilityTypeID,
 		input.Amount,
+		input.DiscountAmount,
 		input.ExpenseDate,
 		input.Notes,
 		input.Metadata,
@@ -170,13 +173,13 @@ func (db *DB) CreateHouseExpense(input *models.HouseExpense) error {
 
 func (db *DB) GetHouseExpensesForMonth(month time.Month, year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
-		SELECT he.id, ut.name, he.amount, he.expense_date, he.notes, he.metadata, he.created_at, he.created_by
+		SELECT he.id, ut.name, he.amount, he.discount_amount, he.expense_date, he.notes, he.metadata, he.created_at, he.created_by
 			FROM home_expenses he
 		JOIN
 			utility_types ut ON he.utility_type_id = ut.id
 		WHERE
 			EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2 AND created_by = $3
-		ORDER BY 
+		ORDER BY
 			he.expense_date DESC;
 	`
 
@@ -201,6 +204,7 @@ func (db *DB) GetHouseExpensesForMonth(month time.Month, year int, userId uuid.U
 		err = rows.Scan(&exp.ID,
 			&exp.UtilityType,
 			&exp.Amount,
+			&exp.DiscountAmount,
 			&exp.ExpenseDate,
 			&exp.Notes,
 			&exp.Metadata,
@@ -355,9 +359,10 @@ func (db *DB) EditHouseExpense(editExpense *models.HouseExpense) error {
 		SET
 			utility_type_id = $2,
 			amount = $3,
-			expense_date = $4,
-			notes = $5,
-			metadata = $6
+			discount_amount = $4,
+			expense_date = $5,
+			notes = $6,
+			metadata = $7
 		WHERE id = $1
 		RETURNING (SELECT name FROM utility_types WHERE id = $2);
 	`
@@ -365,6 +370,7 @@ func (db *DB) EditHouseExpense(editExpense *models.HouseExpense) error {
 		editExpense.ID,
 		editExpense.UtilityTypeID,
 		editExpense.Amount,
+		editExpense.DiscountAmount,
 		editExpense.ExpenseDate,
 		editExpense.Notes,
 		editExpense.Metadata,

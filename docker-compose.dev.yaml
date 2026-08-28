@@ -1,0 +1,27 @@
+services:
+  db:
+    container_name: expenser-db-dev
+    image: postgres:16-alpine
+    env_file:
+      - ./server/.env.dev
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      TEST_DB_NAME: ${TEST_DB_NAME}
+      PGTZ: Europe/Sofia
+      LANG: en_US.utf8
+      LC_ALL: en_US.utf8
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - db-data-dev:/var/lib/postgresql/data
+      - ./docker/dev-db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db-data-dev:

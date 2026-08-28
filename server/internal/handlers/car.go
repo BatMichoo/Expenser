@@ -266,6 +266,8 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 		return
 	}
 
+	discountAmount, _ := strconv.ParseFloat(c.Request.PostFormValue("discount_amount"), 64)
+
 	notes := c.Request.PostFormValue("notes")
 	metadata := h.parseCarMetadata(c, expTypeID)
 
@@ -273,12 +275,13 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 	userID, _ := userIDstr.(uuid.UUID)
 
 	newExpense := &models.CarExpense{
-		Amount:        amount,
-		ExpenseTypeID: expTypeID,
-		Date:          date,
-		Notes:         notes,
-		Metadata:      metadata,
-		CreatedBy:     userID,
+		Amount:         amount,
+		DiscountAmount: discountAmount,
+		ExpenseTypeID:  expTypeID,
+		Date:           date,
+		Notes:          notes,
+		Metadata:       metadata,
+		CreatedBy:      userID,
 	}
 
 	err = h.DB.CreateCarExpense(newExpense)
@@ -468,16 +471,19 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 		return
 	}
 
+	discountAmount, _ := strconv.ParseFloat(c.Request.PostFormValue("discount_amount"), 64)
+
 	notes := c.Request.PostFormValue("notes")
 	metadata := h.parseCarMetadata(c, expTypeID)
 
 	editExpense := &models.CarExpense{
-		ID:            id,
-		Amount:        amount,
-		ExpenseTypeID: expTypeID,
-		Date:          date,
-		Notes:         notes,
-		Metadata:      metadata,
+		ID:             id,
+		Amount:         amount,
+		DiscountAmount: discountAmount,
+		ExpenseTypeID:  expTypeID,
+		Date:           date,
+		Notes:          notes,
+		Metadata:       metadata,
 	}
 
 	err = h.DB.EditCarExpense(editExpense)

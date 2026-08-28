@@ -38,15 +38,17 @@ func TestCreateHomeExpense(t *testing.T) {
 				return TestUserRegisterModel.ID
 			},
 			input: &models.HouseExpense{
-				Amount:        250.00,
-				ExpenseDate:   expenseDate,
-				UtilityTypeID: 3,
-				Notes:         "Test 1234",
-				Metadata:      []byte("{}"),
+				Amount:         250.00,
+				DiscountAmount: 25.00,
+				ExpenseDate:    expenseDate,
+				UtilityTypeID:  3,
+				Notes:          "Test 1234",
+				Metadata:       []byte("{}"),
 			},
 			wantErr: false,
 			validate: func(t *testing.T, got *models.HouseExpense) {
 				assert.Equal(t, 250.00, got.Amount)
+				assert.Equal(t, 25.00, got.DiscountAmount)
 				assert.Equal(t, expenseDate.Local().Round(time.Second), got.ExpenseDate.Local().Round(time.Second))
 				assert.Equal(t, "Gas", got.UtilityType)
 				assert.Equal(t, "Test 1234", got.Notes)
@@ -134,15 +136,17 @@ func TestEditHomeExpense(t *testing.T) {
 				return initial.ID
 			},
 			input: &models.HouseExpense{
-				Amount:        250.00,
-				ExpenseDate:   expenseDate,
-				UtilityTypeID: 3,
-				Notes:         "Test 1234",
-				Metadata:      []byte("{}"),
+				Amount:         250.00,
+				DiscountAmount: 50.00,
+				ExpenseDate:    expenseDate,
+				UtilityTypeID:  3,
+				Notes:          "Test 1234",
+				Metadata:       []byte("{}"),
 			},
 			wantErr: false,
 			validate: func(t *testing.T, got *models.HouseExpense) {
 				assert.Equal(t, 250.00, got.Amount)
+				assert.Equal(t, 50.00, got.DiscountAmount)
 				assert.Equal(t, expenseDate.Local().Round(time.Second), got.ExpenseDate.Local().Round(time.Second))
 				assert.Equal(t, "Gas", got.UtilityType)
 				assert.Equal(t, "Test 1234", got.Notes)
@@ -197,12 +201,13 @@ func TestGetHomeExpense(t *testing.T) {
 			setup: func(t *testing.T) int {
 				testDB.CreateUser(TestUserRegisterModel)
 				expense := &models.HouseExpense{
-					Amount:        250.00,
-					ExpenseDate:   expenseDate,
-					UtilityTypeID: 3,
-					Notes:         "Test 1234",
-					CreatedBy:     TestUserRegisterModel.ID,
-					Metadata:      []byte("{}"),
+					Amount:         250.00,
+					DiscountAmount: 10.00,
+					ExpenseDate:    expenseDate,
+					UtilityTypeID:  3,
+					Notes:          "Test 1234",
+					CreatedBy:      TestUserRegisterModel.ID,
+					Metadata:       []byte("{}"),
 				}
 
 				err := testDB.CreateHouseExpense(expense)
@@ -217,6 +222,7 @@ func TestGetHomeExpense(t *testing.T) {
 			wantNil: false,
 			validate: func(t *testing.T, got *models.HouseExpense) {
 				assert.Equal(t, 250.00, got.Amount)
+				assert.Equal(t, 10.00, got.DiscountAmount)
 				assert.Equal(t, expenseDate.Local().Round(time.Second), got.ExpenseDate.Local().Round(time.Second))
 				assert.Equal(t, "Gas", got.UtilityType)
 				assert.Equal(t, "Test 1234", got.Notes)

@@ -205,16 +205,19 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 		return
 	}
 
+	discountAmount, _ := strconv.ParseFloat(c.Request.PostFormValue("discount_amount"), 64)
+
 	notes := c.Request.PostFormValue("notes")
 	metadata := h.parseHouseMetadata(c, utilTypeID)
 
 	newExpense := &models.HouseExpense{
-		CreatedBy:     userID,
-		Amount:        amount,
-		UtilityTypeID: utilTypeID,
-		ExpenseDate:   date,
-		Notes:         notes,
-		Metadata:      metadata,
+		CreatedBy:      userID,
+		Amount:         amount,
+		DiscountAmount: discountAmount,
+		UtilityTypeID:  utilTypeID,
+		ExpenseDate:    date,
+		Notes:          notes,
+		Metadata:       metadata,
 	}
 
 	err = h.DB.CreateHouseExpense(newExpense)
@@ -493,16 +496,19 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
 	}
+	discountAmount, _ := strconv.ParseFloat(c.Request.PostFormValue("discount_amount"), 64)
+
 	notes := c.Request.PostFormValue("notes")
 	metadata := h.parseHouseMetadata(c, utilTypeID)
 
 	editExpense := &models.HouseExpense{
-		ID:            id,
-		Amount:        amount,
-		UtilityTypeID: utilTypeID,
-		ExpenseDate:   date,
-		Notes:         notes,
-		Metadata:      metadata,
+		ID:             id,
+		Amount:         amount,
+		DiscountAmount: discountAmount,
+		UtilityTypeID:  utilTypeID,
+		ExpenseDate:    date,
+		Notes:          notes,
+		Metadata:       metadata,
 	}
 
 	err = h.DB.EditHouseExpense(editExpense)

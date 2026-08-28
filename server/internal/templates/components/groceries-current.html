@@ -32,7 +32,9 @@
           <th>{{ T .Lang "groceries.product" }}</th>
           <th>{{ T .Lang "groceries.quantity" }}</th>
           <th>{{ T .Lang "groceries.unit_price" }}</th>
+          <th>{{ T .Lang "groceries.discount_per_unit" }}</th>
           <th>{{ T .Lang "groceries.total_price" }}</th>
+          <th>{{ T .Lang "groceries.total_discount" }}</th>
           <th>{{ T .Lang "groceries.supermarket" }}</th>
           <th>{{ T .Lang "common.actions" }}</th>
         </tr>
@@ -41,11 +43,13 @@
         {{ range .Groceries }}
         <tr id="grocery-{{ .ID }}">
           <td>{{ .PurchaseDate.Format "2006-01-02" }}</td>
-          <td>{{ .CategoryName }}</td>
+          <td>{{ T $.Lang (print "category." .CategoryName) }}</td>
           <td>{{ .Product }}</td>
           <td>{{ .Quantity }}</td>
           <td>{{ printf "%.2f" .UnitPrice }}</td>
+          <td>{{ printf "%.2f" .DiscountPerUnit }}</td>
           <td>{{ printf "%.2f" .TotalPrice }}</td>
+          <td>{{ printf "%.2f" .TotalDiscount }}</td>
           <td>{{ .SupermarketName }}</td>
           <td>
             <button
@@ -70,7 +74,7 @@
 
         {{ else }}
         <tr>
-          <td colspan="8">
+          <td colspan="10">
             <p>{{ T $.Lang "search.no_results" }}</p>
           </td>
         </tr>

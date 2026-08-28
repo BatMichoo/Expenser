@@ -4,7 +4,7 @@ import (
 	"bytes"
 	database "expenser/internal/db"
 	"expenser/internal/models"
-	"expenser/internal/services"
+	"expenser/internal/services/gemini"
 	"expenser/internal/utilities"
 	"fmt"
 	"net/http"
@@ -17,10 +17,10 @@ import (
 
 type GroceriesHandler struct {
 	DB      *database.DB
-	GeminiS *services.GeminiService
+	GeminiS *gemini.GeminiService
 }
 
-func NewGroceriesHandler(db *database.DB, gs *services.GeminiService) *GroceriesHandler {
+func NewGroceriesHandler(db *database.DB, gs *gemini.GeminiService) *GroceriesHandler {
 	return &GroceriesHandler{
 		DB:      db,
 		GeminiS: gs,
@@ -100,7 +100,9 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) {
 		}
 		quantity, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].quantity", i)), 64)
 		unitPrice, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].unit_price", i)), 64)
+		discountPerUnit, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].discount_per_unit", i)), 64)
 		totalPrice, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].total_price", i)), 64)
+		totalDiscount, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].total_discount", i)), 64)
 		supermarketName := c.PostForm(fmt.Sprintf("items[%d].supermarket_name", i))
 
 		expense := &models.GroceriesExpense{
@@ -109,7 +111,9 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) {
 			Product:         product,
 			Quantity:        quantity,
 			UnitPrice:       unitPrice,
+			DiscountPerUnit: discountPerUnit,
 			TotalPrice:      totalPrice,
+			TotalDiscount:   totalDiscount,
 			SupermarketName: supermarketName,
 			PurchaseDate:    time.Now(),
 		}
@@ -247,7 +251,9 @@ func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) {
 	product := c.PostForm("product")
 	quantity, _ := strconv.ParseFloat(c.PostForm("quantity"), 64)
 	unitPrice, _ := strconv.ParseFloat(c.PostForm("unit_price"), 64)
+	discountPerUnit, _ := strconv.ParseFloat(c.PostForm("discount_per_unit"), 64)
 	totalPrice, _ := strconv.ParseFloat(c.PostForm("total_price"), 64)
+	totalDiscount, _ := strconv.ParseFloat(c.PostForm("total_discount"), 64)
 	supermarketName := c.PostForm("supermarket_name")
 
 	expense := &models.GroceriesExpense{
@@ -256,7 +262,9 @@ func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) {
 		Product:         product,
 		Quantity:        quantity,
 		UnitPrice:       unitPrice,
+		DiscountPerUnit: discountPerUnit,
 		TotalPrice:      totalPrice,
+		TotalDiscount:   totalDiscount,
 		SupermarketName: supermarketName,
 		PurchaseDate:    time.Now(),
 	}
@@ -275,7 +283,9 @@ func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) {
 		"Product":         expense.Product,
 		"Quantity":        expense.Quantity,
 		"UnitPrice":       expense.UnitPrice,
+		"DiscountPerUnit": expense.DiscountPerUnit,
 		"TotalPrice":      expense.TotalPrice,
+		"TotalDiscount":   expense.TotalDiscount,
 		"SupermarketName": expense.SupermarketName,
 		"Lang":            lang,
 	})
@@ -313,7 +323,9 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) {
 	product := c.PostForm("product")
 	quantity, _ := strconv.ParseFloat(c.PostForm("quantity"), 64)
 	unitPrice, _ := strconv.ParseFloat(c.PostForm("unit_price"), 64)
+	discountPerUnit, _ := strconv.ParseFloat(c.PostForm("discount_per_unit"), 64)
 	totalPrice, _ := strconv.ParseFloat(c.PostForm("total_price"), 64)
+	totalDiscount, _ := strconv.ParseFloat(c.PostForm("total_discount"), 64)
 	supermarketName := c.PostForm("supermarket_name")
 
 	expense := &models.GroceriesExpense{
@@ -322,7 +334,9 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) {
 		Product:         product,
 		Quantity:        quantity,
 		UnitPrice:       unitPrice,
+		DiscountPerUnit: discountPerUnit,
 		TotalPrice:      totalPrice,
+		TotalDiscount:   totalDiscount,
 		SupermarketName: supermarketName,
 		PurchaseDate:    time.Now(),
 	}
@@ -351,7 +365,9 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) {
 		"Product":         updatedExpense.Product,
 		"Quantity":        updatedExpense.Quantity,
 		"UnitPrice":       updatedExpense.UnitPrice,
+		"DiscountPerUnit": updatedExpense.DiscountPerUnit,
 		"TotalPrice":      updatedExpense.TotalPrice,
+		"TotalDiscount":   updatedExpense.TotalDiscount,
 		"SupermarketName": updatedExpense.SupermarketName,
 		"Lang":            lang,
 	})
