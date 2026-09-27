@@ -6,6 +6,7 @@ import (
 	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -31,7 +32,7 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 	lang := c.GetString("lang")
 
 	if isHtmxRequest {
-		c.HTML(http.StatusOK, utilities.Templates.Pages.Index, gin.H{"Lang": lang, "IsLoggedIn": claims != nil})
+		c.HTML(http.StatusOK, utilities.Templates.Pages.Index, gin.H{"Lang": lang, "IsLoggedIn": claims != nil, "Year": time.Now().Year()})
 	} else {
 		rl := &models.RootLayout{
 			TemplateName: utilities.Templates.Pages.Index,

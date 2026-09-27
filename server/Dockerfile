@@ -26,4 +26,3 @@ COPY static/ static/
 EXPOSE 8080
 
 CMD ["./web-app"]
-

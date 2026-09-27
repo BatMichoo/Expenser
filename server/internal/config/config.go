@@ -56,6 +56,9 @@ func LoadConfig() (*Config, error) {
 	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
 
 	testDBName := os.Getenv("TEST_DB_NAME")
+	if testDBName == "" {
+		testDBName = testDBName + "_test"
+	}
 
 	// JWT configuration
 	jwtSecret := os.Getenv("JWT_SECRET")

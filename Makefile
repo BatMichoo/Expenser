@@ -62,3 +62,17 @@ $(KEY_FILE) $(CRT_FILE):
 	    -subj "/C=$(COUNTRY_ISO)/ST=$(PROVINCE)/L=$(CITY)/O=$(ORG_NAME)/CN=$(LAN_DOMAIN)" \
 	    -extensions v3_req \
 	    -config "$(OPENSSL_CNF)"
+
+.PHONY: dev-build dev-start dev-stop dev-down
+
+dev-build:
+	docker compose --env-file ./server/.env.dev -f docker-compose.dev.yaml up -d --build 
+
+dev-start:
+	docker compose --env-file ./server/.env.dev -f docker-compose.dev.yaml start
+
+dev-stop:
+	docker compose --env-file ./server/.env.dev -f docker-compose.dev.yaml stop
+
+dev-down:
+	docker compose --env-file ./server/.env.dev -f docker-compose.dev.yaml down

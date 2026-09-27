@@ -255,8 +255,14 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 		return
 	}
 
+	modal := &models.ModalContent{
+		Title:   utilities.T(lang, "modal.create_success"),
+		Message: fmt.Sprintf("%s: %v %s", newExpense.UtilityType, newExpense.Amount, utilities.Currency),
+		Lang:    lang,
+	}
+
 	if newExpense.ExpenseDate.Month() != timeNow.Month() {
-		c.HTML(http.StatusCreated, utilities.Templates.Components.Dialog, gin.H{})
+		c.HTML(http.StatusCreated, utilities.Templates.Components.ModalSuccess, modal)
 		return
 	}
 
@@ -274,7 +280,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 		},
 		Modal: &models.ModalContent{
 			Title:   utilities.T(lang, "modal.create_success"),
-			Message: fmt.Sprintf("%s: %v BGN", newExpense.UtilityType, newExpense.Amount),
+			Message: fmt.Sprintf("%s: %v %s", newExpense.UtilityType, newExpense.Amount, utilities.Currency),
 			Lang:    lang,
 		},
 		Lang: lang,

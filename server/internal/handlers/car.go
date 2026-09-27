@@ -319,6 +319,17 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 		return
 	}
 
+	modal := &models.ModalContent{
+		Title:   utilities.T(lang, "modal.create_success"),
+		Message: fmt.Sprintf("%s: %v %s", newExpense.Type, newExpense.Amount, utilities.Currency),
+		Lang:    lang,
+	}
+
+	if newExpense.Date.Month() != timeNow.Month() {
+		c.HTML(http.StatusCreated, utilities.Templates.Components.ModalSuccess, modal)
+		return
+	}
+
 	crExpResp := &models.CarExpResponse{
 		Expense: newExpense,
 		HighestExpense: &models.HighestExpense{
@@ -331,12 +342,8 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 			Month:  timeNow.Month().String(),
 			IsOOB:  true,
 		},
-		Modal: &models.ModalContent{
-			Title:   utilities.T(lang, "modal.create_success"),
-			Message: fmt.Sprintf("%s: %v BGN", newExpense.Type, newExpense.Amount),
-			Lang:    lang,
-		},
-		Lang: lang,
+		Modal: modal,
+		Lang:  lang,
 	}
 
 	c.HTML(http.StatusCreated, utilities.Templates.Responses.CreateCarExp, crExpResp)
@@ -538,7 +545,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 		},
 		Modal: &models.ModalContent{
 			Title:   utilities.T(lang, "modal.update_success"),
-			Message: fmt.Sprintf("%s: %v BGN", editExpense.Type, editExpense.Amount),
+			Message: fmt.Sprintf("%s: %v %s", editExpense.Type, editExpense.Amount, utilities.Currency),
 			Lang:    lang,
 		},
 		Lang: lang,
