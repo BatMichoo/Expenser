@@ -88,6 +88,7 @@ func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) {
 	c.HTML(http.StatusOK, utilities.Templates.Components.CreateHouseExpForm, gin.H{
 		"Types": expTypes,
 		"Lang":  lang,
+		"Year":  time.Now().Year(),
 	})
 }
 
@@ -310,6 +311,7 @@ func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
 	}
 
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+	year := time.Now().Year()
 
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Components.HouseCurrent, pageData)
@@ -322,6 +324,7 @@ func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
 				IsLoggedIn: exists,
 				Lang:       lang,
 			},
+			Year: year,
 			Lang: lang,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
@@ -347,6 +350,7 @@ func (h *HouseHandler) GetHome(c *gin.Context) {
 	}
 
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+	year := time.Now().Year()
 
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Pages.House, pageData)
@@ -359,6 +363,7 @@ func (h *HouseHandler) GetHome(c *gin.Context) {
 				IsLoggedIn: exists,
 				Lang:       lang,
 			},
+			Year: year,
 			Lang: lang,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)

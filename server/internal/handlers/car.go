@@ -78,6 +78,7 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 	}
 
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+	year := time.Now().Year()
 
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Pages.Car, pageData)
@@ -91,6 +92,7 @@ func (h *CarHandler) GetHome(c *gin.Context) {
 				Lang:       lang,
 			},
 			Lang: lang,
+			Year: year,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
@@ -110,6 +112,7 @@ func (h *CarHandler) GetCurrentMonth(c *gin.Context) {
 	}
 
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+	year := time.Now().Year()
 
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Components.CarCurrent, pageData)
@@ -123,6 +126,7 @@ func (h *CarHandler) GetCurrentMonth(c *gin.Context) {
 				Lang:       lang,
 			},
 			Lang: lang,
+			Year: year,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}

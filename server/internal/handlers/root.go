@@ -31,8 +31,9 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 
 	lang := c.GetString("lang")
 
+	year := time.Now().Year()
 	if isHtmxRequest {
-		c.HTML(http.StatusOK, utilities.Templates.Pages.Index, gin.H{"Lang": lang, "IsLoggedIn": claims != nil, "Year": time.Now().Year()})
+		c.HTML(http.StatusOK, utilities.Templates.Pages.Index, gin.H{"Lang": lang, "IsLoggedIn": claims != nil, "Year": year})
 	} else {
 		rl := &models.RootLayout{
 			TemplateName: utilities.Templates.Pages.Index,
@@ -41,6 +42,7 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 				Lang:       lang,
 			},
 			Lang:       lang,
+			Year:       year,
 			IsLoggedIn: claims != nil,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
