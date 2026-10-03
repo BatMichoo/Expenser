@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	database "expenser/internal/db"
 	"expenser/internal/models"
 	"expenser/internal/utilities"
 	"fmt"
@@ -17,12 +16,12 @@ import (
 )
 
 type CarHandler struct {
-	DB *database.DB
+	BaseHandler BaseHandler
 }
 
-func NewCarHandler(db *database.DB) *CarHandler {
+func NewCarHandler(rh *RootHandler) *CarHandler {
 	return &CarHandler{
-		DB: db,
+		BaseHandler: rh.BaseHandler,
 	}
 }
 
@@ -31,22 +30,24 @@ func (h *CarHandler) getCarPageData(c *gin.Context) (*models.CarData, bool, erro
 	month := dateNow.Month()
 	year := dateNow.Year()
 
-	userIDstr, exists := c.Get("user_id")
+	// WARN: Needs to be valid as well?
+	userIDstr, _ := c.Get("user_id")
+	isLoggedIn := true
 	userID, _ := userIDstr.(uuid.UUID)
 
-	highestExpense, utilType, err := h.DB.GetHighestCarExpenseForMonth(month, userID)
+	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestCarExpenseForMonth(month, userID)
 	if err != nil {
-		return nil, exists, fmt.Errorf("error fetching highest car expense: %w", err)
+		return nil, isLoggedIn, fmt.Errorf("error fetching highest car expense: %w", err)
 	}
 
-	monthlyExpense, err := h.DB.GetTotalCarExpenseForMonth(month, userID)
+	monthlyExpense, err := h.BaseHandler.DB.GetTotalCarExpenseForMonth(month, userID)
 	if err != nil {
-		return nil, exists, fmt.Errorf("error fetching total car expense: %w", err)
+		return nil, isLoggedIn, fmt.Errorf("error fetching total car expense: %w", err)
 	}
 
-	recentExpenses, err := h.DB.GetCarExpensesForMonth(month, year, userID)
+	recentExpenses, err := h.BaseHandler.DB.GetCarExpensesForMonth(month, year, userID)
 	if err != nil {
-		return nil, exists, fmt.Errorf("error fetching recent car expenses: %w", err)
+		return nil, isLoggedIn, fmt.Errorf("error fetching recent car expenses: %w", err)
 	}
 
 	return &models.CarData{
@@ -61,41 +62,35 @@ func (h *CarHandler) getCarPageData(c *gin.Context) (*models.CarData, bool, erro
 		},
 		RecentExpenses: recentExpenses,
 		Lang:           c.GetString("lang"),
-	}, exists, nil
+	}, isLoggedIn, nil
 }
 
 func (h *CarHandler) GetHome(c *gin.Context) {
-	lang := c.GetString("lang")
-	pageData, exists, err := h.getCarPageData(c)
+	pageData, isLoggedIn, err := h.getCarPageData(c)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("500: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
-	year := time.Now().Year()
+	RenderPage(c, isLoggedIn, utilities.Templates.Pages.Car, pageData)
 
-	if isHtmxRequest {
-		c.HTML(http.StatusOK, utilities.Templates.Pages.Car, pageData)
-		return
-	} else {
-		rl := &models.RootLayout{
-			TemplateName:    utilities.Templates.Pages.Car,
-			TemplateContent: pageData,
-			HeaderOpts: &models.HeaderOptions{
-				IsLoggedIn: exists,
-				Lang:       lang,
-			},
-			Lang: lang,
-			Year: year,
-		}
-		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
-	}
+	// isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+	// if isHtmxRequest {
+	// 	c.HTML(http.StatusOK, utilities.Templates.Pages.Car, pageData)
+	// 	return
+	// }
+	//
+	// rl := &models.RootLayout{
+	// 	TemplateName:    utilities.Templates.Pages.Car,
+	// 	TemplateContent: pageData,
+	// 	HeaderOpts: &models.HeaderOptions{
+	// 		// NOTE: what is this???
+	// 		IsLoggedIn: exists,
+	// 		Lang:       lang,
+	// 	},
+	// 	Lang: lang,
+	// }
+	// c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 }
 
 func (h *CarHandler) GetCurrentMonth(c *gin.Context) {
@@ -112,7 +107,6 @@ func (h *CarHandler) GetCurrentMonth(c *gin.Context) {
 	}
 
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
-	year := time.Now().Year()
 
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Components.CarCurrent, pageData)
@@ -126,7 +120,6 @@ func (h *CarHandler) GetCurrentMonth(c *gin.Context) {
 				Lang:       lang,
 			},
 			Lang: lang,
-			Year: year,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
@@ -134,7 +127,7 @@ func (h *CarHandler) GetCurrentMonth(c *gin.Context) {
 
 func (h *CarHandler) GetCreateCarForm(c *gin.Context) {
 	lang := c.GetString("lang")
-	expTypes, err := h.DB.GetCarExpenseTypes()
+	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes()
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -183,7 +176,7 @@ func (h *CarHandler) parseCarMetadata(c *gin.Context, typeID int) json.RawMessag
 			LaborCost: labor,
 		}
 	case 3: // Insurance
-		validUntil, _ := time.Parse("2006-01-02", c.Request.PostFormValue("validUntil"))
+		validUntil, _ := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("validUntil"))
 		metadata = models.InsuranceMetadata{
 			Provider:     c.Request.PostFormValue("provider"),
 			CoverageType: c.Request.PostFormValue("coverageType"),
@@ -248,7 +241,7 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 		return
 	}
 
-	date, err := time.Parse("2006-01-02", c.Request.PostFormValue("date"))
+	date, err := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("date"))
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -288,7 +281,7 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 		CreatedBy:      userID,
 	}
 
-	err = h.DB.CreateCarExpense(newExpense)
+	err = h.BaseHandler.DB.CreateCarExpense(newExpense)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -301,7 +294,7 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 
 	timeNow := time.Now()
 
-	highestExp, expType, err := h.DB.GetHighestCarExpenseForMonth(timeNow.Month(), userID)
+	highestExp, expType, err := h.BaseHandler.DB.GetHighestCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -312,7 +305,7 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) {
 		return
 	}
 
-	montlyTotal, err := h.DB.GetTotalCarExpenseForMonth(timeNow.Month(), userID)
+	montlyTotal, err := h.BaseHandler.DB.GetTotalCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -367,7 +360,7 @@ func (h *CarHandler) GetCarExpenseById(c *gin.Context) {
 		return
 	}
 
-	exp, err := h.DB.GetCarExpenseByID(id)
+	exp, err := h.BaseHandler.DB.GetCarExpenseByID(id)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -399,7 +392,7 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) {
 		return
 	}
 
-	exp, err := h.DB.GetCarExpenseByID(id)
+	exp, err := h.BaseHandler.DB.GetCarExpenseByID(id)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -410,7 +403,7 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) {
 		return
 	}
 
-	expTypes, err := h.DB.GetCarExpenseTypes()
+	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes()
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -460,7 +453,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 		return
 	}
 
-	date, err := time.Parse("2006-01-02", c.Request.PostFormValue("date"))
+	date, err := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("date"))
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -497,7 +490,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 		Metadata:       metadata,
 	}
 
-	err = h.DB.EditCarExpense(editExpense)
+	err = h.BaseHandler.DB.EditCarExpense(editExpense)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -513,7 +506,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 	userIDstr, _ := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
-	highestExp, expType, err := h.DB.GetHighestCarExpenseForMonth(timeNow.Month(), userID)
+	highestExp, expType, err := h.BaseHandler.DB.GetHighestCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -524,7 +517,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 		return
 	}
 
-	montlyTotal, err := h.DB.GetTotalCarExpenseForMonth(timeNow.Month(), userID)
+	montlyTotal, err := h.BaseHandler.DB.GetTotalCarExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -602,7 +595,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 		return
 	}
 
-	res, err := h.DB.DeleteCarExpense(id)
+	res, err := h.BaseHandler.DB.DeleteCarExpense(id)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -625,7 +618,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 	userIDstr, _ := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
-	monthlyExpense, err := h.DB.GetTotalCarExpenseForMonth(month, userID)
+	monthlyExpense, err := h.BaseHandler.DB.GetTotalCarExpenseForMonth(month, userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -636,7 +629,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) {
 		return
 	}
 
-	highestExpense, utilType, err := h.DB.GetHighestCarExpenseForMonth(month, userID)
+	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestCarExpenseForMonth(month, userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),

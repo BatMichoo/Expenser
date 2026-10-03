@@ -44,7 +44,7 @@ func (c CarExpense) FormattedMetadata(lang string) string {
 	case 3: // Insurance
 		var m InsuranceMetadata
 		json.Unmarshal(c.Metadata, &m)
-		return fmt.Sprintf("%s (%s) until %s", m.Provider, m.CoverageType, m.ValidUntil.Format("02.01.2006"))
+		return fmt.Sprintf("%s (%s) until %s", m.Provider, m.CoverageType, m.ValidUntil.Format(utilities.DateFormats.Input))
 	case 5: // Parking/Tolls
 		var m ParkingTollsMetadata
 		json.Unmarshal(c.Metadata, &m)
