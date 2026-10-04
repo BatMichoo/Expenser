@@ -107,6 +107,62 @@ func (db *DB) DeleteGroceriesExpense(id int) (bool, error) {
 	return rowsAffected > 0, nil
 }
 
+func (db *DB) GetGroceriesExpensesForYear(year int, userID uuid.UUID) (*[]models.GroceriesChartExpense, error) {
+	query := `
+		SELECT c.name, (e.total_price - e.total_discount) AS amount, e.total_discount, e.purchase_date
+		FROM groceries_expenses e
+		JOIN grocery_categories c ON e.category_id = c.id
+		WHERE e.user_id = $2 AND ($1 = 0 OR EXTRACT(YEAR FROM e.purchase_date) = $1)
+		ORDER BY e.purchase_date;
+	`
+	rows, err := db.conn.Query(query, year, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching expenses: %v", err)
+	}
+	defer rows.Close()
+
+	var expenses []models.GroceriesChartExpense
+	for rows.Next() {
+		var e models.GroceriesChartExpense
+		var amountRaw, discountRaw []byte
+		if err := rows.Scan(&e.CategoryName, &amountRaw, &discountRaw, &e.PurchaseDate); err != nil {
+			return nil, err
+		}
+		fmt.Sscanf(string(amountRaw), "%f", &e.Amount)
+		fmt.Sscanf(string(discountRaw), "%f", &e.TotalDiscount)
+		expenses = append(expenses, e)
+	}
+	return &expenses, nil
+}
+
+func (db *DB) GetGroceriesExpenseCategoryForYear(categoryID, year int, userID uuid.UUID) (*[]models.GroceriesChartExpense, error) {
+	query := `
+		SELECT c.name, (e.total_price - e.total_discount) AS amount, e.total_discount, e.purchase_date
+		FROM groceries_expenses e
+		JOIN grocery_categories c ON e.category_id = c.id
+		WHERE e.category_id = $1 AND e.user_id = $3 AND ($2 = 0 OR EXTRACT(YEAR FROM e.purchase_date) = $2)
+		ORDER BY e.purchase_date;
+	`
+	rows, err := db.conn.Query(query, categoryID, year, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching expenses: %v", err)
+	}
+	defer rows.Close()
+
+	var expenses []models.GroceriesChartExpense
+	for rows.Next() {
+		var e models.GroceriesChartExpense
+		var amountRaw, discountRaw []byte
+		if err := rows.Scan(&e.CategoryName, &amountRaw, &discountRaw, &e.PurchaseDate); err != nil {
+			return nil, err
+		}
+		fmt.Sscanf(string(amountRaw), "%f", &e.Amount)
+		fmt.Sscanf(string(discountRaw), "%f", &e.TotalDiscount)
+		expenses = append(expenses, e)
+	}
+	return &expenses, nil
+}
+
 func (db *DB) GetAllCategories() ([]models.Category, error) {
 	query := `SELECT id, name FROM grocery_categories ORDER BY name ASC`
 	rows, err := db.conn.Query(query)

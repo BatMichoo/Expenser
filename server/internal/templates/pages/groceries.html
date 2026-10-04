@@ -10,9 +10,20 @@
     >
       {{ T .Lang "groceries.add" }}
     </button>
+    <button
+      type="button"
+      class="tracker-nav-button section-button"
+      hx-get="/groceries/chart"
+      hx-target="#groceries-chart-section"
+      hx-swap="innerHTML"
+    >
+      {{ T .Lang "common.chart" }}
+    </button>
   </div>
 
   <div id="groceries-content">{{ template "groceries-receipt-form" . }}</div>
+
+  <div id="groceries-chart-section"></div>
 
   <div id="recent-groceries">{{ template "groceries-current" . }}</div>
 </div>

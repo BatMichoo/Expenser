@@ -6,6 +6,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// GroceriesChartExpense is a minimal projection used by the chart endpoints.
+// Field names (not JSON-tagged) are read directly by chart-core.js.
+type GroceriesChartExpense struct {
+	CategoryName  string
+	Amount        float64
+	TotalDiscount float64
+	PurchaseDate  time.Time
+}
+
 type GroceriesExpense struct {
 	ID              int       `json:"id"`
 	UserID          uuid.UUID `json:"user_id"`
