@@ -1,4 +1,31 @@
 {{ define "groceries-current" }}
+<section id="overview-section">
+  <h2>
+    <span>{{ T .Lang "groceries.title" }}</span>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <rect width="7" height="9" x="3" y="3" rx="1" />
+      <rect width="7" height="5" x="14" y="3" rx="1" />
+      <rect width="7" height="9" x="14" y="12" rx="1" />
+      <rect width="7" height="5" x="3" y="16" rx="1" />
+    </svg>
+  </h2>
+</section>
+<section id="add-expense-section">
+  <button type="submit" hx-get="groceries/create" hx-target="#action-dialog">
+    {{ T .Lang "common.add" }}
+  </button>
+  {{ template "groceries-receipt-form" . }}
+</section>
 <section id="recent-expenses-section">
   <h2>
     <span>{{ T .Lang "common.recent_expenses" }}</span>
@@ -40,7 +67,7 @@
         </tr>
       </thead>
       <tbody id="recent-expenses">
-        {{ range .Groceries }}
+        {{ range .RecentExpenses }}
         <tr id="grocery-{{ .ID }}">
           <td>{{ .PurchaseDate.Format "2006-01-02" }}</td>
           <td>{{ T $.Lang (print "category." .CategoryName) }}</td>

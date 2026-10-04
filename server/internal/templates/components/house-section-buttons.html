@@ -1,20 +1,34 @@
 {{ define "house-section-buttons" }}
 <ul id="section-list">
   <li>
-    <button type="button" hx-get="/house/current" hx-target="#section-content"
-      class="tracker-nav-button section-button active">
+    <button
+      type="button"
+      hx-get="/house/current"
+      hx-target="#section-content"
+      class="tracker-nav-button section-button active"
+    >
       {{ T .Lang "common.current" }}
     </button>
   </li>
   <li>
-    <button type="button" hx-get="/house/search" hx-target="#section-content" class="tracker-nav-button section-button">
+    <button
+      type="button"
+      hx-get="/house/search"
+      hx-target="#section-content"
+      class="tracker-nav-button section-button"
+    >
       {{ T .Lang "search.title" }}
     </button>
   </li>
   <li>
-    <button type="button" hx-get="/house/chart" hx-target="#section-content" class="tracker-nav-button section-button">
+    <button
+      type="button"
+      hx-get="/house/chart"
+      hx-target="#section-content"
+      class="tracker-nav-button section-button"
+    >
       {{ T .Lang "common.chart" }}
     </button>
   </li>
 </ul>
-{{ end }}
+{{ template "section-buttons-script" }} {{ end }}

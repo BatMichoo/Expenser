@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	database "expenser/internal/db"
 	"expenser/internal/models"
 	"expenser/internal/services/gemini"
 	"expenser/internal/utilities"
@@ -16,14 +15,14 @@ import (
 )
 
 type GroceriesHandler struct {
-	DB      *database.DB
-	GeminiS *gemini.GeminiService
+	BaseHandler BaseHandler
+	GeminiS     *gemini.GeminiService
 }
 
-func NewGroceriesHandler(db *database.DB, gs *gemini.GeminiService) *GroceriesHandler {
+func NewGroceriesHandler(rh *RootHandler, gs *gemini.GeminiService) *GroceriesHandler {
 	return &GroceriesHandler{
-		DB:      db,
-		GeminiS: gs,
+		BaseHandler: rh.BaseHandler,
+		GeminiS:     gs,
 	}
 }
 
@@ -68,7 +67,7 @@ func (h *GroceriesHandler) UploadReceipt(c *gin.Context) {
 		return
 	}
 
-	categories, err := h.DB.GetAllCategories()
+	categories, err := h.BaseHandler.DB.GetAllCategories()
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to load categories")
 		return
@@ -84,8 +83,7 @@ func (h *GroceriesHandler) UploadReceipt(c *gin.Context) {
 
 func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) {
 	lang := c.GetString("lang")
-	userIDstr, _ := c.Get("user_id")
-	userID := userIDstr.(uuid.UUID)
+	userID := h.BaseHandler.AS.Claims.UserID
 
 	i := 0
 	var expenses []models.GroceriesExpense
@@ -118,13 +116,13 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) {
 			PurchaseDate:    time.Now(),
 		}
 
-		if err := h.DB.CreateGroceriesExpense(expense); err != nil {
+		if err := h.BaseHandler.DB.CreateGroceriesExpense(expense); err != nil {
 			c.String(http.StatusInternalServerError, "Failed to save item")
 			return
 		}
 
 		// Fetch the saved expense to get the CategoryName populated
-		dbExpense, err := h.DB.GetGroceriesExpenseByID(expense.ID)
+		dbExpense, err := h.BaseHandler.DB.GetGroceriesExpenseByID(expense.ID)
 		if err == nil {
 			expenses = append(expenses, *dbExpense)
 		} else {
@@ -155,8 +153,7 @@ func (h *GroceriesHandler) ConfirmReceipt(c *gin.Context) {
 	totalPrice, _ := strconv.ParseFloat(c.PostForm("total_price"), 64)
 	supermarketName := c.PostForm("supermarket_name")
 
-	userIDstr, _ := c.Get("user_id")
-	userID, _ := userIDstr.(uuid.UUID)
+	userID := h.BaseHandler.AS.Claims.UserID
 
 	expense := &models.GroceriesExpense{
 		UserID:          userID,
@@ -169,7 +166,7 @@ func (h *GroceriesHandler) ConfirmReceipt(c *gin.Context) {
 		PurchaseDate:    time.Now(),
 	}
 
-	if err := h.DB.CreateGroceriesExpense(expense); err != nil {
+	if err := h.BaseHandler.DB.CreateGroceriesExpense(expense); err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
 			Message: fmt.Sprintf("Failed to save expense: %v", err),
@@ -189,10 +186,10 @@ func (h *GroceriesHandler) ConfirmReceipt(c *gin.Context) {
 
 func (h *GroceriesHandler) GetGroceriesHome(c *gin.Context) {
 	lang := c.GetString("lang")
-	userIDstr, exists := c.Get("user_id")
-	userID, _ := userIDstr.(uuid.UUID)
 
-	expenses, err := h.DB.GetRecentGroceriesExpenses(userID)
+	userID := h.BaseHandler.AS.Claims.UserID
+
+	expenses, err := h.BaseHandler.DB.GetRecentGroceriesExpenses(userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -217,7 +214,7 @@ func (h *GroceriesHandler) GetGroceriesHome(c *gin.Context) {
 			TemplateName:    "groceries-page",
 			TemplateContent: pageData,
 			HeaderOpts: &models.HeaderOptions{
-				IsLoggedIn: exists,
+				IsLoggedIn: h.BaseHandler.AS.IsLoggedIn(),
 				Lang:       lang,
 			},
 			Lang: lang,
@@ -233,7 +230,7 @@ func (h *GroceriesHandler) GetGroceriesForm(c *gin.Context) {
 
 func (h *GroceriesHandler) GetCreateGroceriesForm(c *gin.Context) {
 	lang := c.GetString("lang")
-	categories, err := h.DB.GetAllCategories()
+	categories, err := h.BaseHandler.DB.GetAllCategories()
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to load categories")
 		return
@@ -271,12 +268,12 @@ func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) {
 		PurchaseDate:    time.Now(),
 	}
 
-	if err := h.DB.CreateGroceriesExpense(expense); err != nil {
+	if err := h.BaseHandler.DB.CreateGroceriesExpense(expense); err != nil {
 		c.String(http.StatusInternalServerError, "Failed to save expense")
 		return
 	}
 
-	expense, _ = h.DB.GetGroceriesExpenseByID(expense.ID)
+	expense, _ = h.BaseHandler.DB.GetGroceriesExpenseByID(expense.ID)
 
 	c.HTML(http.StatusCreated, "grocery-row", gin.H{
 		"ID":              expense.ID,
@@ -298,13 +295,13 @@ func (h *GroceriesHandler) GetEditGroceriesForm(c *gin.Context) {
 	lang := c.GetString("lang")
 	id, _ := strconv.Atoi(c.Param("id"))
 
-	expense, err := h.DB.GetGroceriesExpenseByID(id)
+	expense, err := h.BaseHandler.DB.GetGroceriesExpenseByID(id)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to load expense")
 		return
 	}
 
-	categories, err := h.DB.GetAllCategories()
+	categories, err := h.BaseHandler.DB.GetAllCategories()
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to load categories")
 		return
@@ -343,7 +340,7 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) {
 		PurchaseDate:    time.Now(),
 	}
 
-	if err := h.DB.EditGroceriesExpense(expense); err != nil {
+	if err := h.BaseHandler.DB.EditGroceriesExpense(expense); err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "Failed to update expense",
@@ -354,7 +351,7 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) {
 	}
 
 	// Fetch updated expense to render the row
-	updatedExpense, err := h.DB.GetGroceriesExpenseByID(id)
+	updatedExpense, err := h.BaseHandler.DB.GetGroceriesExpenseByID(id)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to fetch updated expense")
 		return
@@ -379,7 +376,7 @@ func (h *GroceriesHandler) DeleteGroceriesExpense(c *gin.Context) {
 	lang := c.GetString("lang")
 	id, _ := strconv.Atoi(c.Param("id"))
 
-	if _, err := h.DB.DeleteGroceriesExpense(id); err != nil {
+	if _, err := h.BaseHandler.DB.DeleteGroceriesExpense(id); err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "Failed to delete expense",
@@ -390,4 +387,44 @@ func (h *GroceriesHandler) DeleteGroceriesExpense(c *gin.Context) {
 	}
 
 	c.Status(http.StatusOK)
+}
+
+func (h *GroceriesHandler) GetCurrentMonth(c *gin.Context) {
+	lang := c.GetString("lang")
+	userID := h.BaseHandler.AS.Claims.UserID
+	recentExpeses, err := h.BaseHandler.DB.GetRecentGroceriesExpenses(userID)
+	pageData := &models.GroceriesData{
+		RecentExpenses: &recentExpeses,
+		Lang:           lang,
+	}
+
+	if err != nil {
+		content := &models.ModalContent{
+			Title:   utilities.T(lang, "modal.error_title"),
+			Message: fmt.Sprintf("500: %v", err),
+			Lang:    lang,
+		}
+		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		return
+	}
+
+	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+	year := time.Now().Year()
+
+	if isHtmxRequest {
+		c.HTML(http.StatusOK, utilities.Templates.Components.GroceriesCurrent, pageData)
+		return
+	} else {
+		rl := &models.RootLayout{
+			TemplateName:    utilities.Templates.Pages.Groceries,
+			TemplateContent: pageData,
+			HeaderOpts: &models.HeaderOptions{
+				IsLoggedIn: h.BaseHandler.AS.IsLoggedIn(),
+				Lang:       lang,
+			},
+			Year: year,
+			Lang: lang,
+		}
+		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
+	}
 }

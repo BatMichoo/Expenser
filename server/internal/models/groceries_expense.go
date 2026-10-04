@@ -30,3 +30,11 @@ type GroceriesExpense struct {
 	PurchaseDate    time.Time `json:"purchase_date"`
 	CreatedAt       time.Time `json:"created_at"`
 }
+
+type GroceriesData struct {
+	Name           string
+	MonthlyExpense *MonthlyExpense     // MonthlyExpense summarizes the total spending for the current month.
+	HighestExpense *HighestExpense     // HighestExpense identifies the single largest expense in the current month.
+	RecentExpenses *[]GroceriesExpense // RecentExpenses lists individual expenses for the current month.
+	Lang           string
+}

@@ -1,9 +1,9 @@
-{{ define "car-section-buttons" }}
+{{ define "groceries-section-buttons" }}
 <ul id="section-list">
   <li>
     <button
       type="button"
-      hx-get="/car/current"
+      hx-get="/groceries/current"
       hx-target="#section-content"
       class="tracker-nav-button section-button active"
     >
@@ -13,7 +13,7 @@
   <li>
     <button
       type="button"
-      hx-get="/car/search"
+      hx-get="/groceries/search"
       hx-target="#section-content"
       class="tracker-nav-button section-button"
     >
@@ -23,7 +23,7 @@
   <li>
     <button
       type="button"
-      hx-get="/car/chart"
+      hx-get="/groceries/chart"
       hx-target="#section-content"
       class="tracker-nav-button section-button"
     >
@@ -31,4 +31,4 @@
     </button>
   </li>
 </ul>
-{{ template "section-buttons-script" }}{{ end }}
+{{ template "section-buttons-script" }} {{ end }}

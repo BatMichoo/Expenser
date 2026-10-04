@@ -116,7 +116,7 @@ func (ch *ChartHandler) GroceriesRoot(c *gin.Context) {
 	c.HTML(http.StatusOK, utilities.Templates.Components.Chart, chartData)
 }
 
-func (ch *ChartHandler) GroceriesSearch(c *gin.Context) {
+func (ch *ChartHandler) GroceriesChartSearch(c *gin.Context) {
 	typeStr := c.Query("type")
 	yearStr := c.Query("year")
 
