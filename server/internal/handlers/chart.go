@@ -101,3 +101,43 @@ func (ch *ChartHandler) CarSearch(c *gin.Context) {
 
 	c.JSON(http.StatusOK, exp)
 }
+
+func (ch *ChartHandler) GroceriesRoot(c *gin.Context) {
+	dateNow := time.Now()
+	year := dateNow.Year()
+
+	types, _ := ch.DB.GetAllCategories()
+	chartData := gin.H{
+		"Type":  "groceries",
+		"Year":  year,
+		"Types": types,
+		"Lang":  c.GetString("lang"),
+	}
+	c.HTML(http.StatusOK, utilities.Templates.Components.Chart, chartData)
+}
+
+func (ch *ChartHandler) GroceriesSearch(c *gin.Context) {
+	typeStr := c.Query("type")
+	yearStr := c.Query("year")
+
+	userIDstr, _ := c.Get("user_id")
+	userID, _ := userIDstr.(uuid.UUID)
+
+	typeId, _ := strconv.Atoi(typeStr)
+	year, _ := strconv.Atoi(yearStr)
+	var exp *[]models.GroceriesChartExpense
+	var err error
+
+	if typeStr != "" {
+		exp, err = ch.DB.GetGroceriesExpenseCategoryForYear(typeId, year, userID)
+	} else {
+		exp, err = ch.DB.GetGroceriesExpensesForYear(year, userID)
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, exp)
+}

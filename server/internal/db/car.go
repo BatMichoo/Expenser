@@ -228,7 +228,7 @@ func (db *DB) GetCarExpensesForYear(year int, userId uuid.UUID) (*[]models.CarEx
 		JOIN
 			car_expense_types ct ON ce.car_expense_type_id = ct.id
 		WHERE
-			 EXTRACT(YEAR FROM expense_date) = $1 AND ce.created_by = $2
+			 ($1 = 0 OR EXTRACT(YEAR FROM expense_date) = $1) AND ce.created_by = $2
 		ORDER BY 
 			ce.expense_date DESC;
 	`
@@ -370,8 +370,8 @@ func (db *DB) DeleteCarExpense(id int) (bool, error) {
 func (db *DB) GetCarExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]models.CarExpense, error) {
 	query := `
 		SELECT ce.id, ct.name, ce.amount, ce.expense_date, ce.metadata FROM car_expenses ce
-		JOIN car_expense_types ct ON ce.car_expense_type_id = ct.id 
-		WHERE ce.car_expense_type_id = $1 AND ce.created_by = $3 AND EXTRACT(YEAR FROM ce.expense_date) = $2
+		JOIN car_expense_types ct ON ce.car_expense_type_id = ct.id
+		WHERE ce.car_expense_type_id = $1 AND ce.created_by = $3 AND ($2 = 0 OR EXTRACT(YEAR FROM ce.expense_date) = $2)
 	`
 
 	var expenses []models.CarExpense

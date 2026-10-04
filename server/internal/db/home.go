@@ -226,10 +226,10 @@ func (db *DB) GetHouseExpensesForYear(year int, userId uuid.UUID) (*[]models.Hou
 		SELECT
 			he.id, ut.name, he.amount, he.expense_date, he.notes, he.metadata, he.created_at, he.created_by
 			FROM home_expenses he
-		JOIN 
+		JOIN
 			utility_types ut ON he.utility_type_id = ut.id
 		WHERE
-			EXTRACT(YEAR FROM expense_date) = $1 AND created_by = $2
+			($1 = 0 OR EXTRACT(YEAR FROM expense_date) = $1) AND created_by = $2
 	`
 
 	var expenses []models.HouseExpense
@@ -314,8 +314,8 @@ func (db *DB) GetHomeExpensesByUtilityType(utility string, userId uuid.UUID) (*[
 func (db *DB) GetHouseExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT he.id, ut.name, he.amount, he.expense_date, he.metadata FROM home_expenses he
-		JOIN utility_types ut ON he.utility_type_id = ut.id 
-		WHERE he.utility_type_id = $1 AND he.created_by = $3 AND EXTRACT(YEAR FROM he.expense_date) = $2
+		JOIN utility_types ut ON he.utility_type_id = ut.id
+		WHERE he.utility_type_id = $1 AND he.created_by = $3 AND ($2 = 0 OR EXTRACT(YEAR FROM he.expense_date) = $2)
 		ORDER BY he.expense_date
 	`
 

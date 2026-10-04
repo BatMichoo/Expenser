@@ -15,6 +15,15 @@
         <label for="year">{{ T .Lang "common.year" }}</label>
         <input type="number" id="year" value="{{ .Year }}" />
       </div>
+      <div>
+        <label for="agg-function">{{ T .Lang "chart.function" }}</label>
+        <select id="agg-function">
+          <option value="default">{{ T .Lang "chart.function.default" }}</option>
+          <option value="totalPerYear">{{ T .Lang "chart.function.total_per_year" }}</option>
+          <option value="maxMonthPerYear">{{ T .Lang "chart.function.max_month_per_year" }}</option>
+          <option value="avgMonthPerYear">{{ T .Lang "chart.function.avg_month_per_year" }}</option>
+        </select>
+      </div>
       <button type="button" class="chart-search" id="{{.Type}}-chart-search">
         {{ T .Lang "search.title" }}
       </button>

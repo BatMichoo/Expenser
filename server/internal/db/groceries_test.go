@@ -163,3 +163,86 @@ func TestGroceriesCRUD(t *testing.T) {
 		})
 	}
 }
+
+func TestGetGroceriesChartExpenses(t *testing.T) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testDB := InitTestDB(cfg)
+	defer testDB.Close()
+
+	ResetTestDB(testDB)
+	testDB.CreateUser(TestUserRegisterModel)
+
+	categories, err := testDB.GetAllCategories()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, categories)
+	categoryID := categories[0].ID
+
+	thisYear := time.Now().Year()
+	lastYear := thisYear - 1
+
+	expenses := []*models.GroceriesExpense{
+		{UserID: TestUserRegisterModel.ID, CategoryID: categoryID, Product: "Milk", Quantity: 1, UnitPrice: 1.50, TotalPrice: 1.50, SupermarketName: "Lidl", PurchaseDate: time.Date(thisYear, time.January, 5, 0, 0, 0, 0, time.UTC)},
+		{UserID: TestUserRegisterModel.ID, CategoryID: categoryID, Product: "Cheese", Quantity: 1, UnitPrice: 2.50, TotalPrice: 2.50, TotalDiscount: 0.50, SupermarketName: "Lidl", PurchaseDate: time.Date(thisYear, time.February, 5, 0, 0, 0, 0, time.UTC)},
+		{UserID: TestUserRegisterModel.ID, CategoryID: categoryID, Product: "Bread", Quantity: 1, UnitPrice: 3.00, TotalPrice: 3.00, SupermarketName: "Lidl", PurchaseDate: time.Date(lastYear, time.March, 5, 0, 0, 0, 0, time.UTC)},
+	}
+	for _, e := range expenses {
+		assert.NoError(t, testDB.CreateGroceriesExpense(e))
+	}
+
+	t.Run("GetGroceriesExpensesForYear with year returns only that year", func(t *testing.T) {
+		got, err := testDB.GetGroceriesExpensesForYear(thisYear, TestUserRegisterModel.ID)
+		assert.NoError(t, err)
+		assert.Len(t, *got, 2)
+	})
+
+	t.Run("GetGroceriesExpensesForYear with year=0 returns all years", func(t *testing.T) {
+		got, err := testDB.GetGroceriesExpensesForYear(0, TestUserRegisterModel.ID)
+		assert.NoError(t, err)
+		assert.Len(t, *got, 3)
+	})
+
+	t.Run("GetGroceriesExpenseCategoryForYear computes amount as total_price - total_discount", func(t *testing.T) {
+		got, err := testDB.GetGroceriesExpenseCategoryForYear(categoryID, thisYear, TestUserRegisterModel.ID)
+		assert.NoError(t, err)
+		assert.Len(t, *got, 2)
+		amounts := map[float64]bool{}
+		for _, e := range *got {
+			amounts[e.Amount] = true
+			assert.Equal(t, categories[0].Name, e.CategoryName)
+		}
+		assert.True(t, amounts[1.50])
+		assert.True(t, amounts[2.00]) // 2.50 - 0.50 discount
+	})
+
+	t.Run("GetGroceriesExpenseCategoryForYear with year=0 returns all years", func(t *testing.T) {
+		got, err := testDB.GetGroceriesExpenseCategoryForYear(categoryID, 0, TestUserRegisterModel.ID)
+		assert.NoError(t, err)
+		assert.Len(t, *got, 3)
+	})
+
+	t.Run("GetGroceriesExpensesForYear carries TotalDiscount per row", func(t *testing.T) {
+		got, err := testDB.GetGroceriesExpensesForYear(thisYear, TestUserRegisterModel.ID)
+		assert.NoError(t, err)
+		discounts := map[float64]bool{}
+		for _, e := range *got {
+			discounts[e.TotalDiscount] = true
+		}
+		assert.True(t, discounts[0.0])
+		assert.True(t, discounts[0.50])
+	})
+
+	t.Run("GetGroceriesExpenseCategoryForYear carries TotalDiscount per row", func(t *testing.T) {
+		got, err := testDB.GetGroceriesExpenseCategoryForYear(categoryID, thisYear, TestUserRegisterModel.ID)
+		assert.NoError(t, err)
+		discounts := map[float64]bool{}
+		for _, e := range *got {
+			discounts[e.TotalDiscount] = true
+		}
+		assert.True(t, discounts[0.0])
+		assert.True(t, discounts[0.50])
+	})
+}

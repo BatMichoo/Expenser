@@ -60,6 +60,8 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedGroceries.POST("/upload", groceriesHandler.UploadReceipt)
 		protectedGroceries.POST("/confirm-batch", groceriesHandler.ConfirmBatchReceipt)
 		protectedGroceries.GET("", groceriesHandler.GetGroceriesHome)
+		protectedGroceries.GET("/chart", chartHandler.GroceriesRoot)
+		protectedGroceries.GET("/chart/search", chartHandler.GroceriesSearch)
 		protectedGroceries.POST("", groceriesHandler.PostCreateGroceriesExpense)
 		protectedGroceries.GET("/form", groceriesHandler.GetGroceriesForm)
 		protectedGroceries.GET("/create", groceriesHandler.GetCreateGroceriesForm)

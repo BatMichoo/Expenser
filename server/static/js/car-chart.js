@@ -16,6 +16,9 @@ const CAR_CONFIG = {
   title: "Car Expenses by Type",
   colors: CAR_COLORS,
   dataSetLabel: "Total Amount (Car)",
+  typeProp: "Type",
+  dateProp: "Date",
+  amountProp: "Amount",
 };
 
 initChart(CAR_CONFIG);
