@@ -1,9 +1,8 @@
 package handlers
 
 import (
-	database "expenser/internal/db"
+	"errors"
 	"expenser/internal/models"
-	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"net/http"
 
@@ -13,35 +12,18 @@ import (
 
 // AuthHandler handles API endpoints for JWT authentication
 type AuthHandler struct {
-	DB          *database.DB
-	AuthService *services.AuthService
+	BaseHandler
 }
 
 // NewAuthHandler creates a new APIHandler instance
-func NewAuthHandler(db *database.DB, authService *services.AuthService) *AuthHandler {
+func NewAuthHandler(rh *RootHandler) *AuthHandler {
 	return &AuthHandler{
-		DB:          db,
-		AuthService: authService,
+		BaseHandler: rh.BaseHandler,
 	}
 }
 
 func (h *AuthHandler) GetRegister(c *gin.Context) {
-	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
-
-	if isHtmxRequest {
-		c.HTML(http.StatusOK, utilities.Templates.Pages.Register, gin.H{
-			"Lang": c.GetString("lang"),
-		})
-	} else {
-		rl := &models.RootLayout{
-			TemplateName: utilities.Templates.Pages.Register,
-			HeaderOpts: &models.HeaderOptions{
-				Lang: c.GetString("lang"),
-			},
-			Lang: c.GetString("lang"),
-		}
-		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
-	}
+	RenderPage(c, false, utilities.Templates.Pages.Register, nil)
 }
 
 // APIRegister handles user registration via API
@@ -50,17 +32,13 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	var regData models.UserRegistration
 
 	if err := c.ShouldBind(&regData); err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "400: Invalid request data.",
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		error := errors.New("Invalid request data.")
+		RenderErrorModal(c, error, http.StatusBadRequest)
 		return
 	}
 
 	// Check if user already exists
-	existingUser, _ := h.DB.GetUserByUsername(regData.Username)
+	existingUser, _ := h.BaseHandler.DB.GetUserByUsername(regData.Username)
 	if existingUser != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "auth.username_exists"),
@@ -89,7 +67,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		PasswordHash: string(hashedPassword),
 	}
 
-	if err := h.DB.CreateUser(user); err != nil {
+	if err := h.BaseHandler.DB.CreateUser(user); err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
 			Message: "500: Internal server error.",
@@ -100,7 +78,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	// Generate JWT token
-	token, err := h.AuthService.GenerateToken(user)
+	token, err := h.BaseHandler.AS.GenerateToken(user)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -111,7 +89,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	h.AuthService.SetCookie(token, c)
+	h.BaseHandler.AS.SetCookie(token, c)
 	c.HTML(http.StatusCreated, utilities.Templates.Responses.RegisterSuccess, gin.H{
 		"User": user,
 		"Lang": lang,
@@ -120,18 +98,19 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 func (h *AuthHandler) GetLogin(c *gin.Context) {
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+	lang := c.GetString("lang")
 
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Pages.Login, gin.H{
-			"Lang": c.GetString("lang"),
+			"Lang": lang,
 		})
 	} else {
 		rl := &models.RootLayout{
 			TemplateName: utilities.Templates.Pages.Login,
 			HeaderOpts: &models.HeaderOptions{
-				Lang: c.GetString("lang"),
+				Lang: lang,
 			},
-			Lang: c.GetString("lang"),
+			Lang: lang,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
@@ -153,7 +132,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// Get user from database
-	user, err := h.DB.GetUserByUsername(loginData.Username)
+	user, err := h.BaseHandler.DB.GetUserByUsername(loginData.Username)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "auth.invalid_credentials"),
@@ -176,24 +155,24 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// Generate JWT token
-	token, err := h.AuthService.GenerateToken(user)
+	token, err := h.BaseHandler.AS.GenerateToken(user)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "500: Failed to get authentication token.",
+			Message: "500: Failed to generate authentication token.",
 			Lang:    lang,
 		}
 		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
 		return
 	}
 
-	h.AuthService.SetCookie(token, c)
+	h.BaseHandler.AS.SetCookie(token, c)
 	c.Header("HX-Redirect", "/")
 	c.Status(http.StatusOK)
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	h.AuthService.ClearCookie(c)
+	h.BaseHandler.AS.ClearCookie(c)
 
 	c.Header("HX-Redirect", "/")
 	c.Status(http.StatusOK)

@@ -6,32 +6,43 @@ import (
 	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
-type RootHandler struct {
+type BaseHandler struct {
 	DB *database.DB
 	AS *services.AuthService
 }
 
-func NewRootHandler(db *database.DB, as *services.AuthService) *RootHandler {
-	return &RootHandler{
+func NewBaseHandler(db *database.DB, as *services.AuthService) BaseHandler {
+	return BaseHandler{
 		DB: db,
 		AS: as,
 	}
 }
 
+type RootHandler struct {
+	BaseHandler
+}
+
+func NewRootHandler(db *database.DB, as *services.AuthService) *RootHandler {
+	return &RootHandler{
+		BaseHandler: NewBaseHandler(db, as),
+	}
+}
+
 func (h *RootHandler) GetRoot(c *gin.Context) {
-	cookie, _ := c.Cookie("auth_token")
-	claims, _ := h.AS.ValidateToken(cookie)
+	claims, _ := h.AS.ValidateToken(c)
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 
 	lang := c.GetString("lang")
 
+	year := time.Now().Year()
 	if isHtmxRequest {
-		c.HTML(http.StatusOK, utilities.Templates.Pages.Index, gin.H{"Lang": lang, "IsLoggedIn": claims != nil})
+		c.HTML(http.StatusOK, utilities.Templates.Pages.Index, gin.H{"Lang": lang, "IsLoggedIn": claims != nil, "Year": year})
 	} else {
 		rl := &models.RootLayout{
 			TemplateName: utilities.Templates.Pages.Index,
@@ -40,6 +51,7 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 				Lang:       lang,
 			},
 			Lang:       lang,
+			Year:       year,
 			IsLoggedIn: claims != nil,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
@@ -47,8 +59,7 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 }
 
 func (h *RootHandler) NotFound(c *gin.Context) {
-	cookie, _ := c.Cookie("auth_token")
-	claims, _ := h.AS.ValidateToken(cookie)
+	claims, _ := h.AS.ValidateToken(c)
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 	lang := c.GetString("lang")
 
@@ -80,10 +91,8 @@ func (h *RootHandler) ChangeLanguage(c *gin.Context) {
 		return
 	}
 
-	// 1. Set cookie
 	c.SetCookie("lang", lang, 3600*24*30, "/", "", false, true)
 
-	// 2. Update DB if logged in
 	userIDstr, exists := c.Get("user_id")
 	if exists {
 		userID, ok := userIDstr.(uuid.UUID)

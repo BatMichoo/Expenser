@@ -1,5 +1,5 @@
 services:
-  db:
+  db-dev:
     container_name: expenser-db-dev
     image: postgres:16-alpine
     env_file:

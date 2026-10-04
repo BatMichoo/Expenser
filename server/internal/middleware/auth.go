@@ -32,14 +32,15 @@ func (am *AuthMiddleware) extractTokenFromCookie(c *gin.Context) (string, error)
 
 func (am *AuthMiddleware) redirectToLogin(c *gin.Context) {
 	c.Header("HX-Redirect", "/login")
+	lang := c.GetString("lang")
 	rl := &models.RootLayout{
 		TemplateName: utilities.Templates.Pages.Login,
 		HeaderOpts: &models.HeaderOptions{
 			IsLoggedIn: false,
 			IsOOB:      true,
-			Lang:       c.GetString("lang"),
+			Lang:       lang,
 		},
-		Lang: c.GetString("lang"),
+		Lang: lang,
 	}
 	c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 }
@@ -47,14 +48,14 @@ func (am *AuthMiddleware) redirectToLogin(c *gin.Context) {
 // AuthMiddleware creates a middleware function that validates JWT tokens
 func (am *AuthMiddleware) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString, err := am.extractTokenFromCookie(c)
-		if err != nil {
-			am.redirectToLogin(c)
-			c.Abort()
-			return
-		}
+		// _ , err := am.extractTokenFromCookie(c)
+		// if err != nil {
+		// 	am.redirectToLogin(c)
+		// 	c.Abort()
+		// 	return
+		// }
 
-		token, err := am.authService.ValidateToken(tokenString)
+		token, err := am.authService.ValidateToken(c)
 		if err != nil {
 			am.redirectToLogin(c)
 			c.Abort()

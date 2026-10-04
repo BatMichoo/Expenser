@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	database "expenser/internal/db"
 	"expenser/internal/models"
 	"expenser/internal/utilities"
 	"fmt"
@@ -17,38 +16,38 @@ import (
 )
 
 type HouseHandler struct {
-	DB *database.DB // DB is the database client used for expense operations.
+	BaseHandler BaseHandler
 }
 
 // NewHouseHandler creates and returns a new instance of HomeHandler.
 // It requires a database connection pool to operate.
-func NewHouseHandler(db *database.DB) *HouseHandler {
+func NewHouseHandler(rh *RootHandler) *HouseHandler {
 	return &HouseHandler{
-		DB: db,
+		BaseHandler: rh.BaseHandler,
 	}
 }
 
-func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, bool, error) {
+func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, error) {
 	dateNow := time.Now()
 	month := dateNow.Month()
 	year := dateNow.Year()
 
-	userIDstr, exists := c.Get("user_id")
+	userIDstr, _ := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
-	highestExpense, utilType, err := h.DB.GetHighestHouseExpenseForMonth(month, userID)
+	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(month, userID)
 	if err != nil {
-		return nil, exists, fmt.Errorf("error fetching highest house expense: %w", err)
+		return nil, fmt.Errorf("error fetching highest house expense: %w", err)
 	}
 
-	monthlyExpense, err := h.DB.GetTotalHouseExpenseForMonth(dateNow, userID)
+	monthlyExpense, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(dateNow, userID)
 	if err != nil {
-		return nil, exists, fmt.Errorf("error fetching total house expense: %w", err)
+		return nil, fmt.Errorf("error fetching total house expense: %w", err)
 	}
 
-	recentExpenses, err := h.DB.GetHouseExpensesForMonth(month, year, userID)
+	recentExpenses, err := h.BaseHandler.DB.GetHouseExpensesForMonth(month, year, userID)
 	if err != nil {
-		return nil, exists, fmt.Errorf("error fetching recent house expenses: %w", err)
+		return nil, fmt.Errorf("error fetching recent house expenses: %w", err)
 	}
 
 	return &models.HouseData{
@@ -63,7 +62,7 @@ func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, bool
 		},
 		RecentExpenses: recentExpenses,
 		Lang:           c.GetString("lang"),
-	}, exists, nil
+	}, nil
 }
 
 // INFO: CREATE
@@ -73,7 +72,7 @@ func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, bool
 // This handler serves the UI component for expense creation.
 func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) {
 	lang := c.GetString("lang")
-	expTypes, err := h.DB.GetHouseUtilityTypes()
+	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes()
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -85,9 +84,13 @@ func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) {
 		return
 	}
 
+	dateToday := time.Now().Format(utilities.DateFormats.HTML)
+
 	c.HTML(http.StatusOK, utilities.Templates.Components.CreateHouseExpForm, gin.H{
 		"Types": expTypes,
 		"Lang":  lang,
+		"Year":  time.Now().Year(),
+		"Date":  dateToday,
 	})
 }
 
@@ -220,7 +223,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 		Metadata:       metadata,
 	}
 
-	err = h.DB.CreateHouseExpense(newExpense)
+	err = h.BaseHandler.DB.CreateHouseExpense(newExpense)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -233,7 +236,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 
 	timeNow := time.Now()
 
-	highestExp, expType, err := h.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
+	highestExp, expType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -244,7 +247,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 		return
 	}
 
-	montlyTotal, err := h.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
+	montlyTotal, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -253,10 +256,16 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
 		return
+	}
+
+	modal := &models.ModalContent{
+		Title:   utilities.T(lang, "modal.create_success"),
+		Message: fmt.Sprintf("%s: %v %s", newExpense.UtilityType, newExpense.Amount, utilities.Currency),
+		Lang:    lang,
 	}
 
 	if newExpense.ExpenseDate.Month() != timeNow.Month() {
-		c.HTML(http.StatusCreated, utilities.Templates.Components.Dialog, gin.H{})
+		c.HTML(http.StatusCreated, utilities.Templates.Components.ModalSuccess, modal)
 		return
 	}
 
@@ -274,7 +283,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 		},
 		Modal: &models.ModalContent{
 			Title:   utilities.T(lang, "modal.create_success"),
-			Message: fmt.Sprintf("%s: %v BGN", newExpense.UtilityType, newExpense.Amount),
+			Message: fmt.Sprintf("%s: %v %s", newExpense.UtilityType, newExpense.Amount, utilities.Currency),
 			Lang:    lang,
 		},
 		Lang: lang,
@@ -292,7 +301,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 // snippet based on whether the request is an HTMX request.
 func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
 	lang := c.GetString("lang")
-	pageData, exists, err := h.getHousePageData(c)
+	pageData, err := h.getHousePageData(c)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -304,6 +313,7 @@ func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
 	}
 
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+	year := time.Now().Year()
 
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Components.HouseCurrent, pageData)
@@ -313,9 +323,10 @@ func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
 			TemplateName:    utilities.Templates.Pages.House,
 			TemplateContent: pageData,
 			HeaderOpts: &models.HeaderOptions{
-				IsLoggedIn: exists,
+				IsLoggedIn: h.BaseHandler.AS.IsLoggedIn(),
 				Lang:       lang,
 			},
+			Year: year,
 			Lang: lang,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
@@ -329,7 +340,7 @@ func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
 // snippet based on whether the request is an HTMX request.
 func (h *HouseHandler) GetHome(c *gin.Context) {
 	lang := c.GetString("lang")
-	pageData, exists, err := h.getHousePageData(c)
+	pageData, err := h.getHousePageData(c)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -341,6 +352,7 @@ func (h *HouseHandler) GetHome(c *gin.Context) {
 	}
 
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+	year := time.Now().Year()
 
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Pages.House, pageData)
@@ -350,9 +362,10 @@ func (h *HouseHandler) GetHome(c *gin.Context) {
 			TemplateName:    utilities.Templates.Pages.House,
 			TemplateContent: pageData,
 			HeaderOpts: &models.HeaderOptions{
-				IsLoggedIn: exists,
+				IsLoggedIn: h.BaseHandler.AS.IsLoggedIn(),
 				Lang:       lang,
 			},
+			Year: year,
 			Lang: lang,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
@@ -383,7 +396,7 @@ func (h *HouseHandler) GetExpenseById(c *gin.Context) {
 		return
 	}
 
-	exp, err := h.DB.GetHouseExpenseByID(id)
+	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id)
 
 	if err != nil {
 		content := &models.ModalContent{
@@ -416,7 +429,7 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) {
 		return
 	}
 
-	exp, err := h.DB.GetHouseExpenseByID(id)
+	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -427,7 +440,7 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) {
 		return
 	}
 
-	expTypes, err := h.DB.GetHouseUtilityTypes()
+	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes()
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -511,7 +524,7 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 		Metadata:       metadata,
 	}
 
-	err = h.DB.EditHouseExpense(editExpense)
+	err = h.BaseHandler.DB.EditHouseExpense(editExpense)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -526,7 +539,7 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 	userIDstr, _ := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
-	highestExp, expType, err := h.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
+	highestExp, expType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -537,7 +550,7 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 		return
 	}
 
-	montlyTotal, err := h.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
+	montlyTotal, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -615,7 +628,7 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
 		return
 	}
 
-	res, err := h.DB.DeleteHouseExpense(id)
+	res, err := h.BaseHandler.DB.DeleteHouseExpense(id)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -637,7 +650,7 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
 	userIDstr, _ := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
-	monthlyExpense, err := h.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
+	monthlyExpense, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
@@ -648,7 +661,7 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
 		return
 	}
 
-	highestExpense, utilType, err := h.DB.GetHighestHouseExpenseForMonth(month, userID)
+	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(month, userID)
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),

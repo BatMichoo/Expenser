@@ -21,7 +21,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 	router.GET("/", rootHandler.GetRoot)
 	router.POST("/settings/language", rootHandler.ChangeLanguage)
 
-	authHandler := NewAuthHandler(db, as)
+	authHandler := NewAuthHandler(rootHandler)
 
 	router.GET("/login", authHandler.GetLogin)
 	router.POST("/login", authHandler.Login)
@@ -33,7 +33,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 	chartHandler := NewChartHandler(db)
 	searchHandler := NewSearchHandler(db)
 
-	houseHandler := NewHouseHandler(db)
+	houseHandler := NewHouseHandler(rootHandler)
 	protectedHouse := router.Group("/house")
 	{
 		protectedHouse.Use(am.AuthMiddleware())
@@ -69,7 +69,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedGroceries.PUT("/:id", groceriesHandler.EditGroceriesExpense)
 		protectedGroceries.DELETE("/:id", groceriesHandler.DeleteGroceriesExpense)
 	}
-	carHandler := NewCarHandler(db)
+	carHandler := NewCarHandler(rootHandler)
 	protectedCar := router.Group("/car")
 	{
 		protectedCar.Use(am.AuthMiddleware())

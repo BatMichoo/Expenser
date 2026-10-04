@@ -1,43 +1,47 @@
 {{ define "root" }}
 <!doctype html>
 <html lang="{{ .Lang }}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="htmx-config"
+      content='{"responseHandling": [{"code": ".*", "swap": true}]}'
+    />
+    <link rel="stylesheet" href="../../../static/css/styles.css" />
+    <link rel="stylesheet" href="../../../static/css/mobile.css" />
+    <link rel="stylesheet" href="../../../static/css/tablet.css" />
+    <link rel="icon" type="image/png" href="../../../static/favicon.png" />
+    <title>{{ T .Lang "header.title" }}</title>
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="htmx-config" content='{"responseHandling": [{"code": ".*", "swap": true}]}' />
-  <link rel="stylesheet" href="../../../static/css/styles.css" />
-  <link rel="stylesheet" href="../../../static/css/mobile.css" />
-  <link rel="stylesheet" href="../../../static/css/tablet.css" />
-  <link rel="icon" type="image/png" href="../../../static/favicon.png" />
-  <title>{{ T .Lang "header.title" }}</title>
-</head>
-
-<body>
-  {{ template "header" .HeaderOpts }}
-  <div class="container">
-    <div id="tracker-content">
-      {{ if eq .TemplateName "house-page" }} {{ template "house-page"
-      .TemplateContent }} {{ else if eq .TemplateName "car-page" }} {{
-      template "car-page" .TemplateContent }} {{ else if eq .TemplateName
-      "groceries-page" }} {{ template "groceries-page" .TemplateContent }} {{ else if eq .TemplateName
-      "login-page" }} {{ template "login-page" .TemplateContent }} {{ else if
-      eq .TemplateName "register-page" }} {{ template "register-page"
-      .TemplateContent }} {{ else }} {{ template "index-page" . }} {{ end }}
-
+  <body>
+    {{ template "header" .HeaderOpts }}
+    <div class="container">
+      <div id="tracker-content">
+        {{ if eq .TemplateName "house-page" }} {{ template "house-page"
+        .TemplateContent }} {{ else if eq .TemplateName "car-page" }} {{
+        template "car-page" .TemplateContent }} {{ else if eq .TemplateName
+        "groceries-page" }} {{ template "groceries-page" .TemplateContent }} {{
+        else if eq .TemplateName "login-page" }} {{ template "login-page"
+        .TemplateContent }} {{ else if eq .TemplateName "register-page" }} {{
+        template "register-page" .TemplateContent }} {{ else }} {{ template
+        "index-page" . }} {{ end }}
+      </div>
     </div>
-  </div>
-  <footer>
-    <p>&copy; 2025 {{ T .Lang "header.title" }} Suite. {{ T .Lang "footer.rights" }}</p>
-  </footer>
-  <dialog id="action-dialog" hx-on::after-settle="showDialog(this)"></dialog>
-  <div id="backdrop"></div>
-  <dialog id="modal" hx-on::after-settle="showModal(this)"></dialog>
-</body>
+    <footer>
+      <p>
+        &copy; {{ .Year }} {{ T .Lang "header.title" }} Suite. {{ T .Lang
+        "footer.rights" }}
+      </p>
+    </footer>
+    <dialog id="action-dialog" hx-on::after-settle="showDialog(this)"></dialog>
+    <div id="backdrop"></div>
+    <dialog id="modal" hx-on::after-settle="showModal(this)"></dialog>
+  </body>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="../,,/../static/js/htmx.min.js"></script>
-<script src="../../../static/js/main.js" defer></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../,,/../static/js/htmx.min.js"></script>
+  <script src="../../../static/js/main.js" defer></script>
 </html>
 {{ end }}

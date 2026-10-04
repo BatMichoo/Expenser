@@ -28,7 +28,7 @@ func (h *SearchHandler) GetSearch(c *gin.Context) {
 	isCar := strings.Contains(path, "car")
 
 	c.HTML(http.StatusOK, utilities.Templates.Components.Search, gin.H{
-		"CurrentMonth": time.Now().Format("2006-01"),
+		"CurrentMonth": time.Now().Format(utilities.DateFormats.MonthOnly),
 		"IsCar":        isCar,
 		"Lang":         c.GetString("lang"),
 	})
@@ -43,7 +43,7 @@ func (h *SearchHandler) GetResultsHouse(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "400: Bad Request on date.",
+			Message: "400: Invalid Date.",
 			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
@@ -55,7 +55,7 @@ func (h *SearchHandler) GetResultsHouse(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "400: Bad Request.",
+			Message: "400: Invalid Request.",
 			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
@@ -79,7 +79,7 @@ func (h *SearchHandler) GetResultsCar(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "400: Bad Request on date.",
+			Message: "400: Invalid Date.",
 			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
@@ -90,7 +90,7 @@ func (h *SearchHandler) GetResultsCar(c *gin.Context) {
 	if err != nil {
 		content := &models.ModalContent{
 			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "400: Bad Request on date.",
+			Message: "400: Invalid Date.",
 			Lang:    lang,
 		}
 		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)

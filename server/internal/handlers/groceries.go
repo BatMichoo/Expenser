@@ -204,6 +204,7 @@ func (h *GroceriesHandler) GetGroceriesHome(c *gin.Context) {
 	}
 
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+	year := time.Now().Year()
 	pageData := gin.H{
 		"Groceries": expenses,
 		"Lang":      lang,
@@ -220,6 +221,7 @@ func (h *GroceriesHandler) GetGroceriesHome(c *gin.Context) {
 				Lang:       lang,
 			},
 			Lang: lang,
+			Year: year,
 		}
 		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 	}
