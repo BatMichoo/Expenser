@@ -57,7 +57,7 @@ func (c CarExpense) FormattedMetadata(lang string) string {
 	return ""
 }
 
-func (c CarExpense) UnmarshalMetadata() interface{} {
+func (c CarExpense) UnmarshalMetadata() any {
 	if len(c.Metadata) == 0 {
 		return nil
 	}
@@ -138,6 +138,6 @@ type CarData struct {
 type EditCarFormData struct {
 	Expense  *CarExpense
 	Types    *[]CarExpenseType
-	Metadata interface{}
+	Metadata any
 	Lang     string
 }
