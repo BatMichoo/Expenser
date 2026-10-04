@@ -2,11 +2,12 @@ package utilities
 
 // Pages defines the names for full application pages.
 type Pages struct {
-	Index    string // Index is the name for the main index page template.
-	Register string
-	Login    string
-	House    string // Home is the name for the expense page template.
-	Car      string
+	Index     string // Index is the name for the main index page template.
+	Register  string
+	Login     string
+	House     string // Home is the name for the expense page template.
+	Car       string
+	Groceries string
 }
 
 // HTMXComponents defines the names for reusable HTMX-specific UI components.
@@ -35,6 +36,7 @@ type HTMXComponents struct {
 	Search               string
 	SearchResultsHouse   string
 	SearchResultsCar     string
+	GroceriesCurrent     string
 	GroceriesReceiptForm string
 	CreateGroceriesForm  string
 }
@@ -62,11 +64,12 @@ type HTMLTemplates struct {
 }
 
 var pages = &Pages{
-	Index:    "index-page",
-	Register: "register-page",
-	Login:    "login-page",
-	House:    "house-page",
-	Car:      "car-page",
+	Index:     "index-page",
+	Register:  "register-page",
+	Login:     "login-page",
+	House:     "house-page",
+	Car:       "car-page",
+	Groceries: "groceries-page",
 }
 
 var components = &HTMXComponents{
@@ -91,6 +94,7 @@ var components = &HTMXComponents{
 	Search:               "search",
 	SearchResultsHouse:   "search-results-house",
 	SearchResultsCar:     "search-results-car",
+	GroceriesCurrent:     "groceries-current",
 	GroceriesReceiptForm: "groceries-receipt-form",
 	EditGroceriesForm:    "edit-groceries-form",
 	CreateGroceriesForm:  "create-groceries-form",

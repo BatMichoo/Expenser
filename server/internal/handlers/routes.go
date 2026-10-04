@@ -53,15 +53,17 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedHouse.DELETE("/expenses/:id", houseHandler.DeleteHouseExp)
 	}
 
-	groceriesHandler := NewGroceriesHandler(db, gemini.NewGeminiService(cfg.GeminiAPIKey))
+	groceriesHandler := NewGroceriesHandler(rootHandler, gemini.NewGeminiService(cfg.GeminiAPIKey))
 	protectedGroceries := router.Group("/groceries")
 	{
 		protectedGroceries.Use(am.AuthMiddleware())
 		protectedGroceries.POST("/upload", groceriesHandler.UploadReceipt)
 		protectedGroceries.POST("/confirm-batch", groceriesHandler.ConfirmBatchReceipt)
 		protectedGroceries.GET("", groceriesHandler.GetGroceriesHome)
+		protectedGroceries.GET("/current", groceriesHandler.GetCurrentMonth)
+		protectedGroceries.GET("/search", groceriesHandler.GetGroceriesHome)
 		protectedGroceries.GET("/chart", chartHandler.GroceriesRoot)
-		protectedGroceries.GET("/chart/search", chartHandler.GroceriesSearch)
+		protectedGroceries.GET("/chart/search", chartHandler.GroceriesChartSearch)
 		protectedGroceries.POST("", groceriesHandler.PostCreateGroceriesExpense)
 		protectedGroceries.GET("/form", groceriesHandler.GetGroceriesForm)
 		protectedGroceries.GET("/create", groceriesHandler.GetCreateGroceriesForm)

@@ -1,12 +1,13 @@
 {{ define "groceries-receipt-form" }}
-<div>
-  <h2>{{ T .Lang "groceries.upload_receipt" }}</h2>
+<div style="display: inline-block">
+  <!-- <h2>{{ T .Lang "groceries.upload_receipt" }}</h2> -->
   <form
     class="new-expense-form"
     hx-post="/groceries/upload"
     hx-encoding="multipart/form-data"
     hx-target="#result"
     hx-swap="innerHTML"
+    style="display: flex; gap: 1rem"
   >
     <div>
       <label for="receipt">{{ T .Lang "groceries.select_file" }}</label>
