@@ -37,7 +37,10 @@
     </footer>
     <dialog id="action-dialog" hx-on::after-settle="showDialog(this)"></dialog>
     <div id="backdrop"></div>
+    {{ if eq .TemplateName "error-modal" }} {{ template "error-modal"
+    .TemplateContent }} {{ else }}
     <dialog id="modal" hx-on::after-settle="showModal(this)"></dialog>
+    {{ end }}
   </body>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

@@ -97,8 +97,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 }
 
 func (h *AuthHandler) GetLogin(c *gin.Context) {
-	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
-	lang := c.GetString("lang")
+	_, isHtmxRequest, lang := GetBasicDataFromContext(c, &h.BaseHandler)
 
 	if isHtmxRequest {
 		c.HTML(http.StatusOK, utilities.Templates.Pages.Login, gin.H{
@@ -166,6 +165,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	h.BaseHandler.AS.Claims = token.Claims
 	h.BaseHandler.AS.SetCookie(token, c)
 	c.Header("HX-Redirect", "/")
 	c.Status(http.StatusOK)

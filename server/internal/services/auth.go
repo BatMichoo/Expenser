@@ -33,6 +33,8 @@ type Token struct {
 	ExpiresAt time.Time
 }
 
+const authCookieName = "auth_token"
+
 func NewAuthService(secretKey string, tokenExp time.Duration, lanDomain string) *AuthService {
 	return &AuthService{
 		secretKey:       []byte(secretKey),
@@ -45,7 +47,7 @@ func (as *AuthService) SetCookie(t *Token, c *gin.Context) {
 	secure := true
 	httpOnly := true
 
-	c.SetCookie("auth_token", t.Value, int(t.Duration.Seconds()), "/", as.Domain, secure, httpOnly)
+	c.SetCookie(authCookieName, t.Value, int(t.Duration.Seconds()), "/", as.Domain, secure, httpOnly)
 }
 
 func (as *AuthService) ClearCookie(c *gin.Context) {
@@ -53,7 +55,7 @@ func (as *AuthService) ClearCookie(c *gin.Context) {
 	httpOnly := true
 
 	c.SetCookie(
-		"auth_token",
+		authCookieName,
 		"",
 		-1,
 		"/",
@@ -98,7 +100,7 @@ func (as *AuthService) GenerateToken(user *models.User) (*Token, error) {
 
 // ValidateToken validates and parses a JWT token
 func (as *AuthService) ValidateToken(c *gin.Context) (*Token, error) {
-	tokenString, _ := c.Cookie("auth_token")
+	tokenString, _ := c.Cookie(authCookieName)
 	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

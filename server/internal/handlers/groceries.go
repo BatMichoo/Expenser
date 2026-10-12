@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"errors"
 	"expenser/internal/models"
 	"expenser/internal/services/gemini"
 	"expenser/internal/utilities"
@@ -58,12 +59,7 @@ func (h *GroceriesHandler) UploadReceipt(c *gin.Context) {
 			status = http.StatusServiceUnavailable
 		}
 
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: message,
-			Lang:    lang,
-		}
-		c.HTML(status, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, errors.New(message), status)
 		return
 	}
 
@@ -167,12 +163,7 @@ func (h *GroceriesHandler) ConfirmReceipt(c *gin.Context) {
 	}
 
 	if err := h.BaseHandler.DB.CreateGroceriesExpense(expense); err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("Failed to save expense: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -191,12 +182,7 @@ func (h *GroceriesHandler) GetGroceriesHome(c *gin.Context) {
 
 	expenses, err := h.BaseHandler.DB.GetRecentGroceriesExpenses(userID)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("500: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -341,12 +327,7 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) {
 	}
 
 	if err := h.BaseHandler.DB.EditGroceriesExpense(expense); err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "Failed to update expense",
-			Lang:    lang,
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -373,16 +354,10 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) {
 }
 
 func (h *GroceriesHandler) DeleteGroceriesExpense(c *gin.Context) {
-	lang := c.GetString("lang")
 	id, _ := strconv.Atoi(c.Param("id"))
 
 	if _, err := h.BaseHandler.DB.DeleteGroceriesExpense(id); err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "Failed to delete expense",
-			Lang:    lang,
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -399,12 +374,7 @@ func (h *GroceriesHandler) GetCurrentMonth(c *gin.Context) {
 	}
 
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("500: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusInternalServerError)
 		return
 	}
 
