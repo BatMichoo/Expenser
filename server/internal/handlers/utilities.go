@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"expenser/internal/models"
+	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"fmt"
 	"net/http"
@@ -78,4 +79,12 @@ func RenderPage(c *gin.Context, isLoggedIn bool, partialTemplate string, pageDat
 		Year: year,
 	}
 	c.HTML(http.StatusOK, utilities.Templates.Root, rl)
+}
+
+func GetBasicDataFromContext(c *gin.Context, bh *BaseHandler) (*services.JWTClaims, bool, string) {
+	claims := bh.AS.Claims
+	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
+	lang := c.GetString("lang")
+
+	return claims, isHtmxRequest, lang
 }

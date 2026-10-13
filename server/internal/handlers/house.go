@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type HouseHandler struct {
@@ -32,8 +31,8 @@ func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, erro
 	month := dateNow.Month()
 	year := dateNow.Year()
 
-	userIDstr, _ := c.Get("user_id")
-	userID, _ := userIDstr.(uuid.UUID)
+	claims, _, lang := GetBasicDataFromContext(c, &h.BaseHandler)
+	userID := claims.UserID
 
 	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(month, userID)
 	if err != nil {
@@ -61,7 +60,7 @@ func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, erro
 			Type:   strings.TrimSpace(utilType),
 		},
 		RecentExpenses: recentExpenses,
-		Lang:           c.GetString("lang"),
+		Lang:           lang,
 	}, nil
 }
 
@@ -71,16 +70,9 @@ func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, erro
 // for a new home expense.
 // This handler serves the UI component for expense creation.
 func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) {
-	lang := c.GetString("lang")
 	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes()
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("500: %v", err),
-			Lang:    lang,
-		}
-
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
@@ -88,7 +80,7 @@ func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) {
 
 	c.HTML(http.StatusOK, utilities.Templates.Components.CreateHouseExpForm, gin.H{
 		"Types": expTypes,
-		"Lang":  lang,
+		"Lang":  c.GetString("lang"),
 		"Year":  time.Now().Year(),
 		"Date":  dateToday,
 	})
@@ -171,40 +163,24 @@ func (h *HouseHandler) GetMetadataFields(c *gin.Context) {
 // and then returns updated summary data (highest and monthly total)
 // to refresh the UI.
 func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
-	lang := c.GetString("lang")
-	userIDstr, _ := c.Get("user_id")
-	userID, _ := userIDstr.(uuid.UUID)
+	claims, _, lang := GetBasicDataFromContext(c, &h.BaseHandler)
+	userID := claims.UserID
 
 	utilTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
 	date, err := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("date"))
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
@@ -225,12 +201,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 
 	err = h.BaseHandler.DB.CreateHouseExpense(newExpense)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
@@ -238,23 +209,13 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 
 	highestExp, expType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
 	montlyTotal, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
@@ -300,19 +261,13 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
 // It intelligently renders either the full page layout or a partial HTML
 // snippet based on whether the request is an HTMX request.
 func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
-	lang := c.GetString("lang")
+	_, isHtmxRequest, lang := GetBasicDataFromContext(c, &h.BaseHandler)
 	pageData, err := h.getHousePageData(c)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("500: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
 	year := time.Now().Year()
 
 	if isHtmxRequest {
@@ -339,37 +294,14 @@ func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
 // It intelligently renders either the full page layout or a partial HTML
 // snippet based on whether the request is an HTMX request.
 func (h *HouseHandler) GetHome(c *gin.Context) {
-	lang := c.GetString("lang")
+	isLoggedIn := h.BaseHandler.AS.IsLoggedIn()
 	pageData, err := h.getHousePageData(c)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("500: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
-	year := time.Now().Year()
-
-	if isHtmxRequest {
-		c.HTML(http.StatusOK, utilities.Templates.Pages.House, pageData)
-		return
-	} else {
-		rl := &models.RootLayout{
-			TemplateName:    utilities.Templates.Pages.House,
-			TemplateContent: pageData,
-			HeaderOpts: &models.HeaderOptions{
-				IsLoggedIn: h.BaseHandler.AS.IsLoggedIn(),
-				Lang:       lang,
-			},
-			Year: year,
-			Lang: lang,
-		}
-		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
-	}
+	RenderPage(c, isLoggedIn, utilities.Templates.Pages.House, pageData)
 }
 
 func (h *HouseHandler) GetHomeSection(c *gin.Context) {
@@ -384,27 +316,16 @@ func (h *HouseHandler) GetHomeSection(c *gin.Context) {
 // and renders its details.
 // It expects the expense ID to be provided as a path parameter.
 func (h *HouseHandler) GetExpenseById(c *gin.Context) {
-	lang := c.GetString("lang")
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
 	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id)
 
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
@@ -420,34 +341,19 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) {
 	lang := c.GetString("lang")
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
 	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
 	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes()
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
@@ -467,46 +373,28 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) {
 // and then returns updated summary data (highest and monthly total)
 // to refresh the UI.
 func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
-	lang := c.GetString("lang")
+	claims, _, lang := GetBasicDataFromContext(c, &h.BaseHandler)
+	userID := claims.UserID
+
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
 	utilTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 	date, err := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("date"))
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
 	if err != nil || amount <= 0 {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "400: Bad Request. Amount invalid, must be a positive number",
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 	discountAmount, _ := strconv.ParseFloat(c.Request.PostFormValue("discount_amount"), 64)
@@ -526,38 +414,21 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 
 	err = h.BaseHandler.DB.EditHouseExpense(editExpense)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
 	timeNow := time.Now()
-	userIDstr, _ := c.Get("user_id")
-	userID, _ := userIDstr.(uuid.UUID)
 
 	highestExp, expType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
 	montlyTotal, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
@@ -590,12 +461,7 @@ func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) {
 	lang := c.GetString("lang")
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
@@ -616,26 +482,18 @@ func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) {
 // It responds with 204 No Content if the expense was not found or not deleted,
 // or 200 OK with updated summary data otherwise.
 func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
-	lang := c.GetString("lang")
+	claims, _, lang := GetBasicDataFromContext(c, &h.BaseHandler)
+	userID := claims.UserID
+
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
 	res, err := h.BaseHandler.DB.DeleteHouseExpense(id)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("400: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusBadRequest)
 		return
 	}
 
@@ -647,28 +505,16 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
 
 	timeNow := time.Now()
 	month := timeNow.Month()
-	userIDstr, _ := c.Get("user_id")
-	userID, _ := userIDstr.(uuid.UUID)
 
 	monthlyExpense, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("500: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusInternalServerError)
 		return
 	}
 
 	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(month, userID)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: fmt.Sprintf("500: %v", err),
-			Lang:    lang,
-		}
-		c.HTML(http.StatusInternalServerError, utilities.Templates.Components.ModalError, content)
+		RenderErrorModal(c, err, http.StatusInternalServerError)
 		return
 	}
 

@@ -22,14 +22,6 @@ func NewAuthMiddleware(as *services.AuthService) *AuthMiddleware {
 	}
 }
 
-func (am *AuthMiddleware) extractTokenFromCookie(c *gin.Context) (string, error) {
-	token, err := c.Cookie("auth_token")
-	if err != nil {
-		return "", err
-	}
-	return token, nil
-}
-
 func (am *AuthMiddleware) redirectToLogin(c *gin.Context) {
 	c.Header("HX-Redirect", "/login")
 	lang := c.GetString("lang")
@@ -48,13 +40,6 @@ func (am *AuthMiddleware) redirectToLogin(c *gin.Context) {
 // AuthMiddleware creates a middleware function that validates JWT tokens
 func (am *AuthMiddleware) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// _ , err := am.extractTokenFromCookie(c)
-		// if err != nil {
-		// 	am.redirectToLogin(c)
-		// 	c.Abort()
-		// 	return
-		// }
-
 		token, err := am.authService.ValidateToken(c)
 		if err != nil {
 			am.redirectToLogin(c)

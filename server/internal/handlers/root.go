@@ -35,10 +35,7 @@ func NewRootHandler(db *database.DB, as *services.AuthService) *RootHandler {
 }
 
 func (h *RootHandler) GetRoot(c *gin.Context) {
-	claims, _ := h.AS.ValidateToken(c)
-	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
-
-	lang := c.GetString("lang")
+	claims, isHtmxRequest, lang := GetBasicDataFromContext(c, &h.BaseHandler)
 
 	year := time.Now().Year()
 	if isHtmxRequest {
@@ -59,26 +56,27 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 }
 
 func (h *RootHandler) NotFound(c *gin.Context) {
-	claims, _ := h.AS.ValidateToken(c)
-	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
-	lang := c.GetString("lang")
+	_, isHtmxRequest, lang := GetBasicDataFromContext(c, &h.BaseHandler)
+	isLoggedIn := h.AS.IsLoggedIn()
+
+	content := &models.ModalContent{
+		Title:   utilities.T(lang, "modal.error_title"),
+		Message: "404: Page not found!",
+		Lang:    lang,
+	}
 
 	if isHtmxRequest {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "404: Page not found!",
-			Lang:    lang,
-		}
 		c.HTML(http.StatusNotFound, utilities.Templates.Components.ModalError, content)
 	} else {
 		rl := &models.RootLayout{
-			TemplateName: utilities.Templates.Pages.Index,
+			TemplateName:    utilities.Templates.Components.ModalError,
+			TemplateContent: content,
 			HeaderOpts: &models.HeaderOptions{
-				IsLoggedIn: claims != nil,
+				IsLoggedIn: isLoggedIn,
 				Lang:       lang,
 			},
 			Lang:       lang,
-			IsLoggedIn: claims != nil,
+			IsLoggedIn: isLoggedIn,
 		}
 		c.HTML(http.StatusNotFound, utilities.Templates.Root, rl)
 	}
@@ -93,20 +91,17 @@ func (h *RootHandler) ChangeLanguage(c *gin.Context) {
 
 	c.SetCookie("lang", lang, 3600*24*30, "/", "", false, true)
 
-	userIDstr, exists := c.Get("user_id")
-	if exists {
-		userID, ok := userIDstr.(uuid.UUID)
-		if ok {
-			_ = h.DB.UpdateUserLanguage(userID, lang)
+	userID := h.AS.Claims.UserID
+	if userID != uuid.Nil {
+		_ = h.DB.UpdateUserLanguage(userID, lang)
 
-			// If logged in, we should also regenerate the token to include the new language preference
-			// to avoid stale claims in the middleware.
-			user, err := h.DB.GetUserByID(userID)
+		// If logged in, we should also regenerate the token to include the new language preference
+		// to avoid stale claims in the middleware.
+		user, err := h.DB.GetUserByID(userID)
+		if err == nil {
+			token, err := h.AS.GenerateToken(user)
 			if err == nil {
-				token, err := h.AS.GenerateToken(user)
-				if err == nil {
-					h.AS.SetCookie(token, c)
-				}
+				h.AS.SetCookie(token, c)
 			}
 		}
 	}
