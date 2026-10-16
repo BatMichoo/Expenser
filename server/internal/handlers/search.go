@@ -2,14 +2,12 @@ package handlers
 
 import (
 	database "expenser/internal/db"
-	"expenser/internal/models"
 	"expenser/internal/utilities"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type SearchHandler struct {
@@ -23,85 +21,67 @@ func NewSearchHandler(db *database.DB) *SearchHandler {
 	}
 }
 
-func (h *SearchHandler) GetSearch(c *gin.Context) {
-	path := c.Request.URL.Path
-	isCar := strings.Contains(path, "car")
-
+func (h *SearchHandler) GetSearch(c *gin.Context) error {
 	c.HTML(http.StatusOK, utilities.Templates.Components.Search, gin.H{
 		"CurrentMonth": time.Now().Format(utilities.DateFormats.MonthOnly),
-		"IsCar":        isCar,
-		"Lang":         c.GetString("lang"),
+		"IsCar":        strings.Contains(c.Request.URL.Path, "car"),
+		"Lang":         currentLang(c),
 	})
+	return nil
 }
 
-func (h *SearchHandler) GetResultsHouse(c *gin.Context) {
-	lang := GetLanguage(c)
-	userIDstr, _ := c.Get("user_id")
-	userID, _ := userIDstr.(uuid.UUID)
-
+func parseSearchMonth(c *gin.Context) (time.Time, error) {
 	date, err := time.Parse(utilities.DateFormats.MonthOnly, c.Request.PostFormValue("date"))
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "400: Invalid Date.",
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
-		return
+		return time.Time{}, badRequest("error.invalid_month", err)
+	}
+	return date, nil
+}
+
+func (h *SearchHandler) GetResultsHouse(c *gin.Context) error {
+	userID := currentUserID(c)
+	date, err := parseSearchMonth(c)
+	if err != nil {
+		return err
 	}
 
 	expenses, err := h.DB.GetHouseExpensesForMonth(date.Month(), date.Year(), userID)
+	if err != nil {
+		return err
+	}
 	total, err := h.DB.GetTotalHouseExpenseForMonth(date, userID)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "400: Invalid Request.",
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
-		return
+		return err
 	}
 
-	results := gin.H{
+	c.HTML(http.StatusOK, utilities.Templates.Components.SearchResultsHouse, gin.H{
 		"Expenses": expenses,
 		"Total":    total,
-		"Lang":     lang,
-	}
-	c.HTML(http.StatusOK, utilities.Templates.Components.SearchResultsHouse, results)
+		"Lang":     currentLang(c),
+	})
+	return nil
 }
 
-func (h *SearchHandler) GetResultsCar(c *gin.Context) {
-	lang := GetLanguage(c)
-	userIDstr, _ := c.Get("user_id")
-	userID, _ := userIDstr.(uuid.UUID)
-
-	date, err := time.Parse(utilities.DateFormats.MonthOnly, c.Request.PostFormValue("date"))
+func (h *SearchHandler) GetResultsCar(c *gin.Context) error {
+	userID := currentUserID(c)
+	date, err := parseSearchMonth(c)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "400: Invalid Date.",
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
-		return
+		return err
 	}
 
 	expenses, err := h.DB.GetCarExpensesForMonth(date.Month(), date.Year(), userID)
 	if err != nil {
-		content := &models.ModalContent{
-			Title:   utilities.T(lang, "modal.error_title"),
-			Message: "400: Invalid Date.",
-			Lang:    lang,
-		}
-		c.HTML(http.StatusBadRequest, utilities.Templates.Components.ModalError, content)
-		return
+		return err
 	}
 	total, err := h.DB.GetTotalCarExpenseForMonth(date.Month(), userID)
+	if err != nil {
+		return err
+	}
 
-	results := gin.H{
+	c.HTML(http.StatusOK, utilities.Templates.Components.SearchResultsCar, gin.H{
 		"Expenses": expenses,
 		"Total":    total,
-		"Lang":     lang,
-	}
-	c.HTML(http.StatusOK, utilities.Templates.Components.SearchResultsCar, results)
+		"Lang":     currentLang(c),
+	})
+	return nil
 }

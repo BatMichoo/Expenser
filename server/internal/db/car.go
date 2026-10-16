@@ -102,8 +102,9 @@ func (db *DB) GetHighestCarExpenseForMonth(month time.Month, userId uuid.UUID) (
 	return highestExpense.Float64, utilType, nil
 }
 
-// Retrieves car expense by Id, returns error upon failure.
-func (db *DB) GetCarExpenseByID(id int) (*models.CarExpense, error) {
+// GetCarExpenseByID returns the user's car expense with the given ID,
+// or nil when no such expense belongs to the user.
+func (db *DB) GetCarExpenseByID(id int, userID uuid.UUID) (*models.CarExpense, error) {
 	query := `
 		SELECT
 			ce.id,
@@ -120,12 +121,13 @@ func (db *DB) GetCarExpenseByID(id int) (*models.CarExpense, error) {
 		JOIN
 			car_expense_types ct ON ce.car_expense_type_id = ct.id
 		WHERE
-			ce.id = $1;
+			ce.id = $1 AND ce.created_by = $2;
 	`
 
 	var expense models.CarExpense
 	err := db.conn.QueryRow(query,
 		id,
+		userID,
 	).Scan(
 		&expense.ID,
 		&expense.Type,
@@ -312,7 +314,9 @@ func (db *DB) GetCarExpensesByType(utility string, userId uuid.UUID) (*[]models.
 	return &expenses, nil
 }
 
-func (db *DB) EditCarExpense(editExpense *models.CarExpense) error {
+// EditCarExpense updates the user's car expense. It returns an error wrapping
+// sql.ErrNoRows when no such expense belongs to the user.
+func (db *DB) EditCarExpense(editExpense *models.CarExpense, userID uuid.UUID) error {
 	query := `
 		UPDATE car_expenses
 		SET
@@ -322,7 +326,7 @@ func (db *DB) EditCarExpense(editExpense *models.CarExpense) error {
 			expense_date = $5,
 			notes = $6,
 			metadata = $7
-		WHERE id = $1
+		WHERE id = $1 AND created_by = $8
 		RETURNING (SELECT name FROM car_expense_types WHERE id = $2);
 	`
 	err := db.conn.QueryRow(query,
@@ -333,22 +337,26 @@ func (db *DB) EditCarExpense(editExpense *models.CarExpense) error {
 		editExpense.Date,
 		editExpense.Notes,
 		editExpense.Metadata,
+		userID,
 	).Scan(&editExpense.Type)
 
 	if err != nil {
-		return fmt.Errorf("error editing car expense: %v", err)
+		return fmt.Errorf("error editing car expense: %w", err)
 	}
 
 	return nil
 }
 
-func (db *DB) DeleteCarExpense(id int) (bool, error) {
+// DeleteCarExpense deletes the user's car expense. It returns false when no
+// such expense belongs to the user.
+func (db *DB) DeleteCarExpense(id int, userID uuid.UUID) (bool, error) {
 	query := `
 		DELETE FROM car_expenses
-		WHERE id = $1`
+		WHERE id = $1 AND created_by = $2`
 
 	res, err := db.conn.Exec(query,
 		id,
+		userID,
 	)
 
 	if err != nil {

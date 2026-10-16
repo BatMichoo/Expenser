@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetUserByID(t *testing.T) {
@@ -225,6 +226,11 @@ func TestUpdateUser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			userToUpdate := tt.setup(t)
 
+			// Snapshot the user as stored before the update. UpdateUser sets
+			// UpdatedAt on the struct with nanosecond precision, while Postgres
+			// rounds to microseconds, so only DB values compare reliably.
+			originalUser, _ := testDB.GetUserByID(userToUpdate.ID)
+
 			tt.updates(userToUpdate) // Apply the updates to the user model
 
 			err := testDB.UpdateUser(userToUpdate)
@@ -234,11 +240,12 @@ func TestUpdateUser(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
+			require.NotNil(t, originalUser)
 
 			// Retrieve the user from DB to verify changes
 			gotUser, err := testDB.GetUserByID(userToUpdate.ID)
 			assert.NoError(t, err)
-			tt.validate(t, userToUpdate, gotUser) // Pass original and fetched user
+			tt.validate(t, originalUser, gotUser) // Pass stored-before and fetched user
 		})
 	}
 }

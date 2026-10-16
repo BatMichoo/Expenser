@@ -86,7 +86,7 @@ func TestCreateGroceriesExpense(t *testing.T) {
 			err = testDB.CreateGroceriesExpense(tt.input)
 			assert.NoError(t, err)
 
-			got, err := testDB.GetGroceriesExpenseByID(tt.input.ID)
+			got, err := testDB.GetGroceriesExpenseByID(tt.input.ID, TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 			tt.validate(t, got)
@@ -145,19 +145,19 @@ func TestGroceriesCRUD(t *testing.T) {
 			id := tt.setup(t)
 
 			// Update
-			expense, _ := testDB.GetGroceriesExpenseByID(id)
+			expense, _ := testDB.GetGroceriesExpenseByID(id, TestUserRegisterModel.ID)
 			expense.Product = "Bread"
 			expense.TotalPrice = 2.00
 			expense.DiscountPerUnit = 0.50
 			expense.TotalDiscount = 0.50
-			err := testDB.EditGroceriesExpense(expense)
+			err := testDB.EditGroceriesExpense(expense, TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 
-			updated, _ := testDB.GetGroceriesExpenseByID(id)
+			updated, _ := testDB.GetGroceriesExpenseByID(id, TestUserRegisterModel.ID)
 			tt.validate(t, updated)
 
 			// Delete
-			deleted, err := testDB.DeleteGroceriesExpense(id)
+			deleted, err := testDB.DeleteGroceriesExpense(id, TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 			assert.True(t, deleted)
 		})

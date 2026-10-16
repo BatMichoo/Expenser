@@ -33,59 +33,40 @@ func NewRootHandler(db *database.DB, as *services.AuthService) *RootHandler {
 	}
 }
 
-func (h *RootHandler) GetRoot(c *gin.Context) {
-	claims, isHtmxRequest, lang := GetBasicDataFromContext(c, &h.BaseHandler)
-
-	year := time.Now().Year()
-	if isHtmxRequest {
-		c.HTML(http.StatusOK, utilities.Templates.Pages.Index, gin.H{"Lang": lang, "IsLoggedIn": claims != nil, "Year": year})
-	} else {
-		rl := &models.RootLayout{
-			TemplateName: utilities.Templates.Pages.Index,
-			HeaderOpts: &models.HeaderOptions{
-				IsLoggedIn: claims != nil,
-				Lang:       lang,
-			},
-			Lang:       lang,
-			Year:       year,
-			IsLoggedIn: claims != nil,
-		}
-		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
-	}
+func (h *RootHandler) GetRoot(c *gin.Context) error {
+	renderPage(c, utilities.Templates.Pages.Index, gin.H{
+		"Lang":       currentLang(c),
+		"IsLoggedIn": isLoggedIn(c),
+		"Year":       time.Now().Year(),
+	})
+	return nil
 }
 
-func (h *RootHandler) NotFound(c *gin.Context) {
-	_, isHtmxRequest, lang := GetBasicDataFromContext(c, &h.BaseHandler)
-	isLoggedIn := services.ClaimsFromContext(c) != nil
-
-	content := &models.ModalContent{
-		Title:   utilities.T(lang, "modal.error_title"),
-		Message: "404: Page not found!",
-		Lang:    lang,
+// GetFlash pops the pending flash error up as the error modal.
+func (h *RootHandler) GetFlash(c *gin.Context) error {
+	f, ok := popFlash(c)
+	if !ok {
+		c.Status(http.StatusNoContent)
+		return nil
 	}
 
-	if isHtmxRequest {
-		c.HTML(http.StatusNotFound, utilities.Templates.Components.ModalError, content)
-	} else {
-		rl := &models.RootLayout{
-			TemplateName:    utilities.Templates.Components.ModalError,
-			TemplateContent: content,
-			HeaderOpts: &models.HeaderOptions{
-				IsLoggedIn: isLoggedIn,
-				Lang:       lang,
-			},
-			Lang:       lang,
-			IsLoggedIn: isLoggedIn,
-		}
-		c.HTML(http.StatusNotFound, utilities.Templates.Root, rl)
-	}
+	c.HTML(http.StatusOK, utilities.Templates.Components.ModalError, &models.ModalContent{
+		Title:   f.Title,
+		Message: f.Message,
+		Lang:    currentLang(c),
+	})
+	return nil
 }
 
-func (h *RootHandler) ChangeLanguage(c *gin.Context) {
+func (h *RootHandler) NotFound(c *gin.Context) error {
+	return notFound("error.page_not_found")
+}
+
+func (h *RootHandler) ChangeLanguage(c *gin.Context) error {
 	lang := c.PostForm("lang")
 	if lang == "" {
 		c.Status(http.StatusBadRequest)
-		return
+		return nil
 	}
 
 	c.SetCookie("lang", lang, 3600*24*30, "/", "", false, true)
@@ -107,4 +88,5 @@ func (h *RootHandler) ChangeLanguage(c *gin.Context) {
 
 	c.Header("HX-Refresh", "true")
 	c.Status(http.StatusOK)
+	return nil
 }

@@ -7,4 +7,5 @@ type RootLayout struct {
 	Lang            string
 	Year            int
 	IsLoggedIn      bool
+	HasFlash        bool // a flash error waits to be shown as a popup
 }

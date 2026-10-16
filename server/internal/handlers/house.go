@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"expenser/internal/models"
-	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"fmt"
 	"html/template"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type HouseHandler struct {
@@ -31,9 +31,7 @@ func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, erro
 	dateNow := time.Now()
 	month := dateNow.Month()
 	year := dateNow.Year()
-
-	claims, _, lang := GetBasicDataFromContext(c, &h.BaseHandler)
-	userID := claims.UserID
+	userID := currentUserID(c)
 
 	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(month, userID)
 	if err != nil {
@@ -61,7 +59,67 @@ func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, erro
 			Type:   strings.TrimSpace(utilType),
 		},
 		RecentExpenses: recentExpenses,
-		Lang:           lang,
+		Lang:           currentLang(c),
+	}, nil
+}
+
+// monthSummary returns the current month's highest and total expense as
+// out-of-band fragments, used to refresh the summary cards after a change.
+func (h *HouseHandler) monthSummary(userID uuid.UUID) (*models.HighestExpense, *models.MonthlyExpense, error) {
+	timeNow := time.Now()
+
+	highestExp, expType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	monthlyTotal, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	highest := &models.HighestExpense{
+		Amount: highestExp,
+		Type:   strings.TrimSpace(expType),
+		IsOOB:  true,
+	}
+	monthly := &models.MonthlyExpense{
+		Amount: monthlyTotal,
+		Month:  timeNow.Month().String(),
+		IsOOB:  true,
+	}
+	return highest, monthly, nil
+}
+
+// parseHouseExpenseForm reads the fields shared by the create and edit forms.
+func (h *HouseHandler) parseHouseExpenseForm(c *gin.Context) (*models.HouseExpense, error) {
+	utilTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
+	if err != nil {
+		return nil, badRequest("error.invalid_type", err)
+	}
+
+	date, err := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("date"))
+	if err != nil {
+		return nil, badRequest("error.invalid_date", err)
+	}
+
+	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
+	if err != nil {
+		return nil, badRequest("error.invalid_amount", err)
+	}
+	if amount <= 0 {
+		return nil, badRequest("error.amount_not_positive", fmt.Errorf("amount %v", amount))
+	}
+
+	discountAmount, _ := strconv.ParseFloat(c.Request.PostFormValue("discount_amount"), 64)
+
+	return &models.HouseExpense{
+		Amount:         amount,
+		DiscountAmount: discountAmount,
+		UtilityTypeID:  utilTypeID,
+		ExpenseDate:    date,
+		Notes:          c.Request.PostFormValue("notes"),
+		Metadata:       h.parseHouseMetadata(c, utilTypeID),
 	}, nil
 }
 
@@ -70,25 +128,23 @@ func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, erro
 // GetCreateHouseForm renders the HTML form for users to input details
 // for a new home expense.
 // This handler serves the UI component for expense creation.
-func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) {
+func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) error {
 	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes()
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
+		return err
 	}
-
-	dateToday := time.Now().Format(utilities.DateFormats.HTML)
 
 	c.HTML(http.StatusOK, utilities.Templates.Components.CreateHouseExpForm, gin.H{
 		"Types": expTypes,
-		"Lang":  c.GetString("lang"),
+		"Lang":  currentLang(c),
 		"Year":  time.Now().Year(),
-		"Date":  dateToday,
+		"Date":  time.Now().Format(utilities.DateFormats.HTML),
 	})
+	return nil
 }
 
-func (h *HouseHandler) parseHouseMetadata(c *gin.Context, typeID int) json.RawMessage {
-	var metadata interface{}
+func (h *HouseHandler) parseHouseMetadata(c *gin.Context, typeID int) models.Metadata {
+	var metadata any
 
 	switch typeID {
 	case 1: // Electricity
@@ -134,7 +190,7 @@ func (h *HouseHandler) parseHouseMetadata(c *gin.Context, typeID int) json.RawMe
 }
 
 // GetMetadataFields returns the HTML fragment for specific metadata fields based on typeID
-func (h *HouseHandler) GetMetadataFields(c *gin.Context) {
+func (h *HouseHandler) GetMetadataFields(c *gin.Context) error {
 	typeID, _ := strconv.Atoi(c.Query("typeID"))
 
 	// We'll map type IDs to template names
@@ -152,10 +208,11 @@ func (h *HouseHandler) GetMetadataFields(c *gin.Context) {
 		templateName = "house-metadata-other"
 	default:
 		c.Status(http.StatusOK)
-		return
+		return nil
 	}
 
-	c.HTML(http.StatusOK, templateName, gin.H{"Lang": c.GetString("lang")})
+	c.HTML(http.StatusOK, templateName, gin.H{"Lang": currentLang(c)})
+	return nil
 }
 
 // CreateHouseExpense handles the HTTP POST request to create a new home expense.
@@ -163,209 +220,102 @@ func (h *HouseHandler) GetMetadataFields(c *gin.Context) {
 // validates them, saves the new expense to the database,
 // and then returns updated summary data (highest and monthly total)
 // to refresh the UI.
-func (h *HouseHandler) CreateHouseExpense(c *gin.Context) {
-	claims, _, lang := GetBasicDataFromContext(c, &h.BaseHandler)
-	userID := claims.UserID
+func (h *HouseHandler) CreateHouseExpense(c *gin.Context) error {
+	lang := currentLang(c)
+	userID := currentUserID(c)
 
-	utilTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
+	newExpense, err := h.parseHouseExpenseForm(c)
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
+		return err
+	}
+	newExpense.CreatedBy = userID
+
+	if err := h.BaseHandler.DB.CreateHouseExpense(newExpense); err != nil {
+		return err
 	}
 
-	date, err := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("date"))
+	title := utilities.T(lang, "modal.create_success")
+	message := fmt.Sprintf("%s: %v %s", newExpense.UtilityType, newExpense.Amount, utilities.Currency)
+
+	if newExpense.ExpenseDate.Month() != time.Now().Month() {
+		renderSuccess(c, http.StatusCreated, title, message)
+		return nil
+	}
+
+	highest, monthly, err := h.monthSummary(userID)
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
+		return err
 	}
 
-	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
-	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
-	}
-
-	discountAmount, _ := strconv.ParseFloat(c.Request.PostFormValue("discount_amount"), 64)
-
-	notes := c.Request.PostFormValue("notes")
-	metadata := h.parseHouseMetadata(c, utilTypeID)
-
-	newExpense := &models.HouseExpense{
-		CreatedBy:      userID,
-		Amount:         amount,
-		DiscountAmount: discountAmount,
-		UtilityTypeID:  utilTypeID,
-		ExpenseDate:    date,
-		Notes:          notes,
-		Metadata:       metadata,
-	}
-
-	err = h.BaseHandler.DB.CreateHouseExpense(newExpense)
-	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
-	}
-
-	timeNow := time.Now()
-
-	highestExp, expType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
-	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
-	}
-
-	montlyTotal, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
-	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
-	}
-
-	modal := &models.ModalContent{
-		Title:   utilities.T(lang, "modal.create_success"),
-		Message: fmt.Sprintf("%s: %v %s", newExpense.UtilityType, newExpense.Amount, utilities.Currency),
-		Lang:    lang,
-	}
-
-	if newExpense.ExpenseDate.Month() != timeNow.Month() {
-		c.HTML(http.StatusCreated, utilities.Templates.Components.ModalSuccess, modal)
-		return
-	}
-
-	expResp := &models.HouseExpResponse{
-		Expense: newExpense,
-		HighestExpense: &models.HighestExpense{
-			Amount: highestExp,
-			Type:   expType,
-			IsOOB:  true,
-		},
-		MonthlyExpense: &models.MonthlyExpense{
-			Amount: montlyTotal,
-			Month:  timeNow.Month().String(),
-			IsOOB:  true,
-		},
-		Modal: &models.ModalContent{
-			Title:   utilities.T(lang, "modal.create_success"),
-			Message: fmt.Sprintf("%s: %v %s", newExpense.UtilityType, newExpense.Amount, utilities.Currency),
-			Lang:    lang,
-		},
-		Lang: lang,
-	}
-
-	c.HTML(http.StatusCreated, utilities.Templates.Responses.CreateHouseExp, expResp)
+	c.HTML(http.StatusCreated, utilities.Templates.Responses.CreateHouseExp, &models.HouseExpResponse{
+		Expense:        newExpense,
+		HighestExpense: highest,
+		MonthlyExpense: monthly,
+		Modal:          &models.ModalContent{Title: title, Message: message, Lang: lang},
+		Lang:           lang,
+	})
+	return nil
 }
 
 // INFO: READ
 
-// GetHome renders the main home dashboard page.
-// It fetches the highest expense, total monthly expense, and a list of
-// recent expenses for the current month and year from the database.
-// It intelligently renders either the full page layout or a partial HTML
-// snippet based on whether the request is an HTMX request.
-func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
-	_, isHtmxRequest, lang := GetBasicDataFromContext(c, &h.BaseHandler)
+// GetCurrentMonth renders the current month's summary and expenses.
+// HTMX requests get only the summary fragment; full page loads get the
+// whole house page.
+func (h *HouseHandler) GetCurrentMonth(c *gin.Context) error {
 	pageData, err := h.getHousePageData(c)
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusInternalServerError)
-		return
+		return err
 	}
 
-	year := time.Now().Year()
-
-	if isHtmxRequest {
-		c.HTML(http.StatusOK, utilities.Templates.Components.HouseCurrent, pageData)
-		return
-	} else {
-		rl := &models.RootLayout{
-			TemplateName:    utilities.Templates.Pages.House,
-			TemplateContent: pageData,
-			HeaderOpts: &models.HeaderOptions{
-				IsLoggedIn: services.ClaimsFromContext(c) != nil,
-				Lang:       lang,
-			},
-			Year: year,
-			Lang: lang,
-		}
-		c.HTML(http.StatusOK, utilities.Templates.Root, rl)
-	}
+	renderView(c, utilities.Templates.Components.HouseCurrent, utilities.Templates.Pages.House, pageData)
+	return nil
 }
 
 // GetHome renders the main home dashboard page.
 // It fetches the highest expense, total monthly expense, and a list of
 // recent expenses for the current month and year from the database.
-// It intelligently renders either the full page layout or a partial HTML
-// snippet based on whether the request is an HTMX request.
-func (h *HouseHandler) GetHome(c *gin.Context) {
-	isLoggedIn := services.ClaimsFromContext(c) != nil
+func (h *HouseHandler) GetHome(c *gin.Context) error {
 	pageData, err := h.getHousePageData(c)
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusInternalServerError)
-		return
+		return err
 	}
 
-	RenderPage(c, isLoggedIn, utilities.Templates.Pages.House, pageData)
-}
-
-func (h *HouseHandler) GetHomeSection(c *gin.Context) {
-	section := c.Query("section")
-
-	c.HTML(http.StatusOK, fmt.Sprintf("house-%s", section), gin.H{
-		"Lang": GetLanguage(c),
-	})
-}
-
-// GetExpenseById retrieves a single home expense by its unique ID
-// and renders its details.
-// It expects the expense ID to be provided as a path parameter.
-func (h *HouseHandler) GetExpenseById(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
-	}
-
-	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id)
-
-	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
-	}
-
-	c.HTML(http.StatusOK, "expense", exp)
+	renderPage(c, utilities.Templates.Pages.House, pageData)
+	return nil
 }
 
 // INFO: UPDATE
 
 // GetEditHouseForm renders the HTML form pre-filled with existing expense data
 // for editing a specific home expense.
-// It expects the expense ID to be provided as a query parameter.
-func (h *HouseHandler) GetEditHouseForm(c *gin.Context) {
-	lang := GetLanguage(c)
+// It expects the expense ID to be provided as a path parameter.
+func (h *HouseHandler) GetEditHouseForm(c *gin.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
+		return badRequest("error.invalid_id", err)
 	}
 
-	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id)
+	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id, currentUserID(c))
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
+		return err
+	}
+	if exp == nil {
+		return notFound("error.expense_not_found")
 	}
 
 	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes()
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
+		return err
 	}
 
-	formData := &models.EditHouseFormData{
+	c.HTML(http.StatusOK, utilities.Templates.Components.EditHouseExpForm, &models.EditHouseFormData{
 		Expense:  exp,
 		Types:    expTypes,
 		Metadata: exp.UnmarshalMetadata(),
-		Lang:     lang,
-	}
-
-	c.HTML(http.StatusOK, utilities.Templates.Components.EditHouseExpForm, formData)
+		Lang:     currentLang(c),
+	})
+	return nil
 }
 
 // EditHouseExpenseById handles the HTTP PUT/POST request to update an existing home expense.
@@ -373,108 +323,61 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) {
 // validates them, updates the expense in the database by its ID,
 // and then returns updated summary data (highest and monthly total)
 // to refresh the UI.
-func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
-	claims, _, lang := GetBasicDataFromContext(c, &h.BaseHandler)
-	userID := claims.UserID
+func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) error {
+	lang := currentLang(c)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
+		return badRequest("error.invalid_id", err)
 	}
 
-	utilTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
+	editExpense, err := h.parseHouseExpenseForm(c)
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
+		return err
 	}
-	date, err := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("date"))
+	editExpense.ID = id
+
+	if err := h.BaseHandler.DB.EditHouseExpense(editExpense, currentUserID(c)); err != nil {
+		return err
+	}
+
+	highest, monthly, err := h.monthSummary(currentUserID(c))
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
-	}
-	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
-	if err != nil || amount <= 0 {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
-	}
-	discountAmount, _ := strconv.ParseFloat(c.Request.PostFormValue("discount_amount"), 64)
-
-	notes := c.Request.PostFormValue("notes")
-	metadata := h.parseHouseMetadata(c, utilTypeID)
-
-	editExpense := &models.HouseExpense{
-		ID:             id,
-		Amount:         amount,
-		DiscountAmount: discountAmount,
-		UtilityTypeID:  utilTypeID,
-		ExpenseDate:    date,
-		Notes:          notes,
-		Metadata:       metadata,
+		return err
 	}
 
-	err = h.BaseHandler.DB.EditHouseExpense(editExpense)
-	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
-	}
-
-	timeNow := time.Now()
-
-	highestExp, expType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
-	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
-	}
-
-	montlyTotal, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
-	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
-	}
-
-	edExpResp := &models.HouseExpResponse{
-		Expense: editExpense,
-		HighestExpense: &models.HighestExpense{
-			Amount: highestExp,
-			Type:   expType,
-			IsOOB:  true,
-		},
-		MonthlyExpense: &models.MonthlyExpense{
-			Amount: montlyTotal,
-			Month:  timeNow.Month().String(),
-			IsOOB:  true,
-		},
+	c.HTML(http.StatusCreated, utilities.Templates.Responses.CreateHouseExp, &models.HouseExpResponse{
+		Expense:        editExpense,
+		HighestExpense: highest,
+		MonthlyExpense: monthly,
 		Modal: &models.ModalContent{
 			Title:   utilities.T(lang, "modal.update_success"),
 			Message: fmt.Sprintf(utilities.T(lang, "modal.update_success_message"), editExpense.ID),
 			Lang:    lang,
 		},
 		Lang: lang,
-	}
-
-	c.HTML(http.StatusCreated, utilities.Templates.Responses.CreateHouseExp, edExpResp)
+	})
+	return nil
 }
 
 // INFO: DELETE
 
-func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) {
-	lang := GetLanguage(c)
+func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) error {
+	lang := currentLang(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
+		return badRequest("error.invalid_id", err)
 	}
 
-	content := &models.ModalConfirmContent{
+	c.HTML(http.StatusOK, utilities.Templates.Components.ModalConfirm, &models.ModalConfirmContent{
 		Title:    utilities.T(lang, "modal.delete_confirm"),
 		Method:   "DELETE",
 		Endpoint: template.URL(fmt.Sprintf("/house/expenses/%v", id)),
 		Target:   fmt.Sprintf("#exp-%v", id),
 		Message:  fmt.Sprintf(utilities.T(lang, "modal.delete_message"), id),
 		Lang:     lang,
-	}
-	c.HTML(http.StatusOK, utilities.Templates.Components.ModalConfirm, content)
+	})
+	return nil
 }
 
 // DeleteHouseExp handles the HTTP DELETE request to remove a home expense by its ID.
@@ -482,61 +385,37 @@ func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) {
 // the current month's total and highest expense summaries to reflect the change.
 // It responds with 204 No Content if the expense was not found or not deleted,
 // or 200 OK with updated summary data otherwise.
-func (h *HouseHandler) DeleteHouseExp(c *gin.Context) {
-	claims, _, lang := GetBasicDataFromContext(c, &h.BaseHandler)
-	userID := claims.UserID
+func (h *HouseHandler) DeleteHouseExp(c *gin.Context) error {
+	lang := currentLang(c)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
+		return badRequest("error.invalid_id", err)
 	}
 
-	res, err := h.BaseHandler.DB.DeleteHouseExpense(id)
+	deleted, err := h.BaseHandler.DB.DeleteHouseExpense(id, currentUserID(c))
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusBadRequest)
-		return
+		return err
+	}
+	if !deleted {
+		c.Status(http.StatusNoContent)
+		return nil
 	}
 
-	if !res {
-		// If res is false, it means the expense was not found or not deleted.
-		c.HTML(http.StatusNoContent, "", gin.H{})
-		return
-	}
-
-	timeNow := time.Now()
-	month := timeNow.Month()
-
-	monthlyExpense, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
+	highest, monthly, err := h.monthSummary(currentUserID(c))
 	if err != nil {
-		RenderErrorModal(c, err, http.StatusInternalServerError)
-		return
+		return err
 	}
 
-	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(month, userID)
-	if err != nil {
-		RenderErrorModal(c, err, http.StatusInternalServerError)
-		return
-	}
-
-	pageData := &models.HouseExpResponse{
-		MonthlyExpense: &models.MonthlyExpense{
-			Amount: monthlyExpense,
-			Month:  month.String(),
-			IsOOB:  true,
-		},
-		HighestExpense: &models.HighestExpense{
-			Amount: highestExpense,
-			Type:   strings.TrimSpace(utilType),
-			IsOOB:  true,
-		},
+	c.HTML(http.StatusOK, utilities.Templates.Responses.DeleteHouseExp, &models.HouseExpResponse{
+		HighestExpense: highest,
+		MonthlyExpense: monthly,
 		Modal: &models.ModalContent{
 			Title:   utilities.T(lang, "modal.delete_success"),
 			Message: fmt.Sprintf(utilities.T(lang, "modal.delete_success_message"), id),
 			Lang:    lang,
 		},
 		Lang: lang,
-	}
-
-	c.HTML(http.StatusOK, utilities.Templates.Responses.DeleteHouseExp, pageData)
+	})
+	return nil
 }

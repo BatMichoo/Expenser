@@ -1,13 +1,15 @@
 -- +goose Up
 -- Dev-only dummy data. Applied by InitDatabase only when SEED_DEV_DATA=true.
 -- Login: dev / password
+-- notes and metadata must never be NULL: the DB layer scans them into a
+-- string and a json.RawMessage, and neither accepts NULL.
 
 INSERT INTO users (id, username, password_hash) VALUES
     ('00000000-0000-0000-0000-00000000de00', 'dev', '$2a$10$9ZOUn1Pz/P9bDkY8l/MwLOC49mFBicqYMC5DxXRUQT5j51jqcGv4G');
 
 -- Monthly utility bills for the last 12 months.
 INSERT INTO home_expenses (utility_type_id, amount, expense_date, notes, metadata, created_by)
-SELECT ut.id, b.amount, b.expense_date, NULL, b.metadata, '00000000-0000-0000-0000-00000000de00'
+SELECT ut.id, b.amount, b.expense_date, '', b.metadata, '00000000-0000-0000-0000-00000000de00'
 FROM generate_series(0, 11) AS m,
 LATERAL (SELECT date_trunc('month', CURRENT_DATE) - make_interval(months => m) + INTERVAL '9 days' AS d) AS month,
 LATERAL (VALUES
@@ -31,10 +33,11 @@ LATERAL (VALUES
 JOIN utility_types ut ON ut.name = b.utility;
 
 -- Gas only in the heating season.
-INSERT INTO home_expenses (utility_type_id, amount, expense_date, metadata, created_by)
+INSERT INTO home_expenses (utility_type_id, amount, expense_date, notes, metadata, created_by)
 SELECT (SELECT id FROM utility_types WHERE name = 'Gas'),
        ROUND(((60 + random() * 80) * 0.65)::numeric, 2),
        d + INTERVAL '12 days',
+       '',
        jsonb_build_object('quantity', 60 + m * 5, 'price_per_unit', 0.65),
        '00000000-0000-0000-0000-00000000de00'
 FROM generate_series(0, 11) AS m,
@@ -42,19 +45,21 @@ LATERAL (SELECT date_trunc('month', CURRENT_DATE) - make_interval(months => m) A
 WHERE EXTRACT(MONTH FROM d) IN (10, 11, 12, 1, 2, 3);
 
 -- Waste fee twice a year.
-INSERT INTO home_expenses (utility_type_id, amount, expense_date, notes, created_by)
+INSERT INTO home_expenses (utility_type_id, amount, expense_date, notes, metadata, created_by)
 SELECT (SELECT id FROM utility_types WHERE name = 'Waste'),
        85.50,
        date_trunc('month', CURRENT_DATE) - make_interval(months => m) + INTERVAL '20 days',
        'Municipal waste fee',
+       '{}',
        '00000000-0000-0000-0000-00000000de00'
 FROM unnest(ARRAY[2, 8]) AS m;
 
 -- Two fuel fill-ups per month.
-INSERT INTO car_expenses (car_expense_type_id, amount, expense_date, metadata, created_by)
+INSERT INTO car_expenses (car_expense_type_id, amount, expense_date, notes, metadata, created_by)
 SELECT (SELECT id FROM car_expense_types WHERE name = 'Fuel'),
        ROUND((liters * price)::numeric, 2),
        date_trunc('month', CURRENT_DATE) - make_interval(months => m) + make_interval(days => day),
+       '',
        jsonb_build_object('liters', liters, 'price_per_liter', price),
        '00000000-0000-0000-0000-00000000de00'
 FROM generate_series(0, 11) AS m,
@@ -63,17 +68,19 @@ LATERAL (SELECT ROUND((38 + random() * 14)::numeric, 2) AS liters,
                 ROUND((1.30 + random() * 0.15)::numeric, 2) AS price) AS f;
 
 -- Monthly car wash.
-INSERT INTO car_expenses (car_expense_type_id, amount, expense_date, created_by)
+INSERT INTO car_expenses (car_expense_type_id, amount, expense_date, notes, metadata, created_by)
 SELECT (SELECT id FROM car_expense_types WHERE name = 'Car Wash'),
        ROUND((6 + random() * 6)::numeric, 2),
        date_trunc('month', CURRENT_DATE) - make_interval(months => m) + INTERVAL '25 days',
+       '',
+       '{}',
        '00000000-0000-0000-0000-00000000de00'
 FROM generate_series(0, 11) AS m;
 
 -- One-off car expenses.
 INSERT INTO car_expenses (car_expense_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
 SELECT ct.id, e.amount, e.discount, date_trunc('month', CURRENT_DATE) - make_interval(months => e.months_ago) + INTERVAL '7 days',
-       e.notes, e.metadata, '00000000-0000-0000-0000-00000000de00'
+       COALESCE(e.notes, ''), COALESCE(e.metadata, '{}'), '00000000-0000-0000-0000-00000000de00'
 FROM (VALUES
     ('Insurance', 310.00, 15.00, 10, 'Annual civil liability',
         jsonb_build_object('provider', 'Bulstrad', 'coverage_type', 'Civil liability',

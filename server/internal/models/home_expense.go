@@ -9,15 +9,15 @@ import (
 )
 
 type HouseExpense struct {
-	ID             int             `form:"id"`
-	UtilityTypeID  int             `form:"typeID"`
-	UtilityType    string          `form:"type" binding:"required"`
-	Amount         float64         `form:"amount" binding:"required"`
-	DiscountAmount float64         `form:"discount_amount"`
-	ExpenseDate    time.Time       `form:"date" binding:"required"`
-	Notes          string          `form:"notes"`
-	Metadata       json.RawMessage `form:"metadata"`
-	CreatedAt      time.Time       `form:"createdAt"`
+	ID             int       `form:"id"`
+	UtilityTypeID  int       `form:"typeID"`
+	UtilityType    string    `form:"type" binding:"required"`
+	Amount         float64   `form:"amount" binding:"required"`
+	DiscountAmount float64   `form:"discount_amount"`
+	ExpenseDate    time.Time `form:"date" binding:"required"`
+	Notes          string    `form:"notes"`
+	Metadata       Metadata  `form:"metadata"`
+	CreatedAt      time.Time `form:"createdAt"`
 	CreatedBy      uuid.UUID
 }
 

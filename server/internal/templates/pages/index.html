@@ -37,14 +37,14 @@
     </footer>
     <dialog id="action-dialog" hx-on::after-settle="showDialog(this)"></dialog>
     <div id="backdrop"></div>
-    {{ if eq .TemplateName "error-modal" }} {{ template "error-modal"
-    .TemplateContent }} {{ else }}
     <dialog id="modal" hx-on::after-settle="showModal(this)"></dialog>
+    {{ if .HasFlash }}
+    <div hx-get="/flash" hx-trigger="load" hx-swap="none"></div>
     {{ end }}
   </body>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="../,,/../static/js/htmx.min.js"></script>
+  <script src="../../../static/js/htmx.min.js"></script>
   <script src="../../../static/js/main.js" defer></script>
 </html>
 {{ end }}

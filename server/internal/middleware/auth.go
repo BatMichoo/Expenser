@@ -24,13 +24,15 @@ func (am *AuthMiddleware) redirectToLogin(c *gin.Context) {
 	c.Header("HX-Redirect", "/login")
 	lang := c.GetString("lang")
 	rl := &models.RootLayout{
-		TemplateName: utilities.Templates.Pages.Login,
+		TemplateName:    utilities.Templates.Pages.Login,
+		TemplateContent: gin.H{"Lang": lang},
 		HeaderOpts: &models.HeaderOptions{
 			IsLoggedIn: false,
 			IsOOB:      true,
 			Lang:       lang,
 		},
 		Lang: lang,
+		Year: time.Now().Year(),
 	}
 	c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 }
