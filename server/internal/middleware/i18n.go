@@ -6,31 +6,33 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const LanguageCookieKey = "lang"
+
 // I18nMiddleware determines the language for the request.
 func I18nMiddleware(as *services.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		const cookieKey = "lang"
-		lang, err := c.Cookie(cookieKey)
+		lang, err := c.Cookie(LanguageCookieKey)
 		if err == nil && lang != "" {
-			c.Set(cookieKey, lang)
+			c.Set(LanguageCookieKey, lang)
 			c.Next()
 			return
 		}
 
-		token, err := as.ValidateToken(c)
-		if err == nil && token.Claims.PreferredLanguage != "" {
-			c.Set(cookieKey, token.Claims.PreferredLanguage)
+		claims := services.ClaimsFromContext(c)
+		if claims != nil && claims.PreferredLanguage != "" {
+			c.Set(LanguageCookieKey, claims.PreferredLanguage)
 			c.Next()
 			return
 		}
 
-		const defaultLanguage = "en"
+		const language = "en"
+
 		const duration = 365 * 24 * 60
 		const secure = false
 		const httpOnly = true
 
-		c.SetCookie(cookieKey, defaultLanguage, duration, "/", as.Domain, secure, httpOnly)
-		c.Set(cookieKey, defaultLanguage)
+		c.SetCookie(LanguageCookieKey, language, duration, "/", as.Domain, secure, httpOnly)
+		c.Set(LanguageCookieKey, language)
 		c.Next()
 	}
 }

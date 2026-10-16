@@ -103,8 +103,9 @@ func (db *DB) GetHighestHouseExpenseForMonth(month time.Month, userId uuid.UUID)
 	return highestExpense.Float64, utilType, nil
 }
 
-// Retrieves home expense by Id, returns error upon failure.
-func (db *DB) GetHouseExpenseByID(id int) (*models.HouseExpense, error) {
+// GetHouseExpenseByID returns the user's home expense with the given ID,
+// or nil when no such expense belongs to the user.
+func (db *DB) GetHouseExpenseByID(id int, userID uuid.UUID) (*models.HouseExpense, error) {
 	query := `
 		SELECT
 			he.id,
@@ -120,12 +121,13 @@ func (db *DB) GetHouseExpenseByID(id int) (*models.HouseExpense, error) {
 		JOIN
 			utility_types ut ON he.utility_type_id = ut.id
 		WHERE
-			he.id = $1;
+			he.id = $1 AND he.created_by = $2;
 	`
 
 	var expense models.HouseExpense
 	err := db.conn.QueryRow(query,
 		id,
+		userID,
 	).Scan(
 		&expense.ID,
 		&expense.UtilityType,
@@ -353,7 +355,9 @@ func (db *DB) GetHouseExpenseTypeForYear(utility, year int, userId uuid.UUID) (*
 	return &expenses, nil
 }
 
-func (db *DB) EditHouseExpense(editExpense *models.HouseExpense) error {
+// EditHouseExpense updates the user's home expense. It returns an error
+// wrapping sql.ErrNoRows when no such expense belongs to the user.
+func (db *DB) EditHouseExpense(editExpense *models.HouseExpense, userID uuid.UUID) error {
 	query := `
 		UPDATE home_expenses
 		SET
@@ -363,7 +367,7 @@ func (db *DB) EditHouseExpense(editExpense *models.HouseExpense) error {
 			expense_date = $5,
 			notes = $6,
 			metadata = $7
-		WHERE id = $1
+		WHERE id = $1 AND created_by = $8
 		RETURNING (SELECT name FROM utility_types WHERE id = $2);
 	`
 	err := db.conn.QueryRow(query,
@@ -374,22 +378,26 @@ func (db *DB) EditHouseExpense(editExpense *models.HouseExpense) error {
 		editExpense.ExpenseDate,
 		editExpense.Notes,
 		editExpense.Metadata,
+		userID,
 	).Scan(&editExpense.UtilityType)
 
 	if err != nil {
-		return fmt.Errorf("error editing expense: %v", err)
+		return fmt.Errorf("error editing expense: %w", err)
 	}
 
 	return nil
 }
 
-func (db *DB) DeleteHouseExpense(id int) (bool, error) {
+// DeleteHouseExpense deletes the user's home expense. It returns false when
+// no such expense belongs to the user.
+func (db *DB) DeleteHouseExpense(id int, userID uuid.UUID) (bool, error) {
 	query := `
 		DELETE FROM home_expenses
-		WHERE id = $1`
+		WHERE id = $1 AND created_by = $2`
 
 	res, err := db.conn.Exec(query,
 		id,
+		userID,
 	)
 
 	if err != nil {

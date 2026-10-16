@@ -87,7 +87,7 @@ func TestCreateHomeExpense(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			got, err := testDB.GetHouseExpenseByID(tt.input.ID)
+			got, err := testDB.GetHouseExpenseByID(tt.input.ID, TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 			tt.validate(t, got)
@@ -160,14 +160,14 @@ func TestEditHomeExpense(t *testing.T) {
 
 			tt.input.ID = tt.setup(t)
 
-			err := testDB.EditHouseExpense(tt.input)
+			err := testDB.EditHouseExpense(tt.input, TestUserRegisterModel.ID)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
 			}
 			assert.NoError(t, err)
 
-			got, err := testDB.GetHouseExpenseByID(tt.input.ID)
+			got, err := testDB.GetHouseExpenseByID(tt.input.ID, TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 			tt.validate(t, got)
@@ -272,7 +272,7 @@ func TestGetHomeExpense(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			got, err := testDB.GetHouseExpenseByID(ID)
+			got, err := testDB.GetHouseExpenseByID(ID, TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 
 			if tt.wantNil {
@@ -753,7 +753,7 @@ func TestDeleteHomeExpense(t *testing.T) {
 			ResetTestDB(testDB)
 			tt.setup(t, tt.input)
 
-			got, err := testDB.DeleteHouseExpense(tt.input.ID)
+			got, err := testDB.DeleteHouseExpense(tt.input.ID, TestUserRegisterModel.ID)
 
 			if tt.wantErr {
 				assert.Error(t, err)

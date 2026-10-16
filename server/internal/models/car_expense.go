@@ -11,15 +11,15 @@ import (
 )
 
 type CarExpense struct {
-	ID             int             `form:"id"`
-	ExpenseTypeID  int             `form:"typeID"`
-	Type           string          `form:"type" binding:"required"`
-	Amount         float64         `form:"amount" binding:"required"`
-	DiscountAmount float64         `form:"discount_amount"`
-	Date           time.Time       `form:"date" binding:"required"`
-	Notes          string          `form:"notes"`
-	Metadata       json.RawMessage `form:"metadata"`
-	CreatedAt      time.Time       `form:"createdAt"`
+	ID             int       `form:"id"`
+	ExpenseTypeID  int       `form:"typeID"`
+	Type           string    `form:"type" binding:"required"`
+	Amount         float64   `form:"amount" binding:"required"`
+	DiscountAmount float64   `form:"discount_amount"`
+	Date           time.Time `form:"date" binding:"required"`
+	Notes          string    `form:"notes"`
+	Metadata       Metadata  `form:"metadata"`
+	CreatedAt      time.Time `form:"createdAt"`
 	CreatedBy      uuid.UUID
 }
 

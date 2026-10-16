@@ -84,7 +84,7 @@ func TestCreateCarExpense(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			got, err := testDB.GetCarExpenseByID(tt.input.ID)
+			got, err := testDB.GetCarExpenseByID(tt.input.ID, TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 			tt.validate(t, got)
@@ -157,14 +157,14 @@ func TestEditCarExpense(t *testing.T) {
 
 			tt.input.ID = tt.setup(t)
 
-			err := testDB.EditCarExpense(tt.input)
+			err := testDB.EditCarExpense(tt.input, TestUserRegisterModel.ID)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
 			}
 			assert.NoError(t, err)
 
-			got, err := testDB.GetCarExpenseByID(tt.input.ID)
+			got, err := testDB.GetCarExpenseByID(tt.input.ID, TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 			tt.validate(t, got)
@@ -269,7 +269,7 @@ func TestGetCarExpense(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			got, err := testDB.GetCarExpenseByID(ID)
+			got, err := testDB.GetCarExpenseByID(ID, TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 
 			if tt.wantNil {
@@ -749,7 +749,7 @@ func TestDeleteCarExpense(t *testing.T) {
 			ResetTestDB(testDB)
 			tt.setup(t, tt.input)
 
-			got, err := testDB.DeleteCarExpense(tt.input.ID)
+			got, err := testDB.DeleteCarExpense(tt.input.ID, TestUserRegisterModel.ID)
 
 			if tt.wantErr {
 				assert.Error(t, err)

@@ -1,8 +1,10 @@
 package database
 
 import (
+	"database/sql"
 	"expenser/internal/models"
 	"fmt"
+
 	"github.com/google/uuid"
 )
 
@@ -64,16 +66,18 @@ func (db *DB) GetRecentGroceriesExpenses(userID uuid.UUID) ([]models.GroceriesEx
 	return expenses, nil
 }
 
-func (db *DB) GetGroceriesExpenseByID(id int) (*models.GroceriesExpense, error) {
+// GetGroceriesExpenseByID returns the user's groceries expense. It returns an
+// error wrapping sql.ErrNoRows when no such expense belongs to the user.
+func (db *DB) GetGroceriesExpenseByID(id int, userID uuid.UUID) (*models.GroceriesExpense, error) {
 	query := `
 		SELECT e.id, e.user_id, e.category_id, c.name, e.product, e.quantity, e.unit_price, e.discount_per_unit, e.total_price, e.total_discount, e.supermarket_name, e.purchase_date, e.created_at
 		FROM groceries_expenses e
 		JOIN grocery_categories c ON e.category_id = c.id
-		WHERE e.id = $1;
+		WHERE e.id = $1 AND e.user_id = $2;
 	`
 	var e models.GroceriesExpense
 	var unitPriceRaw, discountPerUnitRaw, totalPriceRaw, totalDiscountRaw []byte
-	err := db.conn.QueryRow(query, id).Scan(&e.ID, &e.UserID, &e.CategoryID, &e.CategoryName, &e.Product, &e.Quantity, &unitPriceRaw, &discountPerUnitRaw, &totalPriceRaw, &totalDiscountRaw, &e.SupermarketName, &e.PurchaseDate, &e.CreatedAt)
+	err := db.conn.QueryRow(query, id, userID).Scan(&e.ID, &e.UserID, &e.CategoryID, &e.CategoryName, &e.Product, &e.Quantity, &unitPriceRaw, &discountPerUnitRaw, &totalPriceRaw, &totalDiscountRaw, &e.SupermarketName, &e.PurchaseDate, &e.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get expense: %w", err)
 	}
@@ -84,22 +88,33 @@ func (db *DB) GetGroceriesExpenseByID(id int) (*models.GroceriesExpense, error) 
 	return &e, nil
 }
 
-func (db *DB) EditGroceriesExpense(input *models.GroceriesExpense) error {
+// EditGroceriesExpense updates the user's groceries expense. It returns an
+// error wrapping sql.ErrNoRows when no such expense belongs to the user.
+func (db *DB) EditGroceriesExpense(input *models.GroceriesExpense, userID uuid.UUID) error {
 	query := `
 		UPDATE groceries_expenses
 		SET category_id = $1, product = $2, quantity = $3, unit_price = $4, discount_per_unit = $5, total_price = $6, total_discount = $7, supermarket_name = $8, purchase_date = $9
-		WHERE id = $10;
+		WHERE id = $10 AND user_id = $11;
 	`
-	_, err := db.conn.Exec(query, input.CategoryID, input.Product, input.Quantity, input.UnitPrice, input.DiscountPerUnit, input.TotalPrice, input.TotalDiscount, input.SupermarketName, input.PurchaseDate, input.ID)
+	res, err := db.conn.Exec(query, input.CategoryID, input.Product, input.Quantity, input.UnitPrice, input.DiscountPerUnit, input.TotalPrice, input.TotalDiscount, input.SupermarketName, input.PurchaseDate, input.ID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to update expense: %w", err)
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to update expense: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("failed to update expense: %w", sql.ErrNoRows)
 	}
 	return nil
 }
 
-func (db *DB) DeleteGroceriesExpense(id int) (bool, error) {
-	query := `DELETE FROM groceries_expenses WHERE id = $1`
-	res, err := db.conn.Exec(query, id)
+// DeleteGroceriesExpense deletes the user's groceries expense. It returns
+// false when no such expense belongs to the user.
+func (db *DB) DeleteGroceriesExpense(id int, userID uuid.UUID) (bool, error) {
+	query := `DELETE FROM groceries_expenses WHERE id = $1 AND user_id = $2`
+	res, err := db.conn.Exec(query, id, userID)
 	if err != nil {
 		return false, fmt.Errorf("failed to delete expense: %w", err)
 	}
