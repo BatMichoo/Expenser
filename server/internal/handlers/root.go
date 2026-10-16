@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type BaseHandler struct {
@@ -57,7 +56,7 @@ func (h *RootHandler) GetRoot(c *gin.Context) {
 
 func (h *RootHandler) NotFound(c *gin.Context) {
 	_, isHtmxRequest, lang := GetBasicDataFromContext(c, &h.BaseHandler)
-	isLoggedIn := h.AS.IsLoggedIn()
+	isLoggedIn := services.ClaimsFromContext(c) != nil
 
 	content := &models.ModalContent{
 		Title:   utilities.T(lang, "modal.error_title"),
@@ -91,8 +90,8 @@ func (h *RootHandler) ChangeLanguage(c *gin.Context) {
 
 	c.SetCookie("lang", lang, 3600*24*30, "/", "", false, true)
 
-	userID := h.AS.Claims.UserID
-	if userID != uuid.Nil {
+	if claims := services.ClaimsFromContext(c); claims != nil {
+		userID := claims.UserID
 		_ = h.DB.UpdateUserLanguage(userID, lang)
 
 		// If logged in, we should also regenerate the token to include the new language preference

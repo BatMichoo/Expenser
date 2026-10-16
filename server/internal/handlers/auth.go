@@ -23,12 +23,12 @@ func NewAuthHandler(rh *RootHandler) *AuthHandler {
 }
 
 func (h *AuthHandler) GetRegister(c *gin.Context) {
-	RenderPage(c, false, utilities.Templates.Pages.Register, nil)
+	lang := GetLanguage(c)
+	RenderPage(c, false, utilities.Templates.Pages.Register, gin.H{"Lang": lang})
 }
 
-// APIRegister handles user registration via API
 func (h *AuthHandler) Register(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	var regData models.UserRegistration
 
 	if err := c.ShouldBind(&regData); err != nil {
@@ -117,7 +117,7 @@ func (h *AuthHandler) GetLogin(c *gin.Context) {
 
 // APILogin handles user login via API
 func (h *AuthHandler) Login(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	var loginData models.UserLogin
 
 	if err := c.ShouldBind(&loginData); err != nil {
@@ -165,7 +165,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	h.BaseHandler.AS.Claims = token.Claims
 	h.BaseHandler.AS.SetCookie(token, c)
 	c.Header("HX-Redirect", "/")
 	c.Status(http.StatusOK)

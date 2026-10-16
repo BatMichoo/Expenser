@@ -10,12 +10,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AuthMiddleware handles JWT token operations
 type AuthMiddleware struct {
 	authService *services.AuthService
 }
 
-// NewAuthMiddleware creates a new Auth middleware instance
 func NewAuthMiddleware(as *services.AuthService) *AuthMiddleware {
 	return &AuthMiddleware{
 		authService: as,
@@ -37,7 +35,15 @@ func (am *AuthMiddleware) redirectToLogin(c *gin.Context) {
 	c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 }
 
-// AuthMiddleware creates a middleware function that validates JWT tokens
+func LoadClaims(as *services.AuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if token, err := as.ValidateToken(c); err == nil {
+			services.SetClaims(c, token.Claims)
+		}
+		c.Next()
+	}
+}
+
 func (am *AuthMiddleware) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, err := am.authService.ValidateToken(c)
@@ -58,7 +64,7 @@ func (am *AuthMiddleware) AuthMiddleware() gin.HandlerFunc {
 		c.Set("user_id", token.Claims.UserID)
 		c.Set("username", token.Claims.Username)
 		c.Set("email", token.Claims.Email)
-		c.Set("user_claims", token.Claims)
+		services.SetClaims(c, token.Claims)
 
 		c.Next()
 	}

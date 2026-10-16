@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"expenser/internal/models"
+	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"fmt"
 	"html/template"
@@ -64,7 +65,7 @@ func (h *CarHandler) getCarPageData(c *gin.Context) (*models.CarData, error) {
 }
 
 func (h *CarHandler) GetHome(c *gin.Context) {
-	isLoggedIn := h.BaseHandler.AS.IsLoggedIn()
+	isLoggedIn := services.ClaimsFromContext(c) != nil
 	pageData, err := h.getCarPageData(c)
 	if err != nil {
 		RenderErrorModal(c, err, http.StatusInternalServerError)
@@ -81,12 +82,12 @@ func (h *CarHandler) GetCurrentMonth(c *gin.Context) {
 		return
 	}
 
-	isLoggedIn := h.BaseHandler.AS.IsLoggedIn()
+	isLoggedIn := services.ClaimsFromContext(c) != nil
 	RenderPage(c, isLoggedIn, utilities.Templates.Components.CarCurrent, pageData)
 }
 
 func (h *CarHandler) GetCreateCarForm(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes()
 	if err != nil {
 		content := &models.ModalContent{
@@ -298,7 +299,7 @@ func (h *CarHandler) GetCarExpenseById(c *gin.Context) {
 // for editing a specific home expense.
 // It expects the expense ID to be provided as a query parameter.
 func (h *CarHandler) GetEditCarForm(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		RenderErrorModal(c, err, http.StatusBadRequest)
@@ -421,7 +422,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) {
 // INFO: DELETE
 
 func (h *CarHandler) GetDeleteConfirm(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		RenderErrorModal(c, err, http.StatusBadRequest)

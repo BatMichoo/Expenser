@@ -35,7 +35,7 @@ func (h *SearchHandler) GetSearch(c *gin.Context) {
 }
 
 func (h *SearchHandler) GetResultsHouse(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	userIDstr, _ := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 
@@ -71,7 +71,7 @@ func (h *SearchHandler) GetResultsHouse(c *gin.Context) {
 }
 
 func (h *SearchHandler) GetResultsCar(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	userIDstr, _ := c.Get("user_id")
 	userID, _ := userIDstr.(uuid.UUID)
 

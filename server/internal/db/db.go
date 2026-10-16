@@ -28,17 +28,22 @@ func InitDatabase(cfg *config.Config) (*DB, error) {
 		return nil, fmt.Errorf("connect error: %w", err)
 	}
 
-	var migrationsDir string
+	dbDir := filepath.Join("internal", "db")
 	if cfg.Mode == "" {
-		migrationsDir = filepath.Join(config.GetProjectRootDir(), "internal", "db", "migrations")
-	} else {
-		migrationsDir = filepath.Join("internal", "db", "migrations")
+		dbDir = filepath.Join(config.GetProjectRootDir(), dbDir)
 	}
 
-	if err := goose.Up(db.conn, migrationsDir); err != nil {
+	if err := goose.Up(db.conn, filepath.Join(dbDir, "migrations")); err != nil {
 		log.Fatalf("Failed to apply migrations: %v.", err)
 	}
 	fmt.Println("Migrations applied successfully.")
+
+	if cfg.SeedDevData {
+		if err := seedDevData(db, filepath.Join(dbDir, "seeds")); err != nil {
+			log.Fatalf("Failed to seed dev data: %v.", err)
+		}
+		fmt.Println("Dev seed data applied successfully.")
+	}
 
 	if err := db.Ping(); err != nil {
 		if db.Close() != nil {
@@ -49,6 +54,16 @@ func InitDatabase(cfg *config.Config) (*DB, error) {
 	fmt.Println("Connected to the database!")
 
 	return db, nil
+}
+
+// seedDevData applies the dev-only seed files. They are tracked in their own
+// version table so they never mix with the schema migrations.
+func seedDevData(db *DB, seedsDir string) error {
+	defaultTable := goose.TableName()
+	goose.SetTableName("goose_seed_version")
+	defer goose.SetTableName(defaultTable)
+
+	return goose.Up(db.conn, seedsDir)
 }
 
 // connect establishes a connection to the PostgreSQL database.

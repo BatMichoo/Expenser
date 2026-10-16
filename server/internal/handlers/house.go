@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"expenser/internal/models"
+	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"fmt"
 	"html/template"
@@ -278,7 +279,7 @@ func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
 			TemplateName:    utilities.Templates.Pages.House,
 			TemplateContent: pageData,
 			HeaderOpts: &models.HeaderOptions{
-				IsLoggedIn: h.BaseHandler.AS.IsLoggedIn(),
+				IsLoggedIn: services.ClaimsFromContext(c) != nil,
 				Lang:       lang,
 			},
 			Year: year,
@@ -294,7 +295,7 @@ func (h *HouseHandler) GetCurrentMonth(c *gin.Context) {
 // It intelligently renders either the full page layout or a partial HTML
 // snippet based on whether the request is an HTMX request.
 func (h *HouseHandler) GetHome(c *gin.Context) {
-	isLoggedIn := h.BaseHandler.AS.IsLoggedIn()
+	isLoggedIn := services.ClaimsFromContext(c) != nil
 	pageData, err := h.getHousePageData(c)
 	if err != nil {
 		RenderErrorModal(c, err, http.StatusInternalServerError)
@@ -308,7 +309,7 @@ func (h *HouseHandler) GetHomeSection(c *gin.Context) {
 	section := c.Query("section")
 
 	c.HTML(http.StatusOK, fmt.Sprintf("house-%s", section), gin.H{
-		"Lang": c.GetString("lang"),
+		"Lang": GetLanguage(c),
 	})
 }
 
@@ -338,7 +339,7 @@ func (h *HouseHandler) GetExpenseById(c *gin.Context) {
 // for editing a specific home expense.
 // It expects the expense ID to be provided as a query parameter.
 func (h *HouseHandler) GetEditHouseForm(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		RenderErrorModal(c, err, http.StatusBadRequest)
@@ -458,7 +459,7 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) {
 // INFO: DELETE
 
 func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		RenderErrorModal(c, err, http.StatusBadRequest)

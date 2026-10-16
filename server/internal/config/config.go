@@ -19,6 +19,7 @@ type Config struct {
 	JWT          JWT
 	Mode         string
 	GeminiAPIKey string
+	SeedDevData  bool
 }
 
 // JWT holds JWT-related configuration
@@ -54,10 +55,11 @@ func LoadConfig() (*Config, error) {
 	dbName := os.Getenv("DB_NAME")
 	serverPort := os.Getenv("SERVER_PORT")
 	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
+	seedDevData := os.Getenv("SEED_DEV_DATA") == "true"
 
-	testDBName := os.Getenv("TEST_DB_NAME")
-	if testDBName == "" {
-		testDBName = testDBName + "_test"
+	var testDBName string
+	if dbName != "" {
+		testDBName = dbName + "_test"
 	}
 
 	// JWT configuration
@@ -100,6 +102,7 @@ func LoadConfig() (*Config, error) {
 		},
 		Mode:         mode,
 		GeminiAPIKey: geminiAPIKey,
+		SeedDevData:  seedDevData,
 	}, nil
 }
 

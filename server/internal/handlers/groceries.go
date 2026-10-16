@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"expenser/internal/models"
+	"expenser/internal/services"
 	"expenser/internal/services/gemini"
 	"expenser/internal/utilities"
 	"fmt"
@@ -28,7 +29,7 @@ func NewGroceriesHandler(rh *RootHandler, gs *gemini.GeminiService) *GroceriesHa
 }
 
 func (h *GroceriesHandler) UploadReceipt(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	file, err := c.FormFile("receipt")
 	if err != nil {
 		c.String(http.StatusBadRequest, "Failed to get file: %s", err.Error())
@@ -78,8 +79,8 @@ func (h *GroceriesHandler) UploadReceipt(c *gin.Context) {
 }
 
 func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) {
-	lang := c.GetString("lang")
-	userID := h.BaseHandler.AS.Claims.UserID
+	lang := GetLanguage(c)
+	userID := services.ClaimsFromContext(c).UserID
 
 	i := 0
 	var expenses []models.GroceriesExpense
@@ -141,7 +142,7 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) {
 }
 
 func (h *GroceriesHandler) ConfirmReceipt(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
 	product := c.PostForm("product")
 	quantity, _ := strconv.ParseFloat(c.PostForm("quantity"), 64)
@@ -149,7 +150,7 @@ func (h *GroceriesHandler) ConfirmReceipt(c *gin.Context) {
 	totalPrice, _ := strconv.ParseFloat(c.PostForm("total_price"), 64)
 	supermarketName := c.PostForm("supermarket_name")
 
-	userID := h.BaseHandler.AS.Claims.UserID
+	userID := services.ClaimsFromContext(c).UserID
 
 	expense := &models.GroceriesExpense{
 		UserID:          userID,
@@ -176,9 +177,9 @@ func (h *GroceriesHandler) ConfirmReceipt(c *gin.Context) {
 }
 
 func (h *GroceriesHandler) GetGroceriesHome(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 
-	userID := h.BaseHandler.AS.Claims.UserID
+	userID := services.ClaimsFromContext(c).UserID
 
 	expenses, err := h.BaseHandler.DB.GetRecentGroceriesExpenses(userID)
 	if err != nil {
@@ -200,7 +201,7 @@ func (h *GroceriesHandler) GetGroceriesHome(c *gin.Context) {
 			TemplateName:    "groceries-page",
 			TemplateContent: pageData,
 			HeaderOpts: &models.HeaderOptions{
-				IsLoggedIn: h.BaseHandler.AS.IsLoggedIn(),
+				IsLoggedIn: services.ClaimsFromContext(c) != nil,
 				Lang:       lang,
 			},
 			Lang: lang,
@@ -215,7 +216,7 @@ func (h *GroceriesHandler) GetGroceriesForm(c *gin.Context) {
 }
 
 func (h *GroceriesHandler) GetCreateGroceriesForm(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	categories, err := h.BaseHandler.DB.GetAllCategories()
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to load categories")
@@ -228,7 +229,7 @@ func (h *GroceriesHandler) GetCreateGroceriesForm(c *gin.Context) {
 }
 
 func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	userIDstr, _ := c.Get("user_id")
 	userID := userIDstr.(uuid.UUID)
 
@@ -278,7 +279,7 @@ func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) {
 }
 
 func (h *GroceriesHandler) GetEditGroceriesForm(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	id, _ := strconv.Atoi(c.Param("id"))
 
 	expense, err := h.BaseHandler.DB.GetGroceriesExpenseByID(id)
@@ -301,7 +302,7 @@ func (h *GroceriesHandler) GetEditGroceriesForm(c *gin.Context) {
 }
 
 func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) {
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 	id, _ := strconv.Atoi(c.Param("id"))
 
 	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
@@ -365,8 +366,8 @@ func (h *GroceriesHandler) DeleteGroceriesExpense(c *gin.Context) {
 }
 
 func (h *GroceriesHandler) GetCurrentMonth(c *gin.Context) {
-	lang := c.GetString("lang")
-	userID := h.BaseHandler.AS.Claims.UserID
+	lang := GetLanguage(c)
+	userID := services.ClaimsFromContext(c).UserID
 	recentExpeses, err := h.BaseHandler.DB.GetRecentGroceriesExpenses(userID)
 	pageData := &models.GroceriesData{
 		RecentExpenses: &recentExpeses,
@@ -389,7 +390,7 @@ func (h *GroceriesHandler) GetCurrentMonth(c *gin.Context) {
 			TemplateName:    utilities.Templates.Pages.Groceries,
 			TemplateContent: pageData,
 			HeaderOpts: &models.HeaderOptions{
-				IsLoggedIn: h.BaseHandler.AS.IsLoggedIn(),
+				IsLoggedIn: services.ClaimsFromContext(c) != nil,
 				Lang:       lang,
 			},
 			Year: year,

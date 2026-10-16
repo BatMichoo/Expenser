@@ -23,7 +23,6 @@ type AuthService struct {
 	secretKey       []byte
 	tokenExpiration time.Duration
 	Domain          string
-	Claims          *JWTClaims
 }
 
 type Token struct {
@@ -34,6 +33,17 @@ type Token struct {
 }
 
 const authCookieName = "auth_token"
+const claimsContextKey = "user_claims"
+
+func SetClaims(c *gin.Context, claims *JWTClaims) {
+	c.Set(claimsContextKey, claims)
+}
+
+func ClaimsFromContext(c *gin.Context) *JWTClaims {
+	claims, _ := c.Get(claimsContextKey)
+	jwtClaims, _ := claims.(*JWTClaims)
+	return jwtClaims
+}
 
 func NewAuthService(secretKey string, tokenExp time.Duration, lanDomain string) *AuthService {
 	return &AuthService{
@@ -119,16 +129,10 @@ func (as *AuthService) ValidateToken(c *gin.Context) (*Token, error) {
 
 	expAt, _ := token.Claims.GetExpirationTime()
 
-	as.Claims = claims
-
 	return &Token{
 		Value:     token.Raw,
 		Claims:    claims,
 		Duration:  as.tokenExpiration,
 		ExpiresAt: time.Unix(expAt.Unix(), 0),
 	}, nil
-}
-
-func (as *AuthService) IsLoggedIn() bool {
-	return as.Claims != nil
 }

@@ -14,6 +14,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 	// Public routes (no authentication required)
 	as := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration, cfg.LanDomain)
 
+	router.Use(middleware.LoadClaims(as))
 	router.Use(middleware.I18nMiddleware(as))
 
 	rootHandler := NewRootHandler(db, as)

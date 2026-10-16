@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"expenser/internal/middleware"
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
@@ -81,10 +82,16 @@ func RenderPage(c *gin.Context, isLoggedIn bool, partialTemplate string, pageDat
 	c.HTML(http.StatusOK, utilities.Templates.Root, rl)
 }
 
+func GetLanguage(c *gin.Context) string {
+	language, _ := c.Cookie(middleware.LanguageCookieKey)
+
+	return language
+}
+
 func GetBasicDataFromContext(c *gin.Context, bh *BaseHandler) (*services.JWTClaims, bool, string) {
-	claims := bh.AS.Claims
+	claims := services.ClaimsFromContext(c)
 	isHtmxRequest := c.Request.Header.Get("HX-Request") == "true"
-	lang := c.GetString("lang")
+	lang := GetLanguage(c)
 
 	return claims, isHtmxRequest, lang
 }
