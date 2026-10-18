@@ -246,3 +246,56 @@ func TestGetGroceriesChartExpenses(t *testing.T) {
 		assert.True(t, discounts[0.50])
 	})
 }
+
+func TestGroceriesMonthSummary(t *testing.T) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testDB := InitTestDB(cfg)
+	defer testDB.Close()
+
+	ResetTestDB(testDB)
+	testDB.CreateUser(TestUserRegisterModel)
+
+	categories, err := testDB.GetAllCategories()
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, len(categories), 2)
+
+	now := time.Now()
+	month := now.Month()
+
+	t.Run("Empty month returns zero", func(t *testing.T) {
+		total, err := testDB.GetTotalGroceriesExpenseForMonth(month, TestUserRegisterModel.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, 0.0, total)
+
+		amount, category, err := testDB.GetHighestGroceriesCategoryForMonth(month, TestUserRegisterModel.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, 0.0, amount)
+		assert.Equal(t, "", category)
+	})
+
+	expenses := []*models.GroceriesExpense{
+		{UserID: TestUserRegisterModel.ID, CategoryID: categories[0].ID, Product: "Milk", Quantity: 1, UnitPrice: 1.50, TotalPrice: 1.50, SupermarketName: "Lidl", PurchaseDate: now},
+		{UserID: TestUserRegisterModel.ID, CategoryID: categories[1].ID, Product: "Steak", Quantity: 1, UnitPrice: 10.00, TotalPrice: 10.00, TotalDiscount: 2.00, SupermarketName: "Lidl", PurchaseDate: now},
+		{UserID: TestUserRegisterModel.ID, CategoryID: categories[0].ID, Product: "Bread", Quantity: 1, UnitPrice: 3.00, TotalPrice: 3.00, SupermarketName: "Lidl", PurchaseDate: now.AddDate(-1, 0, 0)},
+	}
+	for _, e := range expenses {
+		assert.NoError(t, testDB.CreateGroceriesExpense(e))
+	}
+
+	t.Run("Total is net of discounts and limited to current month", func(t *testing.T) {
+		total, err := testDB.GetTotalGroceriesExpenseForMonth(month, TestUserRegisterModel.ID)
+		assert.NoError(t, err)
+		assert.InDelta(t, 9.50, total, 0.001) // 1.50 + (10.00 - 2.00)
+	})
+
+	t.Run("Highest returns the top category by net amount", func(t *testing.T) {
+		amount, category, err := testDB.GetHighestGroceriesCategoryForMonth(month, TestUserRegisterModel.ID)
+		assert.NoError(t, err)
+		assert.InDelta(t, 8.00, amount, 0.001)
+		assert.Equal(t, categories[1].Name, category)
+	})
+}

@@ -5,7 +5,9 @@
     hx-post="/groceries/confirm-batch"
     hx-target="#recent-expenses"
     hx-swap="afterbegin"
+    hx-on::after-request="if(event.detail.successful && event.target === this) hideDialog()"
   >
+    <div class="overflow-x-auto">
     <table class="expenses-table">
       <thead>
         <tr>
@@ -91,10 +93,11 @@
         {{ end }}
       </tbody>
     </table>
+    </div>
     <div class="btn-container" style="margin-top: 1.5em;">
       <button type="submit" class="btn-primary">Confirm & Save All</button>
-      <button type="button" class="btn-secondary" hx-get="/groceries/form" hx-target="#result" hx-swap="innerHTML">
-        Clear
+      <button type="button" class="btn-secondary" onclick="hideDialog()">
+        {{ T $.Lang "common.cancel" }}
       </button>
     </div>
   </form>

@@ -416,6 +416,9 @@ body.dark #recent-expenses-section h2 svg {
   left: 50%;
   transform: translate(-50%, -50%);
   min-width: 40%;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow: auto;
   background-color: inherit;
   border: 1px solid var(--bg-sec);
   border-radius: 0.5em;
@@ -921,6 +924,11 @@ select {
 }
 
 /* Receipt Edit Modal styling */
+.receipt-upload-form label {
+  display: block;
+  margin-bottom: 0.5em;
+}
+
 .receipt-edit-modal {
   margin-top: 2em;
   padding: 1.5em;

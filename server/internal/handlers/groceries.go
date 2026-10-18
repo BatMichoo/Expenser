@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type GroceriesHandler struct {
@@ -23,6 +25,74 @@ func NewGroceriesHandler(rh *RootHandler, gs *gemini.GeminiService) *GroceriesHa
 		BaseHandler: rh.BaseHandler,
 		GeminiS:     gs,
 	}
+}
+
+func (h *GroceriesHandler) getGroceriesPageData(c *gin.Context) (*models.GroceriesData, error) {
+	userID := currentUserID(c)
+
+	highest, monthly, err := h.monthSummary(userID)
+	if err != nil {
+		return nil, err
+	}
+	highest.IsOOB = false
+	monthly.IsOOB = false
+
+	recentExpenses, err := h.BaseHandler.DB.GetRecentGroceriesExpenses(userID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching recent groceries expenses: %w", err)
+	}
+
+	return &models.GroceriesData{
+		Name:           "current",
+		MonthlyExpense: monthly,
+		HighestExpense: highest,
+		RecentExpenses: &recentExpenses,
+		Lang:           currentLang(c),
+	}, nil
+}
+
+// monthSummary returns the current month's highest category and total
+// expense as out-of-band fragments, used to refresh the summary cards.
+func (h *GroceriesHandler) monthSummary(userID uuid.UUID) (*models.HighestExpense, *models.MonthlyExpense, error) {
+	month := time.Now().Month()
+
+	highestExp, category, err := h.BaseHandler.DB.GetHighestGroceriesCategoryForMonth(month, userID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error fetching highest groceries category: %w", err)
+	}
+
+	monthlyTotal, err := h.BaseHandler.DB.GetTotalGroceriesExpenseForMonth(month, userID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error fetching total groceries expense: %w", err)
+	}
+
+	highest := &models.HighestExpense{
+		Amount: highestExp,
+		Type:   strings.TrimSpace(category),
+		IsOOB:  true,
+	}
+	monthly := &models.MonthlyExpense{
+		Amount: monthlyTotal,
+		Month:  month.String(),
+		IsOOB:  true,
+	}
+	return highest, monthly, nil
+}
+
+// renderGroceryRows renders the given rows plus out-of-band summary cards.
+func (h *GroceriesHandler) renderGroceryRows(c *gin.Context, status int, rows []gin.H) error {
+	highest, monthly, err := h.monthSummary(currentUserID(c))
+	if err != nil {
+		return err
+	}
+
+	c.HTML(status, "grocery-rows", gin.H{
+		"Rows":           rows,
+		"HighestExpense": highest,
+		"MonthlyExpense": monthly,
+		"Lang":           currentLang(c),
+	})
+	return nil
 }
 
 // groceryRowData is the data the "grocery-row" template expects.
@@ -109,7 +179,7 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 	lang := currentLang(c)
 	userID := currentUserID(c)
 
-	var expenses []models.GroceriesExpense
+	var rows []gin.H
 	for i := 0; ; i++ {
 		product := c.PostForm(fmt.Sprintf("items[%d].product", i))
 		if product == "" {
@@ -146,14 +216,20 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 		// Fetch the saved expense to get the CategoryName populated
 		dbExpense, err := h.BaseHandler.DB.GetGroceriesExpenseByID(expense.ID, currentUserID(c))
 		if err == nil {
-			expenses = append(expenses, *dbExpense)
-		} else {
-			expenses = append(expenses, *expense)
+			expense = dbExpense
 		}
+		rows = append(rows, groceryRowData(expense, lang))
+	}
+
+	highest, monthly, err := h.monthSummary(userID)
+	if err != nil {
+		return err
 	}
 
 	c.HTML(http.StatusCreated, "confirm-batch-groceries", gin.H{
-		"Expenses": expenses,
+		"Rows":           rows,
+		"HighestExpense": highest,
+		"MonthlyExpense": monthly,
 		"Modal": &models.ModalContent{
 			Title:   utilities.T(lang, "modal.success_title"),
 			Message: utilities.T(lang, "modal.create_success"),
@@ -165,20 +241,19 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 }
 
 func (h *GroceriesHandler) GetGroceriesHome(c *gin.Context) error {
-	expenses, err := h.BaseHandler.DB.GetRecentGroceriesExpenses(currentUserID(c))
+	pageData, err := h.getGroceriesPageData(c)
 	if err != nil {
 		return err
 	}
 
-	renderPage(c, utilities.Templates.Pages.Groceries, gin.H{
-		"Groceries": expenses,
-		"Lang":      currentLang(c),
-	})
+	renderPage(c, utilities.Templates.Pages.Groceries, pageData)
 	return nil
 }
 
 func (h *GroceriesHandler) GetGroceriesForm(c *gin.Context) error {
-	c.HTML(http.StatusOK, utilities.Templates.Components.GroceriesReceiptForm, nil)
+	c.HTML(http.StatusOK, utilities.Templates.Components.GroceriesReceiptForm, gin.H{
+		"Lang": currentLang(c),
+	})
 	return nil
 }
 
@@ -209,8 +284,7 @@ func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) error {
 		return err
 	}
 
-	c.HTML(http.StatusCreated, "grocery-row", groceryRowData(saved, currentLang(c)))
-	return nil
+	return h.renderGroceryRows(c, http.StatusCreated, []gin.H{groceryRowData(saved, currentLang(c))})
 }
 
 func (h *GroceriesHandler) GetEditGroceriesForm(c *gin.Context) error {
@@ -256,8 +330,7 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) error {
 		return err
 	}
 
-	c.HTML(http.StatusOK, "grocery-row", groceryRowData(updated, currentLang(c)))
-	return nil
+	return h.renderGroceryRows(c, http.StatusOK, []gin.H{groceryRowData(updated, currentLang(c))})
 }
 
 func (h *GroceriesHandler) DeleteGroceriesExpense(c *gin.Context) error {
@@ -274,20 +347,16 @@ func (h *GroceriesHandler) DeleteGroceriesExpense(c *gin.Context) error {
 		return notFound("error.expense_not_found")
 	}
 
-	c.Status(http.StatusOK)
-	return nil
+	// No rows: the deleted row's target is swapped out with nothing.
+	return h.renderGroceryRows(c, http.StatusOK, nil)
 }
 
 func (h *GroceriesHandler) GetCurrentMonth(c *gin.Context) error {
-	recentExpenses, err := h.BaseHandler.DB.GetRecentGroceriesExpenses(currentUserID(c))
+	pageData, err := h.getGroceriesPageData(c)
 	if err != nil {
 		return err
 	}
 
-	pageData := &models.GroceriesData{
-		RecentExpenses: &recentExpenses,
-		Lang:           currentLang(c),
-	}
 	renderView(c, utilities.Templates.Components.GroceriesCurrent, utilities.Templates.Pages.Groceries, pageData)
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"expenser/internal/models"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -33,6 +34,48 @@ func (db *DB) CreateGroceriesExpense(input *models.GroceriesExpense) error {
 	}
 
 	return nil
+}
+
+// GetTotalGroceriesExpenseForMonth returns the user's net groceries spending
+// (total price minus discount) for the given month of the current year.
+func (db *DB) GetTotalGroceriesExpenseForMonth(month time.Month, userID uuid.UUID) (float64, error) {
+	query := `
+		SELECT SUM(total_price - total_discount) FROM groceries_expenses
+		WHERE EXTRACT(MONTH FROM purchase_date) = $1 AND EXTRACT(YEAR FROM purchase_date) = $2 AND user_id = $3
+	`
+
+	var total sql.NullFloat64
+	if err := db.conn.QueryRow(query, int(month), time.Now().Year(), userID).Scan(&total); err != nil {
+		return 0, fmt.Errorf("failed to get total groceries amount: %w", err)
+	}
+
+	return total.Float64, nil
+}
+
+// GetHighestGroceriesCategoryForMonth returns the category with the highest
+// net spending for the given month of the current year, and that amount.
+func (db *DB) GetHighestGroceriesCategoryForMonth(month time.Month, userID uuid.UUID) (float64, string, error) {
+	query := `
+		SELECT SUM(e.total_price - e.total_discount) AS amount, c.name
+		FROM groceries_expenses e
+		JOIN grocery_categories c ON e.category_id = c.id
+		WHERE EXTRACT(MONTH FROM e.purchase_date) = $1 AND EXTRACT(YEAR FROM e.purchase_date) = $2 AND e.user_id = $3
+		GROUP BY c.name
+		ORDER BY amount DESC
+		LIMIT 1;
+	`
+
+	var amount sql.NullFloat64
+	var category string
+	err := db.conn.QueryRow(query, int(month), time.Now().Year(), userID).Scan(&amount, &category)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, "", nil
+		}
+		return 0, "", fmt.Errorf("failed to get highest groceries category: %w", err)
+	}
+
+	return amount.Float64, category, nil
 }
 
 func (db *DB) GetRecentGroceriesExpenses(userID uuid.UUID) ([]models.GroceriesExpense, error) {

@@ -19,12 +19,22 @@
       <rect width="7" height="5" x="3" y="16" rx="1" />
     </svg>
   </h2>
+
+  <div class="overview-container">
+    <!-- Total Expenses Card -->
+    {{ template "total-card" (dict "Exp" .MonthlyExpense "Lang" .Lang) }}
+
+    <!-- Highest Category Card -->
+    {{ template "highest-card" (dict "Exp" .HighestExpense "Lang" .Lang "TypePrefix" "category.") }}
+  </div>
 </section>
 <section id="add-expense-section">
   <button type="submit" hx-get="groceries/create" hx-target="#action-dialog">
     {{ T .Lang "common.add" }}
   </button>
-  {{ template "groceries-receipt-form" . }}
+  <button type="button" hx-get="groceries/form" hx-target="#action-dialog">
+    {{ T .Lang "groceries.upload_receipt" }}
+  </button>
 </section>
 <section id="recent-expenses-section">
   <h2>

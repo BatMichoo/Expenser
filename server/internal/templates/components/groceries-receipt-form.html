@@ -1,30 +1,21 @@
 {{ define "groceries-receipt-form" }}
-<div style="display: inline-block">
-  <!-- <h2>{{ T .Lang "groceries.upload_receipt" }}</h2> -->
-  <form
-    class="new-expense-form"
-    hx-post="/groceries/upload"
-    hx-encoding="multipart/form-data"
-    hx-target="#result"
-    hx-swap="innerHTML"
-    style="display: flex; gap: 1rem"
-  >
-    <div>
-      <label for="receipt">{{ T .Lang "groceries.select_file" }}</label>
-      <input
-        type="file"
-        id="receipt"
-        name="receipt"
-        accept="image/*,.pdf"
-        required
-      />
-    </div>
-    <div>
-      <button type="submit" class="btn-primary">
-        {{ T .Lang "common.upload" }}
-      </button>
-    </div>
-  </form>
-  <div id="result"></div>
-</div>
+<form
+  class="new-expense-form receipt-upload-form"
+  hx-post="/groceries/upload"
+  hx-encoding="multipart/form-data"
+  hx-target="#receipt-result"
+  hx-disabled-elt="find button[type='submit']"
+  hx-swap="innerHTML"
+>
+  <h3>{{ T .Lang "groceries.upload_receipt" }}</h3>
+  <div>
+    <label for="receipt">{{ T .Lang "groceries.select_file" }}</label>
+    <input type="file" id="receipt" name="receipt" accept="image/*,.pdf" required />
+  </div>
+  <div>
+    <button type="submit" class="btn-primary">{{ T .Lang "common.upload" }}</button>
+    <button type="button" class="btn-secondary" onclick="hideDialog()">{{ T .Lang "common.cancel" }}</button>
+  </div>
+</form>
+<div id="receipt-result"></div>
 {{ end }}
