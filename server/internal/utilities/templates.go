@@ -12,46 +12,48 @@ type Pages struct {
 
 // HTMXComponents defines the names for reusable HTMX-specific UI components.
 type HTMXComponents struct {
-	Header               string // Header is the name for the application's header component.
-	Footer               string // Footer is the name for the application's footer component.
-	CreateHouseExpForm   string // CreateExpForm is the name for the expense creation form component.
-	CreateCarExpForm     string // CreateExpForm is the name for the expense creation form component.
-	NewHouseExp          string // NewExp is the name for the new expense component (often a row or card).
-	NewCarExp            string // NewExp is the name for the new expense component (often a row or card).
-	EditHouseExpForm     string // EditExpForm is the name for the expense editing form component.
-	EditCarExpForm       string // EditExpForm is the name for the expense editing form component.
-	EditGroceriesForm    string
-	HouseExpRow          string
-	CarExpRow            string
-	TotalCard            string
-	HighestCard          string
-	Modal                string
-	ModalSuccess         string
-	ModalError           string
-	ModalConfirm         string
-	Chart                string
-	HouseCurrent         string
-	CarCurrent           string
-	Dialog               string
-	Search               string
-	SearchResultsHouse   string
-	SearchResultsCar     string
-	GroceriesCurrent     string
-	GroceriesReceiptForm string
-	CreateGroceriesForm  string
+	Header                 string // Header is the name for the application's header component.
+	Footer                 string // Footer is the name for the application's footer component.
+	CreateHouseExpForm     string // CreateExpForm is the name for the expense creation form component.
+	CreateCarExpForm       string // CreateExpForm is the name for the expense creation form component.
+	NewHouseExp            string // NewExp is the name for the new expense component (often a row or card).
+	NewCarExp              string // NewExp is the name for the new expense component (often a row or card).
+	EditHouseExpForm       string // EditExpForm is the name for the expense editing form component.
+	EditCarExpForm         string // EditExpForm is the name for the expense editing form component.
+	EditGroceriesForm      string
+	HouseExpRow            string
+	CarExpRow              string
+	TotalCard              string
+	HighestCard            string
+	Modal                  string
+	ModalSuccess           string
+	ModalError             string
+	ModalConfirm           string
+	Chart                  string
+	HouseCurrent           string
+	CarCurrent             string
+	Dialog                 string
+	Search                 string
+	SearchResultsHouse     string
+	SearchResultsCar       string
+	SearchResultsGroceries string
+	GroceriesCurrent       string
+	GroceriesReceiptForm   string
+	CreateGroceriesForm    string
 }
 
 // Responses defines the names for specific HTMX partial responses.
 // These are often fragments returned by HTMX requests that swap content on the page.
 type Responses struct {
-	CreateHouseExp         string // CreateHouseExp is the name for the response partial after creating a home expense.
-	UpdateHouseExp         string // UpdateHomeExp is the name for the response partial after updating a home expense.
-	DeleteHouseExp         string // DeleteHomeExp is the name for the response partial after deleting a home expense.
-	CreateCarExp           string // CreateHomeExp is the name for the response partial after creating a home expense.
-	UpdateCarExp           string // UpdateHomeExp is the name for the response partial after updating a home expense.
-	DeleteCarExp           string // DeleteHomeExp is the name for the response partial after deleting a home expense.
-	RegisterSuccess        string
-	GroceriesReceiptResult string
+	CreateHouseExp       string // CreateHouseExp is the name for the response partial after creating a home expense.
+	UpdateHouseExp       string // UpdateHomeExp is the name for the response partial after updating a home expense.
+	DeleteHouseExp       string // DeleteHomeExp is the name for the response partial after deleting a home expense.
+	CreateCarExp         string // CreateHomeExp is the name for the response partial after creating a home expense.
+	UpdateCarExp         string // UpdateHomeExp is the name for the response partial after updating a home expense.
+	DeleteCarExp         string // DeleteHomeExp is the name for the response partial after deleting a home expense.
+	RegisterSuccess      string
+	GroceryRows          string // GroceryRows is the response after a groceries change: new rows plus refreshed summary cards.
+	GroceriesReceiptEdit string // GroceriesReceiptEdit is the review table shown after a receipt is analysed.
 }
 
 // HTMLTemplates groups all template names used throughout the application.
@@ -73,41 +75,43 @@ var pages = &Pages{
 }
 
 var components = &HTMXComponents{
-	Header:               "header",
-	Footer:               "footer",
-	HouseExpRow:          "house-exp-row",
-	CarExpRow:            "car-exp-row",
-	CreateHouseExpForm:   "create-house-exp-form",
-	EditHouseExpForm:     "edit-house-exp-form",
-	CreateCarExpForm:     "create-car-exp-form",
-	EditCarExpForm:       "edit-car-exp-form",
-	TotalCard:            "total-card",
-	HighestCard:          "highest-card",
-	Modal:                "modal",
-	ModalSuccess:         "success-modal",
-	ModalError:           "error-modal",
-	ModalConfirm:         "confirm-modal",
-	Chart:                "exp-chart",
-	HouseCurrent:         "house-current",
-	CarCurrent:           "car-current",
-	Dialog:               "confirm-modal",
-	Search:               "search",
-	SearchResultsHouse:   "search-results-house",
-	SearchResultsCar:     "search-results-car",
-	GroceriesCurrent:     "groceries-current",
-	GroceriesReceiptForm: "groceries-receipt-form",
-	EditGroceriesForm:    "edit-groceries-form",
-	CreateGroceriesForm:  "create-groceries-form",
+	Header:                 "header",
+	Footer:                 "footer",
+	HouseExpRow:            "house-exp-row",
+	CarExpRow:              "car-exp-row",
+	CreateHouseExpForm:     "create-house-exp-form",
+	EditHouseExpForm:       "edit-house-exp-form",
+	CreateCarExpForm:       "create-car-exp-form",
+	EditCarExpForm:         "edit-car-exp-form",
+	TotalCard:              "total-card",
+	HighestCard:            "highest-card",
+	Modal:                  "modal",
+	ModalSuccess:           "success-modal",
+	ModalError:             "error-modal",
+	ModalConfirm:           "confirm-modal",
+	Chart:                  "exp-chart",
+	HouseCurrent:           "house-current",
+	CarCurrent:             "car-current",
+	Dialog:                 "confirm-modal",
+	Search:                 "search",
+	SearchResultsHouse:     "search-results-house",
+	SearchResultsCar:       "search-results-car",
+	SearchResultsGroceries: "search-results-groceries",
+	GroceriesCurrent:       "groceries-current",
+	GroceriesReceiptForm:   "groceries-receipt-form",
+	EditGroceriesForm:      "edit-groceries-form",
+	CreateGroceriesForm:    "create-groceries-form",
 }
 
 // responses initializes the Responses struct with specific template identifiers.
 var responses = &Responses{
-	CreateHouseExp:         "create-house-exp",
-	DeleteHouseExp:         "delete-house-exp",
-	CreateCarExp:           "create-car-exp",
-	DeleteCarExp:           "delete-car-exp",
-	RegisterSuccess:        "register-success",
-	GroceriesReceiptResult: "groceries-receipt-result",
+	CreateHouseExp:       "create-house-exp",
+	DeleteHouseExp:       "delete-house-exp",
+	CreateCarExp:         "create-car-exp",
+	DeleteCarExp:         "delete-car-exp",
+	RegisterSuccess:      "register-success",
+	GroceryRows:          "grocery-rows",
+	GroceriesReceiptEdit: "groceries-receipt-edit-form",
 }
 
 // Templates is the main exported variable that provides access to all

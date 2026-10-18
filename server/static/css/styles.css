@@ -592,6 +592,12 @@ body.dark #recent-expenses-section h2 svg {
   line-height: 1.75em;
 }
 
+/* The empty-table message shows only while the table has no other rows, so
+   rows added or deleted by HTMX keep it correct without a server round trip. */
+#recent-expenses:has(> tr:not(.empty-row)) > .empty-row {
+  display: none;
+}
+
 .overview-container {
   display: flex;
   flex-wrap: wrap;
@@ -924,6 +930,10 @@ select {
 }
 
 /* Receipt Edit Modal styling */
+.receipt-date {
+  margin-bottom: 1em;
+}
+
 .receipt-upload-form label {
   display: block;
   margin-bottom: 0.5em;

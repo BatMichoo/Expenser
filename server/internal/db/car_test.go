@@ -35,7 +35,7 @@ func TestCreateCarExpense(t *testing.T) {
 		{
 			name: "Valid",
 			setup: func(t *testing.T) {
-				testDB.CreateUser(TestUserRegisterModel)
+				testDB.CreateUser(testCtx, TestUserRegisterModel)
 			},
 			input: &models.CarExpense{
 				Amount:         250.00,
@@ -56,7 +56,7 @@ func TestCreateCarExpense(t *testing.T) {
 		{
 			name: "Invalid expense type",
 			setup: func(t *testing.T) {
-				testDB.CreateUser(TestUserRegisterModel)
+				testDB.CreateUser(testCtx, TestUserRegisterModel)
 			},
 			input: &models.CarExpense{
 				Amount:        250.00,
@@ -77,14 +77,14 @@ func TestCreateCarExpense(t *testing.T) {
 			tt.setup(t)
 
 			tt.input.CreatedBy = TestUserRegisterModel.ID
-			err := testDB.CreateCarExpense(tt.input)
+			err := testDB.CreateCarExpense(testCtx, tt.input)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
 			}
 			assert.NoError(t, err)
 
-			got, err := testDB.GetCarExpenseByID(tt.input.ID, TestUserRegisterModel.ID)
+			got, err := testDB.GetCarExpenseByID(testCtx, tt.input.ID, TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 			tt.validate(t, got)
@@ -115,7 +115,7 @@ func TestEditCarExpense(t *testing.T) {
 		{
 			name: "Valid",
 			setup: func(t *testing.T) int {
-				testDB.CreateUser(TestUserRegisterModel)
+				testDB.CreateUser(testCtx, TestUserRegisterModel)
 				initial := &models.CarExpense{
 					Amount:        150.00,
 					Date:          expenseDate.Add(time.Hour * 24),
@@ -125,7 +125,7 @@ func TestEditCarExpense(t *testing.T) {
 					Metadata:      []byte("{}"),
 				}
 
-				err := testDB.CreateCarExpense(initial)
+				err := testDB.CreateCarExpense(testCtx, initial)
 				if err != nil {
 					fmt.Printf("Error setting up existing expense test: %v", err)
 					t.FailNow()
@@ -157,14 +157,14 @@ func TestEditCarExpense(t *testing.T) {
 
 			tt.input.ID = tt.setup(t)
 
-			err := testDB.EditCarExpense(tt.input, TestUserRegisterModel.ID)
+			err := testDB.EditCarExpense(testCtx, tt.input, TestUserRegisterModel.ID)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
 			}
 			assert.NoError(t, err)
 
-			got, err := testDB.GetCarExpenseByID(tt.input.ID, TestUserRegisterModel.ID)
+			got, err := testDB.GetCarExpenseByID(testCtx, tt.input.ID, TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 			tt.validate(t, got)
@@ -196,7 +196,7 @@ func TestGetCarExpense(t *testing.T) {
 		{
 			name: "Existing Expense",
 			setup: func(t *testing.T) int {
-				testDB.CreateUser(TestUserRegisterModel)
+				testDB.CreateUser(testCtx, TestUserRegisterModel)
 				expense := &models.CarExpense{
 					Amount:         250.00,
 					DiscountAmount: 10.00,
@@ -207,7 +207,7 @@ func TestGetCarExpense(t *testing.T) {
 					Metadata:       []byte("{}"),
 				}
 
-				err := testDB.CreateCarExpense(expense)
+				err := testDB.CreateCarExpense(testCtx, expense)
 				if err != nil {
 					fmt.Printf("Error setting up existing expense test: %v", err)
 					t.FailNow()
@@ -229,7 +229,7 @@ func TestGetCarExpense(t *testing.T) {
 		{
 			name: "Missing expense",
 			setup: func(t *testing.T) int {
-				testDB.CreateUser(TestUserRegisterModel)
+				testDB.CreateUser(testCtx, TestUserRegisterModel)
 				expense := &models.CarExpense{
 					Amount:        250.00,
 					Date:          expenseDate,
@@ -239,7 +239,7 @@ func TestGetCarExpense(t *testing.T) {
 					Metadata:      []byte("{}"),
 				}
 
-				err := testDB.CreateCarExpense(expense)
+				err := testDB.CreateCarExpense(testCtx, expense)
 				if err != nil {
 					t.Skipf("Error setting up missing expense test: %v", err)
 				}
@@ -269,7 +269,7 @@ func TestGetCarExpense(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			got, err := testDB.GetCarExpenseByID(ID, TestUserRegisterModel.ID)
+			got, err := testDB.GetCarExpenseByID(testCtx, ID, TestUserRegisterModel.ID)
 			assert.NoError(t, err)
 
 			if tt.wantNil {
@@ -307,10 +307,10 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 		{
 			name: "Expenses for month",
 			funcToTest: func(userId uuid.UUID) (*[]models.CarExpense, error) {
-				return testDB.GetCarExpensesForMonth(expenseDate.Month(), expenseDate.Year(), userId)
+				return testDB.GetCarExpensesForMonth(testCtx, expenseDate.Month(), expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
-				testDB.CreateUser(TestUserRegisterModel)
+				testDB.CreateUser(testCtx, TestUserRegisterModel)
 				expenses := []models.CarExpense{
 					{
 						Amount:        250.00,
@@ -339,7 +339,7 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 				}
 
 				for i := range expenses {
-					err := testDB.CreateCarExpense(&expenses[i])
+					err := testDB.CreateCarExpense(testCtx, &expenses[i])
 					if err != nil {
 						t.Skipf("Error setting up existing expense test: %v", err)
 					}
@@ -372,10 +372,10 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 		{
 			name: "Expenses for year",
 			funcToTest: func(userId uuid.UUID) (*[]models.CarExpense, error) {
-				return testDB.GetCarExpensesForYear(expenseDate.Year(), userId)
+				return testDB.GetCarExpensesForYear(testCtx, expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
-				testDB.CreateUser(TestUserRegisterModel)
+				testDB.CreateUser(testCtx, TestUserRegisterModel)
 				expenses := []models.CarExpense{
 					{
 						Amount:        250.00,
@@ -404,7 +404,7 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 				}
 
 				for _, exp := range expenses {
-					err := testDB.CreateCarExpense(&exp)
+					err := testDB.CreateCarExpense(testCtx, &exp)
 					if err != nil {
 						t.Skipf("Error setting up existing expense test: %v", err)
 					}
@@ -476,10 +476,10 @@ func TestGetTotalCarExpenseMonth(t *testing.T) {
 		{
 			name: "One Expense for month",
 			funcToTest: func(userId uuid.UUID) (float64, error) {
-				return testDB.GetTotalCarExpenseForMonth(expenseDate.Month(), userId)
+				return testDB.GetTotalCarExpenseForMonth(testCtx, expenseDate.Month(), expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
-				testDB.CreateUser(TestUserRegisterModel)
+				testDB.CreateUser(testCtx, TestUserRegisterModel)
 				expenses := []models.CarExpense{
 					{
 						Amount:        250.00,
@@ -508,7 +508,7 @@ func TestGetTotalCarExpenseMonth(t *testing.T) {
 				}
 
 				for _, exp := range expenses {
-					err := testDB.CreateCarExpense(&exp)
+					err := testDB.CreateCarExpense(testCtx, &exp)
 					if err != nil {
 						t.Skipf("Error setting up existing car expense test: %v", err)
 					}
@@ -523,10 +523,10 @@ func TestGetTotalCarExpenseMonth(t *testing.T) {
 		{
 			name: "No Expenses for month",
 			funcToTest: func(userId uuid.UUID) (float64, error) {
-				return testDB.GetTotalCarExpenseForMonth(expenseDate.Month(), userId)
+				return testDB.GetTotalCarExpenseForMonth(testCtx, expenseDate.Month(), expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
-				testDB.CreateUser(TestUserRegisterModel)
+				testDB.CreateUser(testCtx, TestUserRegisterModel)
 				expenses := []models.CarExpense{
 					{
 						Amount:        250.00,
@@ -555,7 +555,7 @@ func TestGetTotalCarExpenseMonth(t *testing.T) {
 				}
 
 				for _, exp := range expenses {
-					err := testDB.CreateCarExpense(&exp)
+					err := testDB.CreateCarExpense(testCtx, &exp)
 					if err != nil {
 						t.Skipf("Error setting up existing car expense test: %v", err)
 					}
@@ -613,10 +613,10 @@ func TestGetHighestCarExpenseMonth(t *testing.T) {
 		{
 			name: "Highest Expense for month",
 			funcToTest: func(userId uuid.UUID) (float64, string, error) {
-				return testDB.GetHighestCarExpenseForMonth(expenseDate.Month(), userId)
+				return testDB.GetHighestCarExpenseForMonth(testCtx, expenseDate.Month(), userId)
 			},
 			setup: func(t *testing.T) (float64, string) {
-				testDB.CreateUser(TestUserRegisterModel)
+				testDB.CreateUser(testCtx, TestUserRegisterModel)
 				expenses := []models.CarExpense{
 					{
 						Amount:        250.00,
@@ -645,7 +645,7 @@ func TestGetHighestCarExpenseMonth(t *testing.T) {
 				}
 
 				for i := range expenses {
-					err := testDB.CreateCarExpense(&expenses[i])
+					err := testDB.CreateCarExpense(testCtx, &expenses[i])
 					if err != nil {
 						t.Skipf("Error setting up existing expense test: %v", err)
 					}
@@ -712,9 +712,9 @@ func TestDeleteCarExpense(t *testing.T) {
 				Metadata:      []byte("{}"),
 			},
 			setup: func(t *testing.T, he *models.CarExpense) {
-				testDB.CreateUser(TestUserRegisterModel)
+				testDB.CreateUser(testCtx, TestUserRegisterModel)
 				he.CreatedBy = TestUserRegisterModel.ID
-				err := testDB.CreateCarExpense(he)
+				err := testDB.CreateCarExpense(testCtx, he)
 				if err != nil {
 					t.Skipf("Error setting up deleting existing car expense test: %v", err)
 				}
@@ -727,7 +727,7 @@ func TestDeleteCarExpense(t *testing.T) {
 		{
 			name: "No existing expense",
 			setup: func(t *testing.T, he *models.CarExpense) {
-				testDB.CreateUser(TestUserRegisterModel)
+				testDB.CreateUser(testCtx, TestUserRegisterModel)
 				he.CreatedBy = TestUserRegisterModel.ID
 				he.ID = 15000
 			},
@@ -749,7 +749,7 @@ func TestDeleteCarExpense(t *testing.T) {
 			ResetTestDB(testDB)
 			tt.setup(t, tt.input)
 
-			got, err := testDB.DeleteCarExpense(tt.input.ID, TestUserRegisterModel.ID)
+			got, err := testDB.DeleteCarExpense(testCtx, tt.input.ID, TestUserRegisterModel.ID)
 
 			if tt.wantErr {
 				assert.Error(t, err)

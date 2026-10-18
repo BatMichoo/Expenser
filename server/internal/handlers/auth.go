@@ -68,7 +68,7 @@ func (h *AuthHandler) Register(c *gin.Context) error {
 	}
 
 	// Check if user already exists
-	existingUser, _ := h.BaseHandler.DB.GetUserByUsername(regData.Username)
+	existingUser, _ := h.BaseHandler.DB.GetUserByUsername(c.Request.Context(), regData.Username)
 	if existingUser != nil {
 		return &HTTPError{
 			Status:     http.StatusBadRequest,
@@ -86,7 +86,7 @@ func (h *AuthHandler) Register(c *gin.Context) error {
 		Username:     regData.Username,
 		PasswordHash: string(hashedPassword),
 	}
-	if err := h.BaseHandler.DB.CreateUser(user); err != nil {
+	if err := h.BaseHandler.DB.CreateUser(c.Request.Context(), user); err != nil {
 		return err
 	}
 
@@ -115,7 +115,7 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 		return badRequest("auth.login_required", err)
 	}
 
-	user, err := h.BaseHandler.DB.GetUserByUsername(loginData.Username)
+	user, err := h.BaseHandler.DB.GetUserByUsername(c.Request.Context(), loginData.Username)
 	if err != nil {
 		return invalidCredentials(err)
 	}

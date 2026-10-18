@@ -23,9 +23,12 @@ var Prompts = &GeminiPrompts{
 	"Water", "Juice", "Soda", "Coffee", "Tea", "Beer", "Wine", "Other".
 	If an item does not clearly fit into the specific food items listed, assign "Other". Do not use any other category names.
 
+	Date instruction: set "date" to the purchase date printed on the receipt, formatted as YYYY-MM-DD. If no date is readable, set it to an empty string.
+
 	Use the following JSON schema:
 	{
 	  "store": "string",
+	  "date": "YYYY-MM-DD",
 	  "address": "string",
 	  "vat_number": "string",
 	  "items": [

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"expenser/internal/models"
 	"expenser/internal/utilities"
@@ -33,17 +34,17 @@ func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, erro
 	year := dateNow.Year()
 	userID := currentUserID(c)
 
-	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(month, userID)
+	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(c.Request.Context(), month, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching highest house expense: %w", err)
 	}
 
-	monthlyExpense, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(dateNow, userID)
+	monthlyExpense, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(c.Request.Context(), dateNow, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching total house expense: %w", err)
 	}
 
-	recentExpenses, err := h.BaseHandler.DB.GetHouseExpensesForMonth(month, year, userID)
+	recentExpenses, err := h.BaseHandler.DB.GetHouseExpensesForMonth(c.Request.Context(), month, year, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching recent house expenses: %w", err)
 	}
@@ -65,15 +66,15 @@ func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, erro
 
 // monthSummary returns the current month's highest and total expense as
 // out-of-band fragments, used to refresh the summary cards after a change.
-func (h *HouseHandler) monthSummary(userID uuid.UUID) (*models.HighestExpense, *models.MonthlyExpense, error) {
+func (h *HouseHandler) monthSummary(ctx context.Context, userID uuid.UUID) (*models.HighestExpense, *models.MonthlyExpense, error) {
 	timeNow := time.Now()
 
-	highestExp, expType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
+	highestExp, expType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(ctx, timeNow.Month(), userID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	monthlyTotal, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
+	monthlyTotal, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(ctx, timeNow, userID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -129,7 +130,7 @@ func (h *HouseHandler) parseHouseExpenseForm(c *gin.Context) (*models.HouseExpen
 // for a new home expense.
 // This handler serves the UI component for expense creation.
 func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) error {
-	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes()
+	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -230,7 +231,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) error {
 	}
 	newExpense.CreatedBy = userID
 
-	if err := h.BaseHandler.DB.CreateHouseExpense(newExpense); err != nil {
+	if err := h.BaseHandler.DB.CreateHouseExpense(c.Request.Context(), newExpense); err != nil {
 		return err
 	}
 
@@ -242,7 +243,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) error {
 		return nil
 	}
 
-	highest, monthly, err := h.monthSummary(userID)
+	highest, monthly, err := h.monthSummary(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -296,7 +297,7 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) error {
 		return badRequest("error.invalid_id", err)
 	}
 
-	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id, currentUserID(c))
+	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -304,7 +305,7 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) error {
 		return notFound("error.expense_not_found")
 	}
 
-	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes()
+	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -337,11 +338,11 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) error {
 	}
 	editExpense.ID = id
 
-	if err := h.BaseHandler.DB.EditHouseExpense(editExpense, currentUserID(c)); err != nil {
+	if err := h.BaseHandler.DB.EditHouseExpense(c.Request.Context(), editExpense, currentUserID(c)); err != nil {
 		return err
 	}
 
-	highest, monthly, err := h.monthSummary(currentUserID(c))
+	highest, monthly, err := h.monthSummary(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -393,7 +394,7 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) error {
 		return badRequest("error.invalid_id", err)
 	}
 
-	deleted, err := h.BaseHandler.DB.DeleteHouseExpense(id, currentUserID(c))
+	deleted, err := h.BaseHandler.DB.DeleteHouseExpense(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -402,7 +403,7 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) error {
 		return nil
 	}
 
-	highest, monthly, err := h.monthSummary(currentUserID(c))
+	highest, monthly, err := h.monthSummary(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}

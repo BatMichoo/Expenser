@@ -108,14 +108,12 @@
             </button>
           </td>
         </tr>
-
-        {{ else }}
-        <tr>
+        {{ end }}
+        <tr class="empty-row">
           <td colspan="10">
             <p>{{ T $.Lang "search.no_results" }}</p>
           </td>
         </tr>
-        {{ end }}
       </tbody>
     </table>
   </div>

@@ -19,7 +19,7 @@ func TestHighestCarExpenseDescriptionTranslation(t *testing.T) {
 	testDB := InitTestDB(cfg)
 	defer testDB.Close()
 	ResetTestDB(testDB)
-	testDB.CreateUser(TestUserRegisterModel)
+	testDB.CreateUser(testCtx, TestUserRegisterModel)
 
 	expenseDate := time.Now()
 	expense := &models.CarExpense{
@@ -31,10 +31,10 @@ func TestHighestCarExpenseDescriptionTranslation(t *testing.T) {
 		CreatedBy:     TestUserRegisterModel.ID,
 	}
 
-	err = testDB.CreateCarExpense(expense)
+	err = testDB.CreateCarExpense(testCtx, expense)
 	assert.NoError(t, err)
 
-	_, utilType, err := testDB.GetHighestCarExpenseForMonth(expenseDate.Month(), TestUserRegisterModel.ID)
+	_, utilType, err := testDB.GetHighestCarExpenseForMonth(testCtx, expenseDate.Month(), TestUserRegisterModel.ID)
 	assert.NoError(t, err)
 
 	// Check if the utilType returned matches a key in i18n

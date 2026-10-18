@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"expenser/internal/models"
 	"fmt"
@@ -9,12 +10,12 @@ import (
 	"github.com/google/uuid"
 )
 
-func (db *DB) GetHouseUtilityTypes() (*[]models.HomeUtilityType, error) {
+func (db *DB) GetHouseUtilityTypes(ctx context.Context) (*[]models.HomeUtilityType, error) {
 	query := `
 		SELECT * FROM utility_types 
 		`
 	var expenseTypes []models.HomeUtilityType
-	rows, err := db.conn.Query(query)
+	rows, err := db.conn.QueryContext(ctx, query)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch expenses: %v", err)
@@ -40,7 +41,7 @@ func (db *DB) GetHouseUtilityTypes() (*[]models.HomeUtilityType, error) {
 	return &expenseTypes, nil
 }
 
-func (db *DB) GetTotalHouseExpenseForMonth(date time.Time, userId uuid.UUID) (float64, error) {
+func (db *DB) GetTotalHouseExpenseForMonth(ctx context.Context, date time.Time, userId uuid.UUID) (float64, error) {
 	year := date.Year()
 	month := date.Month()
 	query := `
@@ -49,7 +50,7 @@ func (db *DB) GetTotalHouseExpenseForMonth(date time.Time, userId uuid.UUID) (fl
 		`
 
 	var totalAmount sql.NullFloat64
-	err := db.conn.QueryRow(query,
+	err := db.conn.QueryRowContext(ctx, query,
 		int(month),
 		year,
 		userId,
@@ -65,7 +66,7 @@ func (db *DB) GetTotalHouseExpenseForMonth(date time.Time, userId uuid.UUID) (fl
 	return totalAmount.Float64, nil
 }
 
-func (db *DB) GetHighestHouseExpenseForMonth(month time.Month, userId uuid.UUID) (float64, string, error) {
+func (db *DB) GetHighestHouseExpenseForMonth(ctx context.Context, month time.Month, userId uuid.UUID) (float64, string, error) {
 	currentYear := time.Now().Year()
 	query := `
 		SELECT
@@ -87,7 +88,7 @@ func (db *DB) GetHighestHouseExpenseForMonth(month time.Month, userId uuid.UUID)
 	var highestExpense sql.NullFloat64
 	var utilType string
 
-	err := db.conn.QueryRow(query,
+	err := db.conn.QueryRowContext(ctx, query,
 		int(month),
 		currentYear,
 		userId,
@@ -105,7 +106,7 @@ func (db *DB) GetHighestHouseExpenseForMonth(month time.Month, userId uuid.UUID)
 
 // GetHouseExpenseByID returns the user's home expense with the given ID,
 // or nil when no such expense belongs to the user.
-func (db *DB) GetHouseExpenseByID(id int, userID uuid.UUID) (*models.HouseExpense, error) {
+func (db *DB) GetHouseExpenseByID(ctx context.Context, id int, userID uuid.UUID) (*models.HouseExpense, error) {
 	query := `
 		SELECT
 			he.id,
@@ -125,7 +126,7 @@ func (db *DB) GetHouseExpenseByID(id int, userID uuid.UUID) (*models.HouseExpens
 	`
 
 	var expense models.HouseExpense
-	err := db.conn.QueryRow(query,
+	err := db.conn.QueryRowContext(ctx, query,
 		id,
 		userID,
 	).Scan(
@@ -149,14 +150,14 @@ func (db *DB) GetHouseExpenseByID(id int, userID uuid.UUID) (*models.HouseExpens
 }
 
 // Creates a new entry of a home expense. Automatically handles utility type FK.
-func (db *DB) CreateHouseExpense(input *models.HouseExpense) error {
+func (db *DB) CreateHouseExpense(ctx context.Context, input *models.HouseExpense) error {
 	query := `
 		INSERT INTO home_expenses (utility_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at, (SELECT name FROM utility_types WHERE id = utility_type_id);
 	`
 
-	err := db.conn.QueryRow(query,
+	err := db.conn.QueryRowContext(ctx, query,
 		input.UtilityTypeID,
 		input.Amount,
 		input.DiscountAmount,
@@ -173,7 +174,7 @@ func (db *DB) CreateHouseExpense(input *models.HouseExpense) error {
 	return nil
 }
 
-func (db *DB) GetHouseExpensesForMonth(month time.Month, year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
+func (db *DB) GetHouseExpensesForMonth(ctx context.Context, month time.Month, year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT he.id, ut.name, he.amount, he.discount_amount, he.expense_date, he.notes, he.metadata, he.created_at, he.created_by
 			FROM home_expenses he
@@ -186,7 +187,7 @@ func (db *DB) GetHouseExpensesForMonth(month time.Month, year int, userId uuid.U
 	`
 
 	var expenses []models.HouseExpense
-	rows, err := db.conn.Query(query,
+	rows, err := db.conn.QueryContext(ctx, query,
 		int(month),
 		year,
 		userId,
@@ -223,7 +224,7 @@ func (db *DB) GetHouseExpensesForMonth(month time.Month, year int, userId uuid.U
 	return &expenses, nil
 }
 
-func (db *DB) GetHouseExpensesForYear(year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
+func (db *DB) GetHouseExpensesForYear(ctx context.Context, year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT
 			he.id, ut.name, he.amount, he.expense_date, he.notes, he.metadata, he.created_at, he.created_by
@@ -235,7 +236,7 @@ func (db *DB) GetHouseExpensesForYear(year int, userId uuid.UUID) (*[]models.Hou
 	`
 
 	var expenses []models.HouseExpense
-	rows, err := db.conn.Query(query,
+	rows, err := db.conn.QueryContext(ctx, query,
 		year,
 		userId,
 	)
@@ -270,7 +271,7 @@ func (db *DB) GetHouseExpensesForYear(year int, userId uuid.UUID) (*[]models.Hou
 	return &expenses, nil
 }
 
-func (db *DB) GetHomeExpensesByUtilityType(utility string, userId uuid.UUID) (*[]models.HouseExpense, error) {
+func (db *DB) GetHomeExpensesByUtilityType(ctx context.Context, utility string, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT he.id, ut.name, he.amount, he.expense_date, he.notes, he.metadata, he.created_at, he.created_by
 		FROM home_expenses he
@@ -278,7 +279,7 @@ func (db *DB) GetHomeExpensesByUtilityType(utility string, userId uuid.UUID) (*[
 		WHERE ut.name = $1 AND he.created_by = $2`
 
 	var expenses []models.HouseExpense
-	rows, err := db.conn.Query(query,
+	rows, err := db.conn.QueryContext(ctx, query,
 		utility,
 		userId,
 	)
@@ -313,7 +314,7 @@ func (db *DB) GetHomeExpensesByUtilityType(utility string, userId uuid.UUID) (*[
 	return &expenses, nil
 }
 
-func (db *DB) GetHouseExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
+func (db *DB) GetHouseExpenseTypeForYear(ctx context.Context, utility, year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT he.id, ut.name, he.amount, he.expense_date, he.metadata FROM home_expenses he
 		JOIN utility_types ut ON he.utility_type_id = ut.id
@@ -322,7 +323,7 @@ func (db *DB) GetHouseExpenseTypeForYear(utility, year int, userId uuid.UUID) (*
 	`
 
 	var expenses []models.HouseExpense
-	rows, err := db.conn.Query(query,
+	rows, err := db.conn.QueryContext(ctx, query,
 		utility,
 		year,
 		userId,
@@ -357,7 +358,7 @@ func (db *DB) GetHouseExpenseTypeForYear(utility, year int, userId uuid.UUID) (*
 
 // EditHouseExpense updates the user's home expense. It returns an error
 // wrapping sql.ErrNoRows when no such expense belongs to the user.
-func (db *DB) EditHouseExpense(editExpense *models.HouseExpense, userID uuid.UUID) error {
+func (db *DB) EditHouseExpense(ctx context.Context, editExpense *models.HouseExpense, userID uuid.UUID) error {
 	query := `
 		UPDATE home_expenses
 		SET
@@ -370,7 +371,7 @@ func (db *DB) EditHouseExpense(editExpense *models.HouseExpense, userID uuid.UUI
 		WHERE id = $1 AND created_by = $8
 		RETURNING (SELECT name FROM utility_types WHERE id = $2);
 	`
-	err := db.conn.QueryRow(query,
+	err := db.conn.QueryRowContext(ctx, query,
 		editExpense.ID,
 		editExpense.UtilityTypeID,
 		editExpense.Amount,
@@ -390,12 +391,12 @@ func (db *DB) EditHouseExpense(editExpense *models.HouseExpense, userID uuid.UUI
 
 // DeleteHouseExpense deletes the user's home expense. It returns false when
 // no such expense belongs to the user.
-func (db *DB) DeleteHouseExpense(id int, userID uuid.UUID) (bool, error) {
+func (db *DB) DeleteHouseExpense(ctx context.Context, id int, userID uuid.UUID) (bool, error) {
 	query := `
 		DELETE FROM home_expenses
 		WHERE id = $1 AND created_by = $2`
 
-	res, err := db.conn.Exec(query,
+	res, err := db.conn.ExecContext(ctx, query,
 		id,
 		userID,
 	)
@@ -416,14 +417,14 @@ func (db *DB) DeleteHouseExpense(id int, userID uuid.UUID) (bool, error) {
 	return true, nil
 }
 
-func (db *DB) GetHomeExpensesByDates(start, end time.Time, userId uuid.UUID) (*[]models.HouseExpense, error) {
+func (db *DB) GetHomeExpensesByDates(ctx context.Context, start, end time.Time, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT he.id, he.amount, ut.name, he.metadata FROM home_expenses he
 		JOIN utility_types ut ON he.utility_type_id = ut.id
 		WHERE created_by = $1 AND expense_date >= $2 AND expense_date <= $3
 		ORDER BY expense_date ASC
 	`
-	rows, err := db.conn.Query(query, userId, start, end)
+	rows, err := db.conn.QueryContext(ctx, query, userId, start, end)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching expenses: %v", err)
 	}

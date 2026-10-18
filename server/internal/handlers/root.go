@@ -73,11 +73,11 @@ func (h *RootHandler) ChangeLanguage(c *gin.Context) error {
 
 	if claims := services.ClaimsFromContext(c); claims != nil {
 		userID := claims.UserID
-		_ = h.DB.UpdateUserLanguage(userID, lang)
+		_ = h.DB.UpdateUserLanguage(c.Request.Context(), userID, lang)
 
 		// If logged in, we should also regenerate the token to include the new language preference
 		// to avoid stale claims in the middleware.
-		user, err := h.DB.GetUserByID(userID)
+		user, err := h.DB.GetUserByID(c.Request.Context(), userID)
 		if err == nil {
 			token, err := h.AS.GenerateToken(user)
 			if err == nil {

@@ -26,7 +26,7 @@ func (ch *ChartHandler) HouseRoot(c *gin.Context) {
 	dateNow := time.Now()
 	year := dateNow.Year()
 
-	types, _ := ch.DB.GetHouseUtilityTypes()
+	types, _ := ch.DB.GetHouseUtilityTypes(c.Request.Context())
 	chartData := gin.H{
 		"Type":  "house",
 		"Year":  year,
@@ -49,9 +49,9 @@ func (ch *ChartHandler) HouseSearch(c *gin.Context) {
 	var err error
 
 	if typeStr != "" {
-		exp, err = ch.DB.GetHouseExpenseTypeForYear(typeId, year, userID)
+		exp, err = ch.DB.GetHouseExpenseTypeForYear(c.Request.Context(), typeId, year, userID)
 	} else {
-		exp, err = ch.DB.GetHouseExpensesForYear(year, userID)
+		exp, err = ch.DB.GetHouseExpensesForYear(c.Request.Context(), year, userID)
 	}
 
 	if err != nil {
@@ -66,7 +66,7 @@ func (ch *ChartHandler) CarRoot(c *gin.Context) {
 	dateNow := time.Now()
 	year := dateNow.Year()
 
-	types, _ := ch.DB.GetCarExpenseTypes()
+	types, _ := ch.DB.GetCarExpenseTypes(c.Request.Context())
 	chartData := gin.H{
 		"Type":  "car",
 		"Year":  year,
@@ -89,9 +89,9 @@ func (ch *ChartHandler) CarSearch(c *gin.Context) {
 	var err error
 
 	if typeStr != "" {
-		exp, err = ch.DB.GetCarExpenseTypeForYear(typeId, year, userID)
+		exp, err = ch.DB.GetCarExpenseTypeForYear(c.Request.Context(), typeId, year, userID)
 	} else {
-		exp, err = ch.DB.GetCarExpensesForYear(year, userID)
+		exp, err = ch.DB.GetCarExpensesForYear(c.Request.Context(), year, userID)
 	}
 
 	if err != nil {
@@ -106,7 +106,7 @@ func (ch *ChartHandler) GroceriesRoot(c *gin.Context) {
 	dateNow := time.Now()
 	year := dateNow.Year()
 
-	types, _ := ch.DB.GetAllCategories()
+	types, _ := ch.DB.GetAllCategories(c.Request.Context())
 	chartData := gin.H{
 		"Type":  "groceries",
 		"Year":  year,
@@ -129,9 +129,9 @@ func (ch *ChartHandler) GroceriesChartSearch(c *gin.Context) {
 	var err error
 
 	if typeStr != "" {
-		exp, err = ch.DB.GetGroceriesExpenseCategoryForYear(typeId, year, userID)
+		exp, err = ch.DB.GetGroceriesExpenseCategoryForYear(c.Request.Context(), typeId, year, userID)
 	} else {
-		exp, err = ch.DB.GetGroceriesExpensesForYear(year, userID)
+		exp, err = ch.DB.GetGroceriesExpensesForYear(c.Request.Context(), year, userID)
 	}
 
 	if err != nil {

@@ -2,4 +2,5 @@
 {{ range .Rows }}{{ template "grocery-row" . }}{{ end }}
 {{ template "total-card" (dict "Exp" .MonthlyExpense "Lang" .Lang) }}
 {{ template "highest-card" (dict "Exp" .HighestExpense "Lang" .Lang "TypePrefix" "category.") }}
+{{ with .Modal }}{{ template "success-modal" . }}{{ end }}
 {{ end }}

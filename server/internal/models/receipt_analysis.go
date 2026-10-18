@@ -23,6 +23,7 @@ type Totals struct {
 
 type ReceiptAnalysis struct {
 	Store     string        `json:"store"`
+	Date      string        `json:"date"` // Date is the purchase date as YYYY-MM-DD, empty when unreadable.
 	Address   string        `json:"address"`
 	VATNumber string        `json:"vat_number"`
 	Items     []ReceiptItem `json:"items"`

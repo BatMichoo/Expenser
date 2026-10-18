@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"expenser/internal/config"
 	"expenser/internal/models"
@@ -75,3 +76,6 @@ func connectTestDB(cfg *config.Config) (*DB, error) {
 
 	return &DB{conn: testDBConn}, nil
 }
+
+// testCtx is the context passed to DB calls in tests.
+var testCtx = context.Background()

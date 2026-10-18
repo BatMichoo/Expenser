@@ -7,18 +7,22 @@
     hx-swap="afterbegin"
     hx-on::after-request="if(event.detail.successful && event.target === this) hideDialog()"
   >
+    <div class="receipt-date">
+      <label for="purchase_date">{{ T .Lang "common.date" }}</label>
+      <input type="date" id="purchase_date" name="purchase_date" required value='{{ .PurchaseDate.Format "2006-01-02" }}' />
+    </div>
     <div class="overflow-x-auto">
     <table class="expenses-table">
       <thead>
         <tr>
-          <th>Category</th>
-          <th>Product</th>
-          <th>Qty</th>
-          <th>Unit Price</th>
-          <th>Discount/Unit</th>
-          <th>Total Price</th>
-          <th>Total Discount</th>
-          <th>Supermarket</th>
+          <th>{{ T .Lang "groceries.category" }}</th>
+          <th>{{ T .Lang "groceries.product" }}</th>
+          <th>{{ T .Lang "groceries.quantity" }}</th>
+          <th>{{ T .Lang "groceries.unit_price" }}</th>
+          <th>{{ T .Lang "groceries.discount_per_unit" }}</th>
+          <th>{{ T .Lang "groceries.total_price" }}</th>
+          <th>{{ T .Lang "groceries.total_discount" }}</th>
+          <th>{{ T .Lang "groceries.supermarket" }}</th>
         </tr>
       </thead>
       <tbody>
@@ -27,7 +31,7 @@
           <td>
             <select name="items[{{ $index }}].category_id" required>
               {{ range $.Categories }}
-              <option value="{{ .ID }}" {{ if eq .Name $item.Category }}selected{{ else if and (eq $item.Category "") (eq .Name "Other") }}selected{{ end }}>{{ T $.Lang (print "category." .Name) }}</option>
+              <option value="{{ .ID }}" {{ if eq .Name $item.Category }}selected{{ end }}>{{ T $.Lang (print "category." .Name) }}</option>
               {{ end }}
             </select>
           </td>
@@ -95,7 +99,7 @@
     </table>
     </div>
     <div class="btn-container" style="margin-top: 1.5em;">
-      <button type="submit" class="btn-primary">Confirm & Save All</button>
+      <button type="submit" class="btn-primary">{{ T $.Lang "groceries.confirm_all" }}</button>
       <button type="button" class="btn-secondary" onclick="hideDialog()">
         {{ T $.Lang "common.cancel" }}
       </button>

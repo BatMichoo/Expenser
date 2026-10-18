@@ -18,7 +18,8 @@ OPENSSL_CNF := $(CERTS_DIR)/openssl.cnf
 
 .PHONY: clean create-ssl certs test
 
-TEST_FLAGS := -v -race -cover -count=1
+# -p 1: the db and handlers tests share one test database.
+TEST_FLAGS := -v -race -cover -count=1 -p 1
 
 test:
 	cd server && go test $(TEST_FLAGS) ./...

@@ -5,11 +5,16 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"expenser/internal/models"
 	"fmt"
 	"net/http"
 	"regexp"
 )
+
+// ErrUnavailable reports that the Gemini API is temporarily unable to
+// serve requests. Callers can tell the user to retry later.
+var ErrUnavailable = errors.New("gemini api unavailable")
 
 // GeminiService handles interactions with the Gemini API.
 type GeminiService struct {
@@ -66,6 +71,10 @@ func (gs *GeminiService) AnalyzeReceipt(ctx context.Context, receiptData []byte)
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusServiceUnavailable {
+		return nil, fmt.Errorf("%w: %s", ErrUnavailable, resp.Status)
+	}
+
 	var geminiResp struct {
 		Error *struct {
 			Message string `json:"message"`
@@ -84,10 +93,10 @@ func (gs *GeminiService) AnalyzeReceipt(ctx context.Context, receiptData []byte)
 	}
 
 	if geminiResp.Error != nil {
-		return nil, fmt.Errorf("gemini api error: %s", geminiResp.Error.Message)
+		return nil, fmt.Errorf("gemini api error: %s: %s", resp.Status, geminiResp.Error.Message)
 	}
 
-	if len(geminiResp.Candidates) == 0 {
+	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
 		return nil, fmt.Errorf("no response from gemini")
 	}
 

@@ -22,7 +22,7 @@
   <form
     id="search-form"
     hx-target="#results"
-    hx-post="./{{ if .IsCar }}car{{ else }}house{{ end }}/search"
+    hx-post="./{{ .Section }}/search"
   >
     <div>
       <label for="date">{{ T .Lang "common.date" }}</label>
@@ -57,21 +57,12 @@
       <table class="expenses-table">
         <thead>
           <tr>
-            <th>{{ T .Lang "common.date" }}</th>
-            <th>
-              {{ if .IsCar }}{{ T .Lang "form.expense_type" }}{{ else }}{{ T
-              .Lang "form.utility_type" }}{{ end }}
-            </th>
-            <th>{{ T .Lang "common.amount" }}</th>
-            <th>{{ T .Lang "common.discount" }}</th>
-            <th>{{ T .Lang "common.details" }}</th>
-            <th>{{ T .Lang "common.notes" }}</th>
-            <th>{{ T .Lang "common.actions" }}</th>
+            {{ range .Columns }}<th>{{ T $.Lang . }}</th>{{ end }}
           </tr>
         </thead>
         <tbody id="results">
           <tr>
-            <td colspan="7">
+            <td colspan="{{ len .Columns }}">
               <p>{{ T .Lang "search.no_results" }}</p>
             </td>
           </tr>

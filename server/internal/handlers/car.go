@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"expenser/internal/models"
 	"expenser/internal/utilities"
@@ -31,17 +32,17 @@ func (h *CarHandler) getCarPageData(c *gin.Context) (*models.CarData, error) {
 	year := dateNow.Year()
 	userID := currentUserID(c)
 
-	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestCarExpenseForMonth(month, userID)
+	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestCarExpenseForMonth(c.Request.Context(), month, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching highest car expense: %w", err)
 	}
 
-	monthlyExpense, err := h.BaseHandler.DB.GetTotalCarExpenseForMonth(month, userID)
+	monthlyExpense, err := h.BaseHandler.DB.GetTotalCarExpenseForMonth(c.Request.Context(), month, year, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching total car expense: %w", err)
 	}
 
-	recentExpenses, err := h.BaseHandler.DB.GetCarExpensesForMonth(month, year, userID)
+	recentExpenses, err := h.BaseHandler.DB.GetCarExpensesForMonth(c.Request.Context(), month, year, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching recent car expenses: %w", err)
 	}
@@ -63,15 +64,15 @@ func (h *CarHandler) getCarPageData(c *gin.Context) (*models.CarData, error) {
 
 // monthSummary returns the current month's highest and total expense as
 // out-of-band fragments, used to refresh the summary cards after a change.
-func (h *CarHandler) monthSummary(userID uuid.UUID) (*models.HighestExpense, *models.MonthlyExpense, error) {
+func (h *CarHandler) monthSummary(ctx context.Context, userID uuid.UUID) (*models.HighestExpense, *models.MonthlyExpense, error) {
 	month := time.Now().Month()
 
-	highestExp, expType, err := h.BaseHandler.DB.GetHighestCarExpenseForMonth(month, userID)
+	highestExp, expType, err := h.BaseHandler.DB.GetHighestCarExpenseForMonth(ctx, month, userID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	monthlyTotal, err := h.BaseHandler.DB.GetTotalCarExpenseForMonth(month, userID)
+	monthlyTotal, err := h.BaseHandler.DB.GetTotalCarExpenseForMonth(ctx, month, time.Now().Year(), userID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -145,7 +146,7 @@ func (h *CarHandler) GetCurrentMonth(c *gin.Context) error {
 }
 
 func (h *CarHandler) GetCreateCarForm(c *gin.Context) error {
-	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes()
+	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -252,7 +253,7 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) error {
 	}
 	newExpense.CreatedBy = userID
 
-	if err := h.BaseHandler.DB.CreateCarExpense(newExpense); err != nil {
+	if err := h.BaseHandler.DB.CreateCarExpense(c.Request.Context(), newExpense); err != nil {
 		return err
 	}
 
@@ -267,7 +268,7 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) error {
 		return nil
 	}
 
-	highest, monthly, err := h.monthSummary(userID)
+	highest, monthly, err := h.monthSummary(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -293,7 +294,7 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) error {
 		return badRequest("error.invalid_id", err)
 	}
 
-	exp, err := h.BaseHandler.DB.GetCarExpenseByID(id, currentUserID(c))
+	exp, err := h.BaseHandler.DB.GetCarExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -301,7 +302,7 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) error {
 		return notFound("error.expense_not_found")
 	}
 
-	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes()
+	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -334,11 +335,11 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) error {
 	}
 	editExpense.ID = id
 
-	if err := h.BaseHandler.DB.EditCarExpense(editExpense, currentUserID(c)); err != nil {
+	if err := h.BaseHandler.DB.EditCarExpense(c.Request.Context(), editExpense, currentUserID(c)); err != nil {
 		return err
 	}
 
-	highest, monthly, err := h.monthSummary(currentUserID(c))
+	highest, monthly, err := h.monthSummary(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -390,7 +391,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) error {
 		return badRequest("error.invalid_id", err)
 	}
 
-	deleted, err := h.BaseHandler.DB.DeleteCarExpense(id, currentUserID(c))
+	deleted, err := h.BaseHandler.DB.DeleteCarExpense(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -399,7 +400,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) error {
 		return nil
 	}
 
-	highest, monthly, err := h.monthSummary(currentUserID(c))
+	highest, monthly, err := h.monthSummary(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}

@@ -51,13 +51,12 @@
       </thead>
       <tbody id="recent-expenses">
         {{ if .RecentExpenses }} {{ range .RecentExpenses }} {{ template
-        "house-exp-row" (dict "Exp" . "Lang" $.Lang) }} {{ end }} {{ else }}
-        <tr>
+        "house-exp-row" (dict "Exp" . "Lang" $.Lang) }} {{ end }} {{ end }}
+        <tr class="empty-row">
           <td colspan="7">
             <p>{{ T .Lang "search.no_results" }}</p>
           </td>
         </tr>
-        {{ end }}
       </tbody>
 
       <tfoot>

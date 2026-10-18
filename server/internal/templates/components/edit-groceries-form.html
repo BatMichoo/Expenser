@@ -34,6 +34,10 @@
         <input type="number" id="total_discount" name="total_discount" step="0.01" value="{{ printf "%.2f" .Expense.TotalDiscount }}" />
     </div>
     <div>
+        <label for="purchase_date">{{ T .Lang "common.date" }}</label>
+        <input type="date" id="purchase_date" name="purchase_date" required value='{{ .Expense.PurchaseDate.Format "2006-01-02" }}' />
+    </div>
+    <div>
         <label for="supermarket_name">{{ T .Lang "groceries.supermarket" }}</label>
         <input type="text" id="supermarket_name" name="supermarket_name" value="{{ .Expense.SupermarketName }}" />
     </div>

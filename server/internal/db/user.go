@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"expenser/internal/models"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 )
 
 // CreateUser creates a new user in the database
-func (db *DB) CreateUser(user *models.User) error {
+func (db *DB) CreateUser(ctx context.Context, user *models.User) error {
 	query := `
 		INSERT INTO users (username, password_hash, preferred_language, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5)
@@ -20,7 +21,7 @@ func (db *DB) CreateUser(user *models.User) error {
 	if user.PreferredLanguage == "" {
 		user.PreferredLanguage = "en"
 	}
-	err := db.conn.QueryRow(
+	err := db.conn.QueryRowContext(ctx,
 		query,
 		user.Username,
 		user.PasswordHash,
@@ -37,14 +38,14 @@ func (db *DB) CreateUser(user *models.User) error {
 }
 
 // GetUserByID retrieves a user by their ID
-func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
+func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	query := `
 		SELECT id, username, password_hash, preferred_language, created_at, updated_at
 		FROM users
 		WHERE id = $1`
 
 	user := &models.User{}
-	err := db.conn.QueryRow(query, id).Scan(
+	err := db.conn.QueryRowContext(ctx, query, id).Scan(
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
@@ -64,14 +65,14 @@ func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
 }
 
 // GetUserByUsername retrieves a user by their username
-func (db *DB) GetUserByUsername(username string) (*models.User, error) {
+func (db *DB) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 	query := `
 		SELECT id, username, password_hash, preferred_language, created_at, updated_at
 		FROM users
 		WHERE username = $1`
 
 	user := &models.User{}
-	err := db.conn.QueryRow(query, username).Scan(
+	err := db.conn.QueryRowContext(ctx, query, username).Scan(
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
@@ -91,14 +92,14 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 }
 
 // GetUserByEmail retrieves a user by their email
-func (db *DB) GetUserByEmail(email string) (*models.User, error) {
+func (db *DB) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
 		SELECT id, username, password_hash, preferred_language, created_at, updated_at
 		FROM users
 		WHERE email = $1`
 
 	user := &models.User{}
-	err := db.conn.QueryRow(query, email).Scan(
+	err := db.conn.QueryRowContext(ctx, query, email).Scan(
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
@@ -118,14 +119,14 @@ func (db *DB) GetUserByEmail(email string) (*models.User, error) {
 }
 
 // UpdateUserLanguage updates the preferred language for a user
-func (db *DB) UpdateUserLanguage(userID uuid.UUID, lang string) error {
+func (db *DB) UpdateUserLanguage(ctx context.Context, userID uuid.UUID, lang string) error {
 	query := `UPDATE users SET preferred_language = $1, updated_at = $2 WHERE id = $3`
-	_, err := db.conn.Exec(query, lang, time.Now(), userID)
+	_, err := db.conn.ExecContext(ctx, query, lang, time.Now(), userID)
 	return err
 }
 
 // UpdateUser updates an existing user in the database
-func (db *DB) UpdateUser(user *models.User) error {
+func (db *DB) UpdateUser(ctx context.Context, user *models.User) error {
 	query := `
 		UPDATE users
 		SET username = $1, password_hash = $2, updated_at = $3
@@ -133,7 +134,7 @@ func (db *DB) UpdateUser(user *models.User) error {
 		`
 
 	user.UpdatedAt = time.Now()
-	result, err := db.conn.Exec(
+	result, err := db.conn.ExecContext(ctx,
 		query,
 		user.Username,
 		user.PasswordHash,
@@ -158,10 +159,10 @@ func (db *DB) UpdateUser(user *models.User) error {
 }
 
 // DeleteUser deletes a user from the database
-func (db *DB) DeleteUser(id uuid.UUID) error {
+func (db *DB) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM users WHERE id = $1`
 
-	result, err := db.conn.Exec(query, id)
+	result, err := db.conn.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
 	}
@@ -179,14 +180,14 @@ func (db *DB) DeleteUser(id uuid.UUID) error {
 }
 
 // ListUsers retrieves all users from the database (for admin purposes)
-func (db *DB) ListUsers(limit, offset int) ([]*models.User, error) {
+func (db *DB) ListUsers(ctx context.Context, limit, offset int) ([]*models.User, error) {
 	query := `
 		SELECT id, username, password_hash, preferred_language, created_at, updated_at
 		FROM users
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2`
 
-	rows, err := db.conn.Query(query, limit, offset)
+	rows, err := db.conn.QueryContext(ctx, query, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
@@ -217,11 +218,11 @@ func (db *DB) ListUsers(limit, offset int) ([]*models.User, error) {
 }
 
 // GetUserCount returns the total number of users in the database
-func (db *DB) GetUserCount() (int, error) {
+func (db *DB) GetUserCount(ctx context.Context) (int, error) {
 	query := `SELECT COUNT(*) FROM users`
 
 	var count int
-	err := db.conn.QueryRow(query).Scan(&count)
+	err := db.conn.QueryRowContext(ctx, query).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get user count: %w", err)
 	}
@@ -230,11 +231,11 @@ func (db *DB) GetUserCount() (int, error) {
 }
 
 // UserExists checks if a user exists by username or email
-func (db *DB) UserExists(username string) (bool, error) {
+func (db *DB) UserExists(ctx context.Context, username string) (bool, error) {
 	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)`
 
 	var exists bool
-	err := db.conn.QueryRow(query, username).Scan(&exists)
+	err := db.conn.QueryRowContext(ctx, query, username).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("failed to check if user exists: %w", err)
 	}
