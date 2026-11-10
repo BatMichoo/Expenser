@@ -279,3 +279,46 @@ func TestEditCarFormDelete(t *testing.T) {
 	del, _ := doc.Find("button.sheet-delete").Attr("hx-get")
 	assert.Equal(t, "/car/expenses/delete/7", del)
 }
+
+func groceryCategories() []map[string]any {
+	return []map[string]any{{"ID": 1, "Name": "Meat"}, {"ID": 2, "Name": "Dairy"}}
+}
+
+func TestCreateGroceriesFormSheet(t *testing.T) {
+	doc := parseHTML(t, render(t, "create-groceries-form", map[string]any{"Categories": groceryCategories(), "Lang": "en"}))
+	form := doc.Find("form.new-expense-form")
+	post, _ := form.Attr("hx-post")
+	assert.Equal(t, "/groceries", post, "submits from the form so Enter works")
+	assert.Equal(t, 1, doc.Find(".sheet .sheet-grab").Length())
+	mode, _ := doc.Find(`input[name="total_price"]`).Attr("inputmode")
+	assert.Equal(t, "decimal", mode)
+	assert.Equal(t, 1, doc.Find(".qty-unit").Find(`[name="quantity"]`).Length())
+	assert.Equal(t, 1, doc.Find(".qty-unit").Find(`[name="unit_price"]`).Length())
+	more := doc.Find("details.more-fields")
+	assert.Equal(t, 1, more.Find(`[name="discount_per_unit"]`).Length())
+	assert.Equal(t, 1, more.Find(`[name="total_discount"]`).Length())
+	assert.Equal(t, 0, doc.Find(".sheet-delete").Length())
+	assert.NotContains(t, doc.Find(".new-expense-heading").Text(), "form.", "heading is translated")
+}
+
+func TestEditGroceriesFormDelete(t *testing.T) {
+	g := &models.GroceriesExpense{ID: 9, CategoryID: 2, Product: "Milk", Quantity: 2, UnitPrice: 1.45, TotalPrice: 2.9}
+	doc := parseHTML(t, render(t, "edit-groceries-form", map[string]any{"Expense": g, "Categories": groceryCategories(), "Lang": "en"}))
+	form := doc.Find("form.new-expense-form")
+	put, _ := form.Attr("hx-put")
+	assert.Equal(t, "/groceries/9", put)
+	sel, _ := doc.Find(`select[name="category_id"] option[selected]`).Attr("value")
+	assert.Equal(t, "2", sel)
+	del := doc.Find("button.sheet-delete")
+	require.Equal(t, 1, del.Length())
+	hxDel, _ := del.Attr("hx-delete")
+	assert.Equal(t, "/groceries/9", hxDel)
+	target, _ := del.Attr("hx-target")
+	assert.Equal(t, "#grocery-9", target)
+	swap, _ := del.Attr("hx-swap")
+	assert.Equal(t, "outerHTML", swap)
+	_, confirm := del.Attr("hx-confirm")
+	assert.True(t, confirm)
+	_, open := doc.Find("details.more-fields").Attr("open")
+	assert.True(t, open)
+}

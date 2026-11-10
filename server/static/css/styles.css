@@ -1183,3 +1183,11 @@ select {
   margin-right: auto;
   color: var(--danger);
 }
+
+/* Groceries sheet: quantity and unit price side by side */
+.new-expense-form .qty-unit {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1em;
+}

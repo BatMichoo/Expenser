@@ -194,6 +194,7 @@
 
   .new-expense-form .flex-justify-end,
   .new-expense-form> :last-child {
+    grid-column: 1 / -1;
     flex-direction: column;
     gap: 0.5em;
   }
@@ -412,6 +413,8 @@
 
   .overview-container {
     flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
     gap: 0.6em;
     padding: 0 0.75em;
   }
