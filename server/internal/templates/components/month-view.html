@@ -123,8 +123,8 @@
 {{ end }}
 
 {{ define "mini-chart" }}
-<section class="mini-chart" id="mini-chart">
-  <h3>{{ T .Lang "kpi.last_months" }}</h3>
+<section class="side-panel mini-chart" id="mini-chart">
+  {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "kpi.last_months") "Meta" (money .Summary.Total)) }}
   <a class="mini-chart-bars" href="#" hx-get="/{{ .Section }}/chart" hx-target="#section-content"
     title='{{ T .Lang "kpi.open_chart" }}' aria-label='{{ T .Lang "kpi.open_chart" }}'>
     {{ range .Bars }}
@@ -225,29 +225,45 @@
 </div>
 {{ end }}
 
-{{/* Change badge: red when well above the comparison, green when well below. */}}
-{{ define "vs-badge" }}<span class="vs-usual{{ if gt .Pct 10.0 }} up{{ else if lt .Pct -10.0 }} down{{ end }}">{{ printf "%+.0f%%" .Pct }} {{ .Label }}</span>{{ end }}
+{{/* Panel header: icon, title and optional value on the right. */}}
+{{ define "side-panel-head" }}
+<div class="side-panel-head">
+  <span class="side-icon" aria-hidden="true">
+    {{ if eq .Icon "chart" }}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="M7 16v-3" /><path d="M12 16V8" /><path d="M17 16v-6" /></svg>{{ end }}
+    {{ if eq .Icon "pie" }}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></svg>{{ end }}
+    {{ if eq .Icon "calendar" }}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /></svg>{{ end }}
+    {{ if eq .Icon "target" }}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>{{ end }}
+  </span>
+  <h3>{{ .Title }}</h3>
+  {{ if .Meta }}<span class="side-meta">{{ .Meta }}</span>{{ end }}
+</div>
+{{ end }}
+
+{{/* Comparison pill: ▲ red when well above, ▼ green when well below,
+     neutral within ±10%. */}}
+{{ define "pill" }}<span class="pill vs-usual{{ if gt .Pct 10.0 }} up{{ else if lt .Pct -10.0 }} down{{ else }} same{{ end }}"{{ if .Title }} title="{{ .Title }}"{{ end }}>{{ if gt .Pct 10.0 }}▲ {{ printf "%.0f%%" .Pct }}{{ else if lt .Pct -10.0 }}▼ {{ printf "%.0f%%" (neg .Pct) }}{{ else }}≈ {{ .Same }}{{ end }}</span>{{ end }}
 
 {{ define "breakdown" }}
 <section class="side-panel breakdown">
-  <h3>{{ T .Lang "insights.where_it_went" }}</h3>
+  {{ template "side-panel-head" (dict "Icon" "pie" "Title" (T .Lang "insights.where_it_went")) }}
   {{ if .Breakdown }}
+  <div class="stacked-bar" aria-hidden="true">
+    {{ range $i, $s := .Breakdown }}<span class="cat-{{ cat $i }}" style="width: {{ printf "%.1f" $s.Share }}%"></span>{{ end }}
+  </div>
   <ul class="breakdown-list">
-    {{ range .Breakdown }}
+    {{ range $i, $s := .Breakdown }}
     <li class="breakdown-item">
-      <div class="breakdown-row">
-        <span class="breakdown-name">{{ T $.Lang (print $.TypePrefix .Type) }}</span>
-        <span class="breakdown-amount">{{ money .Amount }}</span>
-      </div>
-      <div class="breakdown-bar"><span style="width: {{ printf "%.0f" .Share }}%"></span></div>
-      <div class="breakdown-meta">
-        <span>{{ printf "%.0f" .Share }}%</span>
-        {{ if .HasUsual }}{{ template "vs-badge" (dict "Pct" .VsUsual "Label" (T $.Lang "insights.vs_usual")) }}
-        {{ else }}<span class="vs-usual">{{ T $.Lang "insights.new" }}</span>{{ end }}
-      </div>
+      <span class="cat-dot cat-{{ cat $i }}" aria-hidden="true"></span>
+      <span class="breakdown-name">{{ T $.Lang (print $.TypePrefix $s.Type) }}</span>
+      <span class="breakdown-share">{{ printf "%.0f" $s.Share }}%</span>
+      <span class="breakdown-amount">{{ money $s.Amount }}</span>
+      {{ if $s.HasUsual }}
+      {{ template "pill" (dict "Pct" $s.VsUsual "Same" (T $.Lang "insights.usual") "Title" (print (T $.Lang "insights.usual_amount") ": " (money $s.Usual))) }}
+      {{ else }}<span class="pill vs-usual new">{{ T $.Lang "insights.new" }}</span>{{ end }}
     </li>
     {{ end }}
   </ul>
+  <p class="side-foot">{{ T .Lang "insights.vs_usual_hint" }}</p>
   {{ else }}
   <p class="side-empty">{{ T .Lang "insights.nothing_yet" }}</p>
   {{ end }}
@@ -256,20 +272,32 @@
 
 {{ define "year-so-far" }}
 <section class="side-panel year-so-far">
-  <h3>{{ T .Lang "insights.year_so_far" }} {{ .Year }}</h3>
+  {{ template "side-panel-head" (dict "Icon" "calendar" "Title" (print (T .Lang "insights.year_so_far") " " .Year)) }}
   <p class="side-big">{{ money .YearSoFar.Total }}</p>
-  <p class="side-sub">{{ T .Lang "insights.monthly_average" }}: {{ money .YearSoFar.Average }}</p>
-  {{ if .YearSoFar.HasComparison }}
-  <p class="side-sub">{{ template "vs-badge" (dict "Pct" .YearSoFar.VsAverage "Label" (T .Lang "insights.this_month_vs_average")) }}</p>
-  {{ end }}
+  <dl class="side-stats">
+    <div>
+      <dt>{{ T .Lang "insights.monthly_average" }}</dt>
+      <dd>{{ money .YearSoFar.Average }}</dd>
+    </div>
+    {{ if .YearSoFar.HasComparison }}
+    <div>
+      <dt>{{ T .Lang "insights.this_month" }}</dt>
+      <dd>{{ template "pill" (dict "Pct" .YearSoFar.VsAverage "Same" (T .Lang "insights.average")) }}</dd>
+    </div>
+    {{ end }}
+  </dl>
 </section>
 {{ end }}
 
 {{ define "month-estimate" }}
 <section class="side-panel estimate">
-  <h3>{{ T .Lang "insights.estimate" }}</h3>
+  {{ template "side-panel-head" (dict "Icon" "target" "Title" (T .Lang "insights.estimate")) }}
   <p class="side-big">≈ {{ money .Estimate }}</p>
-  <p class="side-sub">
+  <div class="progress" aria-hidden="true"><span style="width: {{ printf "%.1f" (pct .Summary.Total .Estimate) }}%"></span></div>
+  <div class="progress-labels">
+    <span>{{ T .Lang "insights.spent_so_far" }}: {{ money .Summary.Total }}</span>
+  </div>
+  <p class="side-foot">
     {{ if gt .Usual 0.0 }}{{ T .Lang "insights.based_on_usual" }} {{ money .Usual }}{{ else }}{{ T .Lang "insights.based_on_pace" }}{{ end }}
   </p>
 </section>

@@ -427,35 +427,59 @@ func TestEditGroceriesFormDelete(t *testing.T) {
 
 func TestInsightPanels(t *testing.T) {
 	v := monthView("house")
+	v.Summary = models.MonthSummary{Total: 183.63}
 	v.Breakdown = []models.TypeShare{
 		{Type: "Gas", Amount: 85.01, Share: 46.3, Usual: 72, HasUsual: true, VsUsual: 18.1},
+		{Type: "Water", Amount: 19.19, Share: 10.4, Usual: 20, HasUsual: true, VsUsual: -4},
 		{Type: "TV", Amount: 9.99, Share: 5.4},
 	}
 	v.YearSoFar = models.YearSummary{Total: 1834.5, Months: 11, Average: 166.77, VsAverage: 10.1, HasComparison: true}
 	v.Usual = 170
 	doc := parseHTML(t, render(t, "house-current", v))
 
-	items := doc.Find(".breakdown .breakdown-item")
-	require.Equal(t, 2, items.Length())
-	assert.Contains(t, items.Eq(0).Text(), "Gas")
+	// Every panel has an icon and a title, like the KPI tiles.
+	panels := doc.Find(".month-side .side-panel")
+	panels.Each(func(i int, p *goquery.Selection) {
+		assert.Equal(t, 1, p.Find(".side-panel-head svg").Length(), "panel %d has an icon", i)
+		assert.NotEmpty(t, strings.TrimSpace(p.Find(".side-panel-head h3").Text()))
+	})
+
+	bd := doc.Find(".breakdown")
+	segments := bd.Find(".stacked-bar span")
+	require.Equal(t, 3, segments.Length(), "one segment per type")
+	style, _ := segments.Eq(0).Attr("style")
+	assert.Contains(t, style, "width: 46.3%")
+	assert.True(t, segments.Eq(0).HasClass("cat-1"))
+	assert.True(t, segments.Eq(1).HasClass("cat-2"))
+
+	items := bd.Find(".breakdown-item")
+	require.Equal(t, 3, items.Length())
+	assert.Equal(t, 1, items.Eq(0).Find(".cat-dot.cat-1").Length(), "dot matches its segment")
 	assert.Contains(t, items.Eq(0).Text(), "85.01 €")
-	assert.Contains(t, items.Eq(0).Find(".vs-usual").Text(), "+18%")
-	assert.True(t, items.Eq(0).Find(".vs-usual").HasClass("up"), "well above usual is flagged")
-	style, _ := items.Eq(0).Find(".breakdown-bar span").Attr("style")
-	assert.Contains(t, style, "width: 46%")
-	assert.Contains(t, items.Eq(1).Find(".vs-usual").Text(), "New", "no history")
+	gas := items.Eq(0).Find(".pill")
+	assert.Contains(t, gas.Text(), "18%")
+	assert.True(t, gas.HasClass("up"), "well above usual")
+	title, _ := gas.Attr("title")
+	assert.Contains(t, title, "72.00 €", "tooltip explains the usual amount")
+	assert.True(t, items.Eq(1).Find(".pill").HasClass("same"), "within 10% reads as usual")
+	assert.Contains(t, items.Eq(2).Find(".pill").Text(), "New")
 
 	year := doc.Find(".year-so-far")
-	assert.Contains(t, year.Text(), "2026")
-	assert.Contains(t, year.Text(), "1834.50 €")
+	assert.Contains(t, year.Find(".side-big").Text(), "1834.50 €")
 	assert.Contains(t, year.Text(), "166.77 €")
-	assert.Contains(t, year.Find(".vs-usual").Text(), "+10%")
+	assert.Contains(t, year.Find(".pill").Text(), "10%")
 
 	assert.Equal(t, 0, doc.Find(".estimate").Length(), "no estimate unless HasEstimate")
-	v.HasEstimate, v.Estimate = true, 212.4
+	v.HasEstimate, v.Estimate = true, 250
 	doc = parseHTML(t, render(t, "house-current", v))
-	assert.Contains(t, doc.Find(".estimate").Text(), "212.40 €")
-	assert.Contains(t, doc.Find(".estimate").Text(), "170.00 €", "explains the usual month it is based on")
+	est := doc.Find(".estimate")
+	assert.Contains(t, est.Find(".side-big").Text(), "250.00 €")
+	fill, _ := est.Find(".progress span").Attr("style")
+	assert.Contains(t, fill, "width: 73.5%", "spent so far out of the estimate")
+	assert.Contains(t, est.Text(), "183.63 €")
+	assert.Contains(t, est.Text(), "170.00 €", "explains the usual month it is based on")
+
+	assert.Contains(t, doc.Find(".mini-chart .side-panel-head").Text(), "183.63 €", "chart header shows the month's total")
 }
 
 func TestInsightPanelsEmptyMonth(t *testing.T) {

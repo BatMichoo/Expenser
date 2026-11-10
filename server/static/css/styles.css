@@ -2054,3 +2054,243 @@ tr:hover .row-actions,
 #add-expense-section {
   margin: 0;
 }
+
+/* ---------------------------------------------------------------------
+   Side panels, v2: headers match the KPI tiles, one colour per type.
+   --------------------------------------------------------------------- */
+:root {
+  --cat-1: oklch(0.62 0.19 264);
+  --cat-2: oklch(0.65 0.2 317);
+  --cat-3: oklch(0.7 0.15 160);
+  --cat-4: oklch(0.72 0.16 55);
+  --cat-5: oklch(0.7 0.13 210);
+  --cat-6: oklch(0.75 0.15 100);
+}
+
+.cat-1 { --cat: var(--cat-1); }
+.cat-2 { --cat: var(--cat-2); }
+.cat-3 { --cat: var(--cat-3); }
+.cat-4 { --cat: var(--cat-4); }
+.cat-5 { --cat: var(--cat-5); }
+.cat-6 { --cat: var(--cat-6); }
+
+.side-panel {
+  padding: 1rem 1.1rem;
+}
+
+.side-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.8rem;
+}
+
+.side-panel-head h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
+}
+
+.side-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  flex: none;
+  border-radius: 0.5rem;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.side-meta {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.side-big {
+  margin: 0 0 0.5rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.side-foot {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Comparison pills */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-muted);
+  background: var(--bg-dark);
+}
+
+.pill.up {
+  color: var(--danger);
+  background: oklch(0.65 0.2 30 / 0.15);
+}
+
+.pill.down {
+  color: var(--success);
+  background: oklch(0.7 0.15 160 / 0.15);
+}
+
+.pill.new {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Where it went */
+.stacked-bar {
+  display: flex;
+  gap: 2px;
+  height: 0.6rem;
+  margin-bottom: 0.9rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--bg-dark);
+}
+
+.stacked-bar span {
+  display: block;
+  min-width: 3px;
+  background: var(--cat);
+}
+
+.breakdown-list {
+  gap: 0.15rem;
+}
+
+.breakdown-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "dot name amount"
+    ". share pill";
+  column-gap: 0.55rem;
+  row-gap: 0.1rem;
+  align-items: center;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--bg-dark);
+}
+
+.breakdown-item:last-child {
+  border-bottom: 0;
+}
+
+.cat-dot {
+  grid-area: dot;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--cat);
+}
+
+.breakdown-item .breakdown-name {
+  grid-area: name;
+  font-size: 0.9rem;
+}
+
+.breakdown-item .breakdown-amount {
+  grid-area: amount;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
+.breakdown-share {
+  grid-area: share;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.breakdown-item .pill {
+  grid-area: pill;
+  justify-self: end;
+}
+
+/* Year so far */
+.side-stats {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.side-stats > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--bg-dark);
+}
+
+.side-stats dt {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.side-stats dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Month-end estimate */
+.estimate {
+  border-left: 0;
+}
+
+.progress {
+  height: 0.5rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--bg-dark);
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), oklch(0.65 0.2 290));
+}
+
+.progress-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* Last 6 months */
+.mini-chart-bars {
+  height: 5.5rem;
+}
+
+.mini-bar {
+  border-radius: 0.3rem 0.3rem 0.1rem 0.1rem;
+  opacity: 0.35;
+}
+
+.mini-bar.current {
+  background: linear-gradient(180deg, oklch(0.65 0.2 290), var(--accent));
+}

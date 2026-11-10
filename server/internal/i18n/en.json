@@ -255,13 +255,17 @@
   "kpi.open_chart": "Open chart",
   "kpi.no_matches": "No expenses match your search.",
   "insights.where_it_went": "Where it went",
-  "insights.vs_usual": "vs usual",
   "insights.new": "New",
   "insights.nothing_yet": "Nothing spent this month yet.",
   "insights.year_so_far": "Year so far",
   "insights.monthly_average": "Monthly average",
-  "insights.this_month_vs_average": "this month vs average",
   "insights.estimate": "Month-end estimate",
-  "insights.based_on_usual": "Spent so far plus a usual month of",
-  "insights.based_on_pace": "Based on your daily pace so far"
+  "insights.based_on_usual": "Based on a usual month of",
+  "insights.based_on_pace": "Based on your daily pace so far",
+  "insights.usual": "usual",
+  "insights.usual_amount": "Usual per month",
+  "insights.vs_usual_hint": "▲▼ compared with your 6-month average",
+  "insights.this_month": "This month",
+  "insights.average": "average",
+  "insights.spent_so_far": "Spent so far"
 }
