@@ -679,4 +679,24 @@
   .month-view .expenses-table tr.empty-row td {
     padding: 1.5em 1em;
   }
+
+  /* Add/edit sheet v2 on phones: edge-to-edge header and footer */
+  .sheet .new-expense-heading {
+    margin: 0;
+    padding: 0.4rem 0.75rem 0.75rem 1rem;
+    font-size: 1.1rem;
+  }
+
+  .sheet .new-expense-form {
+    padding: 1rem 1rem 0;
+  }
+
+  .sheet .new-expense-form .sheet-actions {
+    margin: 0.5rem -1rem 0;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  }
+
+  .sheet .new-expense-form .sheet-actions .sheet-save {
+    flex: 1;
+  }
 }
