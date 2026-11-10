@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const themeToggle = document.getElementById("theme-toggle");
   const body = document.body;
 
   function setTheme(theme) {
@@ -25,22 +24,10 @@ document.addEventListener("DOMContentLoaded", () => {
     setTheme("light");
   }
 
-  // Theme Toggle Listener
-  if (themeToggle) {
-    themeToggle.addEventListener("click", () => {
-      if (body.classList.contains("dark")) {
-        setTheme("light");
-      } else {
-        setTheme("dark");
-      }
-
-      // const chart = document.getElementById("chart");
-      // if (chart) {
-      //   chart.
-      //
-      // }
-    });
-  }
+  // Theme switch in the settings menu (active option is styled from body.dark)
+  document.querySelectorAll(".theme-option").forEach((option) => {
+    option.addEventListener("click", () => setTheme(option.dataset.theme));
+  });
 
   // Navigation Logic
   const trackerNavButtons = document.querySelectorAll(
@@ -196,29 +183,44 @@ function setupGroceryCalc(form) {
   unit.addEventListener("input", calc);
 }
 
-function setupExpenseTypeToggle(form) {
-  const typeSelect = form.querySelector("#utilityType");
-  const fields = form.querySelector("#expense-fields");
-
-  if (!typeSelect || !fields) {
-    return;
-  }
-
-  const toggle = () => {
-    fields.hidden = !typeSelect.value;
-  };
-
-  toggle();
-  typeSelect.addEventListener("change", toggle);
-}
-
 const actionDialog = document.getElementById("action-dialog");
 if (actionDialog) {
   actionDialog.addEventListener("htmx:afterSettle", (event) => {
     const form = event.target.querySelector(".new-expense-form");
     if (form) {
       setupGroceryCalc(form);
-      setupExpenseTypeToggle(form);
     }
   });
 }
+
+// --- Settings menu: close on outside click, Escape, or after an action ---
+document.addEventListener("click", (event) => {
+  document.querySelectorAll("details.settings-menu[open]").forEach((menu) => {
+    const clickedInside = menu.contains(event.target);
+    const clickedAction = event.target.closest(".settings-logout");
+    if (!clickedInside || clickedAction) {
+      menu.removeAttribute("open");
+    }
+  });
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    document
+      .querySelectorAll("details.settings-menu[open]")
+      .forEach((menu) => menu.removeAttribute("open"));
+  }
+});
+
+// A required field folded inside a closed <details> can't be focused by the
+// browser's validation, so open it when one of its fields is invalid.
+document.addEventListener(
+  "invalid",
+  (event) => {
+    const details = event.target.closest("details");
+    if (details && !details.open) {
+      details.open = true;
+    }
+  },
+  true,
+);

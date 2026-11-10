@@ -29,7 +29,15 @@
   </div>
 </section>
 <section id="add-expense-section">
-  <button type="submit" hx-get="groceries/create" hx-target="#action-dialog">
+  <button type="button" class="fab" aria-label='{{ T .Lang "common.add" }}' title='{{ T .Lang "common.add" }}'
+    hx-get="/groceries/create" hx-target="#action-dialog">
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  </button>
+  <button type="submit" class="add-btn" hx-get="/groceries/create" hx-target="#action-dialog">
     {{ T .Lang "common.add" }}
   </button>
   <button type="button" hx-get="groceries/form" hx-target="#action-dialog">
@@ -77,41 +85,9 @@
         </tr>
       </thead>
       <tbody id="recent-expenses">
-        {{ range .RecentExpenses }}
-        <tr id="grocery-{{ .ID }}">
-          <td>{{ .PurchaseDate.Format "2006-01-02" }}</td>
-          <td>{{ T $.Lang (print "category." .CategoryName) }}</td>
-          <td>{{ .Product }}</td>
-          <td>{{ .Quantity }}</td>
-          <td>{{ printf "%.2f" .UnitPrice }}</td>
-          <td>{{ printf "%.2f" .DiscountPerUnit }}</td>
-          <td>{{ printf "%.2f" .TotalPrice }}</td>
-          <td>{{ printf "%.2f" .TotalDiscount }}</td>
-          <td>{{ .SupermarketName }}</td>
-          <td>
-            <button
-              class="table-action-button blue"
-              hx-get="/groceries/edit/{{ .ID }}"
-              hx-target="#action-dialog"
-              hx-swap="innerHTML"
-            >
-              {{ T $.Lang "common.edit" }}
-            </button>
-            <button
-              class="table-action-button red"
-              hx-delete="/groceries/{{ .ID }}"
-              hx-target="#grocery-{{ .ID }}"
-              hx-swap="outerHTML"
-              hx-confirm='{{ T $.Lang "modal.delete_confirm" }}'
-            >
-              {{ T $.Lang "common.delete" }}
-            </button>
-          </td>
-        </tr>
-
-        {{ else }}
-        <tr>
-          <td colspan="10">
+        {{ range .RecentExpenses }}{{ template "grocery-row" (dict "G" . "Lang" $.Lang) }}{{ else }}
+        <tr class="empty-row">
+          <td colspan="11">
             <p>{{ T $.Lang "search.no_results" }}</p>
           </td>
         </tr>

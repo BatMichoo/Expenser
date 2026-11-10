@@ -108,6 +108,7 @@ func (db *DB) GetCarExpenseByID(id int, userID uuid.UUID) (*models.CarExpense, e
 	query := `
 		SELECT
 			ce.id,
+			ce.car_expense_type_id,
 			ct.name AS type,
 			ce.amount,
 			ce.discount_amount,
@@ -130,6 +131,7 @@ func (db *DB) GetCarExpenseByID(id int, userID uuid.UUID) (*models.CarExpense, e
 		userID,
 	).Scan(
 		&expense.ID,
+		&expense.ExpenseTypeID,
 		&expense.Type,
 		&expense.Amount,
 		&expense.DiscountAmount,

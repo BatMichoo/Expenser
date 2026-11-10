@@ -153,6 +153,7 @@ func (h *CarHandler) GetCreateCarForm(c *gin.Context) error {
 	c.HTML(http.StatusOK, utilities.Templates.Components.CreateCarExpForm, gin.H{
 		"Types": expTypes,
 		"Lang":  currentLang(c),
+		"Date":  time.Now().Format(utilities.DateFormats.HTML),
 	})
 	return nil
 }

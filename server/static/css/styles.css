@@ -192,38 +192,161 @@ button:hover {
   cursor: pointer;
 }
 
-/* Theme Toggle Button */
-#theme-toggle {
-  margin: 0.5em;
-  padding: 0.5em;
-  background-color: var(--bg-light);
+/* Settings menu (theme, language, logout) */
+.settings-menu {
+  position: relative;
+}
+
+.settings-menu > summary {
+  list-style: none;
   display: flex;
   align-items: center;
+  gap: 0.5em;
+  padding: 0.5em 0.75em;
+  margin: 0.5em;
+  border-radius: 0.6em;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 600;
+  transition: background-color 0.15s;
 }
 
-#theme-toggle:hover {
-  background-color: var(--hover);
-  border-color: var(--highlight-sec);
-}
-
-#theme-toggle .sun {
-  display: block;
-}
-
-body.dark #theme-toggle .sun {
+.settings-menu > summary::-webkit-details-marker {
   display: none;
 }
 
-#theme-toggle .moon {
-  display: none;
+.settings-menu > summary:hover,
+.settings-menu[open] > summary {
+  background-color: var(--bg-dark);
 }
 
-body.dark #theme-toggle .moon {
-  display: block;
+.settings-menu[open] > summary svg {
+  transform: rotate(45deg);
 }
 
-#theme-toggle span {
-  margin-left: 0.5em;
+.settings-menu > summary svg {
+  transition: transform 0.2s;
+}
+
+.settings-panel {
+  position: absolute;
+  top: calc(100% + 0.25em);
+  left: 0.5em;
+  z-index: 40;
+  min-width: 16em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  padding: 0.5em;
+  border-radius: 0.9em;
+  background-color: var(--bg-light);
+  border: 1px solid var(--bg-dark);
+  box-shadow: 0 10px 30px oklch(0 0 0 / 0.3);
+  text-align: left;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  min-height: 2.75em;
+  padding: 0 0.5em;
+}
+
+.settings-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  font-size: 0.95em;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.settings-label svg {
+  color: var(--text-muted);
+}
+
+/* Two-option switch used for theme and language */
+.segmented {
+  display: inline-flex;
+  gap: 0.15em;
+  margin: 0;
+  padding: 0.2em;
+  border-radius: 0.6em;
+  background-color: var(--bg-dark);
+}
+
+.segmented button,
+.segmented .lang-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  min-height: 2em;
+  padding: 0.25em 0.7em;
+  margin: 0;
+  border: 0;
+  border-radius: 0.45em;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transform: none;
+}
+
+.segmented button:hover {
+  color: var(--text);
+  background: transparent;
+  transform: none;
+}
+
+.segmented .lang-btn.active,
+body:not(.dark) .theme-option[data-theme="light"],
+body.dark .theme-option[data-theme="dark"] {
+  color: var(--text);
+  background-color: var(--bg-light);
+  box-shadow: var(--shadow);
+}
+
+.settings-divider {
+  height: 1px;
+  margin: 0.25em 0.25em;
+  border: 0;
+  background-color: var(--bg-dark);
+}
+
+.settings-panel .settings-logout {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  width: 100%;
+  min-height: 2.75em;
+  margin: 0;
+  padding: 0 0.5em;
+  border: 0;
+  border-radius: 0.6em;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.95em;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.settings-panel .settings-logout svg {
+  color: var(--text-muted);
+}
+
+.settings-panel .settings-logout:hover {
+  color: var(--danger);
+  background-color: var(--bg-dark);
+}
+
+.settings-panel .settings-logout:hover svg {
+  color: var(--danger);
 }
 
 /* Tracker Navigation */
@@ -964,3 +1087,162 @@ select {
   outline: none;
 }
 
+
+/* Expense rows: whole row opens the edit form */
+.expenses-table tr.exp-row {
+  cursor: pointer;
+}
+
+/* Compact summary line, only used by the mobile layout */
+.expenses-table td.c-meta {
+  display: none;
+}
+
+/* Once a row is added, the "no expenses" placeholder goes away */
+.expenses-table tr.exp-row ~ tr.empty-row {
+  display: none;
+}
+
+/* Floating add button is a phone-only control */
+.fab {
+  display: none;
+}
+
+/* Add/edit expense sheet ------------------------------------------------ */
+.sheet-grab {
+  display: none;
+}
+
+.sheet .new-expense-heading {
+  justify-content: space-between;
+  margin: 0.5em 1em 0.5em;
+}
+
+.sheet-close {
+  padding: 0.4em;
+  min-width: 2.75em;
+  min-height: 2.75em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  box-shadow: none;
+}
+
+.new-expense-form .type-chips {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.type-chips legend {
+  padding: 0;
+  margin-bottom: 0.4em;
+  font-size: 0.875em;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.chip {
+  position: relative;
+  cursor: pointer;
+  margin: 0;
+}
+
+.new-expense-form .chip input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+.chip span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5em;
+  padding: 0 0.9em;
+  border-radius: 999px;
+  font-size: 0.9em;
+  color: var(--text-muted);
+  background-color: var(--bg);
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+}
+
+.chip input:checked + span {
+  color: #fff;
+  background-color: oklch(0.55 0.2 var(--hue));
+}
+
+.chip input:focus-visible + span {
+  outline: 2px solid var(--highlight-sec);
+  outline-offset: 2px;
+}
+
+.new-expense-form .amount-field input {
+  font-size: 1.5em;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.new-expense-form .more-fields {
+  grid-column: 1 / -1;
+  text-align: left;
+}
+
+.more-fields > summary {
+  cursor: pointer;
+  padding: 0.5em 0;
+  font-weight: 600;
+  color: oklch(0.65 0.15 var(--hue));
+}
+
+.more-fields[open] > summary {
+  margin-bottom: 0.5em;
+}
+
+.more-fields-body {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1em;
+}
+
+.more-fields-body #metadata-fields {
+  display: contents;
+}
+
+.more-fields-body > :last-child {
+  grid-column: 1 / -1;
+}
+
+.new-expense-form .sheet-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75em;
+}
+
+.new-expense-form .sheet-actions button {
+  margin: 0;
+}
+
+.new-expense-form .sheet-actions .sheet-delete {
+  margin-right: auto;
+  color: var(--danger);
+}
+
+/* Groceries sheet: quantity and unit price side by side */
+.new-expense-form .qty-unit {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1em;
+}
