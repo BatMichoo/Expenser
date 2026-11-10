@@ -192,40 +192,6 @@ button:hover {
   cursor: pointer;
 }
 
-/* Theme Toggle Button */
-#theme-toggle {
-  margin: 0.5em;
-  padding: 0.5em;
-  background-color: var(--bg-light);
-  display: flex;
-  align-items: center;
-}
-
-#theme-toggle:hover {
-  background-color: var(--hover);
-  border-color: var(--highlight-sec);
-}
-
-#theme-toggle .sun {
-  display: block;
-}
-
-body.dark #theme-toggle .sun {
-  display: none;
-}
-
-#theme-toggle .moon {
-  display: none;
-}
-
-body.dark #theme-toggle .moon {
-  display: block;
-}
-
-#theme-toggle span {
-  margin-left: 0.5em;
-}
-
 /* Settings menu (theme, language, logout) */
 .settings-menu {
   position: relative;
@@ -238,12 +204,11 @@ body.dark #theme-toggle .moon {
   gap: 0.5em;
   padding: 0.5em 0.75em;
   margin: 0.5em;
-  border-radius: 0.5em;
+  border-radius: 0.6em;
   cursor: pointer;
   color: var(--text);
-  background-color: var(--bg-light);
-  box-shadow: var(--shadow);
   font-weight: 600;
+  transition: background-color 0.15s;
 }
 
 .settings-menu > summary::-webkit-details-marker {
@@ -252,46 +217,136 @@ body.dark #theme-toggle .moon {
 
 .settings-menu > summary:hover,
 .settings-menu[open] > summary {
-  background-color: var(--hover);
+  background-color: var(--bg-dark);
+}
+
+.settings-menu[open] > summary svg {
+  transform: rotate(45deg);
+}
+
+.settings-menu > summary svg {
+  transition: transform 0.2s;
 }
 
 .settings-panel {
   position: absolute;
   top: calc(100% + 0.25em);
   left: 0.5em;
-  z-index: 20;
-  min-width: 14em;
+  z-index: 40;
+  min-width: 16em;
   display: flex;
   flex-direction: column;
-  gap: 0.5em;
-  padding: 0.75em;
-  border-radius: 0.75em;
+  gap: 0.25em;
+  padding: 0.5em;
+  border-radius: 0.9em;
   background-color: var(--bg-light);
-  box-shadow: var(--shadow);
   border: 1px solid var(--bg-dark);
+  box-shadow: 0 10px 30px oklch(0 0 0 / 0.3);
   text-align: left;
-}
-
-.settings-panel #theme-toggle,
-.settings-panel .settings-logout {
-  margin: 0;
-  width: 100%;
-  justify-content: flex-start;
-}
-
-.settings-logout {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
 }
 
 .settings-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5em;
-  padding: 0 0.25em;
+  gap: 1em;
+  min-height: 2.75em;
+  padding: 0 0.5em;
+}
+
+.settings-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  font-size: 0.95em;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.settings-label svg {
   color: var(--text-muted);
+}
+
+/* Two-option switch used for theme and language */
+.segmented {
+  display: inline-flex;
+  gap: 0.15em;
+  margin: 0;
+  padding: 0.2em;
+  border-radius: 0.6em;
+  background-color: var(--bg-dark);
+}
+
+.segmented button,
+.segmented .lang-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  min-height: 2em;
+  padding: 0.25em 0.7em;
+  margin: 0;
+  border: 0;
+  border-radius: 0.45em;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transform: none;
+}
+
+.segmented button:hover {
+  color: var(--text);
+  background: transparent;
+  transform: none;
+}
+
+.segmented .lang-btn.active,
+body:not(.dark) .theme-option[data-theme="light"],
+body.dark .theme-option[data-theme="dark"] {
+  color: var(--text);
+  background-color: var(--bg-light);
+  box-shadow: var(--shadow);
+}
+
+.settings-divider {
+  height: 1px;
+  margin: 0.25em 0.25em;
+  border: 0;
+  background-color: var(--bg-dark);
+}
+
+.settings-panel .settings-logout {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  width: 100%;
+  min-height: 2.75em;
+  margin: 0;
+  padding: 0 0.5em;
+  border: 0;
+  border-radius: 0.6em;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.95em;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.settings-panel .settings-logout svg {
+  color: var(--text-muted);
+}
+
+.settings-panel .settings-logout:hover {
+  color: var(--danger);
+  background-color: var(--bg-dark);
+}
+
+.settings-panel .settings-logout:hover svg {
+  color: var(--danger);
 }
 
 /* Tracker Navigation */

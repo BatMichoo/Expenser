@@ -64,7 +64,13 @@ func TestHeaderSettingsMenu(t *testing.T) {
 
 	menu := doc.Find("details.settings-menu")
 	require.Equal(t, 1, menu.Length(), "settings menu present")
-	assert.Equal(t, 1, menu.Find("#theme-toggle").Length(), "theme toggle inside menu")
+	themes := menu.Find(".theme-option")
+	require.Equal(t, 2, themes.Length(), "light and dark options")
+	light, _ := themes.Eq(0).Attr("data-theme")
+	dark, _ := themes.Eq(1).Attr("data-theme")
+	assert.Equal(t, []string{"light", "dark"}, []string{light, dark})
+	assert.Contains(t, menu.Text(), "Theme")
+	assert.NotContains(t, menu.Text(), "Toggle Theme", "state-less toggle replaced")
 	assert.Equal(t, 2, menu.Find(".lang-btn").Length(), "language buttons inside menu")
 	assert.Equal(t, 1, menu.Find(`[hx-get="/logout"]`).Length(), "logout inside menu")
 
@@ -77,7 +83,7 @@ func TestHeaderLoggedOut(t *testing.T) {
 	doc := parseHTML(t, render(t, "header", models.HeaderOptions{Lang: "en"}))
 	assert.Equal(t, 0, doc.Find(`[hx-get="/logout"]`).Length())
 	assert.Equal(t, 2, doc.Find("#tracker-navigation .tracker-nav-button").Length(), "login, register")
-	assert.Equal(t, 1, doc.Find("details.settings-menu #theme-toggle").Length(), "theme still reachable")
+	assert.Equal(t, 2, doc.Find("details.settings-menu .theme-option").Length(), "theme still reachable")
 }
 
 func sampleHouseExpense() *models.HouseExpense {

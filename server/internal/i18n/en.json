@@ -1,8 +1,10 @@
 {
   "header.title": "Expense Tracker",
-  "header.toggle_theme": "Toggle Theme",
   "header.settings": "Settings",
   "header.language": "Language",
+  "header.theme": "Theme",
+  "header.theme_light": "Light",
+  "header.theme_dark": "Dark",
   "footer.rights": "All rights reserved.",
   "nav.home": "Home",
   "nav.house": "House",

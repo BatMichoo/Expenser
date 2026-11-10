@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const themeToggle = document.getElementById("theme-toggle");
   const body = document.body;
 
   function setTheme(theme) {
@@ -25,22 +24,10 @@ document.addEventListener("DOMContentLoaded", () => {
     setTheme("light");
   }
 
-  // Theme Toggle Listener
-  if (themeToggle) {
-    themeToggle.addEventListener("click", () => {
-      if (body.classList.contains("dark")) {
-        setTheme("light");
-      } else {
-        setTheme("dark");
-      }
-
-      // const chart = document.getElementById("chart");
-      // if (chart) {
-      //   chart.
-      //
-      // }
-    });
-  }
+  // Theme switch in the settings menu (active option is styled from body.dark)
+  document.querySelectorAll(".theme-option").forEach((option) => {
+    option.addEventListener("click", () => setTheme(option.dataset.theme));
+  });
 
   // Navigation Logic
   const trackerNavButtons = document.querySelectorAll(
@@ -210,9 +197,7 @@ if (actionDialog) {
 document.addEventListener("click", (event) => {
   document.querySelectorAll("details.settings-menu[open]").forEach((menu) => {
     const clickedInside = menu.contains(event.target);
-    const clickedAction = event.target.closest(
-      ".settings-panel button, .settings-panel a",
-    );
+    const clickedAction = event.target.closest(".settings-logout");
     if (!clickedInside || clickedAction) {
       menu.removeAttribute("open");
     }

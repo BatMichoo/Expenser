@@ -1,8 +1,10 @@
 {
   "header.title": "Разходен Тракер",
-  "header.toggle_theme": "Смени темата",
   "header.settings": "Настройки",
   "header.language": "Език",
+  "header.theme": "Тема",
+  "header.theme_light": "Светла",
+  "header.theme_dark": "Тъмна",
   "footer.rights": "Всички права запазени.",
   "nav.home": "Начало",
   "nav.house": "Дом",

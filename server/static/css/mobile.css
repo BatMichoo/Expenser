@@ -43,7 +43,6 @@
     min-width: 2.75em;
     justify-content: center;
     box-shadow: none;
-    background: transparent;
   }
 
   .settings-menu > summary span {
@@ -53,12 +52,8 @@
   .settings-panel {
     left: auto;
     right: 0;
-    min-width: 15em;
-  }
-
-  .settings-panel #theme-toggle,
-  .settings-panel .settings-logout {
-    min-height: 2.75em;
+    min-width: 17em;
+    max-width: calc(100vw - 1.5em);
   }
 
   /* Bottom tab bar */
