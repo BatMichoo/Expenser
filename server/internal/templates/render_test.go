@@ -197,3 +197,85 @@ func TestCurrentViewHasFab(t *testing.T) {
 		})
 	}
 }
+
+func houseTypes() *[]models.HomeUtilityType {
+	return &[]models.HomeUtilityType{{ID: 1, Name: "Electricity"}, {ID: 3, Name: "Gas"}, {ID: 7, Name: "Other"}}
+}
+
+func carTypes() *[]models.CarExpenseType {
+	return &[]models.CarExpenseType{{ID: 1, Name: "Fuel"}, {ID: 3, Name: "Insurance"}}
+}
+
+// assertSheetForm checks the parts every add/edit sheet shares.
+func assertSheetForm(t *testing.T, doc *goquery.Document, typeCount int, metaURL string) {
+	t.Helper()
+	assert.Equal(t, 0, doc.Find(`select[name="typeID"]`).Length(), "no type dropdown")
+	chips := doc.Find(`fieldset.type-chips`)
+	require.Equal(t, 1, chips.Length())
+	assert.Equal(t, typeCount, chips.Find(`input[type="radio"][name="typeID"]`).Length())
+	hxGet, _ := chips.Attr("hx-get")
+	assert.Equal(t, metaURL, hxGet)
+	include, _ := chips.Attr("hx-include")
+	assert.Equal(t, "this", include)
+
+	amount := doc.Find(`input[name="amount"]`)
+	mode, _ := amount.Attr("inputmode")
+	assert.Equal(t, "decimal", mode)
+	assert.Equal(t, 0, doc.Find(`[hidden]`).Length(), "no hidden pick-a-type-first step")
+	more := doc.Find("details.more-fields")
+	require.Equal(t, 1, more.Length())
+	assert.Equal(t, 1, more.Find("#metadata-fields").Length())
+	assert.Equal(t, 1, more.Find(`[name="discount_amount"]`).Length())
+	assert.Equal(t, 1, more.Find(`[name="notes"]`).Length())
+}
+
+func TestCreateHouseFormChips(t *testing.T) {
+	today := time.Now().Format("2006-01-02")
+	doc := parseHTML(t, render(t, "create-house-exp-form", map[string]any{"Types": houseTypes(), "Lang": "en", "Date": today}))
+	assertSheetForm(t, doc, 3, "/house/expenses/metadata")
+	assert.Equal(t, 0, doc.Find(`input[name="typeID"][checked]`).Length())
+	date, _ := doc.Find(`input[name="date"]`).Attr("value")
+	assert.Equal(t, today, date)
+	_, open := doc.Find("details.more-fields").Attr("open")
+	assert.False(t, open, "extras folded when adding")
+	assert.Equal(t, 0, doc.Find(".sheet-delete").Length())
+}
+
+func TestEditHouseFormDelete(t *testing.T) {
+	e := sampleHouseExpense()
+	doc := parseHTML(t, render(t, "edit-house-exp-form", &models.EditHouseFormData{Expense: e, Types: houseTypes(), Lang: "en"}))
+	assertSheetForm(t, doc, 3, "/house/expenses/metadata")
+	checked, _ := doc.Find(`input[name="typeID"][checked]`).Attr("value")
+	assert.Equal(t, "3", checked)
+	_, open := doc.Find("details.more-fields").Attr("open")
+	assert.True(t, open, "extras expanded when editing")
+	assert.Equal(t, "Meter read", doc.Find(`textarea[name="notes"]`).Text(), "no stray whitespace")
+	form := doc.Find("form.new-expense-form")
+	put, _ := form.Attr("hx-put")
+	assert.Equal(t, "/house/expenses/42", put)
+	del, _ := doc.Find("button.sheet-delete").Attr("hx-get")
+	assert.Equal(t, "/house/expenses/delete/42", del)
+	swap, _ := doc.Find("button.sheet-delete").Attr("hx-swap")
+	assert.Equal(t, "innerHTML", swap, "must not inherit the form's outerHTML swap and replace the dialog")
+}
+
+func TestCreateCarFormChips(t *testing.T) {
+	today := time.Now().Format("2006-01-02")
+	doc := parseHTML(t, render(t, "create-car-exp-form", map[string]any{"Types": carTypes(), "Lang": "en", "Date": today}))
+	assertSheetForm(t, doc, 2, "/car/expenses/metadata")
+	date, _ := doc.Find(`input[name="date"]`).Attr("value")
+	assert.Equal(t, today, date)
+}
+
+func TestEditCarFormDelete(t *testing.T) {
+	e := &models.CarExpense{ID: 7, ExpenseTypeID: 1, Type: "Fuel", Amount: 60, Notes: "Shell", Date: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC)}
+	doc := parseHTML(t, render(t, "edit-car-exp-form", &models.EditCarFormData{Expense: e, Types: carTypes(), Lang: "en"}))
+	assertSheetForm(t, doc, 2, "/car/expenses/metadata")
+	checked, _ := doc.Find(`input[name="typeID"][checked]`).Attr("value")
+	assert.Equal(t, "1", checked)
+	assert.Equal(t, "Shell", doc.Find(`textarea[name="notes"]`).Text())
+	put, _ := doc.Find("form.new-expense-form").Attr("hx-put")
+	assert.Equal(t, "/car/expenses/7", put)
+	del, _ := doc.Find("button.sheet-delete").Attr("hx-get")
+	assert.Equal(t, "/car/expenses/delete/7", del)
+}

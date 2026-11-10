@@ -1,27 +1,14 @@
-{{ define "edit-car-exp-form" }} {{ $Expense := .Expense}}
-<div>
-  <h2 class="new-expense-heading">
-    {{ T .Lang "form.edit" }}: {{ T .Lang (print "type." $Expense.Type) }}
-    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 10h12" />
-      <path d="M4 14h9" />
-      <path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12a7.9 7.9 0 0 0 7.8 8 7.7 7.7 0 0 0 5.2-2" />
-    </svg>
-  </h2>
-  <form class="new-expense-form">
-    <div class="expense-type-field">
-      <label for="utilityType">{{ T .Lang "form.expense_type" }}</label>
-      <select id="utilityType" name="typeID" hx-get="/car/expenses/metadata" hx-target="#metadata-fields"
-        hx-swap="innerHTML">
-        {{range .Types }}
-        <option value="{{ .ID }}" {{if eq $Expense.ExpenseTypeID .ID }}selected{{end}}>
-          {{ T $.Lang (print "type." .Name) }}
-        </option>
-        {{ end }}
-      </select>
-    </div>
-    <div id="metadata-fields">
+{{ define "edit-car-exp-form" }} {{ $Expense := .Expense }}
+<div class="sheet">
+  {{ template "sheet-heading" (dict "Title" (print (T .Lang "form.edit") ": " (T .Lang (print "type." $Expense.Type))) "Lang" .Lang) }}
+  <form class="new-expense-form" hx-put="/car/expenses/{{ $Expense.ID }}" hx-target="#exp-{{ $Expense.ID }}"
+    hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    {{ template "type-chips" (dict "Types" .Types "Selected" $Expense.ExpenseTypeID "Lang" .Lang "Label" "form.expense_type" "MetaURL" "/car/expenses/metadata") }}
+    {{ template "amount-date-fields" (dict "Lang" .Lang "Amount" $Expense.Amount "Date" ($Expense.Date.Format "2006-01-02")) }}
+    <details class="more-fields" open>
+      <summary>{{ T .Lang "form.more_fields" }}</summary>
+      <div class="more-fields-body">
+      <div id="metadata-fields">
       {{ if .Metadata }}
         {{ if eq $Expense.ExpenseTypeID 1 }}{{ template "car-metadata-fuel" (dict "Metadata" .Metadata "Lang" $.Lang) }}{{ end }}
         {{ if eq $Expense.ExpenseTypeID 2 }}{{ template "car-metadata-maintenance" (dict "Metadata" .Metadata "Lang" $.Lang) }}{{ end }}
@@ -29,36 +16,11 @@
         {{ if eq $Expense.ExpenseTypeID 5 }}{{ template "car-metadata-parkingtolls" (dict "Metadata" .Metadata "Lang" $.Lang) }}{{ end }}
         {{ if eq $Expense.ExpenseTypeID 6 }}{{ template "car-metadata-other" (dict "Metadata" .Metadata "Lang" $.Lang) }}{{ end }}
       {{ end }}
-    </div>
-    <div>
-      <label for="amount">{{ T .Lang "common.amount" }}</label>
-      <input type="number" id="amount" name="amount" step="0.01" min="0" value="{{ $Expense.Amount }}" required
-        placeholder='{{ T .Lang "form.amount_placeholder" }}' />
-    </div>
-    <div>
-      <label for="discountAmount">{{ T .Lang "common.discount" }}</label>
-      <input type="number" id="discountAmount" name="discount_amount" step="0.01" min="0" value="{{ $Expense.DiscountAmount }}" />
-    </div>
-    <div>
-      <label for="expenseDate">{{ T .Lang "common.date" }}</label>
-      <input type="date" id="expenseDate" name="date" required value='{{ $Expense.Date.Format "2006-01-02" }}' />
-    </div>
-    <div>
-      <label for="notes">{{ T .Lang "common.notes" }}</label>
-      <textarea id="notes" name="notes" rows="3" placeholder='{{ T .Lang "form.notes_placeholder" }}'>
-        {{ $Expense.Notes }}</textarea>
-    </div>
-    <div>
-      <button type="submit" class="btn-primary" hx-put="/car/expenses/{{ $Expense.ID }}"
-        hx-target="#exp-{{ $Expense.ID }}" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful && event.target === this) {
-        hideDialog();
-    }">
-        {{ T .Lang "common.save" }}
-      </button>
-      <button type="button" class="btn-primary" onClick="hideDialog()">
-        {{ T .Lang "common.cancel" }}
-      </button>
-    </div>
+      </div>
+      {{ template "discount-notes-fields" (dict "Lang" .Lang "Discount" $Expense.DiscountAmount "Notes" $Expense.Notes) }}
+      </div>
+    </details>
+    {{ template "sheet-actions" (dict "Lang" .Lang "SaveLabel" "common.save" "DeleteURL" (print "/car/expenses/delete/" $Expense.ID)) }}
   </form>
 </div>
 {{ end }}

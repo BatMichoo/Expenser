@@ -109,6 +109,7 @@ func (db *DB) GetHouseExpenseByID(id int, userID uuid.UUID) (*models.HouseExpens
 	query := `
 		SELECT
 			he.id,
+			he.utility_type_id,
 			ut.name AS utility_name,
 			he.amount,
 			he.discount_amount,
@@ -130,6 +131,7 @@ func (db *DB) GetHouseExpenseByID(id int, userID uuid.UUID) (*models.HouseExpens
 		userID,
 	).Scan(
 		&expense.ID,
+		&expense.UtilityTypeID,
 		&expense.UtilityType,
 		&expense.Amount,
 		&expense.DiscountAmount,

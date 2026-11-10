@@ -196,29 +196,12 @@ function setupGroceryCalc(form) {
   unit.addEventListener("input", calc);
 }
 
-function setupExpenseTypeToggle(form) {
-  const typeSelect = form.querySelector("#utilityType");
-  const fields = form.querySelector("#expense-fields");
-
-  if (!typeSelect || !fields) {
-    return;
-  }
-
-  const toggle = () => {
-    fields.hidden = !typeSelect.value;
-  };
-
-  toggle();
-  typeSelect.addEventListener("change", toggle);
-}
-
 const actionDialog = document.getElementById("action-dialog");
 if (actionDialog) {
   actionDialog.addEventListener("htmx:afterSettle", (event) => {
     const form = event.target.querySelector(".new-expense-form");
     if (form) {
       setupGroceryCalc(form);
-      setupExpenseTypeToggle(form);
     }
   });
 }
@@ -243,3 +226,16 @@ document.addEventListener("keydown", (event) => {
       .forEach((menu) => menu.removeAttribute("open"));
   }
 });
+
+// A required field folded inside a closed <details> can't be focused by the
+// browser's validation, so open it when one of its fields is invalid.
+document.addEventListener(
+  "invalid",
+  (event) => {
+    const details = event.target.closest("details");
+    if (details && !details.open) {
+      details.open = true;
+    }
+  },
+  true,
+);
