@@ -12,7 +12,7 @@ type HouseExpense struct {
 	ID             int       `form:"id"`
 	UtilityTypeID  int       `form:"typeID"`
 	UtilityType    string    `form:"type" binding:"required"`
-	Amount         float64   `form:"amount" binding:"required"`
+	Amount         float64   `form:"amount"`
 	DiscountAmount float64   `form:"discount_amount"`
 	ExpenseDate    time.Time `form:"date" binding:"required"`
 	Notes          string    `form:"notes"`
