@@ -181,8 +181,6 @@
   "parts.Battery": "Battery",
   "parts.Spark Plugs": "Spark Plugs",
   "search.title": "Search",
-  "search.results": "Results",
-  "search.total": "Total",
   "search.no_results": "No recent expenses found.",
   "modal.error_title": "Something went wrong!",
   "modal.success_title": "Success!",
