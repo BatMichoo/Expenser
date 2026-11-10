@@ -656,8 +656,13 @@
   }
 
   #add-expense-section .upload-btn {
+    display: inline-flex;
     width: 100%;
     min-height: 2.75em;
+  }
+
+  .month-toolbar .upload-btn {
+    display: none;
   }
 
   .month-view .expenses-table {

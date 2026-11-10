@@ -190,7 +190,15 @@ func TestGroceriesCurrentUsesGroceryRow(t *testing.T) {
 	v.Groceries = []models.GroceriesExpense{{ID: 1, Product: "Milk", CategoryName: "Dairy", PurchaseDate: time.Now()}}
 	doc := parseHTML(t, render(t, "groceries-current", v))
 	assert.Equal(t, 1, doc.Find("tr#grocery-1.exp-row").Length())
-	assert.Equal(t, 1, doc.Find("button.upload-btn").Length(), "receipt upload stays on groceries")
+	toolbar := doc.Find(".month-toolbar button.upload-btn")
+	require.Equal(t, 1, toolbar.Length(), "desktop: next to Add in the toolbar")
+	hx, _ := toolbar.Attr("hx-get")
+	assert.Equal(t, "/groceries/form", hx)
+	assert.Equal(t, 1, toolbar.Find("svg").Length(), "has an icon")
+	assert.Equal(t, 1, doc.Find("#add-expense-section button.upload-btn").Length(), "phone: full-width button")
+
+	house := parseHTML(t, render(t, "house-current", monthView("house")))
+	assert.Equal(t, 0, house.Find("button.upload-btn").Length(), "only groceries upload receipts")
 }
 
 func TestCurrentViewHasFab(t *testing.T) {
