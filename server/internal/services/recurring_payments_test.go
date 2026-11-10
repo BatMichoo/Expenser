@@ -105,10 +105,27 @@ func TestMarkPaidAmounts(t *testing.T) {
 		assert.ErrorIs(t, err, ErrAmountRequired)
 	})
 
-	t.Run("non-positive amount", func(t *testing.T) {
+	t.Run("zero amount allowed", func(t *testing.T) {
+		store := &fakePaymentStore{payment: payment}
 		zero := 0.0
+		_, err := newTestPaymentService(store, today).MarkPaid(ctx, userID, payment.ID, &zero, time.Time{})
+		require.NoError(t, err)
+		assert.Equal(t, 0.0, store.paidAmount)
+	})
+
+	t.Run("zero expected amount used", func(t *testing.T) {
+		zero := 0.0
+		free := &models.RecurringPayment{ID: uuid.New(), UserID: userID, ExpectedAmount: &zero}
+		store := &fakePaymentStore{payment: free}
+		_, err := newTestPaymentService(store, today).MarkPaid(ctx, userID, free.ID, nil, time.Time{})
+		require.NoError(t, err)
+		assert.Equal(t, 0.0, store.paidAmount)
+	})
+
+	t.Run("negative amount", func(t *testing.T) {
+		negative := -1.0
 		_, err := newTestPaymentService(&fakePaymentStore{payment: payment}, today).
-			MarkPaid(ctx, userID, payment.ID, &zero, time.Time{})
+			MarkPaid(ctx, userID, payment.ID, &negative, time.Time{})
 		assert.ErrorIs(t, err, ErrInvalidPaidAmount)
 	})
 

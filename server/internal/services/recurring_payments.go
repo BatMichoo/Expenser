@@ -24,7 +24,7 @@ type RecurringPaymentStore interface {
 
 var (
 	ErrAmountRequired     = errors.New("amount is required because the payment has no expected amount")
-	ErrInvalidPaidAmount  = errors.New("paid amount must be greater than zero")
+	ErrInvalidPaidAmount  = errors.New("paid amount cannot be negative")
 	ErrInvalidUpcomingDay = errors.New("days must not be negative")
 )
 
@@ -79,7 +79,7 @@ func (s *RecurringPaymentService) MarkPaid(ctx context.Context, userID, id uuid.
 		}
 		amount = p.ExpectedAmount
 	}
-	if *amount <= 0 {
+	if *amount < 0 {
 		return nil, ErrInvalidPaidAmount
 	}
 	if paidOn.IsZero() {

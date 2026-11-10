@@ -340,6 +340,21 @@ func TestMarkRecurringPaymentPaidCar(t *testing.T) {
 	assert.Equal(t, "Recurring payment", expense.Notes, "fallback note when unnamed")
 }
 
+func TestMarkRecurringPaymentPaidZeroAmount(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+
+	p := newInternetPayment(userID, rpDate(2026, 12, 1))
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+
+	res, err := testDB.MarkRecurringPaymentPaid(ctx, userID, p.ID, 0, rpDate(2026, 12, 1))
+	require.NoError(t, err, "a free month still records an expense")
+
+	expense, err := testDB.GetHouseExpenseByID(res.ExpenseID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, 0.0, expense.Amount)
+}
+
 func TestMarkRecurringPaymentPaidOtherUser(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
