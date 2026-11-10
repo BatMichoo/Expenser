@@ -21,7 +21,7 @@ func main() {
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalln("Couldn't load configuration.")
+		log.Fatalf("Couldn't load configuration: %v", err)
 	}
 
 	var tPath string

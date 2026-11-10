@@ -65,8 +65,7 @@ func LoadConfig() (*Config, error) {
 	// JWT configuration
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "your-secret-key-change-this-in-production"
-		log.Println("Warning: Using default JWT secret. Set JWT_SECRET environment variable in production.")
+		return nil, fmt.Errorf("JWT_SECRET environment variable is required")
 	}
 
 	jwtExpirationStr := os.Getenv("JWT_EXPIRATION_HOURS")
