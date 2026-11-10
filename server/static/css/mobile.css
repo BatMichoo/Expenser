@@ -1,38 +1,125 @@
 @media (max-width: 767px) {
 
-  /* Header Section */
+  /* Top bar: title left, settings right */
   .header-section {
-    padding: 0 1em;
+    position: sticky;
+    top: 0;
+    z-index: 30;
     width: 100%;
     box-sizing: border-box;
-    flex-wrap: wrap;
-    justify-content: space-around;
     max-height: unset;
+    height: 3.25em;
+    padding: 0 0.75em;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    background-color: var(--bg-light);
+    box-shadow: var(--shadow);
   }
 
   .header-section h3 {
     position: static;
     transform: none;
-    margin: 0.5em 0;
-    font-size: 1.5em;
+    margin: 0;
+    font-size: 1.15em;
+    order: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  /* Navigation & Layout */
-  #tracker-navigation {
-    flex-direction: column;
-    gap: 0.5em;
-    width: 100%;
-    padding: 0.5em 1em;
+  .header-left {
+    order: 2;
+    margin-left: auto;
   }
 
-  .tracker-nav-button {
-    width: 100%;
+  .header-right {
+    order: 3;
+  }
+
+  .settings-menu > summary {
+    margin: 0;
+    padding: 0.6em;
+    min-height: 2.75em;
+    min-width: 2.75em;
     justify-content: center;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .settings-menu > summary span {
+    display: none;
+  }
+
+  .settings-panel {
+    left: auto;
+    right: 0;
+    min-width: 15em;
+  }
+
+  .settings-panel #theme-toggle,
+  .settings-panel .settings-logout {
+    min-height: 2.75em;
+  }
+
+  /* Bottom tab bar */
+  #tracker-navigation {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    width: 100%;
+    padding: 0 0 env(safe-area-inset-bottom);
+    background-color: var(--bg-light);
+    box-shadow: 0 -2px 6px oklch(0 0 0 / 0.15);
+  }
+
+  #tracker-navigation .tracker-nav-button {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.15em;
+    min-height: 3.75em;
+    padding: 0.4em 0.25em;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    border-top: 3px solid transparent;
+    background: transparent;
+    box-shadow: none;
+    font-size: 0.75em;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  #tracker-navigation .tracker-nav-button svg {
+    margin: 0;
+    width: 1.75em;
+    height: 1.75em;
+  }
+
+  #tracker-navigation .tracker-nav-button.active {
+    color: var(--text);
+    border-top-color: var(--highlight-sec);
+  }
+
+  /* Full-width page, kept clear of the tab bar */
+  body {
+    padding: 0 0 calc(4.5em + env(safe-area-inset-bottom));
+  }
+
+  footer {
+    display: none;
   }
 
   .container {
-    padding: 1em 0.25em;
-    min-width: 95%;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.75em 0;
   }
 
   #tracker-content {

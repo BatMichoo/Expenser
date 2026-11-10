@@ -222,3 +222,24 @@ if (actionDialog) {
     }
   });
 }
+
+// --- Settings menu: close on outside click, Escape, or after an action ---
+document.addEventListener("click", (event) => {
+  document.querySelectorAll("details.settings-menu[open]").forEach((menu) => {
+    const clickedInside = menu.contains(event.target);
+    const clickedAction = event.target.closest(
+      ".settings-panel button, .settings-panel a",
+    );
+    if (!clickedInside || clickedAction) {
+      menu.removeAttribute("open");
+    }
+  });
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    document
+      .querySelectorAll("details.settings-menu[open]")
+      .forEach((menu) => menu.removeAttribute("open"));
+  }
+});

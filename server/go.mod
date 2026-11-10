@@ -3,12 +3,15 @@ module expenser
 go 1.23.0
 
 require (
+	github.com/PuerkitoBio/goquery v1.10.3
 	github.com/gin-gonic/gin v1.10.1
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/stretchr/testify v1.9.0
 )
+
+require github.com/andybalholm/cascadia v1.3.3 // indirect
 
 require (
 	github.com/bytedance/sonic v1.11.6 // indirect

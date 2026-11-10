@@ -226,6 +226,74 @@ body.dark #theme-toggle .moon {
   margin-left: 0.5em;
 }
 
+/* Settings menu (theme, language, logout) */
+.settings-menu {
+  position: relative;
+}
+
+.settings-menu > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.5em 0.75em;
+  margin: 0.5em;
+  border-radius: 0.5em;
+  cursor: pointer;
+  color: var(--text);
+  background-color: var(--bg-light);
+  box-shadow: var(--shadow);
+  font-weight: 600;
+}
+
+.settings-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-menu > summary:hover,
+.settings-menu[open] > summary {
+  background-color: var(--hover);
+}
+
+.settings-panel {
+  position: absolute;
+  top: calc(100% + 0.25em);
+  left: 0.5em;
+  z-index: 20;
+  min-width: 14em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  padding: 0.75em;
+  border-radius: 0.75em;
+  background-color: var(--bg-light);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--bg-dark);
+  text-align: left;
+}
+
+.settings-panel #theme-toggle,
+.settings-panel .settings-logout {
+  margin: 0;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.settings-logout {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  padding: 0 0.25em;
+  color: var(--text-muted);
+}
+
 /* Tracker Navigation */
 #tracker-navigation {
   display: flex;
