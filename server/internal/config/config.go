@@ -79,13 +79,13 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
-	reminderCheckInterval := time.Hour
+	reminderCheckInterval := 24 * time.Hour // Default to 24 hours
 	if v := os.Getenv("REMINDER_CHECK_INTERVAL"); v != "" {
-		d, err := time.ParseDuration(v)
-		if err != nil || d <= 0 {
-			return nil, fmt.Errorf("REMINDER_CHECK_INTERVAL must be a positive duration like 1h or 30m, got %q", v)
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			reminderCheckInterval = d
+		} else {
+			log.Printf("Invalid REMINDER_CHECK_INTERVAL %q, using default %s\n", v, reminderCheckInterval)
 		}
-		reminderCheckInterval = d
 	}
 
 	dbConnTemplate := "postgres://%s:%s@%s:%s/%s?sslmode=disable"

@@ -56,7 +56,7 @@ JWT_EXPIRATION_HOURS=24<br>
 
 ### Reminders
 
-REMINDER_CHECK_INTERVAL=1h<br>
+REMINDER_CHECK_INTERVAL=24h<br>
 
 # Auto-deploy
 
