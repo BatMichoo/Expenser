@@ -3,7 +3,8 @@
   /* Header Section */
   .header-section {
     padding: 0 1em;
-    width: 100vw;
+    width: 100%;
+    box-sizing: border-box;
     flex-wrap: wrap;
     justify-content: space-around;
     max-height: unset;
