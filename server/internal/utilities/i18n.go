@@ -22,10 +22,10 @@ func InitI18n() error {
 	i18nOnce.Do(func() {
 		var i18nPath string
 		projectRoot := config.GetProjectRootDir()
-		
+
 		// Determine path based on environment/project structure
 		i18nPath = filepath.Join(projectRoot, "internal/i18n")
-		
+
 		files, readErr := os.ReadDir(i18nPath)
 		if readErr != nil {
 			err = fmt.Errorf("failed to read i18n directory: %w", readErr)
@@ -36,7 +36,7 @@ func InitI18n() error {
 			if filepath.Ext(file.Name()) == ".json" {
 				lang := file.Name()[:len(file.Name())-len(".json")]
 				filePath := filepath.Join(i18nPath, file.Name())
-				
+
 				content, fileErr := os.ReadFile(filePath)
 				if fileErr != nil {
 					err = fmt.Errorf("failed to read translation file %s: %w", file.Name(), fileErr)
@@ -63,7 +63,7 @@ func T(lang, key string) string {
 	if lang == "" {
 		lang = defaultLang
 	}
-	
+
 	if langDict, ok := translations[lang]; ok {
 		if val, ok := langDict[key]; ok {
 			return val

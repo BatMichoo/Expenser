@@ -53,9 +53,13 @@ func connectTestDB(cfg *config.Config) (*DB, error) {
 	// Create test DB if it doesn't exist
 	if !exists {
 		dbUser := os.Getenv("DB_USER")
-		_, err := adminDB.Exec(fmt.Sprintf(`CREATE DATABASE %s OWNER %s SET TIMEZONE TO 'Europe/Sofia'`, cfg.DB.TestDBName, dbUser))
+		_, err := adminDB.Exec(fmt.Sprintf(`CREATE DATABASE %s OWNER %s`, cfg.DB.TestDBName, dbUser))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create test DB: %w", err)
+		}
+		_, err = adminDB.Exec(fmt.Sprintf(`ALTER DATABASE %s SET TIMEZONE TO 'Europe/Sofia'`, cfg.DB.TestDBName))
+		if err != nil {
+			return nil, fmt.Errorf("failed to set test DB timezone: %w", err)
 		}
 		fmt.Printf("Created test DB: %s", cfg.DB.TestDBName)
 	} else {

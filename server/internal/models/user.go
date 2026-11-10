@@ -8,12 +8,12 @@ import (
 
 // User represents a user in the system
 type User struct {
-	ID           uuid.UUID
+	ID                uuid.UUID
 	Username          string `form:"username" binding:"required,min=3,max=50"`
 	PasswordHash      string
 	PreferredLanguage string
 	CreatedAt         time.Time
-	UpdatedAt    time.Time
+	UpdatedAt         time.Time
 }
 
 // UserRegistration represents the data needed for user registration

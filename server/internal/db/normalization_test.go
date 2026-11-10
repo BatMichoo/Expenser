@@ -25,10 +25,10 @@ func TestHighestCarExpenseDescriptionWhitespaceNormalization(t *testing.T) {
 	expenseDate := time.Now()
 	// Simulate a case where a database type might have extra spaces (though not directly possible here, it tests the handler logic)
 	// We'll rely on the handler logic being applied during the creation or processing.
-	
+
 	// Since we can't easily insert dirty data into the DB with existing helpers,
 	// we'll simulate the handler behavior by ensuring our test expects trimmed data.
-	
+
 	expense := &models.CarExpense{
 		Amount:        450.00,
 		Date:          expenseDate,
@@ -43,9 +43,9 @@ func TestHighestCarExpenseDescriptionWhitespaceNormalization(t *testing.T) {
 
 	_, utilType, err := testDB.GetHighestCarExpenseForMonth(expenseDate.Month(), TestUserRegisterModel.ID)
 	assert.NoError(t, err)
-	
+
 	// Test the normalization
 	normalizedType := strings.TrimSpace(utilType)
-	
+
 	assert.Equal(t, "Other", normalizedType, "The returned type name should be trimmed and match expected string")
 }
