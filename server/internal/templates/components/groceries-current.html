@@ -77,41 +77,9 @@
         </tr>
       </thead>
       <tbody id="recent-expenses">
-        {{ range .RecentExpenses }}
-        <tr id="grocery-{{ .ID }}">
-          <td>{{ .PurchaseDate.Format "2006-01-02" }}</td>
-          <td>{{ T $.Lang (print "category." .CategoryName) }}</td>
-          <td>{{ .Product }}</td>
-          <td>{{ .Quantity }}</td>
-          <td>{{ printf "%.2f" .UnitPrice }}</td>
-          <td>{{ printf "%.2f" .DiscountPerUnit }}</td>
-          <td>{{ printf "%.2f" .TotalPrice }}</td>
-          <td>{{ printf "%.2f" .TotalDiscount }}</td>
-          <td>{{ .SupermarketName }}</td>
-          <td>
-            <button
-              class="table-action-button blue"
-              hx-get="/groceries/edit/{{ .ID }}"
-              hx-target="#action-dialog"
-              hx-swap="innerHTML"
-            >
-              {{ T $.Lang "common.edit" }}
-            </button>
-            <button
-              class="table-action-button red"
-              hx-delete="/groceries/{{ .ID }}"
-              hx-target="#grocery-{{ .ID }}"
-              hx-swap="outerHTML"
-              hx-confirm='{{ T $.Lang "modal.delete_confirm" }}'
-            >
-              {{ T $.Lang "common.delete" }}
-            </button>
-          </td>
-        </tr>
-
-        {{ else }}
-        <tr>
-          <td colspan="10">
+        {{ range .RecentExpenses }}{{ template "grocery-row" (dict "G" . "Lang" $.Lang) }}{{ else }}
+        <tr class="empty-row">
+          <td colspan="11">
             <p>{{ T $.Lang "search.no_results" }}</p>
           </td>
         </tr>

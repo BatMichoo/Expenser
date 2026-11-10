@@ -1032,3 +1032,18 @@ select {
   outline: none;
 }
 
+
+/* Expense rows: whole row opens the edit form */
+.expenses-table tr.exp-row {
+  cursor: pointer;
+}
+
+/* Compact summary line, only used by the mobile layout */
+.expenses-table td.c-meta {
+  display: none;
+}
+
+/* Once a row is added, the "no expenses" placeholder goes away */
+.expenses-table tr.exp-row ~ tr.empty-row {
+  display: none;
+}

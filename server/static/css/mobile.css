@@ -243,66 +243,120 @@
     gap: 0.75em;
   }
 
-  /* Expenses Table (Using the latest, modified version from the end of your code) */
-  .expenses-table {
+  /* Expense lists: one compact, tappable line per expense */
+  .overflow-x-auto {
+    overflow: visible;
+  }
+
+  .expenses-table,
+  .expenses-table tbody,
+  .expenses-table tfoot {
     display: block;
     width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     box-shadow: none;
-    border-color: transparent;
+    border: 0;
   }
 
-  .expenses-table thead,
-  .expenses-table tbody,
-  .expenses-table th,
-  .expenses-table td,
-  .expenses-table tr {
-    display: block;
-  }
-
-  .expenses-table thead tr {
+  .expenses-table thead {
     display: none;
   }
 
-  .expenses-table tr {
-    border: 1px solid transparent;
-    margin-bottom: 0.5em;
-    border-radius: 0.5em;
-    box-shadow: var(--shadow);
-  }
-
-  .expenses-table td {
-    border: none;
-    border-bottom: 1px solid var(--highlight-sec);
-    text-align: center;
-  }
-
-  .expenses-table td:last-child {
-    border-bottom: 0;
-  }
-
-  .expenses-table td:before {
-    content: attr(data-label);
-    position: absolute;
-    left: 6px;
-    width: 45%;
-    padding-right: 10px;
-    white-space: nowrap;
+  .expenses-table tr.exp-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.75em;
+    row-gap: 0.15em;
+    align-items: baseline;
+    padding: 0.7em 0.9em;
+    min-height: 2.75em;
+    border-bottom: 1px solid var(--bg-dark);
+    background: transparent;
     text-align: left;
-    font-weight: bold;
-    color: var(--tx-muted);
+    cursor: pointer;
   }
 
-  .expenses-table tfoot {
-    border-top: none;
+  .expenses-table tbody tr.exp-row:nth-of-type(odd),
+  .expenses-table tbody tr.exp-row:nth-of-type(even) {
+    background: transparent;
+  }
+
+  .expenses-table tr.exp-row:active {
+    background-color: var(--hover);
+  }
+
+  .expenses-table tr.exp-row td {
+    display: none;
+    padding: 0;
+    border: 0;
+  }
+
+  .expenses-table tr.exp-row td.c-type,
+  .expenses-table tr.exp-row td.c-product {
     display: block;
-    margin-top: 1em;
-    border-top: none;
+    grid-column: 1;
+    grid-row: 1;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .expenses-table tr.exp-row td.c-meta {
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    font-size: 0.8em;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .expenses-table tr.exp-row td.c-amount {
+    display: block;
+    grid-column: 2;
+    grid-row: 1;
+    text-align: right;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+
+  .expenses-table tr.exp-row td.c-discount:not(.is-empty) {
+    display: block;
+    grid-column: 2;
+    grid-row: 2;
+    text-align: right;
+    font-size: 0.8em;
+    color: var(--success);
+  }
+
+  .expenses-table tr.exp-row td.c-discount:not(.is-empty)::before {
+    content: "\2212";
+  }
+
+  .expenses-table tr.empty-row,
+  .expenses-table tr.empty-row td {
+    display: block;
+    text-align: center;
+    color: var(--text-muted);
+    border: 0;
   }
 
   .expenses-table tfoot tr {
-    background-color: var(--light-theme-toggle-background);
-    margin-bottom: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75em 0.9em;
+    font-weight: 700;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .expenses-table tfoot td {
+    display: block;
+    padding: 0;
+    border: 0;
   }
 }

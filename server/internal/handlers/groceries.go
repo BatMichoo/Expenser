@@ -97,19 +97,7 @@ func (h *GroceriesHandler) renderGroceryRows(c *gin.Context, status int, rows []
 
 // groceryRowData is the data the "grocery-row" template expects.
 func groceryRowData(e *models.GroceriesExpense, lang string) gin.H {
-	return gin.H{
-		"ID":              e.ID,
-		"CategoryName":    e.CategoryName,
-		"PurchaseDate":    e.PurchaseDate,
-		"Product":         e.Product,
-		"Quantity":        e.Quantity,
-		"UnitPrice":       e.UnitPrice,
-		"DiscountPerUnit": e.DiscountPerUnit,
-		"TotalPrice":      e.TotalPrice,
-		"TotalDiscount":   e.TotalDiscount,
-		"SupermarketName": e.SupermarketName,
-		"Lang":            lang,
-	}
+	return gin.H{"G": e, "Lang": lang}
 }
 
 // parseGroceriesExpenseForm reads the fields shared by the create and edit forms.
