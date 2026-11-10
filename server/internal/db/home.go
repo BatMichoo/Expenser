@@ -453,3 +453,13 @@ func (db *DB) GetHomeExpensesByDates(start, end time.Time, userId uuid.UUID) (*[
 
 	return &expenses, nil
 }
+
+// GetHouseMonthlyTotals returns house spending per month, keyed "YYYY-MM", for expenses
+// dated in [from, to).
+func (db *DB) GetHouseMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
+	return db.monthlyTotals(`
+		SELECT to_char(expense_date, 'YYYY-MM'), SUM(amount)
+		FROM home_expenses
+		WHERE created_by = $1 AND expense_date >= $2 AND expense_date < $3
+		GROUP BY 1`, userID, from, to)
+}

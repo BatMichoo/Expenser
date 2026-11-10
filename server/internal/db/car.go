@@ -453,3 +453,13 @@ func (db *DB) GetCarExpensesByDates(start, end time.Time, userId uuid.UUID) (*[]
 
 	return &expenses, nil
 }
+
+// GetCarMonthlyTotals returns car spending per month, keyed "YYYY-MM", for expenses
+// dated in [from, to).
+func (db *DB) GetCarMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
+	return db.monthlyTotals(`
+		SELECT to_char(expense_date, 'YYYY-MM'), SUM(amount)
+		FROM car_expenses
+		WHERE created_by = $1 AND expense_date >= $2 AND expense_date < $3
+		GROUP BY 1`, userID, from, to)
+}
