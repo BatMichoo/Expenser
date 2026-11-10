@@ -3,6 +3,7 @@ package services
 import (
 	"expenser/internal/models"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -130,4 +131,84 @@ func MatchesQuery(q string, fields ...string) bool {
 		}
 	}
 	return false
+}
+
+// Breakdown splits a month's spending by type, largest first. typeTotals
+// holds each type's summed spending over the previous `months` months and
+// gives the "usual" monthly amount to compare with.
+func Breakdown(items []SummaryItem, typeTotals map[string]float64, months int) []models.TypeShare {
+	perType := map[string]float64{}
+	order := []string{}
+	total := 0.0
+	for _, it := range items {
+		if _, seen := perType[it.Type]; !seen {
+			order = append(order, it.Type)
+		}
+		perType[it.Type] += it.Amount
+		total += it.Amount
+	}
+
+	shares := make([]models.TypeShare, 0, len(order))
+	for _, typ := range order {
+		s := models.TypeShare{Type: typ, Amount: perType[typ]}
+		if total > 0 {
+			s.Share = s.Amount / total * 100
+		}
+		if months > 0 && typeTotals[typ] > 0 {
+			s.Usual = typeTotals[typ] / float64(months)
+			s.HasUsual = true
+			s.VsUsual = (s.Amount - s.Usual) / s.Usual * 100
+		}
+		shares = append(shares, s)
+	}
+	sort.SliceStable(shares, func(i, j int) bool { return shares[i].Amount > shares[j].Amount })
+	return shares
+}
+
+// YearSoFar sums January through the viewed month of its year. totals is
+// keyed by YearMonth.String().
+func YearSoFar(totals map[string]float64, ym YearMonth) models.YearSummary {
+	y := models.YearSummary{Months: int(ym.Month)}
+	for m := time.January; m <= ym.Month; m++ {
+		y.Total += totals[YearMonth{ym.Year, m}.String()]
+	}
+	y.Average = y.Total / float64(y.Months)
+	if y.Months > 1 {
+		y.VsAverage, y.HasComparison = ChangePercent(totals[ym.String()], y.Average)
+	}
+	return y
+}
+
+// UsualMonthly is the average monthly total over the `months` months
+// before ym (ym itself excluded; months without spending count as zero).
+func UsualMonthly(totals map[string]float64, ym YearMonth, months int) float64 {
+	sum := 0.0
+	m := ym
+	for i := 0; i < months; i++ {
+		m = m.Prev()
+		sum += totals[m.String()]
+	}
+	return sum / float64(months)
+}
+
+// minPaceDays is how far into the month a pace-only estimate becomes
+// worth showing.
+const minPaceDays = 7
+
+// EstimateMonthEnd predicts the current month's total. Bills arrive in
+// lumps, so instead of extrapolating the daily pace it adds the usual
+// spending for the days still left to what was spent so far. Without any
+// usual amount it falls back to the daily pace, once a week has passed.
+func EstimateMonthEnd(spent, usual float64, now time.Time) (float64, bool) {
+	daysInMonth := time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, now.Location()).Day()
+	elapsed := now.Day()
+	remaining := daysInMonth - elapsed
+
+	if usual > 0 {
+		return spent + usual*float64(remaining)/float64(daysInMonth), true
+	}
+	if elapsed < minPaceDays {
+		return 0, false
+	}
+	return spent / float64(elapsed) * float64(daysInMonth), true
 }

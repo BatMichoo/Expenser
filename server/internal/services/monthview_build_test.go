@@ -12,13 +12,16 @@ import (
 )
 
 type fakeMonthStore struct {
-	house     []models.HouseExpense
-	groceries []models.GroceriesExpense
-	totals    map[string]float64
-	gotMonth  time.Month
-	gotYear   int
-	gotFrom   time.Time
-	gotTo     time.Time
+	house      []models.HouseExpense
+	groceries  []models.GroceriesExpense
+	totals     map[string]float64
+	gotMonth   time.Month
+	gotYear    int
+	gotFrom    time.Time
+	gotTo      time.Time
+	typeTotals map[string]float64
+	typeFrom   time.Time
+	typeTo     time.Time
 }
 
 func (f *fakeMonthStore) GetHouseExpensesForMonth(m time.Month, y int, _ uuid.UUID) (*[]models.HouseExpense, error) {
@@ -49,6 +52,16 @@ func (f *fakeMonthStore) GetGroceriesExpensesForMonth(time.Month, int, uuid.UUID
 func (f *fakeMonthStore) GetGroceriesMonthlyTotals(uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
 	return f.totals, nil
 }
+func (f *fakeMonthStore) GetHouseTypeTotals(_ uuid.UUID, from, to time.Time) (map[string]float64, error) {
+	f.typeFrom, f.typeTo = from, to
+	return f.typeTotals, nil
+}
+func (f *fakeMonthStore) GetCarTypeTotals(uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
+	return f.typeTotals, nil
+}
+func (f *fakeMonthStore) GetGroceriesCategoryTotals(uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
+	return f.typeTotals, nil
+}
 func (f *fakeMonthStore) GetAllCategories() ([]models.Category, error) {
 	return []models.Category{{ID: 1, Name: "Meat"}, {ID: 2, Name: "Dairy"}}, nil
 }
@@ -60,7 +73,8 @@ func newMonthStore() *fakeMonthStore {
 			{ID: 2, UtilityTypeID: 2, UtilityType: "Water", Amount: 20},
 			{ID: 3, UtilityTypeID: 3, UtilityType: "Gas", Amount: 15},
 		},
-		totals: map[string]float64{"2026-10": 100, "2026-11": 120},
+		totals:     map[string]float64{"2026-01": 50, "2026-10": 100, "2026-11": 120},
+		typeTotals: map[string]float64{"Gas": 300},
 	}
 }
 
@@ -74,7 +88,7 @@ func TestHouseMonthView(t *testing.T) {
 
 	assert.Equal(t, time.November, store.gotMonth)
 	assert.Equal(t, 2026, store.gotYear)
-	assert.Equal(t, YearMonth{2026, time.June}.Start(), store.gotFrom, "six months of totals")
+	assert.Equal(t, YearMonth{2026, time.January}.Start(), store.gotFrom, "totals from January for the year so far")
 	assert.Equal(t, YearMonth{2026, time.November}.End(), store.gotTo)
 
 	assert.Equal(t, "2026-11", v.Month)
@@ -90,6 +104,25 @@ func TestHouseMonthView(t *testing.T) {
 	assert.Equal(t, []models.TypeOption{{ID: 2, Name: "Water"}, {ID: 3, Name: "Gas"}}, v.Types)
 	assert.Equal(t, "type.", v.TypePrefix)
 	assert.False(t, v.Filtered)
+
+	assert.Equal(t, YearMonth{2026, time.May}.Start(), store.typeFrom, "usual = previous 6 months")
+	assert.Equal(t, YearMonth{2026, time.November}.Start(), store.typeTo, "current month excluded")
+	require.Len(t, v.Breakdown, 2)
+	assert.Equal(t, "Gas", v.Breakdown[0].Type)
+	require.True(t, v.Breakdown[0].HasUsual)
+	assert.InDelta(t, 50, v.Breakdown[0].Usual, 0.001)
+
+	assert.InDelta(t, 270, v.YearSoFar.Total, 0.001, "Jan 50 + Oct 100 + Nov 120")
+	assert.InDelta(t, 100.0/6, v.Usual, 0.001, "May-Oct average")
+	require.True(t, v.HasEstimate, "current month gets an estimate")
+	assert.InDelta(t, 120+(100.0/6)*20/30, v.Estimate, 0.001)
+}
+
+func TestPastMonthHasNoEstimate(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	v, err := NewMonthViewService(newMonthStore()).House(uuid.New(), YearMonth{2026, time.October}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	require.NoError(t, err)
+	assert.False(t, v.HasEstimate)
 }
 
 func TestHouseMonthViewFilters(t *testing.T) {

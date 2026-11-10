@@ -463,3 +463,13 @@ func (db *DB) GetCarMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[str
 		WHERE created_by = $1 AND expense_date >= $2 AND expense_date < $3
 		GROUP BY 1`, userID, from, to)
 }
+
+// GetCarTypeTotals returns car spending per expense type, keyed by name, for [from, to).
+func (db *DB) GetCarTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
+	return db.monthlyTotals(`
+		SELECT ct.name, SUM(ce.amount)
+		FROM car_expenses ce
+		JOIN car_expense_types ct ON ct.id = ce.car_expense_type_id
+		WHERE ce.created_by = $1 AND ce.expense_date >= $2 AND ce.expense_date < $3
+		GROUP BY ct.name`, userID, from, to)
+}

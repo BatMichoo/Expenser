@@ -81,3 +81,60 @@ func TestMatchesQuery(t *testing.T) {
 	assert.True(t, MatchesQuery("LIDL", "Milk", "Lidl"))
 	assert.False(t, MatchesQuery("water", "Gas", "Meter read"))
 }
+
+func TestBreakdown(t *testing.T) {
+	items := []SummaryItem{{"Gas", 60}, {"Water", 20}, {"Gas", 20}, {"TV", 0}}
+	usual := map[string]float64{"Gas": 64, "Water": 25} // sums over the previous 6 months
+	shares := Breakdown(items, usual, 6)
+	require.Len(t, shares, 3)
+	assert.Equal(t, "Gas", shares[0].Type, "largest first")
+	assert.InDelta(t, 80, shares[0].Amount, 0.001)
+	assert.InDelta(t, 80, shares[0].Share, 0.001)
+	assert.InDelta(t, 20, shares[1].Share, 0.001)
+	assert.Equal(t, "TV", shares[2].Type)
+
+	require.True(t, shares[0].HasUsual)
+	assert.InDelta(t, 64.0/6, shares[0].Usual, 0.001)
+	assert.InDelta(t, (80-64.0/6)/(64.0/6)*100, shares[0].VsUsual, 0.001)
+	assert.False(t, shares[2].HasUsual, "no history for TV")
+
+	assert.Empty(t, Breakdown(nil, nil, 6))
+}
+
+func TestYearSoFar(t *testing.T) {
+	totals := map[string]float64{"2025-12": 999, "2026-01": 100, "2026-02": 50, "2026-03": 150}
+	y := YearSoFar(totals, YearMonth{2026, time.March})
+	assert.InDelta(t, 300, y.Total, 0.001, "only this year, up to the viewed month")
+	assert.Equal(t, 3, y.Months)
+	assert.InDelta(t, 100, y.Average, 0.001)
+	require.True(t, y.HasComparison)
+	assert.InDelta(t, 50, y.VsAverage, 0.001, "March 150 vs average 100")
+
+	jan := YearSoFar(totals, YearMonth{2026, time.January})
+	assert.False(t, jan.HasComparison, "nothing to compare in January")
+}
+
+func TestUsualMonthly(t *testing.T) {
+	totals := map[string]float64{"2026-05": 60, "2026-08": 120, "2026-11": 500}
+	assert.InDelta(t, 30, UsualMonthly(totals, YearMonth{2026, time.November}, 6), 0.001,
+		"previous 6 months (May-Oct), current month excluded, empty months count as 0")
+}
+
+func TestEstimateMonthEnd(t *testing.T) {
+	nov10 := time.Date(2026, 11, 10, 9, 0, 0, 0, time.UTC) // 20 of 30 days left
+
+	est, ok := EstimateMonthEnd(100, 150, nov10)
+	require.True(t, ok)
+	assert.InDelta(t, 100+150*20.0/30, est, 0.001, "spent so far plus the usual share of the days left")
+
+	est, ok = EstimateMonthEnd(100, 0, nov10)
+	require.True(t, ok)
+	assert.InDelta(t, 100.0/10*30, est, 0.001, "no history: daily pace")
+
+	_, ok = EstimateMonthEnd(30, 0, time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC))
+	assert.False(t, ok, "too early for a pace estimate")
+
+	est, ok = EstimateMonthEnd(80, 60, time.Date(2026, 11, 30, 0, 0, 0, 0, time.UTC))
+	require.True(t, ok)
+	assert.InDelta(t, 80, est, 0.001, "last day: nothing left to add")
+}

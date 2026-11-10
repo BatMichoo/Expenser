@@ -271,3 +271,13 @@ func (db *DB) GetAllCategories() ([]models.Category, error) {
 	}
 	return categories, nil
 }
+
+// GetGroceriesCategoryTotals returns net groceries spending per category, keyed by name, for [from, to).
+func (db *DB) GetGroceriesCategoryTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
+	return db.monthlyTotals(`
+		SELECT c.name, SUM(e.total_price - e.total_discount)
+		FROM groceries_expenses e
+		JOIN grocery_categories c ON c.id = e.category_id
+		WHERE e.user_id = $1 AND e.purchase_date >= $2 AND e.purchase_date < $3
+		GROUP BY c.name`, userID, from, to)
+}

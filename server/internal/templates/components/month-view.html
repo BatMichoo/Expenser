@@ -30,7 +30,10 @@
     </section>
   </div>
   <aside class="month-side">
+    {{ if .HasEstimate }}{{ template "month-estimate" . }}{{ end }}
+    {{ template "breakdown" . }}
     {{ template "mini-chart" . }}
+    {{ template "year-so-far" . }}
   </aside>
 </div>
 {{ end }}
@@ -203,4 +206,54 @@
     </svg>
   </button>
 </div>
+{{ end }}
+
+{{/* Change badge: red when well above the comparison, green when well below. */}}
+{{ define "vs-badge" }}<span class="vs-usual{{ if gt .Pct 10.0 }} up{{ else if lt .Pct -10.0 }} down{{ end }}">{{ printf "%+.0f%%" .Pct }} {{ .Label }}</span>{{ end }}
+
+{{ define "breakdown" }}
+<section class="side-panel breakdown">
+  <h3>{{ T .Lang "insights.where_it_went" }}</h3>
+  {{ if .Breakdown }}
+  <ul class="breakdown-list">
+    {{ range .Breakdown }}
+    <li class="breakdown-item">
+      <div class="breakdown-row">
+        <span class="breakdown-name">{{ T $.Lang (print $.TypePrefix .Type) }}</span>
+        <span class="breakdown-amount">{{ money .Amount }}</span>
+      </div>
+      <div class="breakdown-bar"><span style="width: {{ printf "%.0f" .Share }}%"></span></div>
+      <div class="breakdown-meta">
+        <span>{{ printf "%.0f" .Share }}%</span>
+        {{ if .HasUsual }}{{ template "vs-badge" (dict "Pct" .VsUsual "Label" (T $.Lang "insights.vs_usual")) }}
+        {{ else }}<span class="vs-usual">{{ T $.Lang "insights.new" }}</span>{{ end }}
+      </div>
+    </li>
+    {{ end }}
+  </ul>
+  {{ else }}
+  <p class="side-empty">{{ T .Lang "insights.nothing_yet" }}</p>
+  {{ end }}
+</section>
+{{ end }}
+
+{{ define "year-so-far" }}
+<section class="side-panel year-so-far">
+  <h3>{{ T .Lang "insights.year_so_far" }} {{ .Year }}</h3>
+  <p class="side-big">{{ money .YearSoFar.Total }}</p>
+  <p class="side-sub">{{ T .Lang "insights.monthly_average" }}: {{ money .YearSoFar.Average }}</p>
+  {{ if .YearSoFar.HasComparison }}
+  <p class="side-sub">{{ template "vs-badge" (dict "Pct" .YearSoFar.VsAverage "Label" (T .Lang "insights.this_month_vs_average")) }}</p>
+  {{ end }}
+</section>
+{{ end }}
+
+{{ define "month-estimate" }}
+<section class="side-panel estimate">
+  <h3>{{ T .Lang "insights.estimate" }}</h3>
+  <p class="side-big">≈ {{ money .Estimate }}</p>
+  <p class="side-sub">
+    {{ if gt .Usual 0.0 }}{{ T .Lang "insights.based_on_usual" }} {{ money .Usual }}{{ else }}{{ T .Lang "insights.based_on_pace" }}{{ end }}
+  </p>
+</section>
 {{ end }}

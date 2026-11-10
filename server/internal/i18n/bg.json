@@ -255,5 +255,15 @@
   "kpi.average": "ср.",
   "kpi.last_months": "Последните 6 месеца",
   "kpi.open_chart": "Отвори графиката",
-  "kpi.no_matches": "Няма разходи, отговарящи на търсенето."
+  "kpi.no_matches": "Няма разходи, отговарящи на търсенето.",
+  "insights.where_it_went": "За какво отидоха",
+  "insights.vs_usual": "спрямо обичайното",
+  "insights.new": "Ново",
+  "insights.nothing_yet": "Още няма разходи този месец.",
+  "insights.year_so_far": "От началото на годината",
+  "insights.monthly_average": "Средно на месец",
+  "insights.this_month_vs_average": "този месец спрямо средното",
+  "insights.estimate": "Очаквано до края на месеца",
+  "insights.based_on_usual": "Похарчено досега плюс обичаен месец от",
+  "insights.based_on_pace": "По дневното темпо досега"
 }

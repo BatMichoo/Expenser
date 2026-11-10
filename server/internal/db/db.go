@@ -85,8 +85,8 @@ func (db *DB) Close() error {
 	return db.conn.Close()
 }
 
-// monthlyTotals runs a query returning (YYYY-MM, sum) rows and collects
-// them into a map.
+// monthlyTotals runs a query returning (key, sum) rows — a YYYY-MM month or
+// a type name — and collects them into a map.
 func (db *DB) monthlyTotals(query string, args ...any) (map[string]float64, error) {
 	rows, err := db.conn.Query(query, args...)
 	if err != nil {

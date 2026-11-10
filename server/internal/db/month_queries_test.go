@@ -79,3 +79,33 @@ func TestMonthlyTotals(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, map[string]float64{"2026-09": 8}, groceries, "net of discount, like the monthly total")
 }
+
+func TestTypeTotals(t *testing.T) {
+	db, userID := setupMonthTestDB(t)
+	for _, e := range []struct {
+		typeID int
+		amount float64
+		at     time.Time
+	}{{2, 10, day(2026, 9, 5)}, {2, 15, day(2026, 10, 5)}, {3, 40, day(2026, 10, 9)}, {3, 99, day(2026, 11, 1)}} {
+		require.NoError(t, db.CreateHouseExpense(&models.HouseExpense{UtilityTypeID: e.typeID, Amount: e.amount, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+		require.NoError(t, db.CreateCarExpense(&models.CarExpense{ExpenseTypeID: e.typeID, Amount: e.amount, Date: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+	}
+	addGrocery(t, db, userID, "Milk", 10, 2, day(2026, 10, 5))
+
+	from, to := day(2026, 5, 1), time.Date(2026, 11, 1, 0, 0, 0, 0, time.Local)
+
+	house, err := db.GetHouseTypeTotals(userID, from, to)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]float64{"Water": 25, "Gas": 40}, house, "November is outside the range")
+
+	car, err := db.GetCarTypeTotals(userID, from, to)
+	require.NoError(t, err)
+	assert.Len(t, car, 2)
+
+	groceries, err := db.GetGroceriesCategoryTotals(userID, from, to)
+	require.NoError(t, err)
+	require.Len(t, groceries, 1)
+	for _, v := range groceries {
+		assert.InDelta(t, 8, v, 0.001, "net of discount")
+	}
+}

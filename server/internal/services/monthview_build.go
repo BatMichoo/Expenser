@@ -22,6 +22,9 @@ type MonthStore interface {
 	GetGroceriesExpensesForMonth(month time.Month, year int, userID uuid.UUID) (*[]models.GroceriesExpense, error)
 	GetGroceriesMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
 	GetAllCategories() ([]models.Category, error)
+	GetHouseTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetCarTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetGroceriesCategoryTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
 }
 
 // MonthFilter narrows the expense list (not the KPIs) of a month view.
@@ -30,8 +33,12 @@ type MonthFilter struct {
 	TypeID int // 0 = all types
 }
 
-// barMonths is how many months the mini chart shows.
-const barMonths = 6
+// barMonths is how many months the mini chart shows; usualMonths is how
+// many previous months "usual" spending is averaged over.
+const (
+	barMonths   = 6
+	usualMonths = 6
+)
 
 // MonthViewService builds the per-month page data for each section.
 type MonthViewService struct {
@@ -45,8 +52,14 @@ func NewMonthViewService(store MonthStore) *MonthViewService {
 // base fills the fields every section shares: month navigation, KPIs,
 // change vs previous month and the mini-chart bars.
 func (s *MonthViewService) base(section string, ym YearMonth, filter MonthFilter, items []SummaryItem,
-	totals map[string]float64, lang string, now time.Time) *models.MonthView {
+	totals, typeTotals map[string]float64, lang string, now time.Time) *models.MonthView {
 	summary := Summarize(items)
+	isCurrent := ym == YearMonth{now.Year(), now.Month()}
+	usual := UsualMonthly(totals, ym, usualMonths)
+	estimate, hasEstimate := 0.0, false
+	if isCurrent {
+		estimate, hasEstimate = EstimateMonthEnd(summary.Total, usual, now)
+	}
 	change, hasChange := ChangePercent(summary.Total, totals[ym.Prev().String()])
 	return &models.MonthView{
 		Section:   section,
@@ -55,7 +68,7 @@ func (s *MonthViewService) base(section string, ym YearMonth, filter MonthFilter
 		Year:      ym.Year,
 		PrevMonth: ym.Prev().String(),
 		NextMonth: ym.Next().String(),
-		IsCurrent: ym == YearMonth{now.Year(), now.Month()},
+		IsCurrent: isCurrent,
 		Summary:   summary,
 		ChangePct: change,
 		HasChange: hasChange,
@@ -64,17 +77,37 @@ func (s *MonthViewService) base(section string, ym YearMonth, filter MonthFilter
 		TypeID:    filter.TypeID,
 		Filtered:  filter.TypeID != 0 || strings.TrimSpace(filter.Query) != "",
 		Lang:      lang,
+
+		Breakdown:   Breakdown(items, typeTotals, usualMonths),
+		YearSoFar:   YearSoFar(totals, ym),
+		Usual:       usual,
+		Estimate:    estimate,
+		HasEstimate: hasEstimate,
 	}
 }
 
-// totalsWindow is the date range covering the mini chart (which includes
-// the previous month used for the change percentage).
+// totalsWindow is the date range of monthly totals a view needs: the mini
+// chart and the usual months before ym, and January onwards for the year
+// so far.
 func totalsWindow(ym YearMonth) (time.Time, time.Time) {
 	first := ym
-	for i := 1; i < barMonths; i++ {
+	for i := 0; i < usualMonths; i++ {
 		first = first.Prev()
 	}
+	if jan := (YearMonth{ym.Year, time.January}); jan.Start().Before(first.Start()) {
+		first = jan
+	}
 	return first.Start(), ym.End()
+}
+
+// usualWindow is the range "usual" per-type spending is summed over: the
+// months before ym.
+func usualWindow(ym YearMonth) (time.Time, time.Time) {
+	first := ym
+	for i := 0; i < usualMonths; i++ {
+		first = first.Prev()
+	}
+	return first.Start(), ym.Start()
 }
 
 // House builds the house page for one month.
@@ -105,7 +138,13 @@ func (s *MonthViewService) House(userID uuid.UUID, ym YearMonth, filter MonthFil
 		}
 	}
 
-	v := s.base("house", ym, filter, items, totals, lang, now)
+	uFrom, uTo := usualWindow(ym)
+	typeTotals, err := s.store.GetHouseTypeTotals(userID, uFrom, uTo)
+	if err != nil {
+		return nil, fmt.Errorf("house type totals: %w", err)
+	}
+
+	v := s.base("house", ym, filter, items, totals, typeTotals, lang, now)
 	v.House = shown
 	v.TypePrefix = "type."
 	for _, t := range *types {
@@ -142,7 +181,13 @@ func (s *MonthViewService) Car(userID uuid.UUID, ym YearMonth, filter MonthFilte
 		}
 	}
 
-	v := s.base("car", ym, filter, items, totals, lang, now)
+	uFrom, uTo := usualWindow(ym)
+	typeTotals, err := s.store.GetCarTypeTotals(userID, uFrom, uTo)
+	if err != nil {
+		return nil, fmt.Errorf("car type totals: %w", err)
+	}
+
+	v := s.base("car", ym, filter, items, totals, typeTotals, lang, now)
 	v.Car = shown
 	v.TypePrefix = "type."
 	for _, t := range *types {
@@ -180,7 +225,13 @@ func (s *MonthViewService) Groceries(userID uuid.UUID, ym YearMonth, filter Mont
 		}
 	}
 
-	v := s.base("groceries", ym, filter, items, totals, lang, now)
+	uFrom, uTo := usualWindow(ym)
+	typeTotals, err := s.store.GetGroceriesCategoryTotals(userID, uFrom, uTo)
+	if err != nil {
+		return nil, fmt.Errorf("groceries type totals: %w", err)
+	}
+
+	v := s.base("groceries", ym, filter, items, totals, typeTotals, lang, now)
 	v.Groceries = shown
 	v.TypePrefix = "category."
 	for _, c := range categories {

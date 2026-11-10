@@ -463,3 +463,13 @@ func (db *DB) GetHouseMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[s
 		WHERE created_by = $1 AND expense_date >= $2 AND expense_date < $3
 		GROUP BY 1`, userID, from, to)
 }
+
+// GetHouseTypeTotals returns house spending per utility type, keyed by name, for [from, to).
+func (db *DB) GetHouseTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
+	return db.monthlyTotals(`
+		SELECT ut.name, SUM(he.amount)
+		FROM home_expenses he
+		JOIN utility_types ut ON ut.id = he.utility_type_id
+		WHERE he.created_by = $1 AND he.expense_date >= $2 AND he.expense_date < $3
+		GROUP BY ut.name`, userID, from, to)
+}
