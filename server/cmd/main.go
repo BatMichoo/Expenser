@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"expenser/internal/config"
 	database "expenser/internal/db"
 	"expenser/internal/handlers"
+	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"fmt"
 	"html/template"
@@ -107,6 +109,14 @@ func main() {
 
 	handlers.RegisterRoutes(router, db, cfg)
 
+	schedulerCtx, stopScheduler := context.WithCancel(context.Background())
+	schedulerDone := make(chan struct{})
+	reminderScheduler := services.NewReminderScheduler(db, services.NewConsoleNotifier(nil), cfg.ReminderCheckInterval)
+	go func() {
+		reminderScheduler.Run(schedulerCtx)
+		close(schedulerDone)
+	}()
+
 	// --- Start the server ---
 	port := os.Getenv("APP_PORT")
 	if port == "" {
@@ -124,4 +134,6 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	fmt.Println("Shutting down server...")
+	stopScheduler()
+	<-schedulerDone
 }

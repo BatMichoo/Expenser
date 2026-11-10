@@ -20,6 +20,9 @@ type Config struct {
 	Mode         string
 	GeminiAPIKey string
 	SeedDevData  bool
+	// ReminderCheckInterval is how often the recurring payment reminder
+	// scheduler runs.
+	ReminderCheckInterval time.Duration
 }
 
 // JWT holds JWT-related configuration
@@ -76,6 +79,15 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
+	reminderCheckInterval := time.Hour
+	if v := os.Getenv("REMINDER_CHECK_INTERVAL"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil || d <= 0 {
+			return nil, fmt.Errorf("REMINDER_CHECK_INTERVAL must be a positive duration like 1h or 30m, got %q", v)
+		}
+		reminderCheckInterval = d
+	}
+
 	dbConnTemplate := "postgres://%s:%s@%s:%s/%s?sslmode=disable"
 
 	// Construct the database connection string.
@@ -102,6 +114,8 @@ func LoadConfig() (*Config, error) {
 		Mode:         mode,
 		GeminiAPIKey: geminiAPIKey,
 		SeedDevData:  seedDevData,
+
+		ReminderCheckInterval: reminderCheckInterval,
 	}, nil
 }
 

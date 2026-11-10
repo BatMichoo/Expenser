@@ -54,6 +54,10 @@ TEST_DB_PORT=5000<br>
 JWT_SECRET=very_secret_JWT_key_for_amazing_security<br>
 JWT_EXPIRATION_HOURS=24<br>
 
+### Reminders
+
+REMINDER_CHECK_INTERVAL=1h<br>
+
 # Auto-deploy
 
 On the server, run once from the repo root:
