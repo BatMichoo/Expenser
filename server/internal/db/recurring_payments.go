@@ -103,6 +103,7 @@ func queryRecurringPayments(ctx context.Context, conn *sql.DB, query string, arg
 // prepareRecurringPayment validates input and fills defaults shared by
 // create and update.
 func prepareRecurringPayment(p *models.RecurringPayment) error {
+	p.Normalize()
 	if err := p.Validate(); err != nil {
 		return err
 	}
@@ -298,8 +299,12 @@ func (db *DB) MarkRecurringPaymentPaid(ctx context.Context, userID, id uuid.UUID
 		return nil, fmt.Errorf("failed to create expense for recurring payment: %w", err)
 	}
 
+	nextDue, err := p.NextDueAfter(p.DueDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute next due date: %w", err)
+	}
 	paidDate := models.DateOnly(paidOn)
-	p.DueDate = p.NextDueAfter(p.DueDate)
+	p.DueDate = nextDue
 	p.LastPaidOn = &paidDate
 	if p.RememberLastAmount {
 		p.ExpectedAmount = &amount

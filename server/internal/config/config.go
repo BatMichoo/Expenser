@@ -79,14 +79,7 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
-	reminderCheckInterval := 24 * time.Hour // Default to 24 hours
-	if v := os.Getenv("REMINDER_CHECK_INTERVAL"); v != "" {
-		if d, err := time.ParseDuration(v); err == nil && d > 0 {
-			reminderCheckInterval = d
-		} else {
-			log.Printf("Invalid REMINDER_CHECK_INTERVAL %q, using default %s\n", v, reminderCheckInterval)
-		}
-	}
+	reminderCheckInterval := parseReminderCheckInterval(os.Getenv("REMINDER_CHECK_INTERVAL"))
 
 	dbConnTemplate := "postgres://%s:%s@%s:%s/%s?sslmode=disable"
 
@@ -117,6 +110,30 @@ func LoadConfig() (*Config, error) {
 
 		ReminderCheckInterval: reminderCheckInterval,
 	}, nil
+}
+
+const (
+	DefaultReminderCheckInterval = 24 * time.Hour
+	MinReminderCheckInterval     = time.Minute
+)
+
+// parseReminderCheckInterval never fails: empty or invalid values use the
+// default, and values below MinReminderCheckInterval are raised to it so a
+// typo like "1ns" cannot hammer the database.
+func parseReminderCheckInterval(v string) time.Duration {
+	if v == "" {
+		return DefaultReminderCheckInterval
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		log.Printf("Invalid REMINDER_CHECK_INTERVAL %q, using default %s\n", v, DefaultReminderCheckInterval)
+		return DefaultReminderCheckInterval
+	}
+	if d < MinReminderCheckInterval {
+		log.Printf("REMINDER_CHECK_INTERVAL %q is below the minimum, using %s\n", v, MinReminderCheckInterval)
+		return MinReminderCheckInterval
+	}
+	return d
 }
 
 // GetProjectRootDir is used to have consistant way to get the root of our project

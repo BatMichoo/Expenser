@@ -21,8 +21,11 @@ func day(y int, m time.Month, d int) time.Time {
 
 // fakeStore mimics the DB reminder queries over an in-memory slice.
 type fakeStore struct {
-	payments []*models.RecurringPayment
-	markErr  error
+	payments  []*models.RecurringPayment
+	markErr   error
+	markErrID uuid.UUID // when set, markErr applies only to this payment
+	block     bool      // GetRecurringPaymentsToRemind waits for ctx
+	panicMsg  string    // GetRecurringPaymentsToRemind panics
 }
 
 func (f *fakeStore) find(id uuid.UUID) *models.RecurringPayment {
@@ -34,7 +37,14 @@ func (f *fakeStore) find(id uuid.UUID) *models.RecurringPayment {
 	return nil
 }
 
-func (f *fakeStore) GetRecurringPaymentsToRemind(_ context.Context, today time.Time) ([]models.RecurringPayment, error) {
+func (f *fakeStore) GetRecurringPaymentsToRemind(ctx context.Context, today time.Time) ([]models.RecurringPayment, error) {
+	if f.panicMsg != "" {
+		panic(f.panicMsg)
+	}
+	if f.block {
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
 	out := []models.RecurringPayment{}
 	for _, p := range f.payments {
 		if !p.Active || p.ReminderDate().After(today) {
@@ -50,7 +60,7 @@ func (f *fakeStore) GetRecurringPaymentsToRemind(_ context.Context, today time.T
 }
 
 func (f *fakeStore) MarkRecurringPaymentNotified(_ context.Context, id uuid.UUID, due, sentOn time.Time) error {
-	if f.markErr != nil {
+	if f.markErr != nil && (f.markErrID == uuid.Nil || f.markErrID == id) {
 		return f.markErr
 	}
 	p := f.find(id)
@@ -59,11 +69,15 @@ func (f *fakeStore) MarkRecurringPaymentNotified(_ context.Context, id uuid.UUID
 }
 
 type fakeNotifier struct {
-	sent []Reminder
-	err  error
+	sent    []Reminder
+	err     error
+	panicID uuid.UUID // panic when notifying this payment
 }
 
 func (f *fakeNotifier) Notify(_ context.Context, r Reminder) error {
+	if f.panicID != uuid.Nil && r.Payment.ID == f.panicID {
+		panic("boom")
+	}
 	if f.err != nil {
 		return f.err
 	}
@@ -144,7 +158,7 @@ func TestRunOnceRetriesFailedNotification(t *testing.T) {
 	n := &fakeNotifier{err: errors.New("smtp down")}
 	s := newTestScheduler(store, n, day(2026, 11, 10))
 
-	require.NoError(t, s.RunOnce(context.Background()))
+	assert.ErrorContains(t, s.RunOnce(context.Background()), "smtp down", "failure is reported")
 	assert.Nil(t, p.LastNotifiedFor, "failed send is not recorded")
 
 	n.err = nil
@@ -153,10 +167,54 @@ func TestRunOnceRetriesFailedNotification(t *testing.T) {
 	assert.Equal(t, 0, n.sent[0].DaysLeft)
 }
 
-func TestRunOnceReportsMarkFailure(t *testing.T) {
-	store := &fakeStore{payments: []*models.RecurringPayment{monthly(day(2026, 11, 10), 0)}, markErr: errors.New("db gone")}
-	err := newTestScheduler(store, &fakeNotifier{}, day(2026, 11, 10)).RunOnce(context.Background())
+func TestRunOnceMarkFailureDoesNotStopOthers(t *testing.T) {
+	first := monthly(day(2026, 11, 10), 0)
+	second := monthly(day(2026, 11, 10), 0)
+	store := &fakeStore{
+		payments:  []*models.RecurringPayment{first, second},
+		markErr:   errors.New("db gone"),
+		markErrID: first.ID,
+	}
+	n := &fakeNotifier{}
+
+	err := newTestScheduler(store, n, day(2026, 11, 10)).RunOnce(context.Background())
 	assert.ErrorContains(t, err, "db gone")
+	assert.Len(t, n.sent, 2, "second payment still reminded")
+	assert.Nil(t, first.LastNotifiedFor)
+	assert.NotNil(t, second.LastNotifiedFor)
+}
+
+func TestRunOnceNotifierPanicDoesNotStopOthers(t *testing.T) {
+	bad := monthly(day(2026, 11, 10), 0)
+	good := monthly(day(2026, 11, 10), 0)
+	store := &fakeStore{payments: []*models.RecurringPayment{bad, good}}
+	n := &fakeNotifier{panicID: bad.ID}
+
+	err := newTestScheduler(store, n, day(2026, 11, 10)).RunOnce(context.Background())
+	assert.ErrorContains(t, err, "notifier panic: boom")
+	require.Len(t, n.sent, 1)
+	assert.Equal(t, good.ID, n.sent[0].Payment.ID)
+	assert.Nil(t, bad.LastNotifiedFor, "panicked reminder is retried next check")
+}
+
+func TestSafeRunOnceRecoversStorePanic(t *testing.T) {
+	s := newTestScheduler(&fakeStore{panicMsg: "nil map"}, &fakeNotifier{}, day(2026, 11, 10))
+	err := s.safeRunOnce(context.Background())
+	assert.ErrorContains(t, err, "panic in reminder check: nil map")
+}
+
+func TestSafeRunOnceTimesOut(t *testing.T) {
+	s := newTestScheduler(&fakeStore{block: true}, &fakeNotifier{}, day(2026, 11, 10))
+	s.runTimeout = 50 * time.Millisecond
+
+	done := make(chan error, 1)
+	go func() { done <- s.safeRunOnce(context.Background()) }()
+	select {
+	case err := <-done:
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
+	case <-time.After(2 * time.Second):
+		t.Fatal("hung store stalled the scheduler")
+	}
 }
 
 func TestRunStopsOnCancel(t *testing.T) {

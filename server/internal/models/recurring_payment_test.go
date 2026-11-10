@@ -1,6 +1,7 @@
 package models
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -43,13 +44,44 @@ func TestAddCycles(t *testing.T) {
 
 func TestNextDueAfter(t *testing.T) {
 	p := &RecurringPayment{StartDate: date(2026, 1, 31), DueDate: date(2026, 1, 31), CycleUnit: CycleMonth, CycleEvery: 1}
+	next := func(p *RecurringPayment, d time.Time) time.Time {
+		t.Helper()
+		got, err := p.NextDueAfter(d)
+		assert.NoError(t, err)
+		return got
+	}
 
-	assert.Equal(t, date(2026, 2, 28), p.NextDueAfter(date(2026, 1, 31)), "strictly after the current due date")
-	assert.Equal(t, date(2026, 1, 31), p.NextDueAfter(date(2026, 1, 10)), "paid before the first due date")
-	assert.Equal(t, date(2026, 3, 31), p.NextDueAfter(date(2026, 2, 28)), "no drift after clamping")
+	assert.Equal(t, date(2026, 2, 28), next(p, date(2026, 1, 31)), "strictly after the current due date")
+	assert.Equal(t, date(2026, 1, 31), next(p, date(2026, 1, 10)), "paid before the first due date")
+	assert.Equal(t, date(2026, 3, 31), next(p, date(2026, 2, 28)), "no drift after clamping")
 
 	noStart := &RecurringPayment{DueDate: date(2026, 1, 10), CycleUnit: CycleWeek, CycleEvery: 2}
-	assert.Equal(t, date(2026, 1, 24), noStart.NextDueAfter(date(2026, 1, 10)), "falls back to due date as anchor")
+	assert.Equal(t, date(2026, 1, 24), next(noStart, date(2026, 1, 10)), "falls back to due date as anchor")
+}
+
+func TestNextDueAfterInvalidUnitDoesNotHang(t *testing.T) {
+	p := &RecurringPayment{DueDate: date(2026, 1, 10), CycleUnit: "bogus", CycleEvery: 1}
+	done := make(chan error, 1)
+	go func() {
+		_, err := p.NextDueAfter(date(2026, 1, 10))
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		assert.ErrorIs(t, err, ErrInvalidCycleUnit)
+	case <-time.After(time.Second):
+		t.Fatal("NextDueAfter hung on an unknown cycle unit")
+	}
+}
+
+func TestNormalize(t *testing.T) {
+	p := &RecurringPayment{Name: "  Fiber  ", PaymentOptions: []string{" cash", "Card", "", "  ", "card", "CASH", "ePay "}}
+	p.Normalize()
+	assert.Equal(t, "Fiber", p.Name)
+	assert.Equal(t, []string{"cash", "Card", "ePay"}, p.PaymentOptions)
+
+	assert.Nil(t, NormalizePaymentOptions(nil), "nil keeps meaning use defaults")
+	assert.Equal(t, []string{}, NormalizePaymentOptions([]string{" ", ""}), "all blank means none")
 }
 
 func TestDaysUntilDue(t *testing.T) {
@@ -96,6 +128,8 @@ func TestValidate(t *testing.T) {
 		{"no due date", func(p *RecurringPayment) { p.DueDate = time.Time{} }, ErrMissingDueDate},
 		{"negative amount", func(p *RecurringPayment) { v := -1.0; p.ExpectedAmount = &v }, ErrInvalidAmount},
 		{"zero amount ok", func(p *RecurringPayment) { v := 0.0; p.ExpectedAmount = &v }, nil},
+		{"name at limit", func(p *RecurringPayment) { p.Name = strings.Repeat("я", 100) }, nil},
+		{"name too long", func(p *RecurringPayment) { p.Name = strings.Repeat("я", 101) }, ErrNameTooLong},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

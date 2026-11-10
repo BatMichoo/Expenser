@@ -55,8 +55,26 @@ func (s *RecurringPaymentService) List(ctx context.Context, userID uuid.UUID) ([
 }
 
 // Update overwrites the user-editable fields of an existing payment.
+//
+// The cycle anchor (StartDate) is managed here, not taken from input: if the
+// due date or cycle changed, the new due date becomes the anchor so later
+// cycles follow the user's edit; otherwise the stored anchor is kept so
+// month-end dates do not drift.
 func (s *RecurringPaymentService) Update(ctx context.Context, userID uuid.UUID, p *models.RecurringPayment) error {
+	existing, err := s.store.GetRecurringPaymentByID(ctx, p.ID, userID)
+	if err != nil {
+		return err
+	}
+
 	p.UserID = userID
+	cycleChanged := !models.DateOnly(p.DueDate).Equal(existing.DueDate) ||
+		p.CycleUnit != existing.CycleUnit ||
+		p.CycleEvery != existing.CycleEvery
+	if cycleChanged {
+		p.StartDate = models.DateOnly(p.DueDate)
+	} else {
+		p.StartDate = existing.StartDate
+	}
 	return s.store.UpdateRecurringPayment(ctx, p, userID)
 }
 

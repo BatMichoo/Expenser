@@ -2,7 +2,10 @@ package models
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
@@ -78,7 +81,39 @@ var (
 	ErrInvalidRemindDays = errors.New("remind days before cannot be negative")
 	ErrMissingDueDate    = errors.New("due date is required")
 	ErrInvalidAmount     = errors.New("amount cannot be negative")
+	ErrNameTooLong       = fmt.Errorf("name cannot be longer than %d characters", MaxRecurringPaymentNameLength)
 )
+
+// MaxRecurringPaymentNameLength matches recurring_payments.name VARCHAR(100).
+const MaxRecurringPaymentNameLength = 100
+
+// Normalize tidies user input in place: trims the name and cleans up
+// payment options (see NormalizePaymentOptions). Call before Validate.
+func (p *RecurringPayment) Normalize() {
+	p.Name = strings.TrimSpace(p.Name)
+	p.PaymentOptions = NormalizePaymentOptions(p.PaymentOptions)
+}
+
+// NormalizePaymentOptions trims each option, drops blanks and removes
+// case-insensitive duplicates, keeping the first spelling. Nil stays nil
+// (meaning "use defaults" on create); anything else returns a non-nil slice.
+func NormalizePaymentOptions(options []string) []string {
+	if options == nil {
+		return nil
+	}
+	out := []string{}
+	seen := map[string]bool{}
+	for _, o := range options {
+		o = strings.TrimSpace(o)
+		key := strings.ToLower(o)
+		if o == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, o)
+	}
+	return out
+}
 
 // Validate checks the fields a user controls.
 func (p *RecurringPayment) Validate() error {
@@ -95,9 +130,7 @@ func (p *RecurringPayment) Validate() error {
 		return ErrInvalidCategory
 	}
 
-	switch p.CycleUnit {
-	case CycleDay, CycleWeek, CycleMonth, CycleYear:
-	default:
+	if !validCycleUnit(p.CycleUnit) {
 		return ErrInvalidCycleUnit
 	}
 
@@ -113,7 +146,18 @@ func (p *RecurringPayment) Validate() error {
 	if p.ExpectedAmount != nil && *p.ExpectedAmount < 0 {
 		return ErrInvalidAmount
 	}
+	if utf8.RuneCountInString(p.Name) > MaxRecurringPaymentNameLength {
+		return ErrNameTooLong
+	}
 	return nil
+}
+
+func validCycleUnit(u CycleUnit) bool {
+	switch u {
+	case CycleDay, CycleWeek, CycleMonth, CycleYear:
+		return true
+	}
+	return false
 }
 
 // DateOnly strips the time of day, returning midnight UTC of t's calendar
@@ -123,7 +167,8 @@ func DateOnly(t time.Time) time.Time {
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 }
 
-// AddCycles returns the date n cycles after anchor. Month and year cycles
+// AddCycles returns the date n cycles after anchor. An unknown unit returns
+// anchor unchanged; callers should validate the unit first. Month and year cycles
 // clamp to the last day of shorter months (Jan 31 + 1 month = Feb 28/29),
 // always measured from the anchor so the day does not drift.
 func AddCycles(anchor time.Time, unit CycleUnit, every, n int) time.Time {
@@ -161,7 +206,11 @@ func addMonthsClamped(t time.Time, months int) time.Time {
 
 // NextDueAfter returns the first cycle date strictly after date, counting
 // from StartDate. Used to move to the next cycle once a payment is paid.
-func (p *RecurringPayment) NextDueAfter(date time.Time) time.Time {
+// Returns ErrInvalidCycleUnit instead of looping forever on bad data.
+func (p *RecurringPayment) NextDueAfter(date time.Time) (time.Time, error) {
+	if !validCycleUnit(p.CycleUnit) {
+		return time.Time{}, ErrInvalidCycleUnit
+	}
 	date = DateOnly(date)
 	start := p.StartDate
 	if start.IsZero() {
@@ -174,7 +223,7 @@ func (p *RecurringPayment) NextDueAfter(date time.Time) time.Time {
 	for n := 0; ; n++ {
 		d := AddCycles(start, p.CycleUnit, every, n)
 		if d.After(date) {
-			return d
+			return d, nil
 		}
 	}
 }

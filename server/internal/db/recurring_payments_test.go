@@ -6,6 +6,7 @@ import (
 	"expenser/internal/config"
 	"expenser/internal/models"
 	"expenser/internal/services"
+	"strings"
 	"testing"
 	"time"
 
@@ -353,6 +354,48 @@ func TestMarkRecurringPaymentPaidZeroAmount(t *testing.T) {
 	expense, err := testDB.GetHouseExpenseByID(res.ExpenseID, userID)
 	require.NoError(t, err)
 	assert.Equal(t, 0.0, expense.Amount)
+}
+
+func TestMarkRecurringPaymentPaidRollsBackOnFailure(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+
+	p := newInternetPayment(userID, rpDate(2026, 12, 1))
+	p.RememberLastAmount = true
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+
+	// Exceeds NUMERIC(10, 2), so the expense insert fails inside the transaction.
+	_, err := testDB.MarkRecurringPaymentPaid(ctx, userID, p.ID, 1e10, rpDate(2026, 12, 1))
+	require.Error(t, err)
+
+	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, rpDate(2026, 12, 1), got.DueDate, "due date not moved")
+	assert.Nil(t, got.LastPaidOn)
+	assert.Nil(t, got.ExpectedAmount)
+
+	expenses, err := testDB.GetHouseExpensesForMonth(time.December, 2026, userID)
+	require.NoError(t, err)
+	assert.Empty(t, *expenses, "no expense left behind")
+}
+
+func TestRecurringPaymentInputNormalized(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+
+	p := newInternetPayment(userID, rpDate(2026, 12, 1))
+	p.Name = "  Fiber  "
+	p.PaymentOptions = []string{" cash ", "", "Cash", "card"}
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+
+	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, "Fiber", got.Name)
+	assert.Equal(t, []string{"cash", "card"}, got.PaymentOptions)
+
+	long := newInternetPayment(userID, rpDate(2026, 12, 1))
+	long.Name = strings.Repeat("x", 101)
+	assert.ErrorIs(t, testDB.CreateRecurringPayment(ctx, long), models.ErrNameTooLong)
 }
 
 func TestMarkRecurringPaymentPaidOtherUser(t *testing.T) {

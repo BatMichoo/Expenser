@@ -19,6 +19,7 @@ type fakePaymentStore struct {
 	upcoming []models.RecurringPayment
 
 	createdFor  uuid.UUID
+	updated     *models.RecurringPayment
 	paidAmount  float64
 	paidOn      time.Time
 	upcomingTil time.Time
@@ -41,7 +42,9 @@ func (f *fakePaymentStore) ListRecurringPayments(context.Context, uuid.UUID) ([]
 	return nil, nil
 }
 
-func (f *fakePaymentStore) UpdateRecurringPayment(context.Context, *models.RecurringPayment, uuid.UUID) error {
+func (f *fakePaymentStore) UpdateRecurringPayment(_ context.Context, p *models.RecurringPayment, _ uuid.UUID) error {
+	cp := *p
+	f.updated = &cp
 	return nil
 }
 
@@ -157,4 +160,53 @@ func TestUpcoming(t *testing.T) {
 
 	_, err = svc.Upcoming(context.Background(), uuid.New(), -1)
 	assert.ErrorIs(t, err, ErrInvalidUpcomingDay)
+}
+
+func TestUpdateManagesCycleAnchor(t *testing.T) {
+	userID := uuid.New()
+	stored := func() *models.RecurringPayment {
+		return &models.RecurringPayment{
+			ID: uuid.New(), UserID: userID,
+			StartDate: day(2026, 1, 31), DueDate: day(2026, 3, 31),
+			CycleUnit: models.CycleMonth, CycleEvery: 1,
+		}
+	}
+	ctx := context.Background()
+
+	t.Run("due date edit becomes the new anchor", func(t *testing.T) {
+		store := &fakePaymentStore{payment: stored()}
+		edit := *store.payment
+		edit.DueDate = day(2026, 4, 20)
+		require.NoError(t, NewRecurringPaymentService(store).Update(ctx, userID, &edit))
+		assert.Equal(t, day(2026, 4, 20), store.updated.StartDate)
+
+		next, err := store.updated.NextDueAfter(store.updated.DueDate)
+		require.NoError(t, err)
+		assert.Equal(t, day(2026, 5, 20), next, "next cycle follows the edit")
+	})
+
+	t.Run("cycle edit becomes the new anchor", func(t *testing.T) {
+		store := &fakePaymentStore{payment: stored()}
+		edit := *store.payment
+		edit.CycleEvery = 3
+		require.NoError(t, NewRecurringPaymentService(store).Update(ctx, userID, &edit))
+		assert.Equal(t, day(2026, 3, 31), store.updated.StartDate)
+	})
+
+	t.Run("other edits keep the stored anchor", func(t *testing.T) {
+		store := &fakePaymentStore{payment: stored()}
+		edit := *store.payment
+		edit.Name = "Renamed"
+		edit.StartDate = day(2020, 1, 1) // client-supplied anchor is ignored
+		require.NoError(t, NewRecurringPaymentService(store).Update(ctx, userID, &edit))
+		assert.Equal(t, day(2026, 1, 31), store.updated.StartDate)
+	})
+
+	t.Run("other user's payment", func(t *testing.T) {
+		store := &fakePaymentStore{payment: stored()}
+		edit := *store.payment
+		err := NewRecurringPaymentService(store).Update(ctx, uuid.New(), &edit)
+		assert.ErrorIs(t, err, sql.ErrNoRows)
+		assert.Nil(t, store.updated)
+	})
 }

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"expenser/internal/models"
 	"fmt"
 	"log"
@@ -22,18 +23,23 @@ type ReminderStore interface {
 // overdue. Payments only move to their next due date when marked paid
 // (see RecurringPaymentService.MarkPaid).
 type ReminderScheduler struct {
-	store    ReminderStore
-	notifier Notifier
-	interval time.Duration
-	now      func() time.Time
+	store      ReminderStore
+	notifier   Notifier
+	interval   time.Duration
+	runTimeout time.Duration // upper bound for one RunOnce, so a hung DB cannot stall the loop
+	now        func() time.Time
 }
+
+// defaultRunTimeout bounds a single reminder check.
+const defaultRunTimeout = 5 * time.Minute
 
 func NewReminderScheduler(store ReminderStore, notifier Notifier, interval time.Duration) *ReminderScheduler {
 	return &ReminderScheduler{
-		store:    store,
-		notifier: notifier,
-		interval: interval,
-		now:      time.Now,
+		store:      store,
+		notifier:   notifier,
+		interval:   interval,
+		runTimeout: defaultRunTimeout,
+		now:        time.Now,
 	}
 }
 
@@ -45,7 +51,7 @@ func (s *ReminderScheduler) Run(ctx context.Context) {
 	defer ticker.Stop()
 
 	for {
-		if err := s.RunOnce(ctx); err != nil && ctx.Err() == nil {
+		if err := s.safeRunOnce(ctx); err != nil && ctx.Err() == nil {
 			log.Printf("Reminder check failed: %v", err)
 		}
 		select {
@@ -57,8 +63,26 @@ func (s *ReminderScheduler) Run(ctx context.Context) {
 	}
 }
 
+// safeRunOnce bounds RunOnce with runTimeout and turns a panic into an
+// error, so a bug in the scheduler or a notifier cannot crash the server.
+func (s *ReminderScheduler) safeRunOnce(ctx context.Context) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic in reminder check: %v", r)
+		}
+	}()
+	if s.runTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.runTimeout)
+		defer cancel()
+	}
+	return s.RunOnce(ctx)
+}
+
 // RunOnce performs a single check. "Today" is the server's local calendar
-// date. A failed notification is logged and retried on the next check.
+// date. Problems with one payment are logged and do not stop the others; a
+// payment whose reminder failed is retried on the next check. The returned
+// error joins every per-payment failure.
 func (s *ReminderScheduler) RunOnce(ctx context.Context) error {
 	today := models.DateOnly(s.now())
 
@@ -66,18 +90,36 @@ func (s *ReminderScheduler) RunOnce(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	var errs []error
 	for _, p := range due {
+		if ctx.Err() != nil {
+			errs = append(errs, ctx.Err())
+			break
+		}
 		r := Reminder{
 			Payment:  p,
 			DaysLeft: p.DaysUntilDue(today),
 		}
-		if err := s.notifier.Notify(ctx, r); err != nil {
-			log.Printf("Failed to send reminder for recurring payment %s: %v", p.ID, err)
+		if err := s.notify(ctx, r); err != nil {
+			errs = append(errs, fmt.Errorf("send reminder for %s: %w", p.ID, err))
 			continue
 		}
 		if err := s.store.MarkRecurringPaymentNotified(ctx, p.ID, p.DueDate, today); err != nil {
-			return fmt.Errorf("reminder sent but not recorded for %s: %w", p.ID, err)
+			// The reminder went out but may be sent again on the next check.
+			errs = append(errs, fmt.Errorf("reminder sent but not recorded for %s: %w", p.ID, err))
 		}
 	}
-	return nil
+	return errors.Join(errs...)
+}
+
+// notify calls the notifier, converting a panic into an error so one bad
+// reminder does not abort the rest.
+func (s *ReminderScheduler) notify(ctx context.Context, r Reminder) (err error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			err = fmt.Errorf("notifier panic: %v", rec)
+		}
+	}()
+	return s.notifier.Notify(ctx, r)
 }
