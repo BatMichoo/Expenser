@@ -17,9 +17,10 @@ func TestParseReminderCheckInterval(t *testing.T) {
 		{"-5m", DefaultReminderCheckInterval},
 		{"0s", DefaultReminderCheckInterval},
 		{"1ns", MinReminderCheckInterval},
-		{"59s", MinReminderCheckInterval},
-		{"1m", time.Minute},
+		{"1m", MinReminderCheckInterval},
+		{"29m59s", MinReminderCheckInterval},
 		{"30m", 30 * time.Minute},
+		{"45m", 45 * time.Minute},
 		{"48h", 48 * time.Hour},
 	}
 	for _, tt := range tests {

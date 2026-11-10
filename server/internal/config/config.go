@@ -114,7 +114,7 @@ func LoadConfig() (*Config, error) {
 
 const (
 	DefaultReminderCheckInterval = 24 * time.Hour
-	MinReminderCheckInterval     = time.Minute
+	MinReminderCheckInterval     = 30 * time.Minute
 )
 
 // parseReminderCheckInterval never fails: empty or invalid values use the
