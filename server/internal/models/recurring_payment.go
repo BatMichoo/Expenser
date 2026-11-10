@@ -57,10 +57,17 @@ type RecurringPayment struct {
 	PaymentHours     string
 	PaymentOptions   []string // nil means "use defaults" on create
 	Notes            string
-	LastNotifiedFor  *time.Time // due date the last reminder was sent for
-	Active           bool
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	// ExpectedAmount is what the bill usually costs (nil when unknown). It
+	// pre-fills MarkPaid and is shown in reminders.
+	ExpectedAmount *float64
+	// RememberLastAmount makes each payment update ExpectedAmount.
+	RememberLastAmount bool
+	LastPaidOn         *time.Time // date the user last marked it paid
+	LastNotifiedFor    *time.Time // due date the last reminder was sent for
+	LastNotifiedOn     *time.Time // calendar date the last reminder was sent
+	Active             bool
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 var (
@@ -70,6 +77,7 @@ var (
 	ErrInvalidCycleEvery = errors.New("cycle every must be at least 1")
 	ErrInvalidRemindDays = errors.New("remind days before cannot be negative")
 	ErrMissingDueDate    = errors.New("due date is required")
+	ErrInvalidAmount     = errors.New("amount cannot be negative")
 )
 
 // Validate checks the fields a user controls.
@@ -101,6 +109,9 @@ func (p *RecurringPayment) Validate() error {
 	}
 	if p.DueDate.IsZero() {
 		return ErrMissingDueDate
+	}
+	if p.ExpectedAmount != nil && *p.ExpectedAmount < 0 {
+		return ErrInvalidAmount
 	}
 	return nil
 }
@@ -148,10 +159,10 @@ func addMonthsClamped(t time.Time, months int) time.Time {
 	return time.Date(year, time.Month(month+1), day, 0, 0, 0, 0, time.UTC)
 }
 
-// NextDueDate returns the first cycle date on or after today, counting from
-// StartDate.
-func (p *RecurringPayment) NextDueDate(today time.Time) time.Time {
-	today = DateOnly(today)
+// NextDueAfter returns the first cycle date strictly after date, counting
+// from StartDate. Used to move to the next cycle once a payment is paid.
+func (p *RecurringPayment) NextDueAfter(date time.Time) time.Time {
+	date = DateOnly(date)
 	start := p.StartDate
 	if start.IsZero() {
 		start = p.DueDate
@@ -162,14 +173,34 @@ func (p *RecurringPayment) NextDueDate(today time.Time) time.Time {
 	}
 	for n := 0; ; n++ {
 		d := AddCycles(start, p.CycleUnit, every, n)
-		if !d.Before(today) {
+		if d.After(date) {
 			return d
 		}
 	}
+}
+
+// DaysUntilDue is negative when the payment is overdue.
+func (p *RecurringPayment) DaysUntilDue(today time.Time) int {
+	return int(DateOnly(p.DueDate).Sub(DateOnly(today)).Hours() / 24)
 }
 
 // ReminderDate is the first day a reminder should go out for the current
 // due date.
 func (p *RecurringPayment) ReminderDate() time.Time {
 	return DateOnly(p.DueDate).AddDate(0, 0, -p.RemindDaysBefore)
+}
+
+// UpcomingPayment is an unpaid recurring payment due within a time window,
+// including overdue ones.
+type UpcomingPayment struct {
+	Payment  RecurringPayment
+	DaysLeft int // negative when overdue
+	Overdue  bool
+}
+
+// PaidRecurringPayment is the outcome of marking a recurring payment paid.
+type PaidRecurringPayment struct {
+	Payment   *RecurringPayment // state after moving to the next cycle
+	ExpenseID int               // id in home_expenses or car_expenses
+	PaidDue   time.Time         // the due date that was paid
 }

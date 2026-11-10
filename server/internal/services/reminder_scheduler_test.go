@@ -34,38 +34,27 @@ func (f *fakeStore) find(id uuid.UUID) *models.RecurringPayment {
 	return nil
 }
 
-func (f *fakeStore) GetOverdueRecurringPayments(_ context.Context, today time.Time) ([]models.RecurringPayment, error) {
-	out := []models.RecurringPayment{}
-	for _, p := range f.payments {
-		if p.Active && p.DueDate.Before(today) {
-			out = append(out, *p)
-		}
-	}
-	return out, nil
-}
-
-func (f *fakeStore) UpdateRecurringPaymentDueDate(_ context.Context, id uuid.UUID, due time.Time) error {
-	f.find(id).DueDate = due
-	return nil
-}
-
 func (f *fakeStore) GetRecurringPaymentsToRemind(_ context.Context, today time.Time) ([]models.RecurringPayment, error) {
 	out := []models.RecurringPayment{}
 	for _, p := range f.payments {
-		notified := p.LastNotifiedFor != nil && p.LastNotifiedFor.Equal(p.DueDate)
-		if p.Active && !p.DueDate.Before(today) && !p.ReminderDate().After(today) && !notified {
+		if !p.Active || p.ReminderDate().After(today) {
+			continue
+		}
+		notifiedForDue := p.LastNotifiedFor != nil && p.LastNotifiedFor.Equal(p.DueDate)
+		notifiedToday := p.LastNotifiedOn != nil && !p.LastNotifiedOn.Before(today)
+		if (!p.DueDate.Before(today) && !notifiedForDue) || (p.DueDate.Before(today) && !notifiedToday) {
 			out = append(out, *p)
 		}
 	}
 	return out, nil
 }
 
-func (f *fakeStore) MarkRecurringPaymentNotified(_ context.Context, id uuid.UUID, due time.Time) error {
+func (f *fakeStore) MarkRecurringPaymentNotified(_ context.Context, id uuid.UUID, due, sentOn time.Time) error {
 	if f.markErr != nil {
 		return f.markErr
 	}
-	d := due
-	f.find(id).LastNotifiedFor = &d
+	p := f.find(id)
+	p.LastNotifiedFor, p.LastNotifiedOn = &due, &sentOn
 	return nil
 }
 
@@ -124,18 +113,29 @@ func TestRunOnceSkipsBeforeWindow(t *testing.T) {
 	assert.Empty(t, n.sent)
 }
 
-func TestRunOnceAdvancesOverdueAndRemindsNextCycle(t *testing.T) {
-	p := monthly(day(2026, 10, 12), 3)
+func TestRunOnceRemindsOverdueDaily(t *testing.T) {
+	p := monthly(day(2026, 11, 10), 2)
 	store := &fakeStore{payments: []*models.RecurringPayment{p}}
 	n := &fakeNotifier{}
 
-	require.NoError(t, newTestScheduler(store, n, day(2026, 11, 1)).RunOnce(context.Background()))
-	assert.Equal(t, day(2026, 11, 12), p.DueDate)
-	assert.Empty(t, n.sent, "next cycle's window not open yet")
+	run := func(today time.Time) {
+		t.Helper()
+		require.NoError(t, newTestScheduler(store, n, today).RunOnce(context.Background()))
+	}
 
-	require.NoError(t, newTestScheduler(store, n, day(2026, 11, 9)).RunOnce(context.Background()))
+	run(day(2026, 11, 8)) // window opens
+	run(day(2026, 11, 9)) // already reminded for this due date
+	run(day(2026, 11, 10))
 	require.Len(t, n.sent, 1)
-	assert.Equal(t, 3, n.sent[0].DaysLeft)
+	assert.Equal(t, 2, n.sent[0].DaysLeft)
+
+	run(day(2026, 11, 11)) // overdue
+	run(day(2026, 11, 11)) // same day, no repeat
+	run(day(2026, 11, 13))
+	require.Len(t, n.sent, 3)
+	assert.Equal(t, -1, n.sent[1].DaysLeft)
+	assert.Equal(t, -3, n.sent[2].DaysLeft)
+	assert.Equal(t, day(2026, 11, 10), p.DueDate, "scheduler never moves the due date")
 }
 
 func TestRunOnceRetriesFailedNotification(t *testing.T) {
@@ -200,4 +200,10 @@ func TestFormatReminderMinimal(t *testing.T) {
 	p := models.RecurringPayment{Username: "ivan", Category: models.RecurringCategoryHouse, TypeName: "TV", DueDate: day(2026, 12, 1)}
 	assert.Equal(t, "[reminder] user=ivan [house] TV due 2026-12-01 (today)", FormatReminder(Reminder{Payment: p}))
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: 1}), "(tomorrow)")
+	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -1}), "(OVERDUE by 1 day)")
+	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -4}), "(OVERDUE by 4 days)")
+
+	amount := 29.9
+	p.ExpectedAmount = &amount
+	assert.Contains(t, FormatReminder(Reminder{Payment: p}), "TV 29.90 EUR due 2026-12-01")
 }

@@ -17,7 +17,8 @@ const recurringPaymentSelect = `
 	SELECT rp.id, rp.user_id, u.username, rp.category, rp.utility_type_id, rp.car_expense_type_id,
 		COALESCE(ut.name, ct.name, ''), rp.name, rp.start_date, rp.due_date, rp.cycle_unit,
 		rp.cycle_every, rp.remind_days_before, rp.payment_hours, rp.payment_options, rp.notes,
-		rp.last_notified_for, rp.active, rp.created_at, rp.updated_at
+		rp.expected_amount, rp.remember_last_amount, rp.last_paid_on, rp.last_notified_for,
+		rp.last_notified_on, rp.active, rp.created_at, rp.updated_at
 	FROM recurring_payments rp
 	JOIN users u ON u.id = rp.user_id
 	LEFT JOIN utility_types ut ON ut.id = rp.utility_type_id
@@ -33,14 +34,18 @@ func scanRecurringPayment(row rowScanner) (*models.RecurringPayment, error) {
 		p               models.RecurringPayment
 		utilityTypeID   sql.NullInt64
 		carTypeID       sql.NullInt64
+		expectedAmount  sql.NullFloat64
+		lastPaidOn      sql.NullTime
 		lastNotifiedFor sql.NullTime
+		lastNotifiedOn  sql.NullTime
 		options         pq.StringArray
 	)
 	err := row.Scan(
 		&p.ID, &p.UserID, &p.Username, &p.Category, &utilityTypeID, &carTypeID,
 		&p.TypeName, &p.Name, &p.StartDate, &p.DueDate, &p.CycleUnit,
 		&p.CycleEvery, &p.RemindDaysBefore, &p.PaymentHours, &options, &p.Notes,
-		&lastNotifiedFor, &p.Active, &p.CreatedAt, &p.UpdatedAt,
+		&expectedAmount, &p.RememberLastAmount, &lastPaidOn, &lastNotifiedFor,
+		&lastNotifiedOn, &p.Active, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -53,10 +58,13 @@ func scanRecurringPayment(row rowScanner) (*models.RecurringPayment, error) {
 		v := int(carTypeID.Int64)
 		p.CarExpenseTypeID = &v
 	}
-	if lastNotifiedFor.Valid {
-		v := models.DateOnly(lastNotifiedFor.Time)
-		p.LastNotifiedFor = &v
+	if expectedAmount.Valid {
+		v := expectedAmount.Float64
+		p.ExpectedAmount = &v
 	}
+	p.LastPaidOn = nullDate(lastPaidOn)
+	p.LastNotifiedFor = nullDate(lastNotifiedFor)
+	p.LastNotifiedOn = nullDate(lastNotifiedOn)
 	p.StartDate = models.DateOnly(p.StartDate)
 	p.DueDate = models.DateOnly(p.DueDate)
 	p.PaymentOptions = []string(options)
@@ -64,6 +72,14 @@ func scanRecurringPayment(row rowScanner) (*models.RecurringPayment, error) {
 		p.PaymentOptions = []string{}
 	}
 	return &p, nil
+}
+
+func nullDate(t sql.NullTime) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	v := models.DateOnly(t.Time)
+	return &v
 }
 
 func queryRecurringPayments(ctx context.Context, conn *sql.DB, query string, args ...any) ([]models.RecurringPayment, error) {
@@ -112,14 +128,14 @@ func (db *DB) CreateRecurringPayment(ctx context.Context, p *models.RecurringPay
 	query := `
 		INSERT INTO recurring_payments (user_id, category, utility_type_id, car_expense_type_id, name,
 			start_date, due_date, cycle_unit, cycle_every, remind_days_before, payment_hours,
-			payment_options, notes)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			payment_options, notes, expected_amount, remember_last_amount)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING id, active, created_at, updated_at`
 
 	err := db.conn.QueryRowContext(ctx, query,
 		p.UserID, p.Category, p.UtilityTypeID, p.CarExpenseTypeID, p.Name,
 		p.StartDate, p.DueDate, p.CycleUnit, p.CycleEvery, p.RemindDaysBefore, p.PaymentHours,
-		pq.Array(p.PaymentOptions), p.Notes,
+		pq.Array(p.PaymentOptions), p.Notes, p.ExpectedAmount, p.RememberLastAmount,
 	).Scan(&p.ID, &p.Active, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create recurring payment: %w", err)
@@ -164,15 +180,16 @@ func (db *DB) UpdateRecurringPayment(ctx context.Context, p *models.RecurringPay
 		SET category = $1, utility_type_id = $2, car_expense_type_id = $3, name = $4,
 			start_date = $5, due_date = $6, cycle_unit = $7, cycle_every = $8,
 			remind_days_before = $9, payment_hours = $10, payment_options = $11, notes = $12,
-			active = $13, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $14 AND user_id = $15
+			active = $13, expected_amount = $14, remember_last_amount = $15,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $16 AND user_id = $17
 		RETURNING updated_at`
 
 	err := db.conn.QueryRowContext(ctx, query,
 		p.Category, p.UtilityTypeID, p.CarExpenseTypeID, p.Name,
 		p.StartDate, p.DueDate, p.CycleUnit, p.CycleEvery,
 		p.RemindDaysBefore, p.PaymentHours, pq.Array(p.PaymentOptions), p.Notes,
-		p.Active, p.ID, userID,
+		p.Active, p.ExpectedAmount, p.RememberLastAmount, p.ID, userID,
 	).Scan(&p.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to update recurring payment: %w", err)
@@ -193,37 +210,19 @@ func (db *DB) DeleteRecurringPayment(ctx context.Context, id, userID uuid.UUID) 
 	return n > 0, nil
 }
 
-// GetOverdueRecurringPayments returns active payments whose due date is
-// before today and therefore needs to move to the next cycle.
-func (db *DB) GetOverdueRecurringPayments(ctx context.Context, today time.Time) ([]models.RecurringPayment, error) {
-	payments, err := queryRecurringPayments(ctx, db.conn,
-		recurringPaymentSelect+` WHERE rp.active AND rp.due_date < $1`, models.DateOnly(today))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get overdue recurring payments: %w", err)
-	}
-	return payments, nil
-}
-
-// UpdateRecurringPaymentDueDate moves a payment to a new due date.
-func (db *DB) UpdateRecurringPaymentDueDate(ctx context.Context, id uuid.UUID, dueDate time.Time) error {
-	_, err := db.conn.ExecContext(ctx,
-		`UPDATE recurring_payments SET due_date = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
-		models.DateOnly(dueDate), id)
-	if err != nil {
-		return fmt.Errorf("failed to update recurring payment due date: %w", err)
-	}
-	return nil
-}
-
-// GetRecurringPaymentsToRemind returns active payments that are due today or
-// later, whose reminder window has opened, and that have not been notified
-// for their current due date yet.
+// GetRecurringPaymentsToRemind returns active payments whose reminder window
+// has opened and that are due a reminder today:
+//   - not yet due: once per due date
+//   - overdue (still unpaid): once per day
 func (db *DB) GetRecurringPaymentsToRemind(ctx context.Context, today time.Time) ([]models.RecurringPayment, error) {
 	payments, err := queryRecurringPayments(ctx, db.conn, recurringPaymentSelect+`
 		WHERE rp.active
-			AND rp.due_date >= $1
 			AND rp.due_date - rp.remind_days_before <= $1
-			AND rp.last_notified_for IS DISTINCT FROM rp.due_date
+			AND (
+				(rp.due_date >= $1 AND rp.last_notified_for IS DISTINCT FROM rp.due_date)
+				OR
+				(rp.due_date < $1 AND (rp.last_notified_on IS NULL OR rp.last_notified_on < $1))
+			)
 		ORDER BY rp.due_date`, models.DateOnly(today))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get recurring payments to remind: %w", err)
@@ -231,13 +230,95 @@ func (db *DB) GetRecurringPaymentsToRemind(ctx context.Context, today time.Time)
 	return payments, nil
 }
 
-// MarkRecurringPaymentNotified records that a reminder was sent for dueDate.
-func (db *DB) MarkRecurringPaymentNotified(ctx context.Context, id uuid.UUID, dueDate time.Time) error {
+// MarkRecurringPaymentNotified records that a reminder for dueDate was sent
+// on sentOn.
+func (db *DB) MarkRecurringPaymentNotified(ctx context.Context, id uuid.UUID, dueDate, sentOn time.Time) error {
 	_, err := db.conn.ExecContext(ctx,
-		`UPDATE recurring_payments SET last_notified_for = $1 WHERE id = $2`,
-		models.DateOnly(dueDate), id)
+		`UPDATE recurring_payments SET last_notified_for = $1, last_notified_on = $2 WHERE id = $3`,
+		models.DateOnly(dueDate), models.DateOnly(sentOn), id)
 	if err != nil {
 		return fmt.Errorf("failed to mark recurring payment notified: %w", err)
 	}
 	return nil
+}
+
+// GetUpcomingRecurringPayments returns a user's active payments due on or
+// before until, overdue ones included, soonest first. Payments only move to
+// their next due date when paid, so every result is unpaid.
+func (db *DB) GetUpcomingRecurringPayments(ctx context.Context, userID uuid.UUID, until time.Time) ([]models.RecurringPayment, error) {
+	payments, err := queryRecurringPayments(ctx, db.conn, recurringPaymentSelect+`
+		WHERE rp.user_id = $1 AND rp.active AND rp.due_date <= $2
+		ORDER BY rp.due_date, rp.created_at`, userID, models.DateOnly(until))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get upcoming recurring payments: %w", err)
+	}
+	return payments, nil
+}
+
+// MarkRecurringPaymentPaid records one payment atomically: it creates the
+// matching house or car expense, sets last_paid_on, updates expected_amount
+// when remember_last_amount is on, and moves the due date to the next cycle.
+// Returns sql.ErrNoRows (wrapped) when the payment does not exist or
+// belongs to another user.
+func (db *DB) MarkRecurringPaymentPaid(ctx context.Context, userID, id uuid.UUID, amount float64, paidOn time.Time) (*models.PaidRecurringPayment, error) {
+	tx, err := db.conn.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to mark recurring payment paid: %w", err)
+	}
+	defer tx.Rollback()
+
+	p, err := scanRecurringPayment(tx.QueryRowContext(ctx,
+		recurringPaymentSelect+` WHERE rp.id = $1 AND rp.user_id = $2 FOR UPDATE OF rp`, id, userID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to mark recurring payment paid: %w", err)
+	}
+
+	notes := p.Name
+	if notes == "" {
+		notes = "Recurring payment"
+	}
+
+	var expenseQuery string
+	var typeID *int
+	switch p.Category {
+	case models.RecurringCategoryHouse:
+		expenseQuery = `INSERT INTO home_expenses (utility_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
+			VALUES ($1, $2, 0, $3, $4, '{}', $5) RETURNING id`
+		typeID = p.UtilityTypeID
+	case models.RecurringCategoryCar:
+		expenseQuery = `INSERT INTO car_expenses (car_expense_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
+			VALUES ($1, $2, 0, $3, $4, '{}', $5) RETURNING id`
+		typeID = p.CarExpenseTypeID
+	default:
+		return nil, fmt.Errorf("failed to mark recurring payment paid: %w", models.ErrInvalidCategory)
+	}
+
+	result := &models.PaidRecurringPayment{PaidDue: p.DueDate}
+	if err := tx.QueryRowContext(ctx, expenseQuery, typeID, amount, paidOn, notes, userID).Scan(&result.ExpenseID); err != nil {
+		return nil, fmt.Errorf("failed to create expense for recurring payment: %w", err)
+	}
+
+	paidDate := models.DateOnly(paidOn)
+	p.DueDate = p.NextDueAfter(p.DueDate)
+	p.LastPaidOn = &paidDate
+	if p.RememberLastAmount {
+		p.ExpectedAmount = &amount
+	}
+
+	err = tx.QueryRowContext(ctx, `
+		UPDATE recurring_payments
+		SET due_date = $1, last_paid_on = $2, expected_amount = $3, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $4
+		RETURNING updated_at`,
+		p.DueDate, paidDate, p.ExpectedAmount, p.ID,
+	).Scan(&p.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to advance recurring payment: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to mark recurring payment paid: %w", err)
+	}
+	result.Payment = p
+	return result, nil
 }

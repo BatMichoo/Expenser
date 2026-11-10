@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"expenser/internal/models"
+	"expenser/internal/utilities"
 	"fmt"
 	"log"
 	"strings"
@@ -11,7 +12,7 @@ import (
 // Reminder is a single notification about an upcoming recurring payment.
 type Reminder struct {
 	Payment  models.RecurringPayment
-	DaysLeft int
+	DaysLeft int // negative when overdue
 }
 
 // Notifier delivers reminders to users. Implementations can send email,
@@ -48,6 +49,9 @@ func FormatReminder(r Reminder) string {
 	if p.Name != "" {
 		fmt.Fprintf(&b, " %q", p.Name)
 	}
+	if p.ExpectedAmount != nil {
+		fmt.Fprintf(&b, " %.2f %s", *p.ExpectedAmount, utilities.Currency)
+	}
 	fmt.Fprintf(&b, " due %s (%s)", p.DueDate.Format("2006-01-02"), daysLeftText(r.DaysLeft))
 	if p.PaymentHours != "" {
 		fmt.Fprintf(&b, " | hours: %s", p.PaymentHours)
@@ -62,6 +66,12 @@ func FormatReminder(r Reminder) string {
 }
 
 func daysLeftText(days int) string {
+	switch {
+	case days == -1:
+		return "OVERDUE by 1 day"
+	case days < 0:
+		return fmt.Sprintf("OVERDUE by %d days", -days)
+	}
 	switch days {
 	case 0:
 		return "today"

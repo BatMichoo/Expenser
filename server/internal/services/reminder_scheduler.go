@@ -13,14 +13,14 @@ import (
 // ReminderStore is the data access the scheduler needs. *database.DB
 // implements it.
 type ReminderStore interface {
-	GetOverdueRecurringPayments(ctx context.Context, today time.Time) ([]models.RecurringPayment, error)
-	UpdateRecurringPaymentDueDate(ctx context.Context, id uuid.UUID, dueDate time.Time) error
 	GetRecurringPaymentsToRemind(ctx context.Context, today time.Time) ([]models.RecurringPayment, error)
-	MarkRecurringPaymentNotified(ctx context.Context, id uuid.UUID, dueDate time.Time) error
+	MarkRecurringPaymentNotified(ctx context.Context, id uuid.UUID, dueDate, sentOn time.Time) error
 }
 
-// ReminderScheduler periodically rolls overdue recurring payments to their
-// next cycle and sends reminders for payments whose window has opened.
+// ReminderScheduler periodically sends reminders for recurring payments:
+// once when the reminder window opens, then daily while the payment is
+// overdue. Payments only move to their next due date when marked paid
+// (see RecurringPaymentService.MarkPaid).
 type ReminderScheduler struct {
 	store    ReminderStore
 	notifier Notifier
@@ -62,17 +62,6 @@ func (s *ReminderScheduler) Run(ctx context.Context) {
 func (s *ReminderScheduler) RunOnce(ctx context.Context) error {
 	today := models.DateOnly(s.now())
 
-	overdue, err := s.store.GetOverdueRecurringPayments(ctx, today)
-	if err != nil {
-		return err
-	}
-	for _, p := range overdue {
-		next := p.NextDueDate(today)
-		if err := s.store.UpdateRecurringPaymentDueDate(ctx, p.ID, next); err != nil {
-			return err
-		}
-	}
-
 	due, err := s.store.GetRecurringPaymentsToRemind(ctx, today)
 	if err != nil {
 		return err
@@ -80,13 +69,13 @@ func (s *ReminderScheduler) RunOnce(ctx context.Context) error {
 	for _, p := range due {
 		r := Reminder{
 			Payment:  p,
-			DaysLeft: int(p.DueDate.Sub(today).Hours() / 24),
+			DaysLeft: p.DaysUntilDue(today),
 		}
 		if err := s.notifier.Notify(ctx, r); err != nil {
 			log.Printf("Failed to send reminder for recurring payment %s: %v", p.ID, err)
 			continue
 		}
-		if err := s.store.MarkRecurringPaymentNotified(ctx, p.ID, p.DueDate); err != nil {
+		if err := s.store.MarkRecurringPaymentNotified(ctx, p.ID, p.DueDate, today); err != nil {
 			return fmt.Errorf("reminder sent but not recorded for %s: %w", p.ID, err)
 		}
 	}

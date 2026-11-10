@@ -41,17 +41,22 @@ func TestAddCycles(t *testing.T) {
 	}
 }
 
-func TestNextDueDate(t *testing.T) {
+func TestNextDueAfter(t *testing.T) {
 	p := &RecurringPayment{StartDate: date(2026, 1, 31), DueDate: date(2026, 1, 31), CycleUnit: CycleMonth, CycleEvery: 1}
 
-	assert.Equal(t, date(2026, 1, 31), p.NextDueDate(date(2026, 1, 31)), "due today stays")
-	assert.Equal(t, date(2026, 1, 31), p.NextDueDate(date(2026, 1, 10)), "future stays")
-	assert.Equal(t, date(2026, 2, 28), p.NextDueDate(date(2026, 2, 1)))
-	assert.Equal(t, date(2026, 3, 31), p.NextDueDate(date(2026, 3, 1)))
-	assert.Equal(t, date(2027, 1, 31), p.NextDueDate(date(2027, 1, 1)), "skips several missed cycles")
+	assert.Equal(t, date(2026, 2, 28), p.NextDueAfter(date(2026, 1, 31)), "strictly after the current due date")
+	assert.Equal(t, date(2026, 1, 31), p.NextDueAfter(date(2026, 1, 10)), "paid before the first due date")
+	assert.Equal(t, date(2026, 3, 31), p.NextDueAfter(date(2026, 2, 28)), "no drift after clamping")
 
-	noStart := &RecurringPayment{DueDate: date(2026, 1, 10), CycleUnit: CycleWeek, CycleEvery: 1}
-	assert.Equal(t, date(2026, 1, 17), noStart.NextDueDate(date(2026, 1, 11)), "falls back to due date as anchor")
+	noStart := &RecurringPayment{DueDate: date(2026, 1, 10), CycleUnit: CycleWeek, CycleEvery: 2}
+	assert.Equal(t, date(2026, 1, 24), noStart.NextDueAfter(date(2026, 1, 10)), "falls back to due date as anchor")
+}
+
+func TestDaysUntilDue(t *testing.T) {
+	p := &RecurringPayment{DueDate: date(2026, 11, 12)}
+	assert.Equal(t, 2, p.DaysUntilDue(date(2026, 11, 10)))
+	assert.Equal(t, 0, p.DaysUntilDue(time.Date(2026, 11, 12, 23, 0, 0, 0, time.UTC)))
+	assert.Equal(t, -3, p.DaysUntilDue(date(2026, 11, 15)))
 }
 
 func TestReminderDate(t *testing.T) {
@@ -89,6 +94,8 @@ func TestValidate(t *testing.T) {
 		{"zero every", func(p *RecurringPayment) { p.CycleEvery = 0 }, ErrInvalidCycleEvery},
 		{"negative remind", func(p *RecurringPayment) { p.RemindDaysBefore = -1 }, ErrInvalidRemindDays},
 		{"no due date", func(p *RecurringPayment) { p.DueDate = time.Time{} }, ErrMissingDueDate},
+		{"negative amount", func(p *RecurringPayment) { v := -1.0; p.ExpectedAmount = &v }, ErrInvalidAmount},
+		{"zero amount ok", func(p *RecurringPayment) { v := 0.0; p.ExpectedAmount = &v }, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

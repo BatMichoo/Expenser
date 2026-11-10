@@ -5,12 +5,19 @@ import (
 	"database/sql"
 	"expenser/internal/config"
 	"expenser/internal/models"
+	"expenser/internal/services"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+// *DB must satisfy the stores the services depend on.
+var (
+	_ services.ReminderStore         = (*DB)(nil)
+	_ services.RecurringPaymentStore = (*DB)(nil)
 )
 
 func rpDate(y int, m time.Month, d int) time.Time {
@@ -189,6 +196,14 @@ func TestListUpdateDeleteRecurringPayments(t *testing.T) {
 	assert.Len(t, list, 1)
 }
 
+func ids(ps []models.RecurringPayment) []uuid.UUID {
+	out := []uuid.UUID{}
+	for _, p := range ps {
+		out = append(out, p.ID)
+	}
+	return out
+}
+
 func TestReminderQueries(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
@@ -205,36 +220,165 @@ func TestReminderQueries(t *testing.T) {
 	inactive.Active = false
 	require.NoError(t, testDB.UpdateRecurringPayment(ctx, inactive, userID))
 
-	ids := func(ps []models.RecurringPayment) []uuid.UUID {
-		out := []uuid.UUID{}
-		for _, p := range ps {
-			out = append(out, p.ID)
-		}
-		return out
-	}
-
 	toRemind, err := testDB.GetRecurringPaymentsToRemind(ctx, today)
 	require.NoError(t, err)
-	assert.Equal(t, []uuid.UUID{inWindow.ID, windowOpensToday.ID}, ids(toRemind))
+	assert.Equal(t, []uuid.UUID{overdue.ID, inWindow.ID, windowOpensToday.ID}, ids(toRemind))
 
-	overdueList, err := testDB.GetOverdueRecurringPayments(ctx, today)
-	require.NoError(t, err)
-	assert.Equal(t, []uuid.UUID{overdue.ID}, ids(overdueList))
-
-	// Once notified for its due date, a payment is not returned again.
-	require.NoError(t, testDB.MarkRecurringPaymentNotified(ctx, inWindow.ID, inWindow.DueDate))
+	// Not-yet-due payments are reminded once per due date; overdue ones once per day.
+	for _, p := range toRemind {
+		require.NoError(t, testDB.MarkRecurringPaymentNotified(ctx, p.ID, p.DueDate, today))
+	}
 	toRemind, err = testDB.GetRecurringPaymentsToRemind(ctx, today)
 	require.NoError(t, err)
-	assert.Equal(t, []uuid.UUID{windowOpensToday.ID}, ids(toRemind))
+	assert.Empty(t, toRemind)
 
-	// Moving to the next cycle makes it eligible again once its window opens.
-	require.NoError(t, testDB.UpdateRecurringPaymentDueDate(ctx, inWindow.ID, rpDate(2026, 12, 12)))
-	got, err := testDB.GetRecurringPaymentByID(ctx, inWindow.ID, userID)
+	toRemind, err = testDB.GetRecurringPaymentsToRemind(ctx, today.AddDate(0, 0, 1))
 	require.NoError(t, err)
-	assert.Equal(t, rpDate(2026, 12, 12), got.DueDate)
-	assert.Equal(t, rpDate(2026, 11, 12), *got.LastNotifiedFor)
+	assert.Equal(t, []uuid.UUID{overdue.ID}, ids(toRemind))
 
-	toRemind, err = testDB.GetRecurringPaymentsToRemind(ctx, rpDate(2026, 12, 10))
+	// The day after inWindow's due date it is overdue and nudged again.
+	toRemind, err = testDB.GetRecurringPaymentsToRemind(ctx, rpDate(2026, 11, 13))
 	require.NoError(t, err)
 	assert.Contains(t, ids(toRemind), inWindow.ID)
+
+	got, err := testDB.GetRecurringPaymentByID(ctx, inWindow.ID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, rpDate(2026, 11, 12), *got.LastNotifiedFor)
+	assert.Equal(t, today, *got.LastNotifiedOn)
+}
+
+func TestRecurringPaymentAmounts(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+
+	amount := 29.99
+	p := newInternetPayment(userID, rpDate(2026, 12, 1))
+	p.ExpectedAmount = &amount
+	p.RememberLastAmount = true
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+
+	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	require.NoError(t, err)
+	require.NotNil(t, got.ExpectedAmount)
+	assert.Equal(t, 29.99, *got.ExpectedAmount)
+	assert.True(t, got.RememberLastAmount)
+
+	got.ExpectedAmount = nil
+	got.RememberLastAmount = false
+	require.NoError(t, testDB.UpdateRecurringPayment(ctx, got, userID))
+	got, err = testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	require.NoError(t, err)
+	assert.Nil(t, got.ExpectedAmount)
+	assert.False(t, got.RememberLastAmount)
+
+	negative := -5.0
+	bad := newInternetPayment(userID, rpDate(2026, 12, 1))
+	bad.ExpectedAmount = &negative
+	assert.ErrorIs(t, testDB.CreateRecurringPayment(ctx, bad), models.ErrInvalidAmount)
+}
+
+func TestMarkRecurringPaymentPaidHouse(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+
+	expected := 30.0
+	p := newInternetPayment(userID, rpDate(2026, 1, 31))
+	p.ExpectedAmount = &expected
+	p.RememberLastAmount = true
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+
+	paidOn := time.Date(2026, 2, 2, 10, 0, 0, 0, time.Local)
+	res, err := testDB.MarkRecurringPaymentPaid(ctx, userID, p.ID, 32.5, paidOn)
+	require.NoError(t, err)
+	assert.Equal(t, rpDate(2026, 1, 31), res.PaidDue)
+	assert.Equal(t, rpDate(2026, 2, 28), res.Payment.DueDate)
+
+	expense, err := testDB.GetHouseExpenseByID(res.ExpenseID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, 32.5, expense.Amount)
+	assert.Equal(t, "Internet", expense.UtilityType)
+	assert.Equal(t, "Fiber", expense.Notes)
+	assert.Equal(t, paidOn.Round(time.Second), expense.ExpenseDate.Local().Round(time.Second))
+
+	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, rpDate(2026, 2, 28), got.DueDate)
+	assert.Equal(t, rpDate(2026, 2, 2), *got.LastPaidOn)
+	assert.Equal(t, 32.5, *got.ExpectedAmount, "remembered last amount")
+
+	// Paying again moves on without drifting from the 31st.
+	res, err = testDB.MarkRecurringPaymentPaid(ctx, userID, p.ID, 32.5, paidOn)
+	require.NoError(t, err)
+	assert.Equal(t, rpDate(2026, 3, 31), res.Payment.DueDate)
+}
+
+func TestMarkRecurringPaymentPaidCar(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+
+	expected := 400.0
+	p := &models.RecurringPayment{
+		UserID:           userID,
+		Category:         models.RecurringCategoryCar,
+		CarExpenseTypeID: rpIntPtr(3), // Insurance
+		DueDate:          rpDate(2026, 11, 20),
+		CycleUnit:        models.CycleMonth,
+		CycleEvery:       6,
+		ExpectedAmount:   &expected,
+	}
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+
+	res, err := testDB.MarkRecurringPaymentPaid(ctx, userID, p.ID, 420, rpDate(2026, 11, 18))
+	require.NoError(t, err)
+	assert.Equal(t, rpDate(2027, 5, 20), res.Payment.DueDate)
+	assert.Equal(t, 400.0, *res.Payment.ExpectedAmount, "amount not remembered when flag is off")
+
+	expense, err := testDB.GetCarExpenseByID(res.ExpenseID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, 420.0, expense.Amount)
+	assert.Equal(t, "Insurance", expense.Type)
+	assert.Equal(t, "Recurring payment", expense.Notes, "fallback note when unnamed")
+}
+
+func TestMarkRecurringPaymentPaidOtherUser(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+
+	other := &models.User{Username: "OtherUser", PasswordHash: TestUserRegisterModel.PasswordHash}
+	require.NoError(t, testDB.CreateUser(other))
+
+	p := newInternetPayment(userID, rpDate(2026, 12, 1))
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+
+	_, err := testDB.MarkRecurringPaymentPaid(ctx, other.ID, p.ID, 10, rpDate(2026, 12, 1))
+	assert.ErrorIs(t, err, sql.ErrNoRows)
+
+	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, rpDate(2026, 12, 1), got.DueDate, "unchanged")
+	assert.Nil(t, got.LastPaidOn)
+}
+
+func TestGetUpcomingRecurringPayments(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+
+	other := &models.User{Username: "OtherUser", PasswordHash: TestUserRegisterModel.PasswordHash}
+	require.NoError(t, testDB.CreateUser(other))
+
+	overdue := newInternetPayment(userID, rpDate(2026, 11, 1))
+	soon := newInternetPayment(userID, rpDate(2026, 11, 15))
+	edge := newInternetPayment(userID, rpDate(2026, 11, 17))
+	later := newInternetPayment(userID, rpDate(2026, 11, 18))
+	paused := newInternetPayment(userID, rpDate(2026, 11, 12))
+	othersPayment := newInternetPayment(other.ID, rpDate(2026, 11, 12))
+	for _, p := range []*models.RecurringPayment{overdue, soon, edge, later, paused, othersPayment} {
+		require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+	}
+	paused.Active = false
+	require.NoError(t, testDB.UpdateRecurringPayment(ctx, paused, userID))
+
+	got, err := testDB.GetUpcomingRecurringPayments(ctx, userID, rpDate(2026, 11, 17))
+	require.NoError(t, err)
+	assert.Equal(t, []uuid.UUID{overdue.ID, soon.ID, edge.ID}, ids(got))
 }
