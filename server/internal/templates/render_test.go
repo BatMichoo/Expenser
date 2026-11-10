@@ -455,3 +455,16 @@ func TestInsightPanelsEmptyMonth(t *testing.T) {
 	assert.Equal(t, 0, doc.Find(".breakdown-item").Length())
 	assert.Equal(t, 1, doc.Find(".breakdown .side-empty").Length())
 }
+
+func TestListTabKeepsViewedMonth(t *testing.T) {
+	for _, section := range []string{"house", "car", "groceries"} {
+		t.Run(section, func(t *testing.T) {
+			doc := parseHTML(t, render(t, section+"-section-buttons", map[string]any{"Lang": "en"}))
+			list := doc.Find(`.section-button[hx-get="/` + section + `/current"]`)
+			require.Equal(t, 1, list.Length())
+			vals, _ := list.Attr("hx-vals")
+			assert.Contains(t, vals, "js:", "month is read when clicked")
+			assert.Contains(t, vals, `get("month")`, "from the page URL")
+		})
+	}
+}

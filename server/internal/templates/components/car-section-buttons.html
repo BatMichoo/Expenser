@@ -4,6 +4,7 @@
     <button
       type="button"
       hx-get="/car/current"
+      hx-vals='js:{month: new URLSearchParams(window.location.search).get("month") || ""}'
       hx-target="#section-content"
       class="tracker-nav-button section-button active"
     >
