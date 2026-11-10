@@ -560,4 +560,118 @@
     width: 100%;
     min-height: 2.75em;
   }
+
+  /* Month view on phones: one column, no side chart */
+  .header-section {
+    padding: 0 0.75em;
+    min-height: 3.25em;
+    gap: 0;
+  }
+
+  .header-left {
+    margin-left: auto;
+  }
+
+  #section-list {
+    margin: 0 0.75em 0.75em;
+    padding: 0.2em;
+    width: auto;
+  }
+
+  #section-list li {
+    flex: 1;
+  }
+
+  #section-list .section-button {
+    width: 100%;
+  }
+
+  .month-view {
+    display: block;
+    padding: 0 0 1em;
+  }
+
+  .month-side,
+  .month-toolbar .add-btn,
+  .month-type,
+  .kpi-count {
+    display: none;
+  }
+
+  .month-toolbar {
+    gap: 0.5em;
+    margin: 0 0.75em 0.75em;
+  }
+
+  .month-switcher {
+    width: 100%;
+    justify-content: space-between;
+    box-sizing: border-box;
+  }
+
+  .month-step {
+    width: 2.75em;
+    height: 2.75em;
+  }
+
+  .month-label {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .month-today {
+    position: absolute;
+    right: 3.5em;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .month-filters {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .month-search {
+    height: 2.75em;
+    font-size: 16px;
+  }
+
+  .kpi-tiles {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6em;
+    margin: 0 0.75em 0.5em;
+  }
+
+  .kpi {
+    padding: 0.6em 0.8em;
+  }
+
+  .kpi-value {
+    font-size: 1.25em;
+  }
+
+  #add-expense-section {
+    margin: 0 0.75em 0.5em;
+    justify-content: stretch;
+  }
+
+  #add-expense-section .upload-btn {
+    width: 100%;
+    min-height: 2.75em;
+  }
+
+  .month-view .expenses-table {
+    display: block;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .month-view .expenses-table tr.exp-row td.c-amount {
+    text-align: right;
+  }
+
+  .month-view .expenses-table tr.empty-row td {
+    padding: 1.5em 1em;
+  }
 }

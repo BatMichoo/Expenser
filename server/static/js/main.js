@@ -224,3 +224,28 @@ document.addEventListener(
   },
   true,
 );
+
+// --- Keyboard shortcuts (desktop): N adds an expense, Escape closes the panel ---
+document.addEventListener("keydown", (event) => {
+  if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) {
+    return;
+  }
+  const actionDialog = document.getElementById("action-dialog");
+  const dialogOpen = actionDialog && actionDialog.open;
+
+  if (event.key === "Escape" && dialogOpen) {
+    hideDialog();
+    return;
+  }
+
+  const target = event.target;
+  const typing =
+    target.closest("input, textarea, select, [contenteditable]") !== null;
+  if ((event.key === "n" || event.key === "N") && !typing && !dialogOpen) {
+    const addButton = document.querySelector(".month-toolbar .add-btn");
+    if (addButton && addButton.offsetParent !== null) {
+      event.preventDefault();
+      addButton.click();
+    }
+  }
+});

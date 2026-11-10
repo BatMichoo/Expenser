@@ -245,6 +245,8 @@ func TestMonthToolbar(t *testing.T) {
 	assert.Equal(t, "expenses-changed from:body", refresh)
 	include, _ := wrapper.Attr("hx-include")
 	assert.Equal(t, "#month-filters", include, "refresh keeps the search")
+	disinherit, _ := wrapper.Attr("hx-disinherit")
+	assert.Equal(t, "*", disinherit, "children must not inherit the wrapper's outerHTML swap")
 
 	v.IsCurrent = false
 	doc = parseHTML(t, render(t, "car-current", v))

@@ -2,7 +2,7 @@
      itself when an expense is added, edited or deleted (expenses-changed). */}}
 {{ define "month-view" }}
 <div id="month-view" class="month-view" hx-get="/{{ .Section }}/current?month={{ .Month }}" hx-include="#month-filters"
-  hx-trigger="expenses-changed from:body" hx-swap="outerHTML">
+  hx-trigger="expenses-changed from:body" hx-swap="outerHTML" hx-disinherit="*">
   <div class="month-main">
     {{ template "month-toolbar" . }}
     {{ template "kpi-tiles" . }}
