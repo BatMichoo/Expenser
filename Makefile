@@ -76,3 +76,19 @@ dev-stop:
 
 dev-down:
 	docker compose --env-file ./server/.env.dev -f docker-compose.dev.yaml down
+
+# --- Auto-deploy: pull main and rebuild once CI passes (see deploy/) ---
+.PHONY: autodeploy autodeploy-stop autodeploy-logs
+
+AUTODEPLOY_ENV := AUTODEPLOY_DIR=$(CURDIR) \
+	AUTODEPLOY_UID=$$(id -u) AUTODEPLOY_GID=$$(id -g) \
+	DOCKER_GID=$$(stat -c %g /var/run/docker.sock)
+
+autodeploy:
+	$(AUTODEPLOY_ENV) docker compose --profile autodeploy up -d --build deployer
+
+autodeploy-stop:
+	$(AUTODEPLOY_ENV) docker compose --profile autodeploy rm -sf deployer
+
+autodeploy-logs:
+	docker logs -f deployer

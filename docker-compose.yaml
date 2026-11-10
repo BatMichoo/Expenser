@@ -49,5 +49,24 @@ services:
       timeout: 5s
       retries: 5
 
+  # Opt-in: start with `make autodeploy`. Pulls main once CI passes and
+  # rebuilds the stack. The repo is mounted at its host path so that
+  # relative bind mounts in this file resolve the same inside and outside.
+  deployer:
+    container_name: deployer
+    profiles: [autodeploy]
+    build:
+      context: ./deploy
+    restart: unless-stopped
+    user: "${AUTODEPLOY_UID:-1000}:${AUTODEPLOY_GID:-1000}"
+    group_add:
+      - "${DOCKER_GID:-999}"
+    working_dir: ${AUTODEPLOY_DIR:-/autodeploy-dir-unset}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${AUTODEPLOY_DIR:-/autodeploy-dir-unset}:${AUTODEPLOY_DIR:-/autodeploy-dir-unset}
+    environment:
+      AUTODEPLOY_INTERVAL: ${AUTODEPLOY_INTERVAL:-1800}
+
 volumes:
   db-data:

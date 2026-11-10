@@ -53,3 +53,20 @@ TEST_DB_PORT=5000<br>
 
 JWT_SECRET=very_secret_JWT_key_for_amazing_security<br>
 JWT_EXPIRATION_HOURS=24<br>
+
+# Auto-deploy
+
+On the server, run once from the repo root:
+
+```sh
+make autodeploy
+```
+
+This starts a `deployer` container that checks GitHub every 30 minutes. When `main` has a new commit and every CI job for it has passed, it fast-forwards the local checkout and runs `docker compose up -d --build`. Commits with failing CI are skipped, and nothing is deployed if the local checkout is not on `main` or has diverged from it. The container restarts with Docker, so it keeps running across reboots.
+
+- `make autodeploy-logs` shows what it is doing.
+- `make autodeploy-stop` turns it off.
+- Re-run `make autodeploy` after changing anything in `deploy/` so the deployer itself is rebuilt.
+- Set `AUTODEPLOY_INTERVAL` (seconds) in the environment when running `make autodeploy` to change how often it checks.
+
+The deployer has access to the Docker socket, which is equivalent to root on the host. It only ever runs code that is on `main` and has passed CI.
