@@ -1047,3 +1047,8 @@ select {
 .expenses-table tr.exp-row ~ tr.empty-row {
   display: none;
 }
+
+/* Floating add button is a phone-only control */
+.fab {
+  display: none;
+}

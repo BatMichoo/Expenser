@@ -127,7 +127,7 @@
   }
 
   /* Buttons and Sections */
-  #add-expense-section button {
+  #add-expense-section button:not(.fab) {
     width: 90%;
     font-size: 1em;
     padding: 0.75em 1em;
@@ -358,5 +358,127 @@
     display: block;
     padding: 0;
     border: 0;
+  }
+
+  /* Page chrome: section switcher, summary strip, floating add button */
+  #section-list {
+    margin: 0 0.75em 0.75em;
+    gap: 0;
+    padding: 0.2em;
+    border-radius: 0.75em;
+    background-color: var(--bg-dark);
+  }
+
+  #section-list li {
+    padding: 0;
+  }
+
+  #section-list .section-button {
+    height: 2.5em;
+    font-size: 0.95em;
+    margin: 0;
+    border: 0;
+    border-radius: 0.6em;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
+  }
+
+  #section-list .section-button.active {
+    background-color: var(--bg-light);
+    color: var(--text);
+    box-shadow: var(--shadow);
+  }
+
+  #overview-section > h2,
+  #recent-expenses-section > h2 {
+    display: none;
+  }
+
+  #tracker-content {
+    padding: 0;
+  }
+
+  .overview-container {
+    flex-direction: row;
+    gap: 0.6em;
+    padding: 0 0.75em;
+  }
+
+  .overview-container .card {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    min-height: unset;
+    padding: 0.7em 0.8em;
+    gap: 0.15em;
+    border-radius: 0.75em;
+    align-items: flex-start;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .overview-container .card h3 {
+    margin: 0;
+    font-size: 0.75em;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+
+  .overview-container .card p {
+    margin: 0;
+    font-size: 0.75em;
+    opacity: 0.85;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .overview-container .card p:first-of-type {
+    font-size: 1.35em;
+    font-weight: 700;
+    opacity: 1;
+  }
+
+  #add-expense-section {
+    margin: 0.75em;
+  }
+
+  #add-expense-section .add-btn {
+    display: none;
+  }
+
+  #add-expense-section button:not(.fab) {
+    width: 100%;
+    min-height: 2.75em;
+  }
+
+  #add-expense-section .fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 1em;
+    bottom: calc(5em + env(safe-area-inset-bottom));
+    z-index: 25;
+    width: 3.5em;
+    height: 3.5em;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    color: #fff;
+    background: oklch(0.55 0.2 var(--hue));
+    box-shadow: 0 6px 16px oklch(0.55 0.2 var(--hue) / 0.45);
+  }
+
+  #add-expense-section .fab:active {
+    transform: scale(0.95);
+  }
+
+  /* Room below the last row so the + button never covers it */
+  #recent-expenses-section {
+    margin-top: 0.5em;
+    padding-bottom: 4.5em;
   }
 }

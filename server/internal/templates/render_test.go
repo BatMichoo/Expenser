@@ -173,3 +173,27 @@ func TestGroceriesCurrentUsesGroceryRow(t *testing.T) {
 	doc := parseHTML(t, render(t, "groceries-current", data))
 	assert.Equal(t, 1, doc.Find("tr#grocery-1.exp-row").Length())
 }
+
+func TestCurrentViewHasFab(t *testing.T) {
+	cases := []struct {
+		tmpl string
+		data any
+		url  string
+	}{
+		{"house-current", &models.HouseData{MonthlyExpense: &models.MonthlyExpense{}, HighestExpense: &models.HighestExpense{}, RecentExpenses: &[]models.HouseExpense{}, Lang: "en"}, "/house/expenses/new"},
+		{"car-current", &models.CarData{MonthlyExpense: &models.MonthlyExpense{}, HighestExpense: &models.HighestExpense{}, RecentExpenses: &[]models.CarExpense{}, Lang: "en"}, "/car/expenses/new"},
+		{"groceries-current", &models.GroceriesData{MonthlyExpense: &models.MonthlyExpense{}, HighestExpense: &models.HighestExpense{}, RecentExpenses: &[]models.GroceriesExpense{}, Lang: "en"}, "/groceries/create"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.tmpl, func(t *testing.T) {
+			fab := parseHTML(t, render(t, tc.tmpl, tc.data)).Find("button.fab")
+			require.Equal(t, 1, fab.Length())
+			hxGet, _ := fab.Attr("hx-get")
+			assert.Equal(t, tc.url, hxGet)
+			target, _ := fab.Attr("hx-target")
+			assert.Equal(t, "#action-dialog", target)
+			label, _ := fab.Attr("aria-label")
+			assert.NotEmpty(t, label)
+		})
+	}
+}
