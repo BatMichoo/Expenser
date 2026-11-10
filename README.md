@@ -62,11 +62,13 @@ On the server, run once from the repo root:
 make autodeploy
 ```
 
-This starts a `deployer` container that checks GitHub every 30 minutes. When `main` has a new commit and every CI job for it has passed, it fast-forwards the local checkout and runs `docker compose up -d --build`. Commits with failing CI are skipped, and nothing is deployed if the local checkout is not on `main` or has diverged from it. The container restarts with Docker, so it keeps running across reboots.
+This starts a `deployer` container that checks GitHub every 30 minutes. When `main` has a new commit and every CI job for it has passed, it fast-forwards the local checkout and runs `docker compose up -d --build`. It then waits up to 2 minutes for the app to answer `/login`. If it does not, it rolls back to the previous commit, rebuilds, and never retries the bad commit (skipped commits are listed in `.git/autodeploy-skip`). Commits with failing CI are skipped, and nothing is deployed if the local checkout is not on `main` or has diverged from it. The container restarts with Docker, so it keeps running across reboots.
 
 - `make autodeploy-logs` shows what it is doing.
 - `make autodeploy-stop` turns it off.
 - Re-run `make autodeploy` after changing anything in `deploy/` so the deployer itself is rebuilt.
 - Set `AUTODEPLOY_INTERVAL` (seconds) in the environment when running `make autodeploy` to change how often it checks.
+
+Rollback does not undo database migrations, so a migration that the previous version cannot work with still needs a manual fix.
 
 The deployer has access to the Docker socket, which is equivalent to root on the host. It only ever runs code that is on `main` and has passed CI.
