@@ -40,69 +40,6 @@ func (db *DB) GetHouseUtilityTypes() (*[]models.HomeUtilityType, error) {
 	return &expenseTypes, nil
 }
 
-func (db *DB) GetTotalHouseExpenseForMonth(date time.Time, userId uuid.UUID) (float64, error) {
-	year := date.Year()
-	month := date.Month()
-	query := `
-		SELECT SUM(amount) FROM home_expenses
-		WHERE EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2 AND created_by = $3
-		`
-
-	var totalAmount sql.NullFloat64
-	err := db.conn.QueryRow(query,
-		int(month),
-		year,
-		userId,
-	).Scan(&totalAmount)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0.00, nil
-		}
-		return 0.00, fmt.Errorf("failed to get total amount: %w", err)
-	}
-
-	return totalAmount.Float64, nil
-}
-
-func (db *DB) GetHighestHouseExpenseForMonth(month time.Month, userId uuid.UUID) (float64, string, error) {
-	currentYear := time.Now().Year()
-	query := `
-		SELECT
-			SUM(he.amount) AS amount,
-			ut.name
-		FROM
-			home_expenses he
-		JOIN
-			utility_types ut ON he.utility_type_id = ut.id
-		WHERE
-			EXTRACT(MONTH FROM he.expense_date) = $1 AND EXTRACT(YEAR FROM he.expense_date) = $2 AND created_by = $3
-		GROUP BY
-			ut.name
-		ORDER BY
-			amount DESC
-		LIMIT 1;
-	`
-
-	var highestExpense sql.NullFloat64
-	var utilType string
-
-	err := db.conn.QueryRow(query,
-		int(month),
-		currentYear,
-		userId,
-	).Scan(&highestExpense, &utilType)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0.00, "", nil
-		}
-		return 0.00, "", fmt.Errorf("failed to get total amount: %w", err)
-	}
-
-	return highestExpense.Float64, utilType, nil
-}
-
 // GetHouseExpenseByID returns the user's home expense with the given ID,
 // or nil when no such expense belongs to the user.
 func (db *DB) GetHouseExpenseByID(id int, userID uuid.UUID) (*models.HouseExpense, error) {
@@ -272,49 +209,6 @@ func (db *DB) GetHouseExpensesForYear(year int, userId uuid.UUID) (*[]models.Hou
 	return &expenses, nil
 }
 
-func (db *DB) GetHomeExpensesByUtilityType(utility string, userId uuid.UUID) (*[]models.HouseExpense, error) {
-	query := `
-		SELECT he.id, ut.name, he.amount, he.expense_date, he.notes, he.metadata, he.created_at, he.created_by
-		FROM home_expenses he
-		JOIN utility_types ut ON he.utility_type_id = ut.id
-		WHERE ut.name = $1 AND he.created_by = $2`
-
-	var expenses []models.HouseExpense
-	rows, err := db.conn.Query(query,
-		utility,
-		userId,
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("error fetching expenses: %v", err)
-	}
-
-	for rows.Next() {
-		err := rows.Err()
-		if err != nil {
-			return nil, fmt.Errorf("error fetching expenses: %v", err)
-		}
-
-		var exp models.HouseExpense
-		err = rows.Scan(&exp.ID,
-			&exp.UtilityType,
-			&exp.Amount,
-			&exp.ExpenseDate,
-			&exp.Notes,
-			&exp.Metadata,
-			&exp.CreatedAt,
-			&exp.CreatedBy,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("error scanning expenses: %v", err)
-		}
-		expenses = append(expenses, exp)
-	}
-
-	return &expenses, nil
-}
-
 func (db *DB) GetHouseExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT he.id, ut.name, he.amount, he.expense_date, he.metadata FROM home_expenses he
@@ -416,42 +310,6 @@ func (db *DB) DeleteHouseExpense(id int, userID uuid.UUID) (bool, error) {
 	}
 
 	return true, nil
-}
-
-func (db *DB) GetHomeExpensesByDates(start, end time.Time, userId uuid.UUID) (*[]models.HouseExpense, error) {
-	query := `
-		SELECT he.id, he.amount, ut.name, he.metadata FROM home_expenses he
-		JOIN utility_types ut ON he.utility_type_id = ut.id
-		WHERE created_by = $1 AND expense_date >= $2 AND expense_date <= $3
-		ORDER BY expense_date ASC
-	`
-	rows, err := db.conn.Query(query, userId, start, end)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching expenses: %v", err)
-	}
-
-	var expenses []models.HouseExpense
-
-	for rows.Next() {
-		err := rows.Err()
-		if err != nil {
-			return nil, fmt.Errorf("error fetching expenses: %v", err)
-		}
-
-		var exp models.HouseExpense
-		err = rows.Scan(&exp.ID,
-			&exp.Amount,
-			&exp.UtilityType,
-			&exp.Metadata,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("error scanning expenses: %v", err)
-		}
-		expenses = append(expenses, exp)
-	}
-
-	return &expenses, nil
 }
 
 // GetHouseMonthlyTotals returns house spending per month, keyed "YYYY-MM", for expenses
