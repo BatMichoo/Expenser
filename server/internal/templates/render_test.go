@@ -110,7 +110,7 @@ func TestHouseRowCompactMarkup(t *testing.T) {
 	trigger, _ := row.Attr("hx-trigger")
 	assert.Equal(t, "click[!event.target.closest('button')]", trigger)
 
-	assert.Equal(t, "85.01", strings.TrimSpace(row.Find("td.c-amount").Text()))
+	assert.Equal(t, "85.01 €", strings.TrimSpace(row.Find("td.c-amount").Text()))
 	assert.True(t, row.Find("td.c-discount").HasClass("is-empty"), "zero discount hidden")
 	meta := row.Find("td.c-meta").Text()
 	assert.Contains(t, meta, "13.11")
@@ -134,8 +134,8 @@ func TestCarRowCompactMarkup(t *testing.T) {
 	assert.True(t, row.HasClass("exp-row"))
 	hxGet, _ := row.Attr("hx-get")
 	assert.Equal(t, "/car/expenses/edit/7", hxGet)
-	assert.Equal(t, "60.00", strings.TrimSpace(row.Find("td.c-amount").Text()))
-	assert.True(t, row.Find("td.c-notes").HasClass("is-empty"))
+	assert.Equal(t, "60.00 €", strings.TrimSpace(row.Find("td.c-amount").Text()))
+	assert.True(t, row.Find("td.c-details").HasClass("is-empty"), "no details and no notes")
 }
 
 func TestGroceryRowCompactMarkup(t *testing.T) {
@@ -151,7 +151,7 @@ func TestGroceryRowCompactMarkup(t *testing.T) {
 	hxGet, _ := row.Attr("hx-get")
 	assert.Equal(t, "/groceries/edit/9", hxGet)
 	assert.Equal(t, "Chicken breast", strings.TrimSpace(row.Find("td.c-product").Text()))
-	assert.Equal(t, "7.92", strings.TrimSpace(row.Find("td.c-amount").Text()))
+	assert.Equal(t, "7.92 €", strings.TrimSpace(row.Find("td.c-amount").Text()))
 	assert.False(t, row.Find("td.c-discount").HasClass("is-empty"))
 	meta := row.Find("td.c-meta").Text()
 	assert.Contains(t, meta, "0.8 × 9.90")
@@ -159,49 +159,135 @@ func TestGroceryRowCompactMarkup(t *testing.T) {
 	assert.Contains(t, meta, "04.11")
 }
 
-func TestEmptyListRow(t *testing.T) {
-	data := &models.HouseData{
-		MonthlyExpense: &models.MonthlyExpense{}, HighestExpense: &models.HighestExpense{},
-		RecentExpenses: &[]models.HouseExpense{}, Lang: "en",
+func monthView(section string) *models.MonthView {
+	return &models.MonthView{
+		Section: section, Month: "2026-11", MonthNum: time.November, Year: 2026,
+		PrevMonth: "2026-10", NextMonth: "2026-12", IsCurrent: true, Lang: "en",
+		TypePrefix: "type.",
+		Bars: []models.MonthBar{
+			{Month: "2026-06", MonthNum: time.June}, {Month: "2026-07", MonthNum: time.July},
+			{Month: "2026-08", MonthNum: time.August}, {Month: "2026-09", MonthNum: time.September, Height: 50},
+			{Month: "2026-10", MonthNum: time.October, Height: 100}, {Month: "2026-11", MonthNum: time.November, Height: 80, Current: true},
+		},
 	}
-	doc := parseHTML(t, render(t, "house-current", data))
+}
+
+func TestEmptyListRow(t *testing.T) {
+	doc := parseHTML(t, render(t, "house-current", monthView("house")))
 	empty := doc.Find("tr.empty-row")
 	require.Equal(t, 1, empty.Length())
-	assert.Contains(t, empty.Text(), "No")
+	assert.Contains(t, empty.Text(), "No recent expenses")
+
+	filtered := monthView("house")
+	filtered.Filtered = true
+	doc = parseHTML(t, render(t, "house-current", filtered))
+	assert.Contains(t, doc.Find("tr.empty-row").Text(), "match your search", "different message when filtering")
 }
 
 func TestGroceriesCurrentUsesGroceryRow(t *testing.T) {
-	rows := []models.GroceriesExpense{{ID: 1, Product: "Milk", CategoryName: "Dairy", PurchaseDate: time.Now()}}
-	data := &models.GroceriesData{
-		MonthlyExpense: &models.MonthlyExpense{}, HighestExpense: &models.HighestExpense{},
-		RecentExpenses: &rows, Lang: "en",
-	}
-	doc := parseHTML(t, render(t, "groceries-current", data))
+	v := monthView("groceries")
+	v.TypePrefix = "category."
+	v.Groceries = []models.GroceriesExpense{{ID: 1, Product: "Milk", CategoryName: "Dairy", PurchaseDate: time.Now()}}
+	doc := parseHTML(t, render(t, "groceries-current", v))
 	assert.Equal(t, 1, doc.Find("tr#grocery-1.exp-row").Length())
+	assert.Equal(t, 1, doc.Find("button.upload-btn").Length(), "receipt upload stays on groceries")
 }
 
 func TestCurrentViewHasFab(t *testing.T) {
-	cases := []struct {
-		tmpl string
-		data any
-		url  string
-	}{
-		{"house-current", &models.HouseData{MonthlyExpense: &models.MonthlyExpense{}, HighestExpense: &models.HighestExpense{}, RecentExpenses: &[]models.HouseExpense{}, Lang: "en"}, "/house/expenses/new"},
-		{"car-current", &models.CarData{MonthlyExpense: &models.MonthlyExpense{}, HighestExpense: &models.HighestExpense{}, RecentExpenses: &[]models.CarExpense{}, Lang: "en"}, "/car/expenses/new"},
-		{"groceries-current", &models.GroceriesData{MonthlyExpense: &models.MonthlyExpense{}, HighestExpense: &models.HighestExpense{}, RecentExpenses: &[]models.GroceriesExpense{}, Lang: "en"}, "/groceries/create"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.tmpl, func(t *testing.T) {
-			fab := parseHTML(t, render(t, tc.tmpl, tc.data)).Find("button.fab")
+	for section, url := range map[string]string{"house": "/house/expenses/new", "car": "/car/expenses/new", "groceries": "/groceries/create"} {
+		t.Run(section, func(t *testing.T) {
+			doc := parseHTML(t, render(t, section+"-current", monthView(section)))
+			fab := doc.Find("button.fab")
 			require.Equal(t, 1, fab.Length())
 			hxGet, _ := fab.Attr("hx-get")
-			assert.Equal(t, tc.url, hxGet)
-			target, _ := fab.Attr("hx-target")
-			assert.Equal(t, "#action-dialog", target)
+			assert.Equal(t, url, hxGet)
 			label, _ := fab.Attr("aria-label")
 			assert.NotEmpty(t, label)
+			add, _ := doc.Find(".month-toolbar button.add-btn").Attr("hx-get")
+			assert.Equal(t, url, add, "toolbar add button")
 		})
 	}
+}
+
+func TestMonthToolbar(t *testing.T) {
+	v := monthView("car")
+	v.Query = "fuel"
+	v.TypeID = 3
+	v.Types = []models.TypeOption{{ID: 1, Name: "Fuel"}, {ID: 3, Name: "Insurance"}}
+	doc := parseHTML(t, render(t, "car-current", v))
+
+	prev := doc.Find(`.month-switcher a[aria-label="Previous month"]`)
+	href, _ := prev.Attr("href")
+	assert.Equal(t, "/car?month=2026-10", href, "works without JavaScript")
+	hxGet, _ := prev.Attr("hx-get")
+	assert.Equal(t, "/car/current?month=2026-10", hxGet)
+	push, _ := prev.Attr("hx-push-url")
+	assert.Equal(t, "/car?month=2026-10", push)
+	next, _ := doc.Find(`.month-switcher a[aria-label="Next month"]`).Attr("hx-get")
+	assert.Equal(t, "/car/current?month=2026-12", next)
+	assert.Contains(t, doc.Find(".month-label").Text(), "November 2026")
+	assert.Equal(t, 0, doc.Find(".month-today").Length(), "already on the current month")
+
+	form := doc.Find("form#month-filters")
+	trigger, _ := form.Attr("hx-trigger")
+	assert.Contains(t, trigger, "input delay:300ms")
+	sel, _ := form.Attr("hx-select")
+	assert.Equal(t, "#recent-expenses", sel)
+	q, _ := form.Find(`input[name="q"]`).Attr("value")
+	assert.Equal(t, "fuel", q)
+	month, _ := form.Find(`input[name="month"]`).Attr("value")
+	assert.Equal(t, "2026-11", month)
+	selected, _ := form.Find(`select[name="type"] option[selected]`).Attr("value")
+	assert.Equal(t, "3", selected)
+
+	wrapper := doc.Find("#month-view")
+	refresh, _ := wrapper.Attr("hx-trigger")
+	assert.Equal(t, "expenses-changed from:body", refresh)
+	include, _ := wrapper.Attr("hx-include")
+	assert.Equal(t, "#month-filters", include, "refresh keeps the search")
+
+	v.IsCurrent = false
+	doc = parseHTML(t, render(t, "car-current", v))
+	assert.Equal(t, 1, doc.Find(".month-today").Length(), "way back to this month")
+}
+
+func TestKPITiles(t *testing.T) {
+	v := monthView("house")
+	v.Summary = models.MonthSummary{Total: 183.63, Count: 5, Average: 36.73, TopType: "Gas", TopAmount: 85.01}
+	v.HasChange, v.ChangePct = true, -12.4
+	doc := parseHTML(t, render(t, "house-current", v))
+	assert.Contains(t, doc.Find(".kpi-total .kpi-value").Text(), "183.63 €")
+	assert.Equal(t, "-12%", strings.TrimSpace(doc.Find(".kpi-change").Text()))
+	assert.True(t, doc.Find(".kpi-change").HasClass("down"))
+	assert.Contains(t, doc.Find(".kpi-highest").Text(), "Gas")
+	assert.Contains(t, doc.Find(".kpi-count").Text(), "36.73 €")
+
+	v.HasChange = false
+	doc = parseHTML(t, render(t, "house-current", v))
+	assert.Equal(t, 0, doc.Find(".kpi-change").Length(), "no percentage without last month")
+}
+
+func TestMiniChart(t *testing.T) {
+	doc := parseHTML(t, render(t, "house-current", monthView("house")))
+	bars := doc.Find(".mini-chart .mini-bar")
+	assert.Equal(t, 6, bars.Length())
+	assert.Equal(t, 1, doc.Find(".mini-chart .mini-bar.current").Length())
+	style, _ := bars.Eq(4).Attr("style")
+	assert.Contains(t, style, "height: 100%")
+	link, _ := doc.Find(".mini-chart-bars").Attr("hx-get")
+	assert.Equal(t, "/house/chart", link)
+	assert.Contains(t, doc.Find(".mini-chart-labels").Text(), "Jun")
+}
+
+func TestRowActionsAreLabelledIcons(t *testing.T) {
+	doc := parseHTML(t, "<table>"+render(t, "house-exp-row", map[string]any{"Exp": sampleHouseExpense(), "Lang": "en"})+"</table>")
+	btns := doc.Find(".row-actions button.icon-btn")
+	require.Equal(t, 2, btns.Length())
+	edit, _ := btns.Eq(0).Attr("aria-label")
+	del, _ := btns.Eq(1).Attr("aria-label")
+	assert.Equal(t, []string{"Edit", "Delete"}, []string{edit, del})
+	hx, _ := btns.Eq(1).Attr("hx-get")
+	assert.Equal(t, "/house/expenses/delete/42", hx)
 }
 
 func houseTypes() *[]models.HomeUtilityType {

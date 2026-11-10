@@ -8,6 +8,9 @@ import (
 // TemplateFuncs returns the functions available to every HTML template.
 func TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
+		"money": func(v float64) string {
+			return fmt.Sprintf("%.2f %s", v, CurrencySymbol())
+		},
 		"contains": func(slice interface{}, item string) bool {
 			s, ok := slice.([]string)
 			if !ok {

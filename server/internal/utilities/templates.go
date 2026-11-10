@@ -23,8 +23,6 @@ type HTMXComponents struct {
 	EditGroceriesForm    string
 	HouseExpRow          string
 	CarExpRow            string
-	TotalCard            string
-	HighestCard          string
 	Modal                string
 	ModalSuccess         string
 	ModalError           string
@@ -81,8 +79,6 @@ var components = &HTMXComponents{
 	EditHouseExpForm:     "edit-house-exp-form",
 	CreateCarExpForm:     "create-car-exp-form",
 	EditCarExpForm:       "edit-car-exp-form",
-	TotalCard:            "total-card",
-	HighestCard:          "highest-card",
 	Modal:                "modal",
 	ModalSuccess:         "success-modal",
 	ModalError:           "error-modal",

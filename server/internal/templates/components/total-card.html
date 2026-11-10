@@ -1,9 +1,0 @@
-{{ define "total-card" }}
-{{ if .Exp }}
-<div class="card total-expenses-card" id="total-expense" {{ if .Exp.IsOOB }}hx-swap-oob="true" {{ end }}>
-  <h3>{{ T .Lang "card.total_monthly" }}</h3>
-  <p>{{ printf "%.2f" .Exp.Amount }}</p>
-  <p>{{ T .Lang "card.as_of" }} {{ .Exp.Month }}</p>
-</div>
-{{ end }}
-{{ end }}

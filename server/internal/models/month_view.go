@@ -19,3 +19,33 @@ type MonthBar struct {
 	Height   float64 // 0–100, relative to the largest month shown
 	Current  bool    // the month being viewed
 }
+
+// TypeOption is one entry of the type/category filter.
+type TypeOption struct {
+	ID   int
+	Name string // untranslated; templates prefix it with TypePrefix
+}
+
+// MonthView is everything one section page shows for one month.
+type MonthView struct {
+	Section    string // "house", "car" or "groceries"
+	Month      string // YYYY-MM being viewed
+	MonthNum   time.Month
+	Year       int
+	PrevMonth  string
+	NextMonth  string
+	IsCurrent  bool // viewing the current calendar month
+	Summary    MonthSummary
+	ChangePct  float64
+	HasChange  bool // false when last month had no spending to compare with
+	Bars       []MonthBar
+	Query      string
+	TypeID     int
+	Types      []TypeOption
+	TypePrefix string // "type." or "category." for translation keys
+	Filtered   bool   // a search or type filter is active
+	House      []HouseExpense
+	Car        []CarExpense
+	Groceries  []GroceriesExpense
+	Lang       string
+}

@@ -1,0 +1,206 @@
+{{/* One section (house, car or groceries) for one month. The wrapper reloads
+     itself when an expense is added, edited or deleted (expenses-changed). */}}
+{{ define "month-view" }}
+<div id="month-view" class="month-view" hx-get="/{{ .Section }}/current?month={{ .Month }}" hx-include="#month-filters"
+  hx-trigger="expenses-changed from:body" hx-swap="outerHTML">
+  <div class="month-main">
+    {{ template "month-toolbar" . }}
+    {{ template "kpi-tiles" . }}
+    <section id="add-expense-section">
+      {{ if eq .Section "groceries" }}
+      <button type="button" class="upload-btn" hx-get="/groceries/form" hx-target="#action-dialog">
+        {{ T .Lang "groceries.upload_receipt" }}
+      </button>
+      {{ end }}
+      <button type="button" class="fab" aria-label='{{ T .Lang "common.add" }}' title='{{ T .Lang "common.add" }}'
+        hx-get="{{ template "add-url" . }}" hx-target="#action-dialog">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14" />
+          <path d="M5 12h14" />
+        </svg>
+      </button>
+    </section>
+    <section id="recent-expenses-section">
+      <div class="overflow-x-auto">
+        {{ if eq .Section "house" }}{{ template "house-table" . }}{{ end }}
+        {{ if eq .Section "car" }}{{ template "car-table" . }}{{ end }}
+        {{ if eq .Section "groceries" }}{{ template "groceries-table" . }}{{ end }}
+      </div>
+    </section>
+  </div>
+  <aside class="month-side">
+    {{ template "mini-chart" . }}
+  </aside>
+</div>
+{{ end }}
+
+{{ define "add-url" }}{{ if eq .Section "groceries" }}/groceries/create{{ else }}/{{ .Section }}/expenses/new{{ end }}{{ end }}
+
+{{ define "month-toolbar" }}
+<div class="month-toolbar">
+  <nav class="month-switcher" aria-label='{{ T .Lang "common.date" }}'>
+    <a class="month-step" href="/{{ .Section }}?month={{ .PrevMonth }}" hx-get="/{{ .Section }}/current?month={{ .PrevMonth }}"
+      hx-target="#section-content" hx-push-url="/{{ .Section }}?month={{ .PrevMonth }}"
+      aria-label='{{ T .Lang "toolbar.prev_month" }}' title='{{ T .Lang "toolbar.prev_month" }}'>
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+    </a>
+    <span class="month-label">{{ T .Lang (print "month." .MonthNum) }} {{ .Year }}</span>
+    <a class="month-step" href="/{{ .Section }}?month={{ .NextMonth }}" hx-get="/{{ .Section }}/current?month={{ .NextMonth }}"
+      hx-target="#section-content" hx-push-url="/{{ .Section }}?month={{ .NextMonth }}"
+      aria-label='{{ T .Lang "toolbar.next_month" }}' title='{{ T .Lang "toolbar.next_month" }}'>
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+    </a>
+    {{ if not .IsCurrent }}
+    <a class="month-today" href="/{{ .Section }}" hx-get="/{{ .Section }}/current" hx-target="#section-content"
+      hx-push-url="/{{ .Section }}">{{ T .Lang "toolbar.this_month" }}</a>
+    {{ end }}
+  </nav>
+  <form id="month-filters" class="month-filters" hx-get="/{{ .Section }}/current"
+    hx-trigger="submit, input delay:300ms, change" hx-target="#recent-expenses" hx-select="#recent-expenses"
+    hx-swap="outerHTML">
+    <input type="hidden" name="month" value="{{ .Month }}" />
+    <input type="search" name="q" value="{{ .Query }}" class="month-search" placeholder='{{ T .Lang "toolbar.search" }}'
+      aria-label='{{ T .Lang "toolbar.search" }}' autocomplete="off" />
+    <select name="type" class="month-type" aria-label='{{ T .Lang "toolbar.all_types" }}'>
+      <option value="0">{{ T .Lang "toolbar.all_types" }}</option>
+      {{ range .Types }}
+      <option value="{{ .ID }}" {{ if eq .ID $.TypeID }}selected{{ end }}>{{ T $.Lang (print $.TypePrefix .Name) }}</option>
+      {{ end }}
+    </select>
+  </form>
+  <button type="button" class="add-btn" hx-get="{{ template "add-url" . }}" hx-target="#action-dialog">
+    + {{ T .Lang "common.add" }} <kbd>N</kbd>
+  </button>
+</div>
+{{ end }}
+
+{{ define "kpi-tiles" }}
+<div class="kpi-tiles" id="kpi-tiles">
+  <div class="kpi kpi-total">
+    <span class="kpi-title">{{ T .Lang "card.total_monthly" }}</span>
+    <span class="kpi-value">{{ money .Summary.Total }}</span>
+    <span class="kpi-sub">
+      {{ if .HasChange }}
+      <span class="kpi-change {{ if gt .ChangePct 0.0 }}up{{ else }}down{{ end }}">{{ printf "%+.0f%%" .ChangePct }}</span>
+      {{ T .Lang "kpi.vs_last_month" }}
+      {{ else }}{{ T .Lang "kpi.no_comparison" }}{{ end }}
+    </span>
+  </div>
+  <div class="kpi kpi-highest">
+    <span class="kpi-title">{{ T .Lang "card.highest_expense" }}</span>
+    <span class="kpi-value">{{ if .Summary.TopType }}{{ T .Lang (print .TypePrefix .Summary.TopType) }}{{ else }}—{{ end }}</span>
+    <span class="kpi-sub">{{ if .Summary.TopType }}{{ money .Summary.TopAmount }}{{ end }}</span>
+  </div>
+  <div class="kpi kpi-count">
+    <span class="kpi-title">{{ T .Lang "kpi.expenses" }}</span>
+    <span class="kpi-value">{{ .Summary.Count }}</span>
+    <span class="kpi-sub">{{ if .Summary.Count }}{{ T .Lang "kpi.average" }} {{ money .Summary.Average }}{{ end }}</span>
+  </div>
+</div>
+{{ end }}
+
+{{ define "mini-chart" }}
+<section class="mini-chart" id="mini-chart">
+  <h3>{{ T .Lang "kpi.last_months" }}</h3>
+  <a class="mini-chart-bars" href="#" hx-get="/{{ .Section }}/chart" hx-target="#section-content"
+    title='{{ T .Lang "kpi.open_chart" }}' aria-label='{{ T .Lang "kpi.open_chart" }}'>
+    {{ range .Bars }}
+    <span class="mini-bar{{ if .Current }} current{{ end }}" style="height: {{ printf "%.0f" .Height }}%"
+      title="{{ T $.Lang (print "month." .MonthNum) }}: {{ money .Total }}"></span>
+    {{ end }}
+  </a>
+  <div class="mini-chart-labels">
+    {{ range .Bars }}<span{{ if .Current }} class="current"{{ end }}>{{ T $.Lang (print "month_short." .MonthNum) }}</span>{{ end }}
+  </div>
+</section>
+{{ end }}
+
+{{ define "empty-rows" }}
+<tr class="empty-row">
+  <td colspan="9">
+    <p>{{ if .Filtered }}{{ T .Lang "kpi.no_matches" }}{{ else }}{{ T .Lang "search.no_results" }}{{ end }}</p>
+  </td>
+</tr>
+{{ end }}
+
+{{ define "house-table" }}
+<table class="expenses-table">
+  <thead>
+    <tr>
+      <th>{{ T .Lang "common.date" }}</th>
+      <th>{{ T .Lang "form.utility_type" }}</th>
+      <th>{{ T .Lang "common.details" }}</th>
+      <th class="num">{{ T .Lang "common.discount" }}</th>
+      <th class="num">{{ T .Lang "common.amount" }}</th>
+      <th><span class="visually-hidden">{{ T .Lang "common.actions" }}</span></th>
+    </tr>
+  </thead>
+  <tbody id="recent-expenses">
+    {{ range .House }}{{ template "house-exp-row" (dict "Exp" . "Lang" $.Lang) }}{{ else }}{{ template "empty-rows" . }}{{ end }}
+  </tbody>
+</table>
+{{ end }}
+
+{{ define "car-table" }}
+<table class="expenses-table">
+  <thead>
+    <tr>
+      <th>{{ T .Lang "common.date" }}</th>
+      <th>{{ T .Lang "form.expense_type" }}</th>
+      <th>{{ T .Lang "common.details" }}</th>
+      <th class="num">{{ T .Lang "common.discount" }}</th>
+      <th class="num">{{ T .Lang "common.amount" }}</th>
+      <th><span class="visually-hidden">{{ T .Lang "common.actions" }}</span></th>
+    </tr>
+  </thead>
+  <tbody id="recent-expenses">
+    {{ range .Car }}{{ template "car-exp-row" (dict "Exp" . "Lang" $.Lang) }}{{ else }}{{ template "empty-rows" . }}{{ end }}
+  </tbody>
+</table>
+{{ end }}
+
+{{ define "groceries-table" }}
+<table class="expenses-table">
+  <thead>
+    <tr>
+      <th>{{ T .Lang "common.date" }}</th>
+      <th>{{ T .Lang "groceries.product" }}</th>
+      <th>{{ T .Lang "groceries.category" }}</th>
+      <th>{{ T .Lang "common.details" }}</th>
+      <th class="num">{{ T .Lang "common.discount" }}</th>
+      <th class="num">{{ T .Lang "common.amount" }}</th>
+      <th><span class="visually-hidden">{{ T .Lang "common.actions" }}</span></th>
+    </tr>
+  </thead>
+  <tbody id="recent-expenses">
+    {{ range .Groceries }}{{ template "grocery-row" (dict "G" . "Lang" $.Lang) }}{{ else }}{{ template "empty-rows" . }}{{ end }}
+  </tbody>
+</table>
+{{ end }}
+
+{{/* Small icon buttons shown on row hover (desktop). */}}
+{{ define "row-actions" }}
+<div class="row-actions">
+  <button type="button" class="icon-btn" aria-label='{{ T .Lang "common.edit" }}' title='{{ T .Lang "common.edit" }}'
+    hx-get="{{ .EditURL }}" hx-target="#action-dialog" hx-swap="innerHTML">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  </button>
+  <button type="button" class="icon-btn danger" aria-label='{{ T .Lang "common.delete" }}' title='{{ T .Lang "common.delete" }}'
+    {{ if .DeleteConfirm }}hx-delete="{{ .DeleteURL }}" hx-target="{{ .RowID }}" hx-swap="outerHTML" hx-confirm="{{ .DeleteConfirm }}"
+    {{ else }}hx-get="{{ .DeleteURL }}" hx-target="#action-dialog" hx-swap="innerHTML"{{ end }}>
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 6h18" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  </button>
+</div>
+{{ end }}

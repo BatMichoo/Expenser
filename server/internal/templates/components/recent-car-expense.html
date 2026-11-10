@@ -1,20 +1,12 @@
 {{ define "car-exp-row" }}{{ $details := .Exp.FormattedMetadata .Lang }}
 <tr id="exp-{{ .Exp.ID }}" class="exp-row" hx-get="/car/expenses/edit/{{ .Exp.ID }}" hx-target="#action-dialog"
   hx-trigger="click[!event.target.closest('button')]">
-  <td class="c-date">{{ .Exp.Date.Format "02.01.2006" }}</td>
+  <td class="c-date">{{ .Exp.Date.Format "02.01" }}</td>
   <td class="c-type">{{ T .Lang (print "type." .Exp.Type) }}</td>
-  <td class="c-amount">{{ printf "%.2f" .Exp.Amount }}</td>
-  <td class="c-discount{{ if le .Exp.DiscountAmount 0.0 }} is-empty{{ end }}">{{ printf "%.2f" .Exp.DiscountAmount }}</td>
-  <td class="c-details{{ if not $details }} is-empty{{ end }}">{{ $details }}</td>
-  <td class="c-notes{{ if not .Exp.Notes }} is-empty{{ end }}">{{ .Exp.Notes }}</td>
+  <td class="c-details{{ if and (not $details) (not .Exp.Notes) }} is-empty{{ end }}">{{ $details }}{{ if and $details .Exp.Notes }} · {{ end }}{{ .Exp.Notes }}</td>
+  <td class="c-discount num{{ if le .Exp.DiscountAmount 0.0 }} is-empty{{ end }}">{{ if gt .Exp.DiscountAmount 0.0 }}{{ printf "%.2f" .Exp.DiscountAmount }}{{ else }}—{{ end }}</td>
+  <td class="c-amount num">{{ money .Exp.Amount }}</td>
   <td class="c-meta">{{ .Exp.Date.Format "02.01" }}{{ if $details }} · {{ $details }}{{ end }}{{ if .Exp.Notes }} · {{ .Exp.Notes }}{{ end }}</td>
-  <td class="c-actions">
-    <button class="table-action-button blue" hx-get="/car/expenses/edit/{{ .Exp.ID }}" hx-target="#action-dialog">
-      {{ T .Lang "common.edit" }}
-    </button>
-    <button class="table-action-button red" hx-get="/car/expenses/delete/{{ .Exp.ID }}" hx-target="#action-dialog">
-      {{ T .Lang "common.delete" }}
-    </button>
-  </td>
+  <td class="c-actions">{{ template "row-actions" (dict "Lang" .Lang "EditURL" (print "/car/expenses/edit/" .Exp.ID) "DeleteURL" (print "/car/expenses/delete/" .Exp.ID)) }}</td>
 </tr>
 {{ end }}
