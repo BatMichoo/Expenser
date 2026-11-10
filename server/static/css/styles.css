@@ -1936,3 +1936,74 @@ tr:hover .row-actions,
 .mini-chart {
   padding: 0.9rem 1rem;
 }
+
+/* Wide screens (1400px+): the side column splits in two so it is not taller than
+   the list. "Where it went" takes the second column; the estimate, the
+   6-month chart and the year so far stack in the first. */
+@media (min-width: 1400px) {
+  .month-view {
+    grid-template-columns: minmax(0, 1fr) 34rem;
+  }
+
+  .month-side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    /* Extra height from the tall second column goes below the last panel,
+       not between the panels of the first column. */
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+    gap: 0.75rem;
+  }
+
+  .month-side > .estimate,
+  .month-side > .mini-chart,
+  .month-side > .year-so-far {
+    grid-column: 1;
+  }
+
+  .month-side > .breakdown {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
+}
+
+/* Keep the search box readable; the toolbar wraps before squeezing it */
+.month-search {
+  min-width: 11rem;
+}
+
+.month-toolbar .add-btn {
+  margin-left: auto;
+}
+
+/* Let the filters' real content decide when the toolbar wraps */
+.month-filters {
+  min-width: auto;
+}
+
+/* One line per row: long names truncate instead of wrapping */
+.month-view .expenses-table td.c-product,
+.month-view .expenses-table td.c-type {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 1400px) {
+  .month-view {
+    grid-template-columns: minmax(0, 1fr) 32rem;
+  }
+}
+
+/* Use more of large screens, and never let the table spill into the side
+   column: it scrolls inside its own box instead. */
+.month-view,
+#section-list {
+  max-width: 96rem;
+}
+
+.month-view .overflow-x-auto {
+  overflow-x: auto;
+  border-radius: var(--radius);
+}
