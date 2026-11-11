@@ -91,7 +91,7 @@ func monthly(due time.Time, remind int) *models.RecurringPayment {
 	return &models.RecurringPayment{
 		UserEmail:        "me@example.com",
 		ID:               uuid.New(),
-		Category:         models.RecurringCategoryHouse,
+		Category:         models.SectionHouse,
 		TypeName:         "Internet",
 		StartDate:        due,
 		DueDate:          due,
@@ -255,7 +255,7 @@ func TestConsoleNotifier(t *testing.T) {
 
 	p := models.RecurringPayment{
 		Username:       "ivan",
-		Category:       models.RecurringCategoryCar,
+		Category:       models.SectionCar,
 		TypeName:       "Insurance",
 		Name:           "Allianz",
 		DueDate:        day(2026, 12, 1),
@@ -270,7 +270,7 @@ func TestConsoleNotifier(t *testing.T) {
 }
 
 func TestFormatReminderMinimal(t *testing.T) {
-	p := models.RecurringPayment{Username: "ivan", Category: models.RecurringCategoryHouse, TypeName: "TV", DueDate: day(2026, 12, 1)}
+	p := models.RecurringPayment{Username: "ivan", Category: models.SectionHouse, TypeName: "TV", DueDate: day(2026, 12, 1)}
 	assert.Equal(t, "[reminder] user=ivan [house] TV due 2026-12-01 (today)", FormatReminder(Reminder{Payment: p}))
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: 1}), "(tomorrow)")
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -1}), "(OVERDUE by 1 day)")
@@ -282,7 +282,7 @@ func TestFormatReminderMinimal(t *testing.T) {
 }
 
 func TestFormatReminderArrivesBill(t *testing.T) {
-	p := models.RecurringPayment{Username: "ivan", Category: models.RecurringCategoryHouse, TypeName: "Gas", DueDate: day(2026, 11, 8), DateKind: models.DateArrives}
+	p := models.RecurringPayment{Username: "ivan", Category: models.SectionHouse, TypeName: "Gas", DueDate: day(2026, 11, 8), DateKind: models.DateArrives}
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -3}), "(waiting 3 days)", "no deadline, so not overdue")
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -1}), "(waiting 1 day)")
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: 0}), "arrives around 2026-11-08 (today)")

@@ -27,9 +27,9 @@ func (ym YearMonth) String() string {
 	return fmt.Sprintf("%04d-%02d", ym.Year, int(ym.Month))
 }
 
-// Start is the first instant of the month in local time.
+// Start is the first day of the month (midnight UTC, see models.Date).
 func (ym YearMonth) Start() time.Time {
-	return time.Date(ym.Year, ym.Month, 1, 0, 0, 0, 0, time.Local)
+	return models.Date(ym.Year, ym.Month, 1)
 }
 
 // End is the first instant of the following month (exclusive bound).

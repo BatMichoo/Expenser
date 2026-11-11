@@ -208,7 +208,7 @@ func BuildTestReminderEmail(username, displayName, lang, to string, today time.T
 		DaysLeft: 3,
 		Payment: models.RecurringPayment{
 			Username: username, UserDisplayName: displayName, UserEmail: to, Name: "Vivacom Fiber 500 Mbps + TV (apartment & garage)",
-			TypeName: "Internet", Category: models.RecurringCategoryHouse,
+			TypeName: "Internet", Category: models.SectionHouse,
 			DateKind: models.DatePayBy, DueDate: today.AddDate(0, 0, 3),
 			ExpectedAmount: &amount,
 			PaymentHours:   "Mon–Fri 9:00–18:00, Sat 10:00–14:00",

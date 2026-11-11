@@ -50,8 +50,8 @@ func renderView(c *gin.Context, partial, page string, data any) {
 	renderLayout(c, http.StatusOK, page, data)
 }
 
-// renderLayout renders tmpl inside the root layout. The root template only
-// knows the page templates; anything else shows the index.
+// renderLayout renders tmpl inside the root layout, which includes it by
+// name; a name that is not a template shows the home page.
 func renderLayout(c *gin.Context, status int, tmpl string, data any) {
 	lang := currentLang(c)
 	loggedIn := isLoggedIn(c)

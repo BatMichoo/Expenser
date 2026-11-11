@@ -410,13 +410,6 @@ footer {
   padding: 1em;
 }
 
-
-
-
-
-
-
-
 #add-expense-section {
   margin: 2.5em;
 }
@@ -425,10 +418,6 @@ footer {
   padding: 0.5em 2em;
   font-size: 1.125em;
   line-height: 1.75em;
-}
-
-.section-heading svg {
-  margin-left: 0.75em;
 }
 
 /* Apply section heading styles */
@@ -610,10 +599,6 @@ body.dark #recent-expenses-section h2 svg {
   gap: 1em;
 }
 
-.new-expense-form .expense-type-field {
-  grid-column: 1 / -1;
-}
-
 .new-expense-form #expense-fields {
   grid-column: 1 / -1;
   display: grid;
@@ -667,14 +652,6 @@ body.dark #recent-expenses-section h2 svg {
   line-height: 1.75em;
 }
 
-.overview-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 1em;
-}
-
 /* Apply card common styles */
 .card {
   padding: 1.5em;
@@ -691,37 +668,6 @@ body.dark #recent-expenses-section h2 svg {
 }
 
 /* Specific Card Backgrounds */
-.total-expenses-card {
-  background-image: linear-gradient(
-    to bottom right,
-    oklch(72.8% 0.168 257.7),
-    oklch(53.9% 0.205 261.2)
-  );
-}
-
-body.dark .total-expenses-card {
-  background-image: linear-gradient(
-    to bottom right,
-    oklch(33.9% 0.205 261.2),
-    oklch(52.8% 0.168 257.7)
-  );
-}
-
-.highest-expense-card {
-  background-image: linear-gradient(
-    to bottom right,
-    oklch(72.8% 0.207 317.3),
-    oklch(53.9% 0.245 316.9)
-  );
-}
-
-body.dark .highest-expense-card {
-  background-image: linear-gradient(
-    to bottom right,
-    oklch(33.9% 0.207 317.3),
-    oklch(52.8% 0.245 316.9)
-  );
-}
 
 /* Apply common table styles */
 .expenses-table {
@@ -756,58 +702,16 @@ th {
 }
 
 /* Table action buttons - Common Styles */
-.table-action-button {
-  border: 1px solid transparent;
-  border-radius: 0.5em;
-  padding: 0.5em 1em;
-}
-
-.table-action-button.red {
-  background-color: var(--danger);
-  border-color: var(--danger);
-}
-
-.table-action-button.red:hover {
-  background-color: #b91c1c;
-  border-color: #b91c1c;
-}
 
 /* Welcome Section */
-.welcome-section {
-  text-align: center;
-  padding: 3em 0;
-}
 
 /* Welcome Section Heading */
-.welcome-section h2 {
-  font-size: 1.875em;
-  line-height: 2.25em;
-  font-weight: 700;
-  margin-bottom: 1em;
-}
 
 /* Welcome Section Paragraph 1 */
-.welcome-section p:nth-of-type(1) {
-  font-size: 1.125em;
-  line-height: 1.75em;
-  margin-bottom: 1.5em;
-}
 
 /* Paragraph 2 styling */
-.welcome-section p:nth-of-type(2) {
-  font-size: 1em;
-  line-height: 1.5em;
-}
 
 /* SVG icon styling */
-.welcome-section svg {
-  width: 6.25em;
-  height: 6.25em;
-  margin-left: auto;
-  margin-right: auto;
-  margin-top: 2em;
-  stroke-width: 1px;
-}
 
 #section-list,
 #section-content-list {
@@ -886,13 +790,6 @@ select {
   align-self: flex-end;
 }
 
-
-
-
-
-
-
-
 .btn-primary {
   margin-top: 1em;
   padding: 0.5em 2em;
@@ -903,20 +800,6 @@ select {
 
 .language-switcher {
     margin-left: 1rem;
-}
-
-.lang-select {
-    background: var(--bg-sec);
-    color: var(--text-sec);
-    border: 1px solid var(--text-muted-sec);
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-    cursor: pointer;
-    font-size: 0.8rem;
-}
-
-.lang-select:hover {
-    background: var(--hover);
 }
 
 .language-switcher {
@@ -966,22 +849,6 @@ select {
   margin-bottom: 0.5em;
 }
 
-.receipt-edit-modal {
-  margin-top: 2em;
-  padding: 1.5em;
-  border-radius: 0.5em;
-  border: 1px solid var(--bg-sec);
-  background-color: var(--bg-light);
-  box-shadow: var(--shadow);
-}
-
-.receipt-edit-modal h3 {
-  font-size: 1.5em;
-  margin-bottom: 1em;
-  text-align: center;
-  color: var(--text);
-}
-
 /* Table Inputs Styling */
 .expenses-table input,
 .expenses-table select {
@@ -1000,7 +867,6 @@ select {
   border-color: var(--bg-sec);
   outline: none;
 }
-
 
 /* Expense rows: whole row opens the edit form */
 .expenses-table tr.exp-row {
@@ -1764,12 +1630,6 @@ tr:hover .row-actions,
   color: var(--text);
 }
 
-.side-sub {
-  margin: 0.25rem 0 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
 .side-empty {
   margin: 0;
   font-size: 0.85rem;
@@ -1789,13 +1649,6 @@ tr:hover .row-actions,
   gap: 0.7rem;
 }
 
-.breakdown-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-}
-
 .breakdown-name {
   color: var(--text);
   font-weight: 500;
@@ -1809,28 +1662,6 @@ tr:hover .row-actions,
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-
-.breakdown-bar {
-  height: 0.4rem;
-  margin: 0.3rem 0;
-  border-radius: 1rem;
-  background: var(--bg-dark);
-  overflow: hidden;
-}
-
-.breakdown-bar span {
-  display: block;
-  height: 100%;
-  border-radius: 1rem;
-  background: var(--accent);
-}
-
-.breakdown-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--text-muted);
 }
 
 .vs-usual {

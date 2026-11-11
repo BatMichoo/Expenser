@@ -19,16 +19,8 @@
     {{ template "header" .HeaderOpts }}
     <div class="container">
       <div id="tracker-content">
-        {{ if eq .TemplateName "house-page" }} {{ template "house-page"
-        .TemplateContent }} {{ else if eq .TemplateName "bills-page" }} {{ template "bills-page" .TemplateContent }} {{ else if eq .TemplateName "car-page" }} {{
-        template "car-page" .TemplateContent }} {{ else if eq .TemplateName
-        "groceries-page" }} {{ template "groceries-page" .TemplateContent }} {{
-        else if eq .TemplateName "login-page" }} {{ template "login-page"
-        .TemplateContent }} {{ else if eq .TemplateName "register-page" }} {{
-        template "register-page" .TemplateContent }} {{ else if eq .TemplateName "snooze-page" }} {{ template "snooze-page"
-        .TemplateContent }} {{ else if eq .TemplateName "index-page" }} {{ template "index-page"
-        .TemplateContent }} {{ else }} {{ template "index-page" (dict "Lang" .Lang
-        "IsLoggedIn" .IsLoggedIn) }} {{ end }}
+        {{/* The page a handler chose (renderLayout); unknown names show home. */}}
+        {{ if hasTemplate .TemplateName }}{{ include .TemplateName .TemplateContent }}{{ else }}{{ template "index-page" (dict "Lang" .Lang "IsLoggedIn" .IsLoggedIn) }}{{ end }}
       </div>
     </div>
     <footer>

@@ -57,6 +57,36 @@ func notFound(messageKey string) error {
 	return &HTTPError{Status: http.StatusNotFound, MessageKey: messageKey}
 }
 
+// errorCase turns any of Errs (matched with errors.Is) into a message for
+// the user.
+type errorCase struct {
+	Status int
+	Key    string
+	Errs   []error
+}
+
+// badInput is an errorCase for invalid user input.
+func badInput(key string, errs ...error) errorCase {
+	return errorCase{Status: http.StatusBadRequest, Key: key, Errs: errs}
+}
+
+// mapError returns the user-facing error for the first case err matches,
+// keeping err as the cause for the log; other errors pass through and
+// become a generic 500.
+func mapError(err error, cases []errorCase) error {
+	if err == nil {
+		return nil
+	}
+	for _, c := range cases {
+		for _, target := range c.Errs {
+			if errors.Is(err, target) {
+				return &HTTPError{Status: c.Status, MessageKey: c.Key, Err: err}
+			}
+		}
+	}
+	return err
+}
+
 // wrap adapts a HandlerFunc to gin. A returned error is logged and rendered as
 // an error modal. Any other error becomes a 500 with a generic message, so
 // internal details never reach the user.

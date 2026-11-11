@@ -18,7 +18,7 @@ func gasReminder(lang string) Reminder {
 		To:       "me@example.com",
 		DaysLeft: -3,
 		Payment: models.RecurringPayment{
-			Username: "ivan", Name: "Gas (Overgas)", TypeName: "Gas", Category: models.RecurringCategoryHouse,
+			Username: "ivan", Name: "Gas (Overgas)", TypeName: "Gas", Category: models.SectionHouse,
 			DateKind: models.DateArrives, DueDate: time.Date(2026, 11, 8, 0, 0, 0, 0, time.UTC),
 			ExpectedAmount: &amount, PaymentHours: "Mon–Fri 9–18", PaymentOptions: []string{"cash", "ePay"},
 			Notes: "Client no. 42", UserLang: lang,

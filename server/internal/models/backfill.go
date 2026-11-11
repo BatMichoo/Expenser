@@ -6,8 +6,8 @@ import "github.com/google/uuid"
 // one house or car type.
 type BackfillExpense struct {
 	UserID   uuid.UUID
-	Category RecurringPaymentCategory // house or car
-	TypeID   int                      // utility type or car expense type
+	Section  Section // house or car
+	TypeID   int     // utility type or car expense type
 	Amount   float64
 	Discount float64
 	Notes    string

@@ -20,7 +20,7 @@ const (
 
 // BillTypeTotaler sums expenses of one bill type over a date range.
 type BillTypeTotaler interface {
-	GetBillTypeTotal(ctx context.Context, userID uuid.UUID, category models.RecurringPaymentCategory, typeID int, from, to time.Time) (float64, bool, error)
+	GetBillTypeTotal(ctx context.Context, userID uuid.UUID, section models.Section, typeID int, from, to time.Time) (float64, bool, error)
 }
 
 // HomeStore is the data access the home page needs. *database.DB
@@ -44,15 +44,14 @@ type ytdRange struct {
 
 func yearToDate(now time.Time) ytdRange {
 	y, m, d := now.Date()
-	loc := now.Location()
-	lastDay := time.Date(y-1, m, d, 0, 0, 0, 0, loc)
+	lastDay := models.Date(y-1, m, d)
 	if lastDay.Month() != m { // 29 February: last year ends on the 28th
-		lastDay = time.Date(y-1, m+1, 0, 0, 0, 0, 0, loc)
+		lastDay = models.Date(y-1, m+1, 0)
 	}
 	return ytdRange{
-		ThisFrom: time.Date(y, time.January, 1, 0, 0, 0, 0, loc),
-		ThisTo:   time.Date(y, m, d+1, 0, 0, 0, 0, loc),
-		LastFrom: time.Date(y-1, time.January, 1, 0, 0, 0, 0, loc),
+		ThisFrom: models.Date(y, time.January, 1),
+		ThisTo:   models.Date(y, m, d+1),
+		LastFrom: models.Date(y-1, time.January, 1),
 		LastTo:   lastDay.AddDate(0, 0, 1),
 	}
 }
@@ -124,10 +123,7 @@ func pickHomeBills(payments []models.RecurringPayment, today time.Time, n int) (
 func homeBillsLastYear(ctx context.Context, store BillTypeTotaler, userID uuid.UUID, rows []models.HomeBillRow) ([]models.HomeBillRow, error) {
 	for i := range rows {
 		p := rows[i].Payment
-		typeID := p.UtilityTypeID
-		if p.Category == models.RecurringCategoryCar {
-			typeID = p.CarExpenseTypeID
-		}
+		typeID := p.TypeID()
 		if typeID == nil {
 			continue
 		}

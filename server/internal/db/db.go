@@ -15,11 +15,6 @@ type DB struct {
 	conn *sql.DB
 }
 
-func NewDB(conn *sql.DB) *DB {
-	db := &DB{conn: conn}
-	return db
-}
-
 func InitDatabase(cfg *config.Config) (*DB, error) {
 	log.Printf("Connecting to %s.", cfg.DB.DBConnString)
 

@@ -18,12 +18,12 @@ func TestParseBackfillForm(t *testing.T) {
 	req, err := parseBackfillForm(url.Values{
 		"typeID": {"4"}, "amount": {"15"}, "discount_amount": {"1.5"}, "notes": {" fiber "},
 		"date": {"2026-11-20"}, "backfill_from": {"2024-01"}, "backfill_to": {"2025-10"},
-	}, models.RecurringCategoryHouse, user)
+	}, models.SectionHouse, user)
 	require.NoError(t, err)
 	assert.Equal(t, services.YearMonth{Year: 2024, Month: time.January}, req.From)
 	assert.Equal(t, services.YearMonth{Year: 2025, Month: time.October}, req.To)
 	assert.Equal(t, 20, req.Day, "the day of the date")
-	assert.Equal(t, models.BackfillExpense{UserID: user, Category: models.RecurringCategoryHouse, TypeID: 4, Amount: 15, Discount: 1.5, Notes: "fiber"}, req.Expense)
+	assert.Equal(t, models.BackfillExpense{UserID: user, Section: models.SectionHouse, TypeID: 4, Amount: 15, Discount: 1.5, Notes: "fiber"}, req.Expense)
 }
 
 func TestParseBackfillFormErrors(t *testing.T) {
@@ -42,7 +42,7 @@ func TestParseBackfillFormErrors(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			v := base()
 			v.Set(tc.key, tc.val)
-			_, err := parseBackfillForm(v, models.RecurringCategoryHouse, uuid.New())
+			_, err := parseBackfillForm(v, models.SectionHouse, uuid.New())
 			var httpErr *HTTPError
 			require.ErrorAs(t, err, &httpErr)
 			assert.Equal(t, tc.msg, httpErr.MessageKey)

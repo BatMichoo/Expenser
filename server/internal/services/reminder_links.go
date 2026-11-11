@@ -57,7 +57,7 @@ func (b *ReminderLinkBuilder) For(p models.RecurringPayment) *ReminderLinks {
 		return links
 	}
 	now := b.now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	today := models.DateOnly(now)
 	for _, days := range snoozeChoices {
 		token := b.signer.Sign(SnoozeClaim{
 			BillID: p.ID, DueFor: models.DateOnly(p.DueDate),

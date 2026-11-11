@@ -33,7 +33,7 @@ func main() {
 		tPath = "internal/templates/**/*.html"
 	}
 
-	t := template.Must(template.New("").Funcs(utilities.TemplateFuncs()).ParseGlob(tPath))
+	t := template.Must(utilities.ParseTemplates(tPath))
 	router.SetHTMLTemplate(t) // Tell Gin to use this template set
 
 	db, err := database.InitDatabase(cfg)

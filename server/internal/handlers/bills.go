@@ -42,36 +42,20 @@ func billsChanged(c *gin.Context, expenseRecorded bool) {
 	c.Header("HX-Trigger", "bills-changed")
 }
 
-// billError turns service and validation errors into user-facing errors.
-func billError(err error) error {
-	switch {
-	case err == nil:
-		return nil
-	case errors.Is(err, sql.ErrNoRows):
-		return notFound("error.bill_not_found")
-	case errors.Is(err, services.ErrStaleUpdate):
-		return &HTTPError{Status: http.StatusConflict, MessageKey: "error.bill_changed", Err: err}
-	case errors.Is(err, services.ErrInvalidPaidAmount):
-		return badRequest("error.amount_negative", err)
-	case errors.Is(err, models.ErrInvalidEmail):
-		return badRequest("error.invalid_email", err)
-	case errors.Is(err, models.ErrNameTooLong):
-		return badRequest("error.bill_name_too_long", err)
-	case errors.Is(err, models.ErrTypeMismatch), errors.Is(err, models.ErrInvalidCategory):
-		return badRequest("error.bill_type_required", err)
-	case errors.Is(err, models.ErrInvalidAmount),
-		errors.Is(err, models.ErrInvalidCycleEvery),
-		errors.Is(err, models.ErrInvalidCycleUnit),
-		errors.Is(err, models.ErrInvalidRemindDays),
-		errors.Is(err, models.ErrInvalidRepeat),
-		errors.Is(err, models.ErrInvalidMaxReminders),
-		errors.Is(err, models.ErrInvalidDateKind),
-		errors.Is(err, models.ErrInvalidNotify),
-		errors.Is(err, models.ErrMissingDueDate):
-		return badRequest("error.bill_invalid", err)
-	}
-	return err
+// billErrors are the bill errors users can fix or need to know about.
+var billErrors = []errorCase{
+	{Status: http.StatusNotFound, Key: "error.bill_not_found", Errs: []error{sql.ErrNoRows}},
+	{Status: http.StatusConflict, Key: "error.bill_changed", Errs: []error{services.ErrStaleUpdate}},
+	badInput("error.amount_negative", services.ErrInvalidPaidAmount),
+	badInput("error.invalid_email", models.ErrInvalidEmail),
+	badInput("error.bill_name_too_long", models.ErrNameTooLong),
+	badInput("error.bill_type_required", models.ErrTypeMismatch, models.ErrInvalidCategory),
+	badInput("error.bill_invalid", models.ErrInvalidAmount, models.ErrInvalidCycleEvery, models.ErrInvalidCycleUnit,
+		models.ErrInvalidRemindDays, models.ErrInvalidRepeat, models.ErrInvalidMaxReminders,
+		models.ErrInvalidDateKind, models.ErrInvalidNotify, models.ErrMissingDueDate),
 }
+
+func billError(err error) error { return mapError(err, billErrors) }
 
 func billID(c *gin.Context) (uuid.UUID, error) {
 	id, err := uuid.Parse(c.Param("id"))
@@ -129,7 +113,7 @@ func parseReminderFields(v url.Values) (models.ReminderDefaults, error) {
 // values; this only rejects input that cannot be parsed.
 func parseBillForm(v url.Values) (*models.RecurringPayment, error) {
 	p := &models.RecurringPayment{
-		Category:           models.RecurringPaymentCategory(v.Get("category")),
+		Category:           models.Section(v.Get("category")),
 		Name:               v.Get("name"),
 		CycleUnit:          models.CycleUnit(v.Get("cycle_unit")),
 		PaymentHours:       strings.TrimSpace(v.Get("payment_hours")),
@@ -142,11 +126,7 @@ func parseBillForm(v url.Values) (*models.RecurringPayment, error) {
 	if err != nil {
 		return nil, fmt.Errorf("type: %w", models.ErrTypeMismatch)
 	}
-	if p.Category == models.RecurringCategoryCar {
-		p.CarExpenseTypeID = &typeID
-	} else {
-		p.UtilityTypeID = &typeID
-	}
+	p.SetTypeID(typeID)
 
 	if p.DueDate, err = time.Parse(utilities.DateFormats.HTML, v.Get("due_date")); err != nil {
 		return nil, fmt.Errorf("due date: %w", models.ErrMissingDueDate)
@@ -236,32 +216,18 @@ type billFormData struct {
 	Lang         string
 }
 
+// typesFor lists a bill category's types; anything but car means house.
 func (h *BillsHandler) typesFor(category string) ([]models.TypeOption, error) {
-	var opts []models.TypeOption
-	if category == string(models.RecurringCategoryCar) {
-		types, err := h.BaseHandler.DB.GetCarExpenseTypes()
-		if err != nil {
-			return nil, err
-		}
-		for _, t := range *types {
-			opts = append(opts, models.TypeOption{ID: t.ID, Name: t.Name})
-		}
-		return opts, nil
+	if models.Section(category) == models.SectionCar {
+		return h.BaseHandler.DB.GetSectionTypes(models.SectionCar)
 	}
-	types, err := h.BaseHandler.DB.GetHouseUtilityTypes()
-	if err != nil {
-		return nil, err
-	}
-	for _, t := range *types {
-		opts = append(opts, models.TypeOption{ID: t.ID, Name: t.Name})
-	}
-	return opts, nil
+	return h.BaseHandler.DB.GetSectionTypes(models.SectionHouse)
 }
 
 func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEdit bool) (*billFormData, error) {
 	category := string(p.Category)
 	if category == "" {
-		category = string(models.RecurringCategoryHouse)
+		category = string(models.SectionHouse)
 	}
 	types, err := h.typesFor(category)
 	if err != nil {
@@ -306,7 +272,7 @@ func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEd
 // pre-selected, with the user's reminder defaults.
 func newBill(category string, defaults models.ReminderDefaults, now time.Time) *models.RecurringPayment {
 	p := &models.RecurringPayment{
-		Category:       models.RecurringPaymentCategory(category),
+		Category:       models.Section(category),
 		DueDate:        now.AddDate(0, 1, 0),
 		CycleUnit:      models.CycleMonth,
 		CycleEvery:     1,

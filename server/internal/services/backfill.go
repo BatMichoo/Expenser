@@ -59,7 +59,7 @@ func PlanBackfill(req BackfillRequest, existing map[string]bool, now time.Time) 
 		if last := m.End().AddDate(0, 0, -1).Day(); day > last {
 			day = last
 		}
-		plan.Dates = append(plan.Dates, time.Date(m.Year, m.Month, day, 0, 0, 0, 0, time.Local))
+		plan.Dates = append(plan.Dates, models.Date(m.Year, m.Month, day))
 	}
 	return plan, nil
 }
@@ -67,7 +67,7 @@ func PlanBackfill(req BackfillRequest, existing map[string]bool, now time.Time) 
 // BackfillStore is the data access a backfill needs. *database.DB
 // implements it.
 type BackfillStore interface {
-	ExpenseMonthsOfType(ctx context.Context, userID uuid.UUID, category models.RecurringPaymentCategory, typeID int, from, to time.Time) (map[string]bool, error)
+	ExpenseMonthsOfType(ctx context.Context, userID uuid.UUID, section models.Section, typeID int, from, to time.Time) (map[string]bool, error)
 	CreateBackfillExpenses(ctx context.Context, e models.BackfillExpense, dates []time.Time) error
 }
 
@@ -85,7 +85,7 @@ func (s *BackfillService) Preview(ctx context.Context, req BackfillRequest, now 
 	if _, err := PlanBackfill(req, nil, now); err != nil { // validate before querying
 		return nil, err
 	}
-	existing, err := s.store.ExpenseMonthsOfType(ctx, req.Expense.UserID, req.Expense.Category, req.Expense.TypeID, req.From.Start(), req.To.End())
+	existing, err := s.store.ExpenseMonthsOfType(ctx, req.Expense.UserID, req.Expense.Section, req.Expense.TypeID, req.From.Start(), req.To.End())
 	if err != nil {
 		return nil, fmt.Errorf("backfill: %w", err)
 	}

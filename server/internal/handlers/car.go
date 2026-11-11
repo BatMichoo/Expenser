@@ -29,33 +29,20 @@ func NewCarHandler(rh *RootHandler) *CarHandler {
 
 // parseCarExpenseForm reads the fields shared by the create and edit forms.
 func (h *CarHandler) parseCarExpenseForm(c *gin.Context) (*models.CarExpense, error) {
-	expTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
+	if err := c.Request.ParseForm(); err != nil {
+		return nil, badRequest("error.invalid_form", err)
+	}
+	f, err := parseExpenseFields(c.Request.PostForm)
 	if err != nil {
-		return nil, badRequest("error.invalid_type", err)
+		return nil, err
 	}
-
-	date, err := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("date"))
-	if err != nil {
-		return nil, badRequest("error.invalid_date", err)
-	}
-
-	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
-	if err != nil {
-		return nil, badRequest("error.invalid_amount", err)
-	}
-	if amount < 0 {
-		return nil, badRequest("error.amount_negative", fmt.Errorf("amount %v", amount))
-	}
-
-	discountAmount, _ := strconv.ParseFloat(c.Request.PostFormValue("discount_amount"), 64)
-
 	return &models.CarExpense{
-		Amount:         amount,
-		DiscountAmount: discountAmount,
-		ExpenseTypeID:  expTypeID,
-		Date:           date,
-		Notes:          c.Request.PostFormValue("notes"),
-		Metadata:       h.parseCarMetadata(c, expTypeID),
+		Amount:         f.Amount,
+		DiscountAmount: f.Discount,
+		ExpenseTypeID:  f.TypeID,
+		Date:           f.Date,
+		Notes:          f.Notes,
+		Metadata:       h.parseCarMetadata(c, f.TypeID),
 	}, nil
 }
 
@@ -213,9 +200,9 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) error {
 // for editing a specific car expense.
 // It expects the expense ID to be provided as a path parameter.
 func (h *CarHandler) GetEditCarForm(c *gin.Context) error {
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := paramID(c)
 	if err != nil {
-		return badRequest("error.invalid_id", err)
+		return err
 	}
 
 	exp, err := h.BaseHandler.DB.GetCarExpenseByID(id, currentUserID(c))
@@ -248,9 +235,9 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) error {
 func (h *CarHandler) EditCarExpenseById(c *gin.Context) error {
 	lang := currentLang(c)
 
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := paramID(c)
 	if err != nil {
-		return badRequest("error.invalid_id", err)
+		return err
 	}
 
 	editExpense, err := h.parseCarExpenseForm(c)
@@ -280,9 +267,9 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) error {
 
 func (h *CarHandler) GetDeleteConfirm(c *gin.Context) error {
 	lang := currentLang(c)
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := paramID(c)
 	if err != nil {
-		return badRequest("error.invalid_id", err)
+		return err
 	}
 
 	exp, err := h.BaseHandler.DB.GetCarExpenseByID(id, currentUserID(c))
@@ -314,9 +301,9 @@ func (h *CarHandler) GetDeleteConfirm(c *gin.Context) error {
 func (h *CarHandler) DeleteCarExp(c *gin.Context) error {
 	lang := currentLang(c)
 
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := paramID(c)
 	if err != nil {
-		return badRequest("error.invalid_id", err)
+		return err
 	}
 
 	deleted, err := h.BaseHandler.DB.DeleteCarExpense(id, currentUserID(c))

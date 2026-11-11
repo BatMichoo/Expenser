@@ -307,20 +307,13 @@ func (db *DB) MarkRecurringPaymentPaid(ctx context.Context, userID, id uuid.UUID
 		notes = "Recurring payment"
 	}
 
-	var expenseQuery string
-	var typeID *int
-	switch p.Category {
-	case models.RecurringCategoryHouse:
-		expenseQuery = `INSERT INTO home_expenses (utility_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
-			VALUES ($1, $2, 0, $3, $4, '{}', $5) RETURNING id`
-		typeID = p.UtilityTypeID
-	case models.RecurringCategoryCar:
-		expenseQuery = `INSERT INTO car_expenses (car_expense_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
-			VALUES ($1, $2, 0, $3, $4, '{}', $5) RETURNING id`
-		typeID = p.CarExpenseTypeID
-	default:
-		return nil, fmt.Errorf("failed to mark recurring payment paid: %w", models.ErrInvalidCategory)
+	t, err := expenseTableFor(p.Category)
+	if err != nil {
+		return nil, fmt.Errorf("failed to mark recurring payment paid: %w", err)
 	}
+	expenseQuery := fmt.Sprintf(`INSERT INTO %s (%s, amount, discount_amount, expense_date, notes, metadata, created_by)
+		VALUES ($1, $2, 0, $3, $4, '{}', $5) RETURNING id`, t.Table, t.TypeColumn)
+	typeID := p.TypeID()
 
 	result := &models.PaidRecurringPayment{PaidDue: p.DueDate}
 	if err := tx.QueryRowContext(ctx, expenseQuery, typeID, amount, paidOn, notes, userID).Scan(&result.ExpenseID); err != nil {
@@ -358,16 +351,15 @@ func (db *DB) MarkRecurringPaymentPaid(ctx context.Context, userID, id uuid.UUID
 	return result, nil
 }
 
-// GetBillTypeTotal sums the user's expenses of one type (a house utility
-// type or a car expense type, by the bill's category) dated in [from, to).
-// found is false when there are none.
-func (db *DB) GetBillTypeTotal(ctx context.Context, userID uuid.UUID, category models.RecurringPaymentCategory, typeID int, from, to time.Time) (total float64, found bool, err error) {
-	query := `SELECT COALESCE(SUM(amount - discount_amount), 0), COUNT(*) FROM home_expenses
-		WHERE created_by = $1 AND utility_type_id = $2 AND expense_date >= $3 AND expense_date < $4`
-	if category == models.RecurringCategoryCar {
-		query = `SELECT COALESCE(SUM(amount - discount_amount), 0), COUNT(*) FROM car_expenses
-		WHERE created_by = $1 AND car_expense_type_id = $2 AND expense_date >= $3 AND expense_date < $4`
+// GetBillTypeTotal sums the user's house or car expenses of one type dated
+// in [from, to). found is false when there are none.
+func (db *DB) GetBillTypeTotal(ctx context.Context, userID uuid.UUID, section models.Section, typeID int, from, to time.Time) (total float64, found bool, err error) {
+	t, err := expenseTableFor(section)
+	if err != nil {
+		return 0, false, err
 	}
+	query := fmt.Sprintf(`SELECT COALESCE(SUM(amount - discount_amount), 0), COUNT(*) FROM %s
+		WHERE created_by = $1 AND %s = $2 AND expense_date >= $3 AND expense_date < $4`, t.Table, t.TypeColumn)
 	var count int
 	if err := db.conn.QueryRowContext(ctx, query, userID, typeID, from, to).Scan(&total, &count); err != nil {
 		return 0, false, fmt.Errorf("failed to get bill type total: %w", err)

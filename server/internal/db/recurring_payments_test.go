@@ -44,7 +44,7 @@ func setupRecurringTestDB(t *testing.T) (*DB, uuid.UUID) {
 func newInternetPayment(userID uuid.UUID, due time.Time) *models.RecurringPayment {
 	return &models.RecurringPayment{
 		UserID:           userID,
-		Category:         models.RecurringCategoryHouse,
+		Category:         models.SectionHouse,
 		UtilityTypeID:    rpIntPtr(4), // Internet
 		Name:             "Fiber",
 		DueDate:          due,
@@ -69,7 +69,7 @@ func TestCreateAndGetRecurringPayment(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Internet", got.TypeName)
 	assert.Equal(t, "RecurringTester", got.Username)
-	assert.Equal(t, models.RecurringCategoryHouse, got.Category)
+	assert.Equal(t, models.SectionHouse, got.Category)
 	assert.Equal(t, 4, *got.UtilityTypeID)
 	assert.Nil(t, got.CarExpenseTypeID)
 	assert.Equal(t, rpDate(2026, 12, 1), got.DueDate)
@@ -107,7 +107,7 @@ func TestCreateCarRecurringPayment(t *testing.T) {
 
 	p := &models.RecurringPayment{
 		UserID:           userID,
-		Category:         models.RecurringCategoryCar,
+		Category:         models.SectionCar,
 		CarExpenseTypeID: rpIntPtr(3), // Insurance
 		DueDate:          rpDate(2027, 3, 1),
 		CycleUnit:        models.CycleYear,
@@ -127,7 +127,7 @@ func TestCreateRecurringPaymentRejectsInvalid(t *testing.T) {
 	ctx := context.Background()
 
 	mismatch := newInternetPayment(userID, rpDate(2026, 12, 1))
-	mismatch.Category = models.RecurringCategoryCar
+	mismatch.Category = models.SectionCar
 	assert.ErrorIs(t, testDB.CreateRecurringPayment(ctx, mismatch), models.ErrTypeMismatch)
 
 	unknownType := newInternetPayment(userID, rpDate(2026, 12, 1))
@@ -365,7 +365,7 @@ func TestMarkRecurringPaymentPaidCar(t *testing.T) {
 	expected := 400.0
 	p := &models.RecurringPayment{
 		UserID:           userID,
-		Category:         models.RecurringCategoryCar,
+		Category:         models.SectionCar,
 		CarExpenseTypeID: rpIntPtr(3), // Insurance
 		DueDate:          rpDate(2026, 11, 20),
 		CycleUnit:        models.CycleMonth,

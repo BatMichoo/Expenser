@@ -100,7 +100,7 @@ func TestReminderDate(t *testing.T) {
 func TestValidate(t *testing.T) {
 	valid := func() RecurringPayment {
 		return RecurringPayment{
-			Category:      RecurringCategoryHouse,
+			Category:      SectionHouse,
 			UtilityTypeID: intPtr(4),
 			DueDate:       date(2026, 12, 1),
 			CycleUnit:     CycleMonth,
@@ -115,13 +115,13 @@ func TestValidate(t *testing.T) {
 	}{
 		{"valid house", func(p *RecurringPayment) {}, nil},
 		{"valid car", func(p *RecurringPayment) {
-			p.Category, p.UtilityTypeID, p.CarExpenseTypeID = RecurringCategoryCar, nil, intPtr(3)
+			p.Category, p.UtilityTypeID, p.CarExpenseTypeID = SectionCar, nil, intPtr(3)
 		}, nil},
 		{"bad category", func(p *RecurringPayment) { p.Category = "groceries" }, ErrInvalidCategory},
 		{"house without type", func(p *RecurringPayment) { p.UtilityTypeID = nil }, ErrTypeMismatch},
 		{"house with car type", func(p *RecurringPayment) { p.CarExpenseTypeID = intPtr(1) }, ErrTypeMismatch},
 		{"car with utility type", func(p *RecurringPayment) {
-			p.Category, p.CarExpenseTypeID = RecurringCategoryCar, intPtr(1)
+			p.Category, p.CarExpenseTypeID = SectionCar, intPtr(1)
 		}, ErrTypeMismatch},
 		{"bad unit", func(p *RecurringPayment) { p.CycleUnit = "fortnight" }, ErrInvalidCycleUnit},
 		{"zero every", func(p *RecurringPayment) { p.CycleEvery = 0 }, ErrInvalidCycleEvery},
@@ -240,7 +240,7 @@ func TestOverdueVersusWaiting(t *testing.T) {
 func TestValidateReminderSettings(t *testing.T) {
 	base := func() RecurringPayment {
 		p := reminderBill()
-		p.Category, p.UtilityTypeID = RecurringCategoryHouse, intPtr(4)
+		p.Category, p.UtilityTypeID = SectionHouse, intPtr(4)
 		return p
 	}
 	p := base()
@@ -278,7 +278,7 @@ func TestReminderRecipient(t *testing.T) {
 func TestValidateNotifySettings(t *testing.T) {
 	base := func() RecurringPayment {
 		p := reminderBill()
-		p.Category, p.UtilityTypeID = RecurringCategoryHouse, intPtr(4)
+		p.Category, p.UtilityTypeID = SectionHouse, intPtr(4)
 		return p
 	}
 	p := base()

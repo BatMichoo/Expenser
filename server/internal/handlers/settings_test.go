@@ -78,7 +78,7 @@ func TestNewBillUsesReminderDefaults(t *testing.T) {
 	d := models.ReminderDefaults{Notify: models.NotifyNone, RemindDaysBefore: 7, RemindDaysAfter: 1, RepeatEveryDays: &two}
 	now := time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC)
 	p := newBill("car", d, now)
-	assert.Equal(t, models.RecurringCategoryCar, p.Category)
+	assert.Equal(t, models.SectionCar, p.Category)
 	assert.Equal(t, models.NotifyNone, p.Notify)
 	assert.Equal(t, 7, p.RemindDaysBefore)
 	assert.Equal(t, 1, p.RemindDaysAfter)

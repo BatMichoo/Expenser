@@ -21,7 +21,7 @@ func TestParseBillFormHouse(t *testing.T) {
 	}
 	p, err := parseBillForm(v)
 	require.NoError(t, err)
-	assert.Equal(t, models.RecurringCategoryHouse, p.Category)
+	assert.Equal(t, models.SectionHouse, p.Category)
 	require.NotNil(t, p.UtilityTypeID)
 	assert.Equal(t, 4, *p.UtilityTypeID)
 	assert.Nil(t, p.CarExpenseTypeID)

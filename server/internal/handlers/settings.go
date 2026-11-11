@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
@@ -55,21 +54,15 @@ func parseAccountForm(v url.Values) (*accountForm, error) {
 	return &accountForm{DisplayName: name, Email: email, Defaults: defaults}, nil
 }
 
-// accountError turns validation errors into user-facing messages.
-func accountError(err error) error {
-	switch {
-	case errors.Is(err, models.ErrInvalidDisplayName):
-		return badRequest("error.invalid_display_name", err)
-	case errors.Is(err, models.ErrInvalidEmail):
-		return badRequest("error.invalid_email", err)
-	case errors.Is(err, models.ErrInvalidNotify),
-		errors.Is(err, models.ErrInvalidRemindDays),
-		errors.Is(err, models.ErrInvalidRepeat),
-		errors.Is(err, models.ErrInvalidMaxReminders):
-		return badRequest("error.invalid_reminder_defaults", err)
-	}
-	return err
+// accountErrors are the Account panel's validation messages.
+var accountErrors = []errorCase{
+	badInput("error.invalid_display_name", models.ErrInvalidDisplayName),
+	badInput("error.invalid_email", models.ErrInvalidEmail),
+	badInput("error.invalid_reminder_defaults", models.ErrInvalidNotify, models.ErrInvalidRemindDays,
+		models.ErrInvalidRepeat, models.ErrInvalidMaxReminders),
 }
+
+func accountError(err error) error { return mapError(err, accountErrors) }
 
 // GetAccountForm opens the Account panel: name, reminder email and the
 // reminder defaults for new bills.
@@ -100,22 +93,16 @@ func (h *SettingsHandler) SaveAccount(c *gin.Context) error {
 	return nil
 }
 
-// passwordError turns a refused password change into a user-facing message.
-func passwordError(err error) error {
-	switch {
-	case errors.Is(err, services.ErrWrongPassword):
-		return badRequest("auth.wrong_current_password", err)
-	case errors.Is(err, models.ErrPasswordTooShort):
-		return badRequest("auth.password_too_short", err)
-	case errors.Is(err, models.ErrPasswordTooLong):
-		return badRequest("auth.password_too_long", err)
-	case errors.Is(err, models.ErrPasswordMismatch):
-		return badRequest("auth.passwords_mismatch", err)
-	case errors.Is(err, models.ErrPasswordUnchanged):
-		return badRequest("auth.password_unchanged", err)
-	}
-	return err
+// passwordErrors explain a refused password change.
+var passwordErrors = []errorCase{
+	badInput("auth.wrong_current_password", services.ErrWrongPassword),
+	badInput("auth.password_too_short", models.ErrPasswordTooShort),
+	badInput("auth.password_too_long", models.ErrPasswordTooLong),
+	badInput("auth.passwords_mismatch", models.ErrPasswordMismatch),
+	badInput("auth.password_unchanged", models.ErrPasswordUnchanged),
 }
+
+func passwordError(err error) error { return mapError(err, passwordErrors) }
 
 // ChangePassword sets a new password after checking the current one. The
 // user stays logged in; other logins last until their token expires.

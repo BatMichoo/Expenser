@@ -32,8 +32,7 @@ func loadTemplates(t *testing.T) *template.Template {
 		if parseErr = utilities.InitI18n(); parseErr != nil {
 			return
 		}
-		parsed, parseErr = template.New("").Funcs(utilities.TemplateFuncs()).
-			ParseGlob(filepath.Join(".", "**", "*.html"))
+		parsed, parseErr = utilities.ParseTemplates(filepath.Join(".", "**", "*.html"))
 	})
 	require.NoError(t, parseErr)
 	return parsed
@@ -598,7 +597,7 @@ func sampleBill(name string, due time.Time, active bool) models.RecurringPayment
 	amount := 29.9
 	typeID := 4
 	return models.RecurringPayment{
-		ID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), Name: name, Category: models.RecurringCategoryHouse,
+		ID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), Name: name, Category: models.SectionHouse,
 		UtilityTypeID: &typeID, TypeName: "Internet", DueDate: due, StartDate: due, CycleUnit: models.CycleMonth,
 		CycleEvery: 1, ExpectedAmount: &amount, Active: active, PaymentOptions: []string{"cash", "card"},
 		UpdatedAt: time.Date(2026, 11, 11, 9, 0, 0, 123456000, time.UTC),
@@ -1185,4 +1184,47 @@ func TestLandingPageTranslated(t *testing.T) {
 		out := render(t, "index-page", map[string]any{"Lang": lang})
 		assert.NotContains(t, out, "landing.", lang+": every text has a translation")
 	}
+}
+
+func TestRootLayoutRendersPagesByName(t *testing.T) {
+	page := func(name string, content any) *goquery.Document {
+		return parseHTML(t, render(t, "root", &models.RootLayout{
+			TemplateName: name, TemplateContent: content, Lang: "en",
+			HeaderOpts: &models.HeaderOptions{Lang: "en"},
+		}))
+	}
+	login := page("login-page", map[string]any{"Lang": "en", "Next": "/bills"})
+	assert.Equal(t, 1, login.Find(`#tracker-content form[hx-post="/login"]`).Length(), "any page by its name")
+	v, _ := login.Find(`input[name="next"]`).Attr("value")
+	assert.Equal(t, "/bills", v, "with its own data")
+
+	snooze := page("snooze-page", map[string]any{"State": "invalid", "Lang": "en"})
+	assert.Contains(t, snooze.Find("#tracker-content").Text(), "doesn't work")
+
+	unknown := page("no-such-page", nil)
+	assert.Equal(t, 1, unknown.Find("#tracker-content section.auth-split").Length(), "unknown names show the home page")
+}
+
+func TestEveryIconNameDraws(t *testing.T) {
+	// Names used by the templates: navigation, home cards, side panels,
+	// landing features, toasts and confirmation cards.
+	for _, name := range []string{"house", "car", "groceries", "bills", "login", "register", "check", "alert", "moon",
+		"receipt", "chart", "pie", "calendar", "target", "trend", "bell", "calendar-days", "history", "phone"} {
+		doc := parseHTML(t, render(t, "icon", map[string]any{"Name": name}))
+		svg := doc.Find("svg")
+		require.Equal(t, 1, svg.Length(), name)
+		assert.Greater(t, svg.Children().Length(), 0, name+": draws something")
+		w, _ := svg.Attr("width")
+		assert.Equal(t, "18", w, "default size")
+	}
+	big := parseHTML(t, render(t, "icon", map[string]any{"Name": "check", "Size": 28, "Stroke": "2.5"}))
+	w, _ := big.Find("svg").Attr("width")
+	sw, _ := big.Find("svg").Attr("stroke-width")
+	assert.Equal(t, "28", w)
+	assert.Equal(t, "2.5", sw)
+
+	land := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en"}))
+	land.Find(".landing-feature-icon svg").Each(func(i int, s *goquery.Selection) {
+		assert.Greater(t, s.Children().Length(), 0, "landing feature %d has its icon", i)
+	})
 }

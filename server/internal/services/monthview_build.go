@@ -148,7 +148,7 @@ func (s *MonthViewService) House(userID uuid.UUID, ym YearMonth, filter MonthFil
 	}
 
 	v := s.base("house", ym, filter, items, totals, typeTotals, lang, now)
-	if v.UpcomingBills, err = s.upcomingBills(userID, models.RecurringCategoryHouse, v.IsCurrent, now); err != nil {
+	if v.UpcomingBills, err = s.upcomingBills(userID, models.SectionHouse, v.IsCurrent, now); err != nil {
 		return nil, err
 	}
 	v.House = shown
@@ -194,7 +194,7 @@ func (s *MonthViewService) Car(userID uuid.UUID, ym YearMonth, filter MonthFilte
 	}
 
 	v := s.base("car", ym, filter, items, totals, typeTotals, lang, now)
-	if v.UpcomingBills, err = s.upcomingBills(userID, models.RecurringCategoryCar, v.IsCurrent, now); err != nil {
+	if v.UpcomingBills, err = s.upcomingBills(userID, models.SectionCar, v.IsCurrent, now); err != nil {
 		return nil, err
 	}
 	v.Car = shown
@@ -255,7 +255,7 @@ const upcomingBillDays = 30
 // upcomingBills returns the user's unpaid bills of one category due in the
 // next 30 days (overdue included), soonest first. Only the current month
 // shows them: they are about today, not the month being browsed.
-func (s *MonthViewService) upcomingBills(userID uuid.UUID, category models.RecurringPaymentCategory, isCurrent bool, now time.Time) ([]models.UpcomingPayment, error) {
+func (s *MonthViewService) upcomingBills(userID uuid.UUID, category models.Section, isCurrent bool, now time.Time) ([]models.UpcomingPayment, error) {
 	if !isCurrent {
 		return nil, nil
 	}
