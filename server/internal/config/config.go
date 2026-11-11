@@ -26,6 +26,15 @@ type Config struct {
 	ReminderCheckInterval time.Duration
 	// SMTP sends reminder emails; without a host they are only logged.
 	SMTP SMTP
+	// DevMode turns on developer-only helpers such as the "Send test email"
+	// button. Off unless DEV_MODE=true.
+	DevMode bool
+}
+
+// parseDevMode is true only for an explicit "true", so production never
+// gets dev helpers by accident.
+func parseDevMode(v string) bool {
+	return strings.EqualFold(strings.TrimSpace(v), "true")
 }
 
 // SMTP holds the mail server settings (e.g. Gmail with an app password).
@@ -136,6 +145,7 @@ func LoadConfig() (*Config, error) {
 			TokenExpiration: jwtExpiration,
 		},
 		Mode:         mode,
+		DevMode:      parseDevMode(os.Getenv("DEV_MODE")),
 		GeminiAPIKey: geminiAPIKey,
 		SeedDevData:  seedDevData,
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
+	"time"
 )
 
 // EmailMessage is one email, already rendered.
@@ -157,8 +158,37 @@ var reminderEmailHTML = template.Must(template.New("reminder").Parse(`<!doctype 
 </td></tr>
 <tr><td style="padding:0 24px 16px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px">
-{{ range .Fields }}<tr><td style="padding:8px 0;border-top:1px solid #eef0f5;color:#5b6478;width:40%">{{ .Label }}</td><td style="padding:8px 0;border-top:1px solid #eef0f5;font-weight:bold">{{ .Value }}</td></tr>
+{{ range .Fields }}<tr><td style="padding:8px 0;border-top:1px solid #eef0f5;color:#5b6478;width:40%;vertical-align:top">{{ .Label }}</td><td style="padding:8px 0;border-top:1px solid #eef0f5;font-weight:bold;vertical-align:top;white-space:pre-line">{{ .Value }}</td></tr>
 {{ end }}</table>
 </td></tr>
 <tr><td style="padding:16px 24px 24px;font-size:12px;color:#8a92a6">{{ .Footer }}</td></tr>
 </table></body></html>`))
+
+// BuildTestReminderEmail is a sample reminder with a "[Test]" subject, so
+// the SMTP setup and the email's look can be checked without waiting for a
+// real reminder. Every field the email can show is filled, with long values,
+// a custom payment option, a multi-line note and HTML-like characters, to
+// see how all of it renders. Dev mode only.
+func BuildTestReminderEmail(username, lang, to string, today time.Time) EmailMessage {
+	if lang == "" {
+		lang = "en"
+	}
+	amount := 1234.56
+	m := BuildReminderEmail(Reminder{
+		To:       to,
+		DaysLeft: 3,
+		Payment: models.RecurringPayment{
+			Username: username, Name: "Vivacom Fiber 500 Mbps + TV (apartment & garage)",
+			TypeName: "Internet", Category: models.RecurringCategoryHouse,
+			DateKind: models.DatePayBy, DueDate: today.AddDate(0, 0, 3),
+			ExpectedAmount: &amount,
+			PaymentHours:   "Mon–Fri 9:00–18:00, Sat 10:00–14:00",
+			PaymentOptions: []string{"cash", "card", "bank_transfer", "online", "ePay.bg"},
+			Notes: "Client no. 1234567 — pay at the office on <Vitosha 15> or via ePay.\n" +
+				"Second line: ask for the \"loyalty\" discount & keep the receipt.",
+			UserLang: lang,
+		},
+	})
+	m.Subject = utilities.T(lang, "email.test_prefix") + " " + m.Subject
+	return m
+}

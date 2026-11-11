@@ -3,6 +3,7 @@ package services
 import (
 	"expenser/internal/models"
 	"expenser/internal/utilities"
+	"strings"
 	"testing"
 	"time"
 
@@ -62,4 +63,24 @@ func TestBuildReminderEmailUnknownLanguageFallsBackToEnglish(t *testing.T) {
 	require.NoError(t, utilities.InitI18n())
 	m := BuildReminderEmail(gasReminder(""))
 	assert.Contains(t, m.Subject, "Reminder:")
+}
+
+func TestBuildTestReminderEmail(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	today := time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC)
+	m := BuildTestReminderEmail("ivan", "en", "me@example.com", today)
+
+	assert.Equal(t, "me@example.com", m.To)
+	assert.Equal(t, "[Test] Reminder: Vivacom Fiber 500 Mbps + TV (apartment & garage) — in 3 days", m.Subject)
+	for _, want := range []string{"Hi ivan,", "Internet", "1234.56 €", "14.11.2026", "in 3 days",
+		"Mon–Fri 9:00–18:00", "Cash, Card, Bank transfer, Online, ePay.bg", "Client no. 1234567", "Second line"} {
+		assert.Contains(t, m.Text, want)
+		assert.Contains(t, m.HTML, want)
+	}
+	assert.Contains(t, m.HTML, "&lt;Vitosha 15&gt;", "HTML-like text is escaped")
+	assert.Contains(t, m.HTML, "white-space:pre-line", "line breaks in notes survive in HTML")
+	assert.Contains(t, m.HTML, "vertical-align:top", "labels line up with the first line of long values")
+
+	bg := BuildTestReminderEmail("ivan", "bg", "me@example.com", today)
+	assert.True(t, strings.HasPrefix(bg.Subject, "[Тест] Напомняне:"), bg.Subject)
 }

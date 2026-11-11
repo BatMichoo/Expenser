@@ -3516,3 +3516,11 @@ tr:hover .row-actions,
   color: var(--warning);
   font-weight: 600;
 }
+
+/* Dev mode: "Send test email" under the reminder email field */
+.send-test-email {
+  align-self: flex-start;
+  margin-top: 0.75em;
+  padding: 0.45em 1.2em;
+  border-radius: 999px;
+}

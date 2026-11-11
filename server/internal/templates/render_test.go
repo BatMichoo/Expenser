@@ -834,6 +834,19 @@ func TestReminderEmailForm(t *testing.T) {
 	assert.False(t, required, "optional: empty clears it")
 }
 
+func TestReminderEmailFormTestButtonOnlyInDevMode(t *testing.T) {
+	doc := parseHTML(t, render(t, "reminder-email-form", map[string]any{"Email": "me@example.com", "Lang": "en"}))
+	assert.Equal(t, 0, doc.Find(`[hx-post="/settings/email/test"]`).Length(), "hidden outside dev mode")
+
+	doc = parseHTML(t, render(t, "reminder-email-form", map[string]any{"Email": "me@example.com", "Lang": "en", "DevMode": true}))
+	btn := doc.Find(`button[hx-post="/settings/email/test"]`)
+	require.Equal(t, 1, btn.Length())
+	typ, _ := btn.Attr("type")
+	assert.Equal(t, "button", typ, "must not submit the save form")
+	inc, _ := btn.Attr("hx-include")
+	assert.Equal(t, "#reminder-email", inc, "tests the address typed, saved or not")
+}
+
 func TestBillFormDelivery(t *testing.T) {
 	b := sampleBill("Fiber", time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC), true)
 	b.Notify = models.NotifyEmail

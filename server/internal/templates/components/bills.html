@@ -347,6 +347,11 @@
       <input type="email" id="reminder-email" name="email" value="{{ .Email }}" autocomplete="email"
         placeholder="you@example.com" />
       <span class="field-hint">{{ T .Lang "settings.reminder_email_hint" }}</span>
+      {{ if .DevMode }}
+      {{/* Dev mode only: sends a sample reminder to the address typed, saved or not. */}}
+      <button type="button" class="btn-secondary send-test-email" hx-post="/settings/email/test"
+        hx-include="#reminder-email" hx-swap="none">{{ T .Lang "settings.send_test" }}</button>
+      {{ end }}
     </div>
     {{ template "sheet-actions" (dict "Lang" .Lang "SaveLabel" "common.save") }}
   </form>

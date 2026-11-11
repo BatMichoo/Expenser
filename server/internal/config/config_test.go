@@ -49,3 +49,11 @@ func TestLoadSMTP(t *testing.T) {
 	assert.Equal(t, "Expenser <me@gmail.com>", s.From)
 	assert.Equal(t, "2525", s.Port)
 }
+
+func TestDevModeIsOffUnlessExplicitlyOn(t *testing.T) {
+	assert.False(t, parseDevMode(""))
+	assert.False(t, parseDevMode("false"))
+	assert.False(t, parseDevMode("yes"))
+	assert.True(t, parseDevMode("true"))
+	assert.True(t, parseDevMode(" TRUE "))
+}
