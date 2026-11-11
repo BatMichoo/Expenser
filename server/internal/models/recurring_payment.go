@@ -228,6 +228,23 @@ func (p *RecurringPayment) NextDueAfter(date time.Time) (time.Time, error) {
 	}
 }
 
+// NextDueOnOrAfter is the first cycle date on or after date (today counts).
+func (p *RecurringPayment) NextDueOnOrAfter(date time.Time) (time.Time, error) {
+	return p.NextDueAfter(DateOnly(date).AddDate(0, 0, -1))
+}
+
+// MissedCycles reports whether the payment is more than one cycle behind:
+// not only is the current due date past, the following one is too. Such a
+// payment can be skipped forward instead of paid cycle by cycle.
+func (p *RecurringPayment) MissedCycles(today time.Time) bool {
+	today = DateOnly(today)
+	if !DateOnly(p.DueDate).Before(today) {
+		return false
+	}
+	next, err := p.NextDueAfter(p.DueDate)
+	return err == nil && !next.After(today)
+}
+
 // DaysUntilDue is negative when the payment is overdue.
 func (p *RecurringPayment) DaysUntilDue(today time.Time) int {
 	return int(DateOnly(p.DueDate).Sub(DateOnly(today)).Hours() / 24)

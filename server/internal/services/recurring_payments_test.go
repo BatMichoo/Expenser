@@ -210,3 +210,46 @@ func TestUpdateManagesCycleAnchor(t *testing.T) {
 		assert.Nil(t, store.updated)
 	})
 }
+
+func TestResumeRollsForward(t *testing.T) {
+	userID := uuid.New()
+	stored := &models.RecurringPayment{
+		ID: uuid.New(), UserID: userID, Active: false,
+		StartDate: day(2026, 1, 31), DueDate: day(2026, 6, 30),
+		CycleUnit: models.CycleMonth, CycleEvery: 1,
+	}
+	store := &fakePaymentStore{payment: stored}
+	edit := *stored
+	edit.Active = true
+	require.NoError(t, newTestPaymentService(store, day(2026, 11, 11)).Update(context.Background(), userID, &edit))
+	assert.Equal(t, day(2026, 11, 30), store.updated.DueDate, "next due on or after today, no drift from the 31st anchor")
+	assert.Equal(t, day(2026, 1, 31), store.updated.StartDate, "anchor kept")
+}
+
+func TestUpdateRefusesStaleVersion(t *testing.T) {
+	userID := uuid.New()
+	saved := time.Date(2026, 11, 11, 9, 0, 0, 123456000, time.UTC)
+	stored := &models.RecurringPayment{ID: uuid.New(), UserID: userID, Active: true, DueDate: day(2026, 12, 1), CycleUnit: models.CycleMonth, CycleEvery: 1, UpdatedAt: saved}
+	store := &fakePaymentStore{payment: stored}
+
+	edit := *stored
+	edit.UpdatedAt = saved.Add(-time.Minute) // opened before the last change
+	err := newTestPaymentService(store, day(2026, 11, 11)).Update(context.Background(), userID, &edit)
+	assert.ErrorIs(t, err, ErrStaleUpdate)
+	assert.Nil(t, store.updated, "nothing written")
+
+	edit.UpdatedAt = saved
+	require.NoError(t, newTestPaymentService(store, day(2026, 11, 11)).Update(context.Background(), userID, &edit))
+}
+
+func TestSkipMissed(t *testing.T) {
+	userID := uuid.New()
+	stored := &models.RecurringPayment{ID: uuid.New(), UserID: userID, Active: true,
+		StartDate: day(2026, 8, 5), DueDate: day(2026, 8, 5), CycleUnit: models.CycleMonth, CycleEvery: 1}
+	store := &fakePaymentStore{payment: stored}
+	p, err := newTestPaymentService(store, day(2026, 11, 11)).SkipMissed(context.Background(), userID, stored.ID)
+	require.NoError(t, err)
+	assert.Equal(t, day(2026, 12, 5), p.DueDate)
+	assert.Equal(t, day(2026, 12, 5), store.updated.DueDate)
+	assert.Equal(t, day(2026, 8, 5), store.updated.StartDate)
+}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func date(y int, m time.Month, d int) time.Time {
@@ -138,4 +139,21 @@ func TestValidate(t *testing.T) {
 			assert.Equal(t, tt.want, p.Validate())
 		})
 	}
+}
+
+func TestNextDueOnOrAfter(t *testing.T) {
+	p := &RecurringPayment{StartDate: date(2026, 1, 15), DueDate: date(2026, 3, 15), CycleUnit: CycleMonth, CycleEvery: 1}
+	got, err := p.NextDueOnOrAfter(date(2026, 11, 15))
+	require.NoError(t, err)
+	assert.Equal(t, date(2026, 11, 15), got, "today counts")
+	got, err = p.NextDueOnOrAfter(date(2026, 11, 16))
+	require.NoError(t, err)
+	assert.Equal(t, date(2026, 12, 15), got)
+}
+
+func TestMissedCycles(t *testing.T) {
+	p := &RecurringPayment{StartDate: date(2026, 9, 10), DueDate: date(2026, 9, 10), CycleUnit: CycleMonth, CycleEvery: 1, Active: true}
+	assert.True(t, p.MissedCycles(date(2026, 11, 11)), "Sep and Oct due dates both passed")
+	assert.False(t, p.MissedCycles(date(2026, 10, 9)), "overdue but the next cycle has not come yet")
+	assert.False(t, p.MissedCycles(date(2026, 9, 1)), "not overdue")
 }

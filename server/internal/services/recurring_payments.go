@@ -23,7 +23,10 @@ type RecurringPaymentStore interface {
 }
 
 var (
-	ErrAmountRequired     = errors.New("amount is required because the payment has no expected amount")
+	ErrAmountRequired = errors.New("amount is required because the payment has no expected amount")
+	// ErrStaleUpdate means the payment changed (e.g. was marked paid) after
+	// the edit form was opened; saving would undo that change.
+	ErrStaleUpdate        = errors.New("recurring payment changed since it was opened")
 	ErrInvalidPaidAmount  = errors.New("paid amount cannot be negative")
 	ErrInvalidUpcomingDay = errors.New("days must not be negative")
 )
@@ -66,6 +69,10 @@ func (s *RecurringPaymentService) Update(ctx context.Context, userID uuid.UUID, 
 		return err
 	}
 
+	if !p.UpdatedAt.IsZero() && !p.UpdatedAt.Equal(existing.UpdatedAt) {
+		return ErrStaleUpdate
+	}
+
 	p.UserID = userID
 	cycleChanged := !models.DateOnly(p.DueDate).Equal(existing.DueDate) ||
 		p.CycleUnit != existing.CycleUnit ||
@@ -75,7 +82,39 @@ func (s *RecurringPaymentService) Update(ctx context.Context, userID uuid.UUID, 
 	} else {
 		p.StartDate = existing.StartDate
 	}
+
+	// Resuming a paused bill: the cycles it missed while paused were not
+	// paid here, so it continues from the next due date on or after today.
+	today := models.DateOnly(s.now())
+	if !existing.Active && p.Active && models.DateOnly(p.DueDate).Before(today) {
+		next, err := p.NextDueOnOrAfter(today)
+		if err != nil {
+			return err
+		}
+		p.DueDate = next
+	}
 	return s.store.UpdateRecurringPayment(ctx, p, userID)
+}
+
+// SkipMissed moves an overdue payment to its next due date on or after
+// today without recording expenses for the cycles in between.
+func (s *RecurringPaymentService) SkipMissed(ctx context.Context, userID, id uuid.UUID) (*models.RecurringPayment, error) {
+	p, err := s.store.GetRecurringPaymentByID(ctx, id, userID)
+	if err != nil {
+		return nil, err
+	}
+	next, err := p.NextDueOnOrAfter(s.now())
+	if err != nil {
+		return nil, err
+	}
+	if !next.After(models.DateOnly(p.DueDate)) {
+		return p, nil // not behind
+	}
+	p.DueDate = next
+	if err := s.store.UpdateRecurringPayment(ctx, p, userID); err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 // Delete reports whether a payment was deleted.
