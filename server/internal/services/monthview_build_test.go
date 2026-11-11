@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"expenser/internal/models"
 	"expenser/internal/utilities"
 	"testing"
@@ -12,16 +13,18 @@ import (
 )
 
 type fakeMonthStore struct {
-	house      []models.HouseExpense
-	groceries  []models.GroceriesExpense
-	totals     map[string]float64
-	gotMonth   time.Month
-	gotYear    int
-	gotFrom    time.Time
-	gotTo      time.Time
-	typeTotals map[string]float64
-	typeFrom   time.Time
-	typeTo     time.Time
+	house         []models.HouseExpense
+	groceries     []models.GroceriesExpense
+	totals        map[string]float64
+	gotMonth      time.Month
+	gotYear       int
+	gotFrom       time.Time
+	gotTo         time.Time
+	typeTotals    map[string]float64
+	typeFrom      time.Time
+	typeTo        time.Time
+	bills         []models.RecurringPayment
+	upcomingUntil time.Time
 }
 
 func (f *fakeMonthStore) GetHouseExpensesForMonth(m time.Month, y int, _ uuid.UUID) (*[]models.HouseExpense, error) {
@@ -61,6 +64,10 @@ func (f *fakeMonthStore) GetCarTypeTotals(uuid.UUID, time.Time, time.Time) (map[
 }
 func (f *fakeMonthStore) GetGroceriesCategoryTotals(uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
 	return f.typeTotals, nil
+}
+func (f *fakeMonthStore) GetUpcomingRecurringPayments(_ context.Context, _ uuid.UUID, until time.Time) ([]models.RecurringPayment, error) {
+	f.upcomingUntil = until
+	return f.bills, nil
 }
 func (f *fakeMonthStore) GetAllCategories() ([]models.Category, error) {
 	return []models.Category{{ID: 1, Name: "Meat"}, {ID: 2, Name: "Dairy"}}, nil
@@ -163,4 +170,29 @@ func TestGroceriesMonthViewUsesNetAmounts(t *testing.T) {
 	assert.False(t, v.HasChange, "no previous month data")
 	require.Len(t, v.Groceries, 1, "store name is searchable")
 	assert.Equal(t, "category.", v.TypePrefix)
+}
+
+func TestHouseMonthViewUpcomingBills(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	store := newMonthStore()
+	store.bills = []models.RecurringPayment{
+		{Name: "Fiber", Category: models.RecurringCategoryHouse, DueDate: time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC), Active: true},
+		{Name: "Insurance", Category: models.RecurringCategoryCar, DueDate: time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC), Active: true},
+		{Name: "TV", Category: models.RecurringCategoryHouse, DueDate: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC), Active: true},
+	}
+	now := time.Date(2026, 11, 10, 15, 0, 0, 0, time.UTC)
+	svc := NewMonthViewService(store)
+
+	v, err := svc.House(uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", now)
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(2026, 12, 10, 0, 0, 0, 0, time.UTC), store.upcomingUntil, "next 30 days")
+	require.Len(t, v.UpcomingBills, 2, "house bills only")
+	assert.Equal(t, "TV", v.UpcomingBills[0].Payment.Name, "overdue first")
+	assert.Equal(t, -8, v.UpcomingBills[0].DaysLeft)
+	assert.Equal(t, "Fiber", v.UpcomingBills[1].Payment.Name)
+	assert.Equal(t, 4, v.UpcomingBills[1].DaysLeft)
+
+	past, err := svc.House(uuid.New(), YearMonth{2026, time.October}, MonthFilter{}, "en", now)
+	require.NoError(t, err)
+	assert.Empty(t, past.UpcomingBills, "only on the current month")
 }

@@ -43,8 +43,8 @@ func (h *CarHandler) parseCarExpenseForm(c *gin.Context) (*models.CarExpense, er
 	if err != nil {
 		return nil, badRequest("error.invalid_amount", err)
 	}
-	if amount <= 0 {
-		return nil, badRequest("error.amount_not_positive", fmt.Errorf("amount %v", amount))
+	if amount < 0 {
+		return nil, badRequest("error.amount_negative", fmt.Errorf("amount %v", amount))
 	}
 
 	discountAmount, _ := strconv.ParseFloat(c.Request.PostFormValue("discount_amount"), 64)

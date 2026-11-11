@@ -36,6 +36,7 @@
     </section>
   </div>
   <aside class="month-side">
+    {{ if .UpcomingBills }}{{ template "upcoming-bills" . }}{{ end }}
     {{ if .HasEstimate }}{{ template "month-estimate" . }}{{ end }}
     {{ template "breakdown" . }}
     {{ template "mini-chart" . }}

@@ -69,6 +69,25 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedGroceries.PUT("/:id", wrap(groceriesHandler.EditGroceriesExpense))
 		protectedGroceries.DELETE("/:id", wrap(groceriesHandler.DeleteGroceriesExpense))
 	}
+	billsHandler := NewBillsHandler(rootHandler)
+	protectedBills := router.Group("/bills")
+	{
+		protectedBills.Use(am.AuthMiddleware())
+
+		protectedBills.GET("", wrap(billsHandler.GetBills))
+		protectedBills.GET("/current", wrap(billsHandler.GetBillsView))
+		protectedBills.GET("/new", wrap(billsHandler.GetNewBillForm))
+		protectedBills.GET("/types", wrap(billsHandler.GetBillTypes))
+		protectedBills.POST("", wrap(billsHandler.CreateBill))
+		protectedBills.GET("/edit/:id", wrap(billsHandler.GetEditBillForm))
+		protectedBills.PUT("/:id", wrap(billsHandler.UpdateBill))
+		protectedBills.GET("/delete/:id", wrap(billsHandler.GetDeleteBillConfirm))
+		protectedBills.DELETE("/:id", wrap(billsHandler.DeleteBill))
+		protectedBills.GET("/pay/:id", wrap(billsHandler.GetPayForm))
+		protectedBills.POST("/:id/paid", wrap(billsHandler.MarkBillPaid))
+		protectedBills.POST("/:id/skip", wrap(billsHandler.SkipMissed))
+	}
+
 	carHandler := NewCarHandler(rootHandler)
 	protectedCar := router.Group("/car")
 	{

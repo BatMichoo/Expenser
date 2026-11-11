@@ -20,7 +20,7 @@
     <div class="container">
       <div id="tracker-content">
         {{ if eq .TemplateName "house-page" }} {{ template "house-page"
-        .TemplateContent }} {{ else if eq .TemplateName "car-page" }} {{
+        .TemplateContent }} {{ else if eq .TemplateName "bills-page" }} {{ template "bills-page" .TemplateContent }} {{ else if eq .TemplateName "car-page" }} {{
         template "car-page" .TemplateContent }} {{ else if eq .TemplateName
         "groceries-page" }} {{ template "groceries-page" .TemplateContent }} {{
         else if eq .TemplateName "login-page" }} {{ template "login-page"

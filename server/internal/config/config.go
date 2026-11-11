@@ -20,6 +20,9 @@ type Config struct {
 	Mode         string
 	GeminiAPIKey string
 	SeedDevData  bool
+	// ReminderCheckInterval is how often the recurring payment reminder
+	// scheduler runs.
+	ReminderCheckInterval time.Duration
 }
 
 // JWT holds JWT-related configuration
@@ -76,6 +79,8 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
+	reminderCheckInterval := parseReminderCheckInterval(os.Getenv("REMINDER_CHECK_INTERVAL"))
+
 	dbConnTemplate := "postgres://%s:%s@%s:%s/%s?sslmode=disable"
 
 	// Construct the database connection string.
@@ -102,7 +107,33 @@ func LoadConfig() (*Config, error) {
 		Mode:         mode,
 		GeminiAPIKey: geminiAPIKey,
 		SeedDevData:  seedDevData,
+
+		ReminderCheckInterval: reminderCheckInterval,
 	}, nil
+}
+
+const (
+	DefaultReminderCheckInterval = 24 * time.Hour
+	MinReminderCheckInterval     = 30 * time.Minute
+)
+
+// parseReminderCheckInterval never fails: empty or invalid values use the
+// default, and values below MinReminderCheckInterval are raised to it so a
+// typo like "1ns" cannot hammer the database.
+func parseReminderCheckInterval(v string) time.Duration {
+	if v == "" {
+		return DefaultReminderCheckInterval
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		log.Printf("Invalid REMINDER_CHECK_INTERVAL %q, using default %s\n", v, DefaultReminderCheckInterval)
+		return DefaultReminderCheckInterval
+	}
+	if d < MinReminderCheckInterval {
+		log.Printf("REMINDER_CHECK_INTERVAL %q is below the minimum, using %s\n", v, MinReminderCheckInterval)
+		return MinReminderCheckInterval
+	}
+	return d
 }
 
 // GetProjectRootDir is used to have consistant way to get the root of our project

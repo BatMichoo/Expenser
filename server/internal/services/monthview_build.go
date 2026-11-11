@@ -1,9 +1,11 @@
 package services
 
 import (
+	"context"
 	"expenser/internal/models"
 	"expenser/internal/utilities"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -22,6 +24,7 @@ type MonthStore interface {
 	GetGroceriesExpensesForMonth(month time.Month, year int, userID uuid.UUID) (*[]models.GroceriesExpense, error)
 	GetGroceriesMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
 	GetAllCategories() ([]models.Category, error)
+	GetUpcomingRecurringPayments(ctx context.Context, userID uuid.UUID, until time.Time) ([]models.RecurringPayment, error)
 	GetHouseTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
 	GetCarTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
 	GetGroceriesCategoryTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
@@ -145,6 +148,9 @@ func (s *MonthViewService) House(userID uuid.UUID, ym YearMonth, filter MonthFil
 	}
 
 	v := s.base("house", ym, filter, items, totals, typeTotals, lang, now)
+	if v.UpcomingBills, err = s.upcomingBills(userID, models.RecurringCategoryHouse, v.IsCurrent, now); err != nil {
+		return nil, err
+	}
 	v.House = shown
 	v.TypePrefix = "type."
 	for _, t := range *types {
@@ -188,6 +194,9 @@ func (s *MonthViewService) Car(userID uuid.UUID, ym YearMonth, filter MonthFilte
 	}
 
 	v := s.base("car", ym, filter, items, totals, typeTotals, lang, now)
+	if v.UpcomingBills, err = s.upcomingBills(userID, models.RecurringCategoryCar, v.IsCurrent, now); err != nil {
+		return nil, err
+	}
 	v.Car = shown
 	v.TypePrefix = "type."
 	for _, t := range *types {
@@ -238,4 +247,32 @@ func (s *MonthViewService) Groceries(userID uuid.UUID, ym YearMonth, filter Mont
 		v.Types = append(v.Types, models.TypeOption{ID: c.ID, Name: c.Name})
 	}
 	return v, nil
+}
+
+// upcomingBillDays is how far ahead the Upcoming bills panel looks.
+const upcomingBillDays = 30
+
+// upcomingBills returns the user's unpaid bills of one category due in the
+// next 30 days (overdue included), soonest first. Only the current month
+// shows them: they are about today, not the month being browsed.
+func (s *MonthViewService) upcomingBills(userID uuid.UUID, category models.RecurringPaymentCategory, isCurrent bool, now time.Time) ([]models.UpcomingPayment, error) {
+	if !isCurrent {
+		return nil, nil
+	}
+	today := models.DateOnly(now)
+	payments, err := s.store.GetUpcomingRecurringPayments(context.Background(), userID, today.AddDate(0, 0, upcomingBillDays))
+	if err != nil {
+		return nil, fmt.Errorf("upcoming bills: %w", err)
+	}
+	sort.SliceStable(payments, func(i, j int) bool { return payments[i].DueDate.Before(payments[j].DueDate) })
+
+	var out []models.UpcomingPayment
+	for _, p := range payments {
+		if p.Category != category || !p.Active {
+			continue
+		}
+		left := p.DaysUntilDue(today)
+		out = append(out, models.UpcomingPayment{Payment: p, DaysLeft: left, Overdue: left < 0})
+	}
+	return out, nil
 }

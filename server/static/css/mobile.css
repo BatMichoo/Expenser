@@ -703,4 +703,41 @@
   .sheet .new-expense-form .sheet-actions .sheet-save {
     flex: 1;
   }
+
+  /* Bills on phones: name and amount on top, due and actions below */
+  .bills-view .month-toolbar .add-btn {
+    display: none;
+  }
+
+  .bills-title {
+    font-size: 1.15em;
+  }
+
+  .bills-view .kpi-next {
+    display: none;
+  }
+
+  .bill-group {
+    margin: 0 0.75em 1em;
+  }
+
+  .bill-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "icon main amount"
+      "icon due actions";
+    gap: 0.35em 0.75em;
+    padding: 0.7em 0.8em;
+  }
+
+  .bill-icon { grid-area: icon; align-self: start; }
+  .bill-main { grid-area: main; }
+  .bill-amount { grid-area: amount; min-width: 0; }
+  .bill-due { grid-area: due; flex-direction: row; align-items: center; gap: 0.5em; }
+  .bill-actions { grid-area: actions; min-width: 0; }
+
+  .pay-btn,
+  .skip-btn {
+    height: 2.4em;
+  }
 }

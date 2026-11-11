@@ -1,0 +1,324 @@
+{{/* Bills: recurring payments grouped by urgency. The wrapper reloads itself
+     when bills change (bills-changed). */}}
+{{ define "bills-page" }}
+<div id="section-content">{{ template "bills-view" . }}</div>
+{{ end }}
+
+{{ define "bills-view" }}
+<div id="bills-view" class="month-view bills-view" hx-get="/bills/current" hx-trigger="bills-changed from:body"
+  hx-swap="outerHTML" hx-disinherit="*">
+  <div class="month-main">
+    <div class="month-toolbar">
+      <h2 class="bills-title">{{ T .Lang "bills.title" }}</h2>
+      <button type="button" class="add-btn" hx-get="/bills/new" hx-target="#action-dialog">
+        + {{ T .Lang "bills.add" }} <kbd>N</kbd>
+      </button>
+    </div>
+
+    {{ if .Total }}
+    <div class="kpi-tiles">
+      <div class="kpi kpi-total">
+        <span class="kpi-title">{{ T .Lang "bills.due_this_month" }}</span>
+        <span class="kpi-value">{{ money .DueThisMonth }}</span>
+      </div>
+      <div class="kpi kpi-overdue{{ if .OverdueCount }} has-overdue{{ end }}">
+        <span class="kpi-title">{{ T .Lang "bills.overdue_kpi" }}</span>
+        <span class="kpi-value">{{ .OverdueCount }}</span>
+        <span class="kpi-sub">{{ if .WaitingCount }}{{ printf (T .Lang "bills.waiting_hint") .WaitingCount }}{{ else }}{{ T .Lang "bills.overdue_hint" }}{{ end }}</span>
+      </div>
+      <div class="kpi kpi-next">
+        <span class="kpi-title">{{ T .Lang "bills.next" }}</span>
+        {{ with .Next }}
+        <span class="kpi-value">{{ template "bill-label" (dict "P" .Payment "Lang" $.Lang) }}</span>
+        <span class="kpi-sub">{{ template "due-text" (dict "Days" .DaysLeft "Arrives" (eq (print .Payment.DateKind) "arrives") "Lang" $.Lang) }} · {{ .Payment.DueDate.Format "02.01.2006" }}</span>
+        {{ else }}
+        <span class="kpi-value">—</span>
+        <span class="kpi-sub">{{ T .Lang "bills.none_next" }}</span>
+        {{ end }}
+      </div>
+    </div>
+
+    {{ template "bill-group" (dict "Rows" .Overdue "Kind" "overdue" "Title" (T .Lang "bills.group.overdue") "Lang" .Lang) }}
+    {{ template "bill-group" (dict "Rows" .Waiting "Kind" "waiting" "Title" (T .Lang "bills.group.waiting") "Lang" .Lang) }}
+    {{ template "bill-group" (dict "Rows" .DueSoon "Kind" "soon" "Title" (T .Lang "bills.group.soon") "Lang" .Lang) }}
+    {{ template "bill-group" (dict "Rows" .Later "Kind" "later" "Title" (T .Lang "bills.group.later") "Lang" .Lang) }}
+    {{ template "bill-group" (dict "Rows" .Paused "Kind" "paused" "Title" (T .Lang "bills.group.paused") "Lang" .Lang) }}
+    {{ else }}
+    <div class="bills-empty side-panel">
+      <span class="side-icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" />
+          <path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /><path d="m9 16 2 2 4-4" /></svg>
+      </span>
+      <h3>{{ T .Lang "bills.empty_title" }}</h3>
+      <p>{{ T .Lang "bills.empty_text" }}</p>
+      <button type="button" class="btn-primary sheet-save" hx-get="/bills/new" hx-target="#action-dialog">
+        + {{ T .Lang "bills.add" }}
+      </button>
+    </div>
+    {{ end }}
+
+    <section id="add-expense-section">
+      <button type="button" class="fab" aria-label='{{ T .Lang "bills.add" }}' title='{{ T .Lang "bills.add" }}'
+        hx-get="/bills/new" hx-target="#action-dialog">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+      </button>
+    </section>
+  </div>
+</div>
+{{ end }}
+
+{{ define "bill-group" }}
+{{ if .Rows }}
+<section class="bill-group {{ .Kind }}">
+  <h3>{{ .Title }} <span class="bill-count">{{ len .Rows }}</span></h3>
+  <ul class="bill-list">
+    {{ range .Rows }}{{ template "bill-row" (dict "R" . "Kind" $.Kind "Lang" $.Lang) }}{{ end }}
+  </ul>
+</section>
+{{ end }}
+{{ end }}
+
+{{ define "bill-row" }}{{ $p := .R.Payment }}
+<li id="bill-{{ $p.ID }}" class="bill-row {{ .Kind }}" hx-get="/bills/edit/{{ $p.ID }}" hx-target="#action-dialog"
+  hx-swap="innerHTML" hx-trigger="click[!event.target.closest('button')]">
+  <span class="bill-icon {{ $p.Category }}" aria-hidden="true">
+    {{ if eq (print $p.Category) "car" }}
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2Z" />
+      <circle cx="7" cy="17" r="2" /><circle cx="17" cy="17" r="2" /></svg>
+    {{ else }}
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" /></svg>
+    {{ end }}
+  </span>
+  <div class="bill-main">
+    <span class="bill-name">{{ template "bill-label" (dict "P" $p "Lang" .Lang) }}</span>
+    <span class="bill-meta">
+      {{ if $p.Name }}{{ T .Lang (print "type." $p.TypeName) }} · {{ end }}{{ template "cycle-text" (dict "P" $p "Lang" .Lang) }}{{ if $p.PaymentHours }} · {{ $p.PaymentHours }}{{ end }}
+    </span>
+  </div>
+  <div class="bill-due">
+    {{ if eq .Kind "paused" }}<span class="due-pill paused">{{ T .Lang "bills.group.paused" }}</span>
+    {{ else }}<span class="due-pill {{ .Kind }}">{{ template "due-text" (dict "Days" .R.DaysLeft "Arrives" (eq (print $p.DateKind) "arrives") "Lang" .Lang) }}</span>{{ end }}
+    <span class="bill-date">{{ $p.DueDate.Format "02.01.2006" }}</span>
+  </div>
+  <div class="bill-amount">{{ if $p.ExpectedAmount }}{{ money (deref $p.ExpectedAmount) }}{{ else }}—{{ end }}</div>
+  <div class="bill-actions">
+    {{ if .R.Missed }}
+    <button type="button" class="skip-btn" hx-post="/bills/{{ $p.ID }}/skip" hx-swap="none"
+      title='{{ T .Lang "bills.skip_title" }}'>{{ T .Lang "bills.skip" }}</button>
+    {{ end }}
+    {{ if $p.Active }}
+    <button type="button" class="pay-btn" hx-get="/bills/pay/{{ $p.ID }}" hx-target="#action-dialog"
+      hx-swap="innerHTML">{{ T .Lang "bills.mark_paid" }}</button>
+    {{ end }}
+  </div>
+</li>
+{{ end }}
+
+{{/* A bill's own name, or its type when it has none. */}}
+{{ define "bill-label" }}{{ if .P.Name }}{{ .P.Name }}{{ else }}{{ T .Lang (print "type." .P.TypeName) }}{{ end }}{{ end }}
+
+{{ define "cycle-text" }}{{ if eq .P.CycleEvery 1 }}{{ T .Lang (print "bills.cycle." .P.CycleUnit ".one") }}{{ else }}{{ printf (T .Lang (print "bills.cycle." .P.CycleUnit ".many")) .P.CycleEvery }}{{ end }}{{ end }}
+
+{{ define "due-text" }}{{ if .Arrives }}{{ template "arrives-text" . }}{{ else if eq .Days 0 }}{{ T .Lang "bills.due.today" }}{{ else if eq .Days 1 }}{{ T .Lang "bills.due.tomorrow" }}{{ else if gt .Days 1 }}{{ printf (T .Lang "bills.due.in") .Days }}{{ else if eq .Days -1 }}{{ T .Lang "bills.due.overdue_one" }}{{ else }}{{ printf (T .Lang "bills.due.overdue") (negi .Days) }}{{ end }}{{ end }}
+
+{{/* Add / edit a bill, in the side panel. */}}
+{{ define "bill-form" }}
+<div class="sheet">
+  {{ template "sheet-heading" (dict "Title" (T .Lang (print "bills." (or (and .IsEdit "edit_title") "add_title"))) "Lang" .Lang) }}
+  <form class="new-expense-form bill-form" {{ if .IsEdit }}hx-put="/bills/{{ .Bill.ID }}"{{ else }}hx-post="/bills"{{ end }}
+    hx-swap="none" hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    {{ if .IsEdit }}<input type="hidden" name="version" value="{{ .Version }}" />{{ end }}
+
+    <fieldset class="category-switch segmented" hx-get="/bills/types" hx-target="#bill-type-chips" hx-swap="innerHTML"
+      hx-trigger="change" hx-include="this">
+      <legend class="visually-hidden">{{ T .Lang "bills.category" }}</legend>
+      <label><input type="radio" name="category" value="house" {{ if eq .Category "house" }}checked{{ end }} />
+        <span>{{ T .Lang "nav.house" }}</span></label>
+      <label><input type="radio" name="category" value="car" {{ if eq .Category "car" }}checked{{ end }} />
+        <span>{{ T .Lang "nav.car" }}</span></label>
+    </fieldset>
+
+    <div id="bill-type-chips">{{ template "bill-type-chips" (dict "Types" .Types "Selected" .TypeID "Lang" .Lang) }}</div>
+
+    <div>
+      <label for="bill-name">{{ T .Lang "bills.name" }}</label>
+      <input type="text" id="bill-name" name="name" maxlength="100" value="{{ .Bill.Name }}"
+        placeholder='{{ T .Lang "bills.name_placeholder" }}' />
+    </div>
+
+    <div class="amount-field">
+      <label for="bill-amount">{{ T .Lang "bills.expected_amount" }}</label>
+      <input type="number" id="bill-amount" name="expected_amount" step="0.01" min="0" inputmode="decimal" placeholder="0.00"
+        {{ if .Bill.ExpectedAmount }}value="{{ deref .Bill.ExpectedAmount }}"{{ end }} />
+    </div>
+    <label class="check-row">
+      <input type="checkbox" name="remember_last_amount" {{ if .Bill.RememberLastAmount }}checked{{ end }} />
+      <span>{{ T .Lang "bills.remember_last" }}</span>
+    </label>
+
+    <div>
+      <label for="bill-due"><span class="when-payby">{{ T .Lang "bills.date.pay_by" }}</span><span class="when-arrives">{{ T .Lang "bills.date.arrives" }}</span></label>
+      <input type="date" id="bill-due" name="due_date" required value="{{ .DueDate }}" />
+    </div>
+
+    <div class="inline-fields">
+      <label for="bill-every">{{ T .Lang "bills.repeats" }}</label>
+      <div class="inline-row">
+        <input type="number" id="bill-every" name="cycle_every" min="1" step="1" required value="{{ .Bill.CycleEvery }}" />
+        <select name="cycle_unit" aria-label='{{ T .Lang "bills.repeats" }}'>
+          {{ range $u := list "day" "week" "month" "year" }}
+          <option value="{{ $u }}" {{ if eq (print $.Bill.CycleUnit) $u }}selected{{ end }}>{{ T $.Lang (print "bills.unit." $u) }}</option>
+          {{ end }}
+        </select>
+      </div>
+    </div>
+
+    <fieldset class="reminder-block">
+      <legend>{{ T .Lang "bills.reminders" }}</legend>
+
+      <div class="category-switch segmented date-kind">
+        <label><input type="radio" name="date_kind" value="pay_by" {{ if ne (print .Bill.DateKind) "arrives" }}checked{{ end }} />
+          <span>{{ T .Lang "bills.kind.pay_by" }}</span></label>
+        <label><input type="radio" name="date_kind" value="arrives" {{ if eq (print .Bill.DateKind) "arrives" }}checked{{ end }} />
+          <span>{{ T .Lang "bills.kind.arrives" }}</span></label>
+      </div>
+
+      <div class="inline-fields">
+        <span class="field-label">{{ T .Lang "bills.first_reminder" }}</span>
+        <div class="inline-row when-payby">
+          <input type="number" name="remind_days_before" min="0" step="1" value="{{ .Bill.RemindDaysBefore }}"
+            aria-label='{{ T .Lang "bills.days_before_date" }}' />
+          <span class="inline-suffix">{{ T .Lang "bills.days_before_date" }}</span>
+        </div>
+        <div class="inline-row when-arrives">
+          <input type="number" name="remind_days_after" min="0" step="1" value="{{ .Bill.RemindDaysAfter }}"
+            aria-label='{{ T .Lang "bills.days_after_date" }}' />
+          <span class="inline-suffix">{{ T .Lang "bills.days_after_date" }}</span>
+        </div>
+      </div>
+
+      <label class="check-row">
+        <input type="checkbox" name="keep_reminding" {{ if .Bill.RepeatEveryDays }}checked{{ end }} />
+        <span>{{ T .Lang "bills.keep_reminding" }}</span>
+      </label>
+      <div class="inline-row repeat-row">
+        <span class="inline-suffix">{{ T .Lang "bills.every" }}</span>
+        <input type="number" name="repeat_every_days" min="1" step="1"
+          value="{{ if .Bill.RepeatEveryDays }}{{ derefi .Bill.RepeatEveryDays }}{{ else }}3{{ end }}"
+          aria-label='{{ T .Lang "bills.every" }}' />
+        <span class="inline-suffix">{{ T .Lang "bills.days" }}</span>
+      </div>
+
+      <div class="inline-row">
+        <span class="inline-suffix">{{ T .Lang "bills.max_reminders" }}</span>
+        <input type="number" name="max_reminders" min="1" step="1" placeholder="∞"
+          value="{{ if .Bill.MaxReminders }}{{ derefi .Bill.MaxReminders }}{{ end }}"
+          aria-label='{{ T .Lang "bills.max_reminders" }}' />
+        <span class="inline-suffix">{{ T .Lang "bills.reminders_suffix" }}</span>
+      </div>
+
+      {{ if .IsEdit }}
+      <div>
+        <label for="bill-snooze">{{ T .Lang "bills.snooze" }}</label>
+        <input type="date" id="bill-snooze" name="snoozed_until"
+          value="{{ if .Bill.SnoozedUntil }}{{ .Bill.SnoozedUntil.Format "2006-01-02" }}{{ end }}" />
+      </div>
+      {{ end }}
+    </fieldset>
+
+    <details class="more-fields"{{ if .IsEdit }} open{{ end }}>
+      <summary>{{ T .Lang "bills.more" }}</summary>
+      <div class="more-fields-body">
+        <div>
+          <label for="bill-hours">{{ T .Lang "bills.payment_hours" }}</label>
+          <input type="text" id="bill-hours" name="payment_hours" value="{{ .Bill.PaymentHours }}"
+            placeholder='{{ T .Lang "bills.payment_hours_placeholder" }}' />
+        </div>
+        <fieldset class="option-chips">
+          <legend>{{ T .Lang "bills.payment_options" }}</legend>
+          {{ range .KnownOptions }}
+          <label class="chip"><input type="checkbox" name="payment_options" value="{{ . }}" {{ if index $.Options . }}checked{{ end }} />
+            <span>{{ T $.Lang (print "bills.option." .) }}</span></label>
+          {{ end }}
+          <input type="text" name="payment_option_other" value="{{ .OtherOption }}"
+            placeholder='{{ T .Lang "bills.option_other" }}' aria-label='{{ T .Lang "bills.option_other" }}' />
+        </fieldset>
+        <div>
+          <label for="bill-notes">{{ T .Lang "common.notes" }}</label>
+          <textarea id="bill-notes" name="notes" rows="3">{{ .Bill.Notes }}</textarea>
+        </div>
+      </div>
+    </details>
+
+    {{ if .IsEdit }}
+    <label class="check-row">
+      <input type="checkbox" name="paused" {{ if not .Bill.Active }}checked{{ end }} />
+      <span>{{ T .Lang "bills.paused" }}</span>
+    </label>
+    {{ end }}
+
+    {{ if .IsEdit }}
+    {{ template "sheet-actions" (dict "Lang" .Lang "SaveLabel" "common.save" "DeleteURL" (print "/bills/delete/" .Bill.ID)) }}
+    {{ else }}
+    {{ template "sheet-actions" (dict "Lang" .Lang "SaveLabel" "bills.add") }}
+    {{ end }}
+  </form>
+</div>
+{{ end }}
+
+{{ define "bill-type-chips" }}{{ template "type-chips" (dict "Types" .Types "Selected" .Selected "Lang" .Lang "Label" "bills.type") }}{{ end }}
+
+{{/* Mark a bill as paid: records the expense, moves to the next due date. */}}
+{{ define "bill-pay-form" }}
+<div class="sheet">
+  {{ template "sheet-heading" (dict "Title" (print (T .Lang "bills.pay_title") ": " .Label) "Lang" .Lang) }}
+  <form class="new-expense-form bill-pay-form" hx-post="/bills/{{ .Bill.ID }}/paid" hx-swap="none"
+    hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    <p class="receipt-summary">
+      <strong>{{ printf (T .Lang "bills.pay_due") (.Bill.DueDate.Format "02.01.2006") }} · {{ T .Lang (print "type." .Bill.TypeName) }}</strong>
+      <span>{{ T .Lang "bills.pay_hint" }}</span>
+    </p>
+    <div class="amount-field">
+      <label for="pay-amount">{{ T .Lang "common.amount" }}</label>
+      <input type="number" id="pay-amount" name="amount" step="0.01" min="0" inputmode="decimal" required placeholder="0.00"
+        {{ if .Bill.ExpectedAmount }}value="{{ deref .Bill.ExpectedAmount }}"{{ end }} />
+    </div>
+    <div>
+      <label for="pay-date">{{ T .Lang "bills.paid_on" }}</label>
+      <input type="date" id="pay-date" name="paid_on" required value="{{ .Today }}" />
+    </div>
+    {{ template "sheet-actions" (dict "Lang" .Lang "SaveLabel" "bills.mark_paid") }}
+  </form>
+</div>
+{{ end }}
+
+{{/* Side column panel on House/Car: unpaid bills due in the next 30 days. */}}
+{{ define "upcoming-bills" }}
+<section class="side-panel upcoming-bills">
+  {{ template "side-panel-head" (dict "Icon" "calendar" "Title" (T .Lang "insights.upcoming_bills")) }}
+  <ul class="upcoming-list">
+    {{ range .UpcomingBills }}
+    <li class="upcoming-item">
+      <div class="upcoming-main">
+        <span class="upcoming-name">{{ template "bill-label" (dict "P" .Payment "Lang" $.Lang) }}</span>
+        {{ $arrives := eq (print .Payment.DateKind) "arrives" }}
+        <span class="due-pill {{ if and (lt .DaysLeft 0) $arrives }}waiting{{ else if lt .DaysLeft 0 }}overdue{{ else }}soon{{ end }}">{{ template "due-text" (dict "Days" .DaysLeft "Arrives" $arrives "Lang" $.Lang) }}</span>
+      </div>
+      <div class="upcoming-side">
+        <span class="upcoming-amount">{{ if .Payment.ExpectedAmount }}{{ money (deref .Payment.ExpectedAmount) }}{{ end }}</span>
+        <button type="button" class="pay-btn" hx-get="/bills/pay/{{ .Payment.ID }}" hx-target="#action-dialog"
+          hx-swap="innerHTML">{{ T $.Lang "bills.mark_paid" }}</button>
+      </div>
+    </li>
+    {{ end }}
+  </ul>
+  <a class="all-bills" href="/bills" hx-get="/bills" hx-target="#tracker-content" hx-push-url="/bills">{{ T .Lang "insights.all_bills" }} →</a>
+</section>
+{{ end }}
+
+{{ define "arrives-text" }}{{ if eq .Days 0 }}{{ T .Lang "bills.due.arrives_today" }}{{ else if eq .Days 1 }}{{ T .Lang "bills.due.arrives_tomorrow" }}{{ else if gt .Days 1 }}{{ printf (T .Lang "bills.due.arrives_in") .Days }}{{ else if eq .Days -1 }}{{ T .Lang "bills.due.waiting_one" }}{{ else }}{{ printf (T .Lang "bills.due.waiting") (negi .Days) }}{{ end }}{{ end }}
