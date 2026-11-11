@@ -51,17 +51,17 @@ func TestBillTypeTotal(t *testing.T) {
 	nov := time.Date(2025, 11, 1, 0, 0, 0, 0, time.Local)
 	dec := time.Date(2025, 12, 1, 0, 0, 0, 0, time.Local)
 
-	total, found, err := db.GetBillTypeTotal(ctx, userID, models.RecurringCategoryHouse, 2, nov, dec)
+	total, found, err := db.GetBillTypeTotal(ctx, userID, models.SectionHouse, 2, nov, dec)
 	require.NoError(t, err)
 	assert.True(t, found)
 	assert.Equal(t, 60.0, total, "only that type, only that month")
 
-	total, found, err = db.GetBillTypeTotal(ctx, userID, models.RecurringCategoryCar, 2, nov, dec)
+	total, found, err = db.GetBillTypeTotal(ctx, userID, models.SectionCar, 2, nov, dec)
 	require.NoError(t, err)
 	assert.True(t, found)
 	assert.Equal(t, 300.0, total, "car bills look at car expenses")
 
-	_, found, err = db.GetBillTypeTotal(ctx, userID, models.RecurringCategoryHouse, 4, nov, dec)
+	_, found, err = db.GetBillTypeTotal(ctx, userID, models.SectionHouse, 4, nov, dec)
 	require.NoError(t, err)
 	assert.False(t, found, "nothing paid for that type that month")
 }
@@ -88,10 +88,10 @@ func TestHouseAndCarTotalsSubtractDiscounts(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 45.0, sumMap(carTypes))
 
-	billHouse, _, err := db.GetBillTypeTotal(ctx, userID, models.RecurringCategoryHouse, 2, from, to)
+	billHouse, _, err := db.GetBillTypeTotal(ctx, userID, models.SectionHouse, 2, from, to)
 	require.NoError(t, err)
 	assert.Equal(t, 110.0, billHouse)
-	billCar, _, err := db.GetBillTypeTotal(ctx, userID, models.RecurringCategoryCar, 1, from, to)
+	billCar, _, err := db.GetBillTypeTotal(ctx, userID, models.SectionCar, 1, from, to)
 	require.NoError(t, err)
 	assert.Equal(t, 45.0, billCar)
 

@@ -12,13 +12,13 @@ import (
 
 // ExpenseMonthsOfType returns the months ("YYYY-MM") in [from, to) that
 // already have a house or car expense of the given type.
-func (db *DB) ExpenseMonthsOfType(ctx context.Context, userID uuid.UUID, category models.RecurringPaymentCategory, typeID int, from, to time.Time) (map[string]bool, error) {
-	query := `SELECT DISTINCT to_char(expense_date, 'YYYY-MM') FROM home_expenses
-		WHERE created_by = $1 AND utility_type_id = $2 AND expense_date >= $3 AND expense_date < $4`
-	if category == models.RecurringCategoryCar {
-		query = `SELECT DISTINCT to_char(expense_date, 'YYYY-MM') FROM car_expenses
-		WHERE created_by = $1 AND car_expense_type_id = $2 AND expense_date >= $3 AND expense_date < $4`
+func (db *DB) ExpenseMonthsOfType(ctx context.Context, userID uuid.UUID, section models.Section, typeID int, from, to time.Time) (map[string]bool, error) {
+	t, err := expenseTableFor(section)
+	if err != nil {
+		return nil, err
 	}
+	query := fmt.Sprintf(`SELECT DISTINCT to_char(expense_date, 'YYYY-MM') FROM %s
+		WHERE created_by = $1 AND %s = $2 AND expense_date >= $3 AND expense_date < $4`, t.Table, t.TypeColumn)
 	rows, err := db.conn.QueryContext(ctx, query, userID, typeID, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get expense months: %w", err)
@@ -38,12 +38,12 @@ func (db *DB) ExpenseMonthsOfType(ctx context.Context, userID uuid.UUID, categor
 // CreateBackfillExpenses adds the same house or car expense on each date,
 // all or nothing.
 func (db *DB) CreateBackfillExpenses(ctx context.Context, e models.BackfillExpense, dates []time.Time) error {
-	query := `INSERT INTO home_expenses (utility_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
-		VALUES ($1, $2, $3, $4, $5, '{}', $6)`
-	if e.Category == models.RecurringCategoryCar {
-		query = `INSERT INTO car_expenses (car_expense_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
-		VALUES ($1, $2, $3, $4, $5, '{}', $6)`
+	t, err := expenseTableFor(e.Section)
+	if err != nil {
+		return err
 	}
+	query := fmt.Sprintf(`INSERT INTO %s (%s, amount, discount_amount, expense_date, notes, metadata, created_by)
+		VALUES ($1, $2, $3, $4, $5, '{}', $6)`, t.Table, t.TypeColumn)
 	tx, err := db.conn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to backfill: %w", err)

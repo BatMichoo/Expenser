@@ -598,7 +598,7 @@ func sampleBill(name string, due time.Time, active bool) models.RecurringPayment
 	amount := 29.9
 	typeID := 4
 	return models.RecurringPayment{
-		ID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), Name: name, Category: models.RecurringCategoryHouse,
+		ID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), Name: name, Category: models.SectionHouse,
 		UtilityTypeID: &typeID, TypeName: "Internet", DueDate: due, StartDate: due, CycleUnit: models.CycleMonth,
 		CycleEvery: 1, ExpectedAmount: &amount, Active: active, PaymentOptions: []string{"cash", "card"},
 		UpdatedAt: time.Date(2026, 11, 11, 9, 0, 0, 123456000, time.UTC),

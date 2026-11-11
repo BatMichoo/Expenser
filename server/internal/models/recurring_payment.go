@@ -11,13 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type RecurringPaymentCategory string
-
-const (
-	RecurringCategoryHouse RecurringPaymentCategory = "house"
-	RecurringCategoryCar   RecurringPaymentCategory = "car"
-)
-
 // BillDateKind says what a bill's date means.
 type BillDateKind string
 
@@ -66,11 +59,11 @@ func DefaultPaymentOptions() []string {
 type RecurringPayment struct {
 	ID               uuid.UUID
 	UserID           uuid.UUID
-	Username         string // read-only, populated on reads
-	Category         RecurringPaymentCategory
-	UtilityTypeID    *int   // set only for house payments
-	CarExpenseTypeID *int   // set only for car payments
-	TypeName         string // read-only, populated on reads
+	Username         string  // read-only, populated on reads
+	Category         Section // house or car
+	UtilityTypeID    *int    // set only for house payments
+	CarExpenseTypeID *int    // set only for car payments
+	TypeName         string  // read-only, populated on reads
 	Name             string
 	StartDate        time.Time // anchor of the cycle; defaults to DueDate
 	DueDate          time.Time
@@ -166,11 +159,11 @@ func NormalizePaymentOptions(options []string) []string {
 // Validate checks the fields a user controls.
 func (p *RecurringPayment) Validate() error {
 	switch p.Category {
-	case RecurringCategoryHouse:
+	case SectionHouse:
 		if p.UtilityTypeID == nil || p.CarExpenseTypeID != nil {
 			return ErrTypeMismatch
 		}
-	case RecurringCategoryCar:
+	case SectionCar:
 		if p.CarExpenseTypeID == nil || p.UtilityTypeID != nil {
 			return ErrTypeMismatch
 		}
@@ -442,4 +435,22 @@ func (p RecurringPayment) RecipientName(to string) string {
 		return ""
 	}
 	return p.UserDisplayName
+}
+
+// TypeID is the bill's expense type: a utility type for house bills, a car
+// expense type for car bills; nil when not set.
+func (p *RecurringPayment) TypeID() *int {
+	if p.Category == SectionCar {
+		return p.CarExpenseTypeID
+	}
+	return p.UtilityTypeID
+}
+
+// SetTypeID sets the bill's expense type for its category.
+func (p *RecurringPayment) SetTypeID(id int) {
+	if p.Category == SectionCar {
+		p.CarExpenseTypeID, p.UtilityTypeID = &id, nil
+		return
+	}
+	p.UtilityTypeID, p.CarExpenseTypeID = &id, nil
 }

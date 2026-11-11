@@ -129,7 +129,7 @@ func parseReminderFields(v url.Values) (models.ReminderDefaults, error) {
 // values; this only rejects input that cannot be parsed.
 func parseBillForm(v url.Values) (*models.RecurringPayment, error) {
 	p := &models.RecurringPayment{
-		Category:           models.RecurringPaymentCategory(v.Get("category")),
+		Category:           models.Section(v.Get("category")),
 		Name:               v.Get("name"),
 		CycleUnit:          models.CycleUnit(v.Get("cycle_unit")),
 		PaymentHours:       strings.TrimSpace(v.Get("payment_hours")),
@@ -142,11 +142,7 @@ func parseBillForm(v url.Values) (*models.RecurringPayment, error) {
 	if err != nil {
 		return nil, fmt.Errorf("type: %w", models.ErrTypeMismatch)
 	}
-	if p.Category == models.RecurringCategoryCar {
-		p.CarExpenseTypeID = &typeID
-	} else {
-		p.UtilityTypeID = &typeID
-	}
+	p.SetTypeID(typeID)
 
 	if p.DueDate, err = time.Parse(utilities.DateFormats.HTML, v.Get("due_date")); err != nil {
 		return nil, fmt.Errorf("due date: %w", models.ErrMissingDueDate)
@@ -236,32 +232,18 @@ type billFormData struct {
 	Lang         string
 }
 
+// typesFor lists a bill category's types; anything but car means house.
 func (h *BillsHandler) typesFor(category string) ([]models.TypeOption, error) {
-	var opts []models.TypeOption
-	if category == string(models.RecurringCategoryCar) {
-		types, err := h.BaseHandler.DB.GetCarExpenseTypes()
-		if err != nil {
-			return nil, err
-		}
-		for _, t := range *types {
-			opts = append(opts, models.TypeOption{ID: t.ID, Name: t.Name})
-		}
-		return opts, nil
+	if models.Section(category) == models.SectionCar {
+		return h.BaseHandler.DB.GetSectionTypes(models.SectionCar)
 	}
-	types, err := h.BaseHandler.DB.GetHouseUtilityTypes()
-	if err != nil {
-		return nil, err
-	}
-	for _, t := range *types {
-		opts = append(opts, models.TypeOption{ID: t.ID, Name: t.Name})
-	}
-	return opts, nil
+	return h.BaseHandler.DB.GetSectionTypes(models.SectionHouse)
 }
 
 func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEdit bool) (*billFormData, error) {
 	category := string(p.Category)
 	if category == "" {
-		category = string(models.RecurringCategoryHouse)
+		category = string(models.SectionHouse)
 	}
 	types, err := h.typesFor(category)
 	if err != nil {
@@ -306,7 +288,7 @@ func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEd
 // pre-selected, with the user's reminder defaults.
 func newBill(category string, defaults models.ReminderDefaults, now time.Time) *models.RecurringPayment {
 	p := &models.RecurringPayment{
-		Category:       models.RecurringPaymentCategory(category),
+		Category:       models.Section(category),
 		DueDate:        now.AddDate(0, 1, 0),
 		CycleUnit:      models.CycleMonth,
 		CycleEvery:     1,

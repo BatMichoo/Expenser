@@ -176,9 +176,9 @@ func TestHouseMonthViewUpcomingBills(t *testing.T) {
 	require.NoError(t, utilities.InitI18n())
 	store := newMonthStore()
 	store.bills = []models.RecurringPayment{
-		{Name: "Fiber", Category: models.RecurringCategoryHouse, DueDate: time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC), Active: true},
-		{Name: "Insurance", Category: models.RecurringCategoryCar, DueDate: time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC), Active: true},
-		{Name: "TV", Category: models.RecurringCategoryHouse, DueDate: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC), Active: true},
+		{Name: "Fiber", Category: models.SectionHouse, DueDate: time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC), Active: true},
+		{Name: "Insurance", Category: models.SectionCar, DueDate: time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC), Active: true},
+		{Name: "TV", Category: models.SectionHouse, DueDate: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC), Active: true},
 	}
 	now := time.Date(2026, 11, 10, 15, 0, 0, 0, time.UTC)
 	svc := NewMonthViewService(store)

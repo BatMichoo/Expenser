@@ -20,7 +20,7 @@ const (
 
 // BillTypeTotaler sums expenses of one bill type over a date range.
 type BillTypeTotaler interface {
-	GetBillTypeTotal(ctx context.Context, userID uuid.UUID, category models.RecurringPaymentCategory, typeID int, from, to time.Time) (float64, bool, error)
+	GetBillTypeTotal(ctx context.Context, userID uuid.UUID, section models.Section, typeID int, from, to time.Time) (float64, bool, error)
 }
 
 // HomeStore is the data access the home page needs. *database.DB
@@ -124,10 +124,7 @@ func pickHomeBills(payments []models.RecurringPayment, today time.Time, n int) (
 func homeBillsLastYear(ctx context.Context, store BillTypeTotaler, userID uuid.UUID, rows []models.HomeBillRow) ([]models.HomeBillRow, error) {
 	for i := range rows {
 		p := rows[i].Payment
-		typeID := p.UtilityTypeID
-		if p.Category == models.RecurringCategoryCar {
-			typeID = p.CarExpenseTypeID
-		}
+		typeID := p.TypeID()
 		if typeID == nil {
 			continue
 		}

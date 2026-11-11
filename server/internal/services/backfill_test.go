@@ -68,7 +68,7 @@ type fakeBackfillStore struct {
 	err      error
 }
 
-func (f *fakeBackfillStore) ExpenseMonthsOfType(_ context.Context, _ uuid.UUID, _ models.RecurringPaymentCategory, _ int, _, _ time.Time) (map[string]bool, error) {
+func (f *fakeBackfillStore) ExpenseMonthsOfType(_ context.Context, _ uuid.UUID, _ models.Section, _ int, _, _ time.Time) (map[string]bool, error) {
 	return f.existing, f.err
 }
 
@@ -82,7 +82,7 @@ func TestBackfillServiceRechecksOnConfirm(t *testing.T) {
 	store := &fakeBackfillStore{existing: map[string]bool{"2026-02": true}}
 	svc := NewBackfillService(store)
 	req := BackfillRequest{From: ym(2026, 1), To: ym(2026, 3), Day: 20,
-		Expense: models.BackfillExpense{Category: models.RecurringCategoryHouse, TypeID: 4, Amount: 15, UserID: uuid.New()}}
+		Expense: models.BackfillExpense{Section: models.SectionHouse, TypeID: 4, Amount: 15, UserID: uuid.New()}}
 
 	plan, err := svc.Apply(context.Background(), req, now)
 	require.NoError(t, err)

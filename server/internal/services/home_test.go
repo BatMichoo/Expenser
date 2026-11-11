@@ -65,7 +65,7 @@ func TestBuildHomeCategoryEmptyYear(t *testing.T) {
 func homeBill(name string, due time.Time, active bool) models.RecurringPayment {
 	typeID := 2
 	return models.RecurringPayment{ID: uuid.New(), Name: name, DueDate: due, Active: active,
-		Category: models.RecurringCategoryHouse, UtilityTypeID: &typeID, CycleUnit: models.CycleMonth, CycleEvery: 1}
+		Category: models.SectionHouse, UtilityTypeID: &typeID, CycleUnit: models.CycleMonth, CycleEvery: 1}
 }
 
 func TestPickHomeBills(t *testing.T) {
@@ -90,7 +90,7 @@ type fakeHomeStore struct {
 	typeTotals map[string]float64 // "category/typeID/YYYY-MM" -> total
 }
 
-func (f *fakeHomeStore) GetBillTypeTotal(_ context.Context, _ uuid.UUID, category models.RecurringPaymentCategory, typeID int, from, _ time.Time) (float64, bool, error) {
+func (f *fakeHomeStore) GetBillTypeTotal(_ context.Context, _ uuid.UUID, category models.Section, typeID int, from, _ time.Time) (float64, bool, error) {
 	v, ok := f.typeTotals[string(category)+"/"+strconv.Itoa(typeID)+"/"+from.Format("2006-01")]
 	return v, ok, nil
 }
