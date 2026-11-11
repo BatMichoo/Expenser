@@ -4,20 +4,11 @@
     <button
       type="button"
       hx-get="/groceries/current"
+      hx-vals='js:{month: new URLSearchParams(window.location.search).get("month") || ""}'
       hx-target="#section-content"
       class="tracker-nav-button section-button active"
     >
-      {{ T .Lang "common.current" }}
-    </button>
-  </li>
-  <li>
-    <button
-      type="button"
-      hx-get="/groceries/search"
-      hx-target="#section-content"
-      class="tracker-nav-button section-button"
-    >
-      {{ T .Lang "search.title" }}
+      {{ T .Lang "common.list" }}
     </button>
   </li>
   <li>
@@ -31,4 +22,4 @@
     </button>
   </li>
 </ul>
-{{ template "section-buttons-script" }} {{ end }}
+ {{ end }}

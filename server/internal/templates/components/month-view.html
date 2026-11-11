@@ -1,0 +1,304 @@
+{{/* One section (house, car or groceries) for one month. The wrapper reloads
+     itself when an expense is added, edited or deleted (expenses-changed). */}}
+{{ define "month-view" }}
+<div id="month-view" class="month-view" hx-get="/{{ .Section }}/current?month={{ .Month }}" hx-include="#month-filters"
+  hx-trigger="expenses-changed from:body" hx-swap="outerHTML" hx-disinherit="*">
+  <div class="month-main">
+    {{ template "month-toolbar" . }}
+    {{ template "kpi-tiles" . }}
+    <section id="add-expense-section">
+      {{ if eq .Section "groceries" }}
+      <button type="button" class="upload-btn" hx-get="/groceries/form" hx-target="#action-dialog">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+          <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+          <path d="M12 17.5v-11" />
+        </svg>
+        {{ T .Lang "groceries.upload_receipt" }}
+      </button>
+      {{ end }}
+      <button type="button" class="fab" aria-label='{{ T .Lang "common.add" }}' title='{{ T .Lang "common.add" }}'
+        hx-get="{{ template "add-url" . }}" hx-target="#action-dialog">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14" />
+          <path d="M5 12h14" />
+        </svg>
+      </button>
+    </section>
+    <section id="recent-expenses-section">
+      <div class="overflow-x-auto">
+        {{ if eq .Section "house" }}{{ template "house-table" . }}{{ end }}
+        {{ if eq .Section "car" }}{{ template "car-table" . }}{{ end }}
+        {{ if eq .Section "groceries" }}{{ template "groceries-table" . }}{{ end }}
+      </div>
+    </section>
+  </div>
+  <aside class="month-side">
+    {{ if .HasEstimate }}{{ template "month-estimate" . }}{{ end }}
+    {{ template "breakdown" . }}
+    {{ template "mini-chart" . }}
+    {{ template "year-so-far" . }}
+  </aside>
+</div>
+{{ end }}
+
+{{ define "add-url" }}{{ if eq .Section "groceries" }}/groceries/create{{ else }}/{{ .Section }}/expenses/new{{ end }}{{ end }}
+
+{{ define "month-toolbar" }}
+<div class="month-toolbar">
+  <nav class="month-switcher" aria-label='{{ T .Lang "common.date" }}'>
+    <a class="month-step" href="/{{ .Section }}?month={{ .PrevMonth }}" hx-get="/{{ .Section }}/current?month={{ .PrevMonth }}"
+      hx-target="#section-content" hx-push-url="/{{ .Section }}?month={{ .PrevMonth }}"
+      aria-label='{{ T .Lang "toolbar.prev_month" }}' title='{{ T .Lang "toolbar.prev_month" }}'>
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+    </a>
+    <span class="month-label">{{ T .Lang (print "month." .MonthNum) }} {{ .Year }}</span>
+    <a class="month-step" href="/{{ .Section }}?month={{ .NextMonth }}" hx-get="/{{ .Section }}/current?month={{ .NextMonth }}"
+      hx-target="#section-content" hx-push-url="/{{ .Section }}?month={{ .NextMonth }}"
+      aria-label='{{ T .Lang "toolbar.next_month" }}' title='{{ T .Lang "toolbar.next_month" }}'>
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+    </a>
+    {{ if not .IsCurrent }}
+    <a class="month-today" href="/{{ .Section }}" hx-get="/{{ .Section }}/current" hx-target="#section-content"
+      hx-push-url="/{{ .Section }}">{{ T .Lang "toolbar.this_month" }}</a>
+    {{ end }}
+  </nav>
+  <form id="month-filters" class="month-filters" hx-get="/{{ .Section }}/current"
+    hx-trigger="submit, input delay:300ms, change" hx-target="#recent-expenses" hx-select="#recent-expenses"
+    hx-swap="outerHTML">
+    <input type="hidden" name="month" value="{{ .Month }}" />
+    <input type="search" name="q" value="{{ .Query }}" class="month-search" placeholder='{{ T .Lang "toolbar.search" }}'
+      aria-label='{{ T .Lang "toolbar.search" }}' autocomplete="off" />
+    <select name="type" class="month-type" aria-label='{{ T .Lang "toolbar.all_types" }}'>
+      <option value="0">{{ T .Lang "toolbar.all_types" }}</option>
+      {{ range .Types }}
+      <option value="{{ .ID }}" {{ if eq .ID $.TypeID }}selected{{ end }}>{{ T $.Lang (print $.TypePrefix .Name) }}</option>
+      {{ end }}
+    </select>
+  </form>
+  {{ if eq .Section "groceries" }}
+  <button type="button" class="upload-btn" hx-get="/groceries/form" hx-target="#action-dialog">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+      <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+      <path d="M12 17.5v-11" />
+    </svg>
+    {{ T .Lang "groceries.upload_receipt" }}
+  </button>
+  {{ end }}
+  <button type="button" class="add-btn" hx-get="{{ template "add-url" . }}" hx-target="#action-dialog">
+    + {{ T .Lang "common.add" }} <kbd>N</kbd>
+  </button>
+</div>
+{{ end }}
+
+{{ define "kpi-tiles" }}
+<div class="kpi-tiles" id="kpi-tiles">
+  <div class="kpi kpi-total">
+    <span class="kpi-title">{{ T .Lang "card.total_monthly" }}</span>
+    <span class="kpi-value">{{ money .Summary.Total }}</span>
+    <span class="kpi-sub">
+      {{ if .HasChange }}
+      <span class="kpi-change {{ if gt .ChangePct 0.0 }}up{{ else }}down{{ end }}">{{ printf "%+.0f%%" .ChangePct }}</span>
+      {{ T .Lang "kpi.vs_last_month" }}
+      {{ else }}{{ T .Lang "kpi.no_comparison" }}{{ end }}
+    </span>
+  </div>
+  <div class="kpi kpi-highest">
+    <span class="kpi-title">{{ T .Lang "card.highest_expense" }}</span>
+    <span class="kpi-value">{{ if .Summary.TopType }}{{ T .Lang (print .TypePrefix .Summary.TopType) }}{{ else }}—{{ end }}</span>
+    <span class="kpi-sub">{{ if .Summary.TopType }}{{ money .Summary.TopAmount }}{{ end }}</span>
+  </div>
+  <div class="kpi kpi-count">
+    <span class="kpi-title">{{ T .Lang "kpi.expenses" }}</span>
+    <span class="kpi-value">{{ .Summary.Count }}</span>
+    <span class="kpi-sub">{{ if .Summary.Count }}{{ T .Lang "kpi.average" }} {{ money .Summary.Average }}{{ end }}</span>
+  </div>
+</div>
+{{ end }}
+
+{{ define "mini-chart" }}
+<section class="side-panel mini-chart" id="mini-chart">
+  {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "kpi.last_months") "Meta" (money .Summary.Total)) }}
+  <a class="mini-chart-bars" href="#" hx-get="/{{ .Section }}/chart" hx-target="#section-content"
+    title='{{ T .Lang "kpi.open_chart" }}' aria-label='{{ T .Lang "kpi.open_chart" }}'>
+    {{ range .Bars }}
+    <span class="mini-bar{{ if .Current }} current{{ end }}" style="height: {{ printf "%.0f" .Height }}%"
+      title="{{ T $.Lang (print "month." .MonthNum) }}: {{ money .Total }}"></span>
+    {{ end }}
+  </a>
+  <div class="mini-chart-labels">
+    {{ range .Bars }}<span{{ if .Current }} class="current"{{ end }}>{{ T $.Lang (print "month_short." .MonthNum) }}</span>{{ end }}
+  </div>
+</section>
+{{ end }}
+
+{{ define "empty-rows" }}
+<tr class="empty-row">
+  <td colspan="9">
+    <p>{{ if .Filtered }}{{ T .Lang "kpi.no_matches" }}{{ else }}{{ T .Lang "search.no_results" }}{{ end }}</p>
+  </td>
+</tr>
+{{ end }}
+
+{{ define "house-table" }}
+<table class="expenses-table">
+  <thead>
+    <tr>
+      <th>{{ T .Lang "common.date" }}</th>
+      <th>{{ T .Lang "form.utility_type" }}</th>
+      <th>{{ T .Lang "common.details" }}</th>
+      <th class="num">{{ T .Lang "common.discount" }}</th>
+      <th class="num">{{ T .Lang "common.amount" }}</th>
+      <th><span class="visually-hidden">{{ T .Lang "common.actions" }}</span></th>
+    </tr>
+  </thead>
+  <tbody id="recent-expenses">
+    {{ range .House }}{{ template "house-exp-row" (dict "Exp" . "Lang" $.Lang) }}{{ else }}{{ template "empty-rows" . }}{{ end }}
+  </tbody>
+</table>
+{{ end }}
+
+{{ define "car-table" }}
+<table class="expenses-table">
+  <thead>
+    <tr>
+      <th>{{ T .Lang "common.date" }}</th>
+      <th>{{ T .Lang "form.expense_type" }}</th>
+      <th>{{ T .Lang "common.details" }}</th>
+      <th class="num">{{ T .Lang "common.discount" }}</th>
+      <th class="num">{{ T .Lang "common.amount" }}</th>
+      <th><span class="visually-hidden">{{ T .Lang "common.actions" }}</span></th>
+    </tr>
+  </thead>
+  <tbody id="recent-expenses">
+    {{ range .Car }}{{ template "car-exp-row" (dict "Exp" . "Lang" $.Lang) }}{{ else }}{{ template "empty-rows" . }}{{ end }}
+  </tbody>
+</table>
+{{ end }}
+
+{{ define "groceries-table" }}
+<table class="expenses-table">
+  <thead>
+    <tr>
+      <th>{{ T .Lang "common.date" }}</th>
+      <th>{{ T .Lang "groceries.product" }}</th>
+      <th>{{ T .Lang "groceries.category" }}</th>
+      <th>{{ T .Lang "common.details" }}</th>
+      <th class="num">{{ T .Lang "common.discount" }}</th>
+      <th class="num">{{ T .Lang "common.amount" }}</th>
+      <th><span class="visually-hidden">{{ T .Lang "common.actions" }}</span></th>
+    </tr>
+  </thead>
+  <tbody id="recent-expenses">
+    {{ range .Groceries }}{{ template "grocery-row" (dict "G" . "Lang" $.Lang) }}{{ else }}{{ template "empty-rows" . }}{{ end }}
+  </tbody>
+</table>
+{{ end }}
+
+{{/* Small icon buttons shown on row hover (desktop). */}}
+{{ define "row-actions" }}
+<div class="row-actions">
+  <button type="button" class="icon-btn" aria-label='{{ T .Lang "common.edit" }}' title='{{ T .Lang "common.edit" }}'
+    hx-get="{{ .EditURL }}" hx-target="#action-dialog" hx-swap="innerHTML">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  </button>
+  <button type="button" class="icon-btn danger" aria-label='{{ T .Lang "common.delete" }}' title='{{ T .Lang "common.delete" }}'
+    {{ if .DeleteConfirm }}hx-delete="{{ .DeleteURL }}" hx-target="{{ .RowID }}" hx-swap="outerHTML" hx-confirm="{{ .DeleteConfirm }}"
+    {{ else }}hx-get="{{ .DeleteURL }}" hx-target="#action-dialog" hx-swap="innerHTML"{{ end }}>
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 6h18" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  </button>
+</div>
+{{ end }}
+
+{{/* Panel header: icon, title and optional value on the right. */}}
+{{ define "side-panel-head" }}
+<div class="side-panel-head">
+  <span class="side-icon" aria-hidden="true">
+    {{ if eq .Icon "chart" }}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="M7 16v-3" /><path d="M12 16V8" /><path d="M17 16v-6" /></svg>{{ end }}
+    {{ if eq .Icon "pie" }}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></svg>{{ end }}
+    {{ if eq .Icon "calendar" }}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /></svg>{{ end }}
+    {{ if eq .Icon "target" }}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>{{ end }}
+  </span>
+  <h3>{{ .Title }}</h3>
+  {{ if .Meta }}<span class="side-meta">{{ .Meta }}</span>{{ end }}
+</div>
+{{ end }}
+
+{{/* Comparison pill: ▲ red when well above, ▼ green when well below,
+     neutral within ±10%. */}}
+{{ define "pill" }}<span class="pill vs-usual{{ if gt .Pct 10.0 }} up{{ else if lt .Pct -10.0 }} down{{ else }} same{{ end }}"{{ if .Title }} title="{{ .Title }}"{{ end }}>{{ if gt .Pct 10.0 }}▲ {{ printf "%.0f%%" .Pct }}{{ else if lt .Pct -10.0 }}▼ {{ printf "%.0f%%" (neg .Pct) }}{{ else }}≈ {{ .Same }}{{ end }}</span>{{ end }}
+
+{{ define "breakdown" }}
+<section class="side-panel breakdown">
+  {{ template "side-panel-head" (dict "Icon" "pie" "Title" (T .Lang "insights.where_it_went")) }}
+  {{ if .Breakdown }}
+  <div class="stacked-bar" aria-hidden="true">
+    {{ range $i, $s := .Breakdown }}<span class="cat-{{ cat $i }}" style="width: {{ printf "%.1f" $s.Share }}%"></span>{{ end }}
+  </div>
+  <ul class="breakdown-list">
+    {{ range $i, $s := .Breakdown }}
+    <li class="breakdown-item">
+      <span class="cat-dot cat-{{ cat $i }}" aria-hidden="true"></span>
+      <span class="breakdown-name">{{ T $.Lang (print $.TypePrefix $s.Type) }}</span>
+      <span class="breakdown-share">{{ printf "%.0f" $s.Share }}%</span>
+      <span class="breakdown-amount">{{ money $s.Amount }}</span>
+      {{ if $s.HasUsual }}
+      {{ template "pill" (dict "Pct" $s.VsUsual "Same" (T $.Lang "insights.usual") "Title" (print (T $.Lang "insights.usual_amount") ": " (money $s.Usual))) }}
+      {{ else }}<span class="pill vs-usual new">{{ T $.Lang "insights.new" }}</span>{{ end }}
+    </li>
+    {{ end }}
+  </ul>
+  <p class="side-foot">{{ T .Lang "insights.vs_usual_hint" }}</p>
+  {{ else }}
+  <p class="side-empty">{{ T .Lang "insights.nothing_yet" }}</p>
+  {{ end }}
+</section>
+{{ end }}
+
+{{ define "year-so-far" }}
+<section class="side-panel year-so-far">
+  {{ template "side-panel-head" (dict "Icon" "calendar" "Title" (print (T .Lang "insights.year_so_far") " " .Year)) }}
+  <p class="side-big">{{ money .YearSoFar.Total }}</p>
+  <dl class="side-stats">
+    <div>
+      <dt>{{ T .Lang "insights.monthly_average" }}</dt>
+      <dd>{{ money .YearSoFar.Average }}</dd>
+    </div>
+    {{ if .YearSoFar.HasComparison }}
+    <div>
+      <dt>{{ T .Lang "insights.this_month" }}</dt>
+      <dd>{{ template "pill" (dict "Pct" .YearSoFar.VsAverage "Same" (T .Lang "insights.average")) }}</dd>
+    </div>
+    {{ end }}
+  </dl>
+</section>
+{{ end }}
+
+{{ define "month-estimate" }}
+<section class="side-panel estimate">
+  {{ template "side-panel-head" (dict "Icon" "target" "Title" (T .Lang "insights.estimate")) }}
+  <p class="side-big">≈ {{ money .Estimate }}</p>
+  <div class="progress" aria-hidden="true"><span style="width: {{ printf "%.1f" (pct .Summary.Total .Estimate) }}%"></span></div>
+  <div class="progress-labels">
+    <span>{{ T .Lang "insights.spent_so_far" }}: {{ money .Summary.Total }}</span>
+  </div>
+  <p class="side-foot">
+    {{ if gt .Usual 0.0 }}{{ T .Lang "insights.based_on_usual" }} {{ money .Usual }}{{ else }}{{ T .Lang "insights.based_on_pace" }}{{ end }}
+  </p>
+</section>
+{{ end }}

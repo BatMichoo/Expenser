@@ -1,30 +1,73 @@
 {{ define "header" }}
 <header class="header-section" id="header">
   <div class="header-left">
-    <!-- Theme Toggle Button -->
-    <button id="theme-toggle">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun">
-        <circle cx="12" cy="12" r="4" />
-        <path d="M12 2v2" />
-        <path d="M12 20v2" />
-        <path d="M4.93 4.93l1.41 1.41" />
-        <path d="M17.66 17.66l1.41 1.41" />
-        <path d="M2 12h2" />
-        <path d="M20 12h2" />
-        <path d="M6.34 17.66l-1.41 1.41" />
-        <path d="M19.07 4.93l-1.41 1.41" />
-      </svg>
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon">
-        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-      </svg>
-      <span>{{ T .Lang "header.toggle_theme" }}</span>
-    </button>
-    <div class="language-switcher">
-      <button hx-post="/settings/language" hx-vals='{"lang": "en"}' class="lang-btn {{ if eq .Lang "en" }}active{{ end }}">🇺🇸</button>
-      <button hx-post="/settings/language" hx-vals='{"lang": "bg"}' class="lang-btn {{ if eq .Lang "bg" }}active{{ end }}">🇧🇬</button>
-    </div>
+    <details class="settings-menu">
+      <summary aria-label='{{ T .Lang "header.settings" }}' title='{{ T .Lang "header.settings" }}'>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+        <span>{{ T .Lang "header.settings" }}</span>
+      </summary>
+      <div class="settings-panel">
+        <div class="settings-row">
+          <span class="settings-label">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+            </svg>
+            {{ T .Lang "header.theme" }}
+          </span>
+          <div class="segmented" role="group" aria-label='{{ T .Lang "header.theme" }}'>
+            <button type="button" class="theme-option" data-theme="light">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2" /><path d="M12 20v2" /><path d="M2 12h2" /><path d="M20 12h2" />
+                <path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" />
+                <path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" />
+              </svg>
+              {{ T .Lang "header.theme_light" }}
+            </button>
+            <button type="button" class="theme-option" data-theme="dark">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+              </svg>
+              {{ T .Lang "header.theme_dark" }}
+            </button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M2 12h20" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+            {{ T .Lang "header.language" }}
+          </span>
+          <div class="segmented language-switcher" role="group" aria-label='{{ T .Lang "header.language" }}'>
+            <button type="button" hx-post="/settings/language" hx-vals='{"lang": "en"}' class="lang-btn {{ if eq .Lang "en" }}active{{ end }}">EN</button>
+            <button type="button" hx-post="/settings/language" hx-vals='{"lang": "bg"}' class="lang-btn {{ if eq .Lang "bg" }}active{{ end }}">BG</button>
+          </div>
+        </div>
+        {{ if .IsLoggedIn }}
+        <hr class="settings-divider" />
+        <button type="button" class="settings-logout" hx-get="/logout" hx-target="#tracker-content" hx-push-url="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="17 16 22 12 17 8" />
+            <line x1="22" y1="12" x2="10" y2="12" />
+          </svg>
+          {{ T .Lang "nav.logout" }}
+        </button>
+        {{ end }}
+      </div>
+    </details>
   </div>
 
   <h3 hx-get="/" hx-push-url="/" hx-target="#tracker-content">

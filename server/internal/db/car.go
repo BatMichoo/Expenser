@@ -40,74 +40,13 @@ func (db *DB) GetCarExpenseTypes() (*[]models.CarExpenseType, error) {
 	return &expenseTypes, nil
 }
 
-func (db *DB) GetTotalCarExpenseForMonth(month time.Month, userId uuid.UUID) (float64, error) {
-	currentYear := time.Now().Year()
-	query := `
-		SELECT SUM(amount) FROM car_expenses
-		WHERE EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2 AND created_by = $3
-		`
-
-	var totalAmount sql.NullFloat64
-	err := db.conn.QueryRow(query,
-		int(month),
-		currentYear,
-		userId,
-	).Scan(&totalAmount)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0.00, nil
-		}
-		return 0.00, fmt.Errorf("failed to get total amount: %w", err)
-	}
-
-	return totalAmount.Float64, nil
-}
-
-func (db *DB) GetHighestCarExpenseForMonth(month time.Month, userId uuid.UUID) (float64, string, error) {
-	currentYear := time.Now().Year()
-	query := `
-		SELECT
-			SUM(ce.amount) AS amount,
-			ct.name
-		FROM
-			car_expenses ce
-		JOIN
-			car_expense_types ct ON ce.car_expense_type_id = ct.id
-		WHERE
-			EXTRACT(MONTH FROM ce.expense_date) = $1 AND EXTRACT(YEAR FROM ce.expense_date) = $2 AND ce.created_by = $3
-		GROUP BY
-			ct.name
-		ORDER BY
-			amount DESC
-		LIMIT 1;
-	`
-
-	var highestExpense sql.NullFloat64
-	var utilType string
-
-	err := db.conn.QueryRow(query,
-		int(month),
-		currentYear,
-		userId,
-	).Scan(&highestExpense, &utilType)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0.00, "", nil
-		}
-		return 0.00, "", fmt.Errorf("failed to get total amount: %w", err)
-	}
-
-	return highestExpense.Float64, utilType, nil
-}
-
 // GetCarExpenseByID returns the user's car expense with the given ID,
 // or nil when no such expense belongs to the user.
 func (db *DB) GetCarExpenseByID(id int, userID uuid.UUID) (*models.CarExpense, error) {
 	query := `
 		SELECT
 			ce.id,
+			ce.car_expense_type_id,
 			ct.name AS type,
 			ce.amount,
 			ce.discount_amount,
@@ -130,6 +69,7 @@ func (db *DB) GetCarExpenseByID(id int, userID uuid.UUID) (*models.CarExpense, e
 		userID,
 	).Scan(
 		&expense.ID,
+		&expense.ExpenseTypeID,
 		&expense.Type,
 		&expense.Amount,
 		&expense.DiscountAmount,
@@ -270,50 +210,6 @@ func (db *DB) GetCarExpensesForYear(year int, userId uuid.UUID) (*[]models.CarEx
 	return &expenses, nil
 }
 
-func (db *DB) GetCarExpensesByType(utility string, userId uuid.UUID) (*[]models.CarExpense, error) {
-	query := `
-		SELECT ce.id, ct.name, ce.amount, ce.expense_date, ce.notes, ce.metadata, ce.created_at
-			FROM car_expenses ce
-		JOIN
-			car_expense_types ct ON ce.car_expense_type_id = ct.id
-		WHERE
-			ct.name = $1 AND ce.created_by = $2`
-
-	var expenses []models.CarExpense
-	rows, err := db.conn.Query(query,
-		utility,
-		userId,
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("error fetching car expenses: %v", err)
-	}
-
-	for rows.Next() {
-		err := rows.Err()
-		if err != nil {
-			return nil, fmt.Errorf("error fetching car expenses: %v", err)
-		}
-
-		var exp models.CarExpense
-		err = rows.Scan(&exp.ID,
-			&exp.Type,
-			&exp.Amount,
-			&exp.Date,
-			&exp.Notes,
-			&exp.Metadata,
-			&exp.CreatedAt,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("error scanning car expenses: %v", err)
-		}
-		expenses = append(expenses, exp)
-	}
-
-	return &expenses, nil
-}
-
 // EditCarExpense updates the user's car expense. It returns an error wrapping
 // sql.ErrNoRows when no such expense belongs to the user.
 func (db *DB) EditCarExpense(editExpense *models.CarExpense, userID uuid.UUID) error {
@@ -416,38 +312,22 @@ func (db *DB) GetCarExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]
 	return &expenses, nil
 }
 
-func (db *DB) GetCarExpensesByDates(start, end time.Time, userId uuid.UUID) (*[]models.CarExpense, error) {
-	query := `
-		SELECT ce.id, ce.amount, ct.name, ce.metadata FROM car_expenses ce
-		JOIN car_expense_types ct ON ce.utility_type_id = ct.id
-		WHERE created_by = $1 AND expense_date >= $2 AND expense_date <= $3
-		ORDER BY expense_date ASC
-	`
-	rows, err := db.conn.Query(query, userId, start, end)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching expenses: %v", err)
-	}
+// GetCarMonthlyTotals returns car spending per month, keyed "YYYY-MM", for expenses
+// dated in [from, to).
+func (db *DB) GetCarMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
+	return db.monthlyTotals(`
+		SELECT to_char(expense_date, 'YYYY-MM'), SUM(amount)
+		FROM car_expenses
+		WHERE created_by = $1 AND expense_date >= $2 AND expense_date < $3
+		GROUP BY 1`, userID, from, to)
+}
 
-	var expenses []models.CarExpense
-
-	for rows.Next() {
-		err := rows.Err()
-		if err != nil {
-			return nil, fmt.Errorf("error fetching expenses: %v", err)
-		}
-
-		var exp models.CarExpense
-		err = rows.Scan(&exp.ID,
-			&exp.Amount,
-			&exp.Type,
-			&exp.Metadata,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("error scanning expenses: %v", err)
-		}
-		expenses = append(expenses, exp)
-	}
-
-	return &expenses, nil
+// GetCarTypeTotals returns car spending per expense type, keyed by name, for [from, to).
+func (db *DB) GetCarTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
+	return db.monthlyTotals(`
+		SELECT ct.name, SUM(ce.amount)
+		FROM car_expenses ce
+		JOIN car_expense_types ct ON ct.id = ce.car_expense_type_id
+		WHERE ce.created_by = $1 AND ce.expense_date >= $2 AND ce.expense_date < $3
+		GROUP BY ct.name`, userID, from, to)
 }

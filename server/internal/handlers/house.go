@@ -3,20 +3,20 @@ package handlers
 import (
 	"encoding/json"
 	"expenser/internal/models"
+	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type HouseHandler struct {
 	BaseHandler BaseHandler
+	months      *services.MonthViewService
 }
 
 // NewHouseHandler creates and returns a new instance of HomeHandler.
@@ -24,71 +24,8 @@ type HouseHandler struct {
 func NewHouseHandler(rh *RootHandler) *HouseHandler {
 	return &HouseHandler{
 		BaseHandler: rh.BaseHandler,
+		months:      services.NewMonthViewService(rh.BaseHandler.DB),
 	}
-}
-
-func (h *HouseHandler) getHousePageData(c *gin.Context) (*models.HouseData, error) {
-	dateNow := time.Now()
-	month := dateNow.Month()
-	year := dateNow.Year()
-	userID := currentUserID(c)
-
-	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(month, userID)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching highest house expense: %w", err)
-	}
-
-	monthlyExpense, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(dateNow, userID)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching total house expense: %w", err)
-	}
-
-	recentExpenses, err := h.BaseHandler.DB.GetHouseExpensesForMonth(month, year, userID)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching recent house expenses: %w", err)
-	}
-
-	return &models.HouseData{
-		Name: "current",
-		MonthlyExpense: &models.MonthlyExpense{
-			Amount: monthlyExpense,
-			Month:  month.String(),
-		},
-		HighestExpense: &models.HighestExpense{
-			Amount: highestExpense,
-			Type:   strings.TrimSpace(utilType),
-		},
-		RecentExpenses: recentExpenses,
-		Lang:           currentLang(c),
-	}, nil
-}
-
-// monthSummary returns the current month's highest and total expense as
-// out-of-band fragments, used to refresh the summary cards after a change.
-func (h *HouseHandler) monthSummary(userID uuid.UUID) (*models.HighestExpense, *models.MonthlyExpense, error) {
-	timeNow := time.Now()
-
-	highestExp, expType, err := h.BaseHandler.DB.GetHighestHouseExpenseForMonth(timeNow.Month(), userID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	monthlyTotal, err := h.BaseHandler.DB.GetTotalHouseExpenseForMonth(timeNow, userID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	highest := &models.HighestExpense{
-		Amount: highestExp,
-		Type:   strings.TrimSpace(expType),
-		IsOOB:  true,
-	}
-	monthly := &models.MonthlyExpense{
-		Amount: monthlyTotal,
-		Month:  timeNow.Month().String(),
-		IsOOB:  true,
-	}
-	return highest, monthly, nil
 }
 
 // parseHouseExpenseForm reads the fields shared by the create and edit forms.
@@ -237,23 +174,8 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) error {
 	title := utilities.T(lang, "modal.create_success")
 	message := fmt.Sprintf("%s: %v %s", newExpense.UtilityType, newExpense.Amount, utilities.Currency)
 
-	if newExpense.ExpenseDate.Month() != time.Now().Month() {
-		renderSuccess(c, http.StatusCreated, title, message)
-		return nil
-	}
-
-	highest, monthly, err := h.monthSummary(userID)
-	if err != nil {
-		return err
-	}
-
-	c.HTML(http.StatusCreated, utilities.Templates.Responses.CreateHouseExp, &models.HouseExpResponse{
-		Expense:        newExpense,
-		HighestExpense: highest,
-		MonthlyExpense: monthly,
-		Modal:          &models.ModalContent{Title: title, Message: message, Lang: lang},
-		Lang:           lang,
-	})
+	expensesChanged(c)
+	renderSuccess(c, http.StatusCreated, title, message)
 	return nil
 }
 
@@ -263,7 +185,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) error {
 // HTMX requests get only the summary fragment; full page loads get the
 // whole house page.
 func (h *HouseHandler) GetCurrentMonth(c *gin.Context) error {
-	pageData, err := h.getHousePageData(c)
+	pageData, err := h.monthView(c)
 	if err != nil {
 		return err
 	}
@@ -276,7 +198,7 @@ func (h *HouseHandler) GetCurrentMonth(c *gin.Context) error {
 // It fetches the highest expense, total monthly expense, and a list of
 // recent expenses for the current month and year from the database.
 func (h *HouseHandler) GetHome(c *gin.Context) error {
-	pageData, err := h.getHousePageData(c)
+	pageData, err := h.monthView(c)
 	if err != nil {
 		return err
 	}
@@ -341,15 +263,9 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) error {
 		return err
 	}
 
-	highest, monthly, err := h.monthSummary(currentUserID(c))
-	if err != nil {
-		return err
-	}
-
+	expensesChanged(c)
 	c.HTML(http.StatusCreated, utilities.Templates.Responses.CreateHouseExp, &models.HouseExpResponse{
-		Expense:        editExpense,
-		HighestExpense: highest,
-		MonthlyExpense: monthly,
+		Expense: editExpense,
 		Modal: &models.ModalContent{
 			Title:   utilities.T(lang, "modal.update_success"),
 			Message: fmt.Sprintf(utilities.T(lang, "modal.update_success_message"), editExpense.ID),
@@ -369,13 +285,23 @@ func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) error {
 		return badRequest("error.invalid_id", err)
 	}
 
+	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id, currentUserID(c))
+	if err != nil {
+		return err
+	}
+	if exp == nil {
+		return notFound("error.expense_not_found")
+	}
+
 	c.HTML(http.StatusOK, utilities.Templates.Components.ModalConfirm, &models.ModalConfirmContent{
 		Title:    utilities.T(lang, "modal.delete_confirm"),
 		Method:   "DELETE",
 		Endpoint: template.URL(fmt.Sprintf("/house/expenses/%v", id)),
 		Target:   fmt.Sprintf("#exp-%v", id),
-		Message:  fmt.Sprintf(utilities.T(lang, "modal.delete_message"), id),
-		Lang:     lang,
+		Message: fmt.Sprintf(utilities.T(lang, "modal.delete_expense_message"),
+			utilities.T(lang, "type."+exp.UtilityType), exp.Amount, utilities.CurrencySymbol(), exp.ExpenseDate.Format("02.01.2006")),
+		ConfirmLabel: utilities.T(lang, "common.delete"),
+		Lang:         lang,
 	})
 	return nil
 }
@@ -402,14 +328,8 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) error {
 		return nil
 	}
 
-	highest, monthly, err := h.monthSummary(currentUserID(c))
-	if err != nil {
-		return err
-	}
-
+	expensesChanged(c)
 	c.HTML(http.StatusOK, utilities.Templates.Responses.DeleteHouseExp, &models.HouseExpResponse{
-		HighestExpense: highest,
-		MonthlyExpense: monthly,
 		Modal: &models.ModalContent{
 			Title:   utilities.T(lang, "modal.delete_success"),
 			Message: fmt.Sprintf(utilities.T(lang, "modal.delete_success_message"), id),
@@ -418,4 +338,12 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) error {
 		Lang: lang,
 	})
 	return nil
+}
+
+// monthView builds the page for the month, search and type filter in the
+// request's query string (current month when missing).
+func (h *HouseHandler) monthView(c *gin.Context) (*models.MonthView, error) {
+	now := time.Now()
+	ym := services.ParseYearMonth(c.Query("month"), now)
+	return h.months.House(currentUserID(c), ym, monthFilter(c), currentLang(c), now)
 }

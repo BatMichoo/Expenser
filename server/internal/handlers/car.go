@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"expenser/internal/models"
+	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"fmt"
 	"html/template"
@@ -12,81 +13,18 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type CarHandler struct {
 	BaseHandler BaseHandler
+	months      *services.MonthViewService
 }
 
 func NewCarHandler(rh *RootHandler) *CarHandler {
 	return &CarHandler{
 		BaseHandler: rh.BaseHandler,
+		months:      services.NewMonthViewService(rh.BaseHandler.DB),
 	}
-}
-
-func (h *CarHandler) getCarPageData(c *gin.Context) (*models.CarData, error) {
-	dateNow := time.Now()
-	month := dateNow.Month()
-	year := dateNow.Year()
-	userID := currentUserID(c)
-
-	highestExpense, utilType, err := h.BaseHandler.DB.GetHighestCarExpenseForMonth(month, userID)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching highest car expense: %w", err)
-	}
-
-	monthlyExpense, err := h.BaseHandler.DB.GetTotalCarExpenseForMonth(month, userID)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching total car expense: %w", err)
-	}
-
-	recentExpenses, err := h.BaseHandler.DB.GetCarExpensesForMonth(month, year, userID)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching recent car expenses: %w", err)
-	}
-
-	return &models.CarData{
-		Name: "current",
-		MonthlyExpense: &models.MonthlyExpense{
-			Amount: monthlyExpense,
-			Month:  month.String(),
-		},
-		HighestExpense: &models.HighestExpense{
-			Amount: highestExpense,
-			Type:   strings.TrimSpace(utilType),
-		},
-		RecentExpenses: recentExpenses,
-		Lang:           currentLang(c),
-	}, nil
-}
-
-// monthSummary returns the current month's highest and total expense as
-// out-of-band fragments, used to refresh the summary cards after a change.
-func (h *CarHandler) monthSummary(userID uuid.UUID) (*models.HighestExpense, *models.MonthlyExpense, error) {
-	month := time.Now().Month()
-
-	highestExp, expType, err := h.BaseHandler.DB.GetHighestCarExpenseForMonth(month, userID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	monthlyTotal, err := h.BaseHandler.DB.GetTotalCarExpenseForMonth(month, userID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	highest := &models.HighestExpense{
-		Amount: highestExp,
-		Type:   strings.TrimSpace(expType),
-		IsOOB:  true,
-	}
-	monthly := &models.MonthlyExpense{
-		Amount: monthlyTotal,
-		Month:  month.String(),
-		IsOOB:  true,
-	}
-	return highest, monthly, nil
 }
 
 // parseCarExpenseForm reads the fields shared by the create and edit forms.
@@ -122,7 +60,7 @@ func (h *CarHandler) parseCarExpenseForm(c *gin.Context) (*models.CarExpense, er
 }
 
 func (h *CarHandler) GetHome(c *gin.Context) error {
-	pageData, err := h.getCarPageData(c)
+	pageData, err := h.monthView(c)
 	if err != nil {
 		return err
 	}
@@ -135,7 +73,7 @@ func (h *CarHandler) GetHome(c *gin.Context) error {
 // HTMX requests get only the summary fragment; full page loads get the
 // whole car page.
 func (h *CarHandler) GetCurrentMonth(c *gin.Context) error {
-	pageData, err := h.getCarPageData(c)
+	pageData, err := h.monthView(c)
 	if err != nil {
 		return err
 	}
@@ -153,6 +91,7 @@ func (h *CarHandler) GetCreateCarForm(c *gin.Context) error {
 	c.HTML(http.StatusOK, utilities.Templates.Components.CreateCarExpForm, gin.H{
 		"Types": expTypes,
 		"Lang":  currentLang(c),
+		"Date":  time.Now().Format(utilities.DateFormats.HTML),
 	})
 	return nil
 }
@@ -262,23 +201,8 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) error {
 		Lang:    lang,
 	}
 
-	if newExpense.Date.Month() != time.Now().Month() {
-		renderSuccess(c, http.StatusCreated, modal.Title, modal.Message)
-		return nil
-	}
-
-	highest, monthly, err := h.monthSummary(userID)
-	if err != nil {
-		return err
-	}
-
-	c.HTML(http.StatusCreated, utilities.Templates.Responses.CreateCarExp, &models.CarExpResponse{
-		Expense:        newExpense,
-		HighestExpense: highest,
-		MonthlyExpense: monthly,
-		Modal:          modal,
-		Lang:           lang,
-	})
+	expensesChanged(c)
+	renderSuccess(c, http.StatusCreated, modal.Title, modal.Message)
 	return nil
 }
 
@@ -338,15 +262,9 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) error {
 		return err
 	}
 
-	highest, monthly, err := h.monthSummary(currentUserID(c))
-	if err != nil {
-		return err
-	}
-
+	expensesChanged(c)
 	c.HTML(http.StatusCreated, utilities.Templates.Responses.CreateCarExp, &models.CarExpResponse{
-		Expense:        editExpense,
-		HighestExpense: highest,
-		MonthlyExpense: monthly,
+		Expense: editExpense,
 		Modal: &models.ModalContent{
 			Title:   utilities.T(lang, "modal.update_success"),
 			Message: fmt.Sprintf("%s: %v %s", editExpense.Type, editExpense.Amount, utilities.Currency),
@@ -366,13 +284,23 @@ func (h *CarHandler) GetDeleteConfirm(c *gin.Context) error {
 		return badRequest("error.invalid_id", err)
 	}
 
+	exp, err := h.BaseHandler.DB.GetCarExpenseByID(id, currentUserID(c))
+	if err != nil {
+		return err
+	}
+	if exp == nil {
+		return notFound("error.expense_not_found")
+	}
+
 	c.HTML(http.StatusOK, utilities.Templates.Components.ModalConfirm, &models.ModalConfirmContent{
 		Title:    utilities.T(lang, "modal.delete_confirm"),
 		Method:   "DELETE",
 		Endpoint: template.URL(fmt.Sprintf("/car/expenses/%v", id)),
 		Target:   fmt.Sprintf("#exp-%v", id),
-		Message:  fmt.Sprintf(utilities.T(lang, "modal.delete_message"), id),
-		Lang:     lang,
+		Message: fmt.Sprintf(utilities.T(lang, "modal.delete_expense_message"),
+			utilities.T(lang, "type."+exp.Type), exp.Amount, utilities.CurrencySymbol(), exp.Date.Format("02.01.2006")),
+		ConfirmLabel: utilities.T(lang, "common.delete"),
+		Lang:         lang,
 	})
 	return nil
 }
@@ -399,14 +327,8 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) error {
 		return nil
 	}
 
-	highest, monthly, err := h.monthSummary(currentUserID(c))
-	if err != nil {
-		return err
-	}
-
+	expensesChanged(c)
 	c.HTML(http.StatusOK, utilities.Templates.Responses.DeleteCarExp, &models.CarExpResponse{
-		HighestExpense: highest,
-		MonthlyExpense: monthly,
 		Modal: &models.ModalContent{
 			Title:   utilities.T(lang, "modal.delete_success"),
 			Message: fmt.Sprintf(utilities.T(lang, "modal.delete_success_message"), id),
@@ -415,4 +337,12 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) error {
 		Lang: lang,
 	})
 	return nil
+}
+
+// monthView builds the page for the month, search and type filter in the
+// request's query string (current month when missing).
+func (h *CarHandler) monthView(c *gin.Context) (*models.MonthView, error) {
+	now := time.Now()
+	ym := services.ParseYearMonth(c.Query("month"), now)
+	return h.months.Car(currentUserID(c), ym, monthFilter(c), currentLang(c), now)
 }

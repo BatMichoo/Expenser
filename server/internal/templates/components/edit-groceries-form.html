@@ -1,51 +1,60 @@
 {{ define "edit-groceries-form" }}
-<form class="new-expense-form">
-    <h3>{{ T .Lang "form.edit" }}</h3>
+<div class="sheet">
+  {{ template "sheet-heading" (dict "Title" (T .Lang "form.edit") "Lang" .Lang) }}
+  <form class="new-expense-form" hx-put="/groceries/{{ .Expense.ID }}" hx-target="#grocery-{{ .Expense.ID }}" hx-swap="outerHTML"
+    hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
     <div>
-        <label for="category_id">{{ T .Lang "groceries.category" }}</label>
-        <select id="category_id" name="category_id" required>
-            {{ range .Categories }}
-            <option value="{{ .ID }}" {{if eq $.Expense.CategoryID .ID }}selected{{end}}>{{ T $.Lang (print "category." .Name) }}</option>
-            {{ end }}
-        </select>
+      <label for="product">{{ T .Lang "groceries.product" }}</label>
+      <input type="text" id="product" name="product" value="{{ .Expense.Product }}" required />
     </div>
-    <div>
-        <label for="product">{{ T .Lang "groceries.product" }}</label>
-        <input type="text" id="product" name="product" value="{{ .Expense.Product }}" required />
+    <div class="amount-field">
+      <label for="total_price">{{ T .Lang "groceries.total_price" }}</label>
+      <input type="number" id="total_price" name="total_price" step="0.01" inputmode="decimal" placeholder="0.00" value="{{ printf "%.2f" .Expense.TotalPrice }}" required />
     </div>
-    <div>
+    <div class="qty-unit">
+      <div>
         <label for="quantity">{{ T .Lang "groceries.quantity" }}</label>
-        <input type="number" id="quantity" name="quantity" step="0.1" value="{{ .Expense.Quantity }}" required />
-    </div>
-    <div>
+        <input type="number" id="quantity" name="quantity" step="0.1" inputmode="decimal" value="{{ .Expense.Quantity }}" required />
+      </div>
+      <div>
         <label for="unit_price">{{ T .Lang "groceries.unit_price" }}</label>
-        <input type="number" id="unit_price" name="unit_price" step="0.01" value="{{ printf "%.2f" .Expense.UnitPrice }}" required />
+        <input type="number" id="unit_price" name="unit_price" step="0.01" inputmode="decimal" value="{{ printf "%.2f" .Expense.UnitPrice }}" required />
+      </div>
     </div>
     <div>
-        <label for="discount_per_unit">{{ T .Lang "groceries.discount_per_unit" }}</label>
-        <input type="number" id="discount_per_unit" name="discount_per_unit" step="0.01" value="{{ printf "%.2f" .Expense.DiscountPerUnit }}" />
+      <label for="category_id">{{ T .Lang "groceries.category" }}</label>
+      <select id="category_id" name="category_id" required>
+        {{ range .Categories }}
+        <option value="{{ .ID }}" {{ if eq $.Expense.CategoryID .ID }}selected{{ end }}>{{ T $.Lang (print "category." .Name) }}</option>
+        {{ end }}
+      </select>
     </div>
     <div>
-        <label for="total_price">{{ T .Lang "groceries.total_price" }}</label>
-        <input type="number" id="total_price" name="total_price" step="0.01" value="{{ printf "%.2f" .Expense.TotalPrice }}" required />
+      <label for="supermarket_name">{{ T .Lang "groceries.supermarket" }}</label>
+      <input type="text" id="supermarket_name" name="supermarket_name" value="{{ .Expense.SupermarketName }}" />
     </div>
-    <div>
-        <label for="total_discount">{{ T .Lang "groceries.total_discount" }}</label>
-        <input type="number" id="total_discount" name="total_discount" step="0.01" value="{{ printf "%.2f" .Expense.TotalDiscount }}" />
+    <details class="more-fields" open>
+      <summary>{{ T .Lang "common.discount" }}</summary>
+      <div class="more-fields-body">
+        <div>
+          <label for="discount_per_unit">{{ T .Lang "groceries.discount_per_unit" }}</label>
+          <input type="number" id="discount_per_unit" name="discount_per_unit" step="0.01" inputmode="decimal" value="{{ printf "%.2f" .Expense.DiscountPerUnit }}" />
+        </div>
+        <div>
+          <label for="total_discount">{{ T .Lang "groceries.total_discount" }}</label>
+          <input type="number" id="total_discount" name="total_discount" step="0.01" inputmode="decimal" value="{{ printf "%.2f" .Expense.TotalDiscount }}" />
+        </div>
+      </div>
+    </details>
+    <div class="sheet-actions">
+      <button type="button" class="sheet-delete" hx-delete="/groceries/{{ .Expense.ID }}"
+        hx-target="#grocery-{{ .Expense.ID }}" hx-swap="outerHTML" hx-confirm='{{ T .Lang "modal.delete_confirm" }}'
+        hx-on::after-request="if(event.detail.successful) { hideDialog(); }">
+        {{ T .Lang "common.delete" }}
+      </button>
+      <button type="button" class="sheet-cancel" onclick="hideDialog()">{{ T .Lang "common.cancel" }}</button>
+      <button type="submit" class="btn-primary sheet-save">{{ T .Lang "common.save" }}</button>
     </div>
-    <div>
-        <label for="supermarket_name">{{ T .Lang "groceries.supermarket" }}</label>
-        <input type="text" id="supermarket_name" name="supermarket_name" value="{{ .Expense.SupermarketName }}" />
-    </div>
-    <div>
-        <button type="submit" class="btn-primary" 
-            hx-put="/groceries/{{ .Expense.ID }}" 
-            hx-target="#grocery-{{ .Expense.ID }}" 
-            hx-swap="outerHTML" 
-            hx-on::after-request="if(event.detail.successful && event.target === this) hideDialog()">
-            {{ T .Lang "common.save" }}
-        </button>
-        <button type="button" class="btn-secondary" onclick="hideDialog()">{{ T .Lang "common.cancel" }}</button>
-    </div>
-</form>
+  </form>
+</div>
 {{ end }}

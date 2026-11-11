@@ -1,0 +1,111 @@
+package database
+
+import (
+	"expenser/internal/config"
+	"expenser/internal/models"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func setupMonthTestDB(t *testing.T) (*DB, uuid.UUID) {
+	t.Helper()
+	cfg, err := config.LoadConfig()
+	require.NoError(t, err)
+	testDB := InitTestDB(cfg)
+	t.Cleanup(func() { testDB.Close() })
+	ResetTestDB(testDB)
+	user := &models.User{Username: "MonthTester", PasswordHash: TestUserRegisterModel.PasswordHash}
+	require.NoError(t, testDB.CreateUser(user))
+	return testDB, user.ID
+}
+
+func day(y int, m time.Month, d int) time.Time {
+	return time.Date(y, m, d, 12, 0, 0, 0, time.Local)
+}
+
+func addGrocery(t *testing.T, db *DB, userID uuid.UUID, product string, total, discount float64, at time.Time) {
+	t.Helper()
+	categories, err := db.GetAllCategories()
+	require.NoError(t, err)
+	require.NotEmpty(t, categories)
+	require.NoError(t, db.CreateGroceriesExpense(&models.GroceriesExpense{
+		UserID: userID, CategoryID: categories[0].ID, Product: product, Quantity: 1,
+		UnitPrice: total, TotalPrice: total, TotalDiscount: discount, PurchaseDate: at,
+	}))
+}
+
+func TestGetGroceriesExpensesForMonth(t *testing.T) {
+	db, userID := setupMonthTestDB(t)
+	addGrocery(t, db, userID, "Milk", 2, 0, day(2026, 11, 3))
+	addGrocery(t, db, userID, "Bread", 1.5, 0, day(2026, 11, 20))
+	addGrocery(t, db, userID, "Old milk", 2, 0, day(2025, 11, 3)) // same month, other year
+	addGrocery(t, db, userID, "October", 2, 0, day(2026, 10, 31))
+
+	got, err := db.GetGroceriesExpensesForMonth(time.November, 2026, userID)
+	require.NoError(t, err)
+	require.Len(t, *got, 2)
+	assert.Equal(t, "Bread", (*got)[0].Product, "newest first")
+	assert.Equal(t, "Milk", (*got)[1].Product)
+	assert.NotEmpty(t, (*got)[0].CategoryName)
+}
+
+func TestMonthlyTotals(t *testing.T) {
+	db, userID := setupMonthTestDB(t)
+
+	for _, e := range []struct {
+		amount float64
+		at     time.Time
+	}{{10, day(2026, 9, 5)}, {15, day(2026, 9, 25)}, {40, day(2026, 11, 1)}, {99, day(2026, 6, 1)}} {
+		require.NoError(t, db.CreateHouseExpense(&models.HouseExpense{UtilityTypeID: 2, Amount: e.amount, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+		require.NoError(t, db.CreateCarExpense(&models.CarExpense{ExpenseTypeID: 1, Amount: e.amount, Date: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+	}
+	addGrocery(t, db, userID, "Milk", 10, 2, day(2026, 9, 5))
+
+	from, to := day(2026, 7, 1), time.Date(2026, 12, 1, 0, 0, 0, 0, time.Local)
+
+	house, err := db.GetHouseMonthlyTotals(userID, from, to)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]float64{"2026-09": 25, "2026-11": 40}, house, "June is outside the range")
+
+	car, err := db.GetCarMonthlyTotals(userID, from, to)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]float64{"2026-09": 25, "2026-11": 40}, car)
+
+	groceries, err := db.GetGroceriesMonthlyTotals(userID, from, to)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]float64{"2026-09": 8}, groceries, "net of discount, like the monthly total")
+}
+
+func TestTypeTotals(t *testing.T) {
+	db, userID := setupMonthTestDB(t)
+	for _, e := range []struct {
+		typeID int
+		amount float64
+		at     time.Time
+	}{{2, 10, day(2026, 9, 5)}, {2, 15, day(2026, 10, 5)}, {3, 40, day(2026, 10, 9)}, {3, 99, day(2026, 11, 1)}} {
+		require.NoError(t, db.CreateHouseExpense(&models.HouseExpense{UtilityTypeID: e.typeID, Amount: e.amount, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+		require.NoError(t, db.CreateCarExpense(&models.CarExpense{ExpenseTypeID: e.typeID, Amount: e.amount, Date: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+	}
+	addGrocery(t, db, userID, "Milk", 10, 2, day(2026, 10, 5))
+
+	from, to := day(2026, 5, 1), time.Date(2026, 11, 1, 0, 0, 0, 0, time.Local)
+
+	house, err := db.GetHouseTypeTotals(userID, from, to)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]float64{"Water": 25, "Gas": 40}, house, "November is outside the range")
+
+	car, err := db.GetCarTypeTotals(userID, from, to)
+	require.NoError(t, err)
+	assert.Len(t, car, 2)
+
+	groceries, err := db.GetGroceriesCategoryTotals(userID, from, to)
+	require.NoError(t, err)
+	require.Len(t, groceries, 1)
+	for _, v := range groceries {
+		assert.InDelta(t, 8, v, 0.001, "net of discount")
+	}
+}

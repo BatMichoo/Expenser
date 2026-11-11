@@ -6,6 +6,7 @@ import (
 	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -102,4 +103,16 @@ func renderError(c *gin.Context, status int, title, message string) {
 		return
 	}
 	c.Redirect(http.StatusSeeOther, "/")
+}
+
+// expensesChanged tells the page (via HX-Trigger) that expenses were added,
+// edited or deleted, so the month view reloads its list and totals.
+func expensesChanged(c *gin.Context) {
+	c.Header("HX-Trigger", "expenses-changed")
+}
+
+// monthFilter reads the search text and type/category filter of a month view.
+func monthFilter(c *gin.Context) services.MonthFilter {
+	typeID, _ := strconv.Atoi(c.Query("type"))
+	return services.MonthFilter{Query: c.Query("q"), TypeID: typeID}
 }
