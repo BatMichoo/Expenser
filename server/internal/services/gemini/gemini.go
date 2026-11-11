@@ -3,10 +3,10 @@ package gemini
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"expenser/internal/models"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 )
@@ -23,29 +23,16 @@ func NewGeminiService(apiKey string) *GeminiService {
 	}
 }
 
-// AnalyzeReceipt takes a receipt image data and returns parsed information.
+// AnalyzeReceipt reads a receipt (a photo or a PDF) and returns its items.
 func (gs *GeminiService) AnalyzeReceipt(ctx context.Context, receiptData []byte) (*models.ReceiptAnalysis, error) {
 	if gs.apiKey == "" {
 		return nil, fmt.Errorf("gemini API key is not configured")
 	}
 
 	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=%s", gs.apiKey)
-	mimeType := http.DetectContentType(receiptData)
-	imageB64 := base64.StdEncoding.EncodeToString(receiptData)
-
 	requestBody := map[string]any{
 		"contents": []map[string]any{
-			{
-				"parts": []map[string]any{
-					{"text": Prompts.GroceriesReceipt},
-					{
-						"inline_data": map[string]any{
-							"mime_type": mimeType,
-							"data":      imageB64,
-						},
-					},
-				},
-			},
+			{"parts": receiptParts(ctx, receiptData, pdfToText)},
 		},
 	}
 
@@ -104,6 +91,13 @@ func (gs *GeminiService) AnalyzeReceipt(ctx context.Context, receiptData []byte)
 	var analysis models.ReceiptAnalysis
 	if err := json.Unmarshal([]byte(text), &analysis); err != nil {
 		return nil, err
+	}
+
+	// Discounts printed apart from their items (Kaufland's "Позиции") are put
+	// on those items here, in exact cents, instead of trusting the model's
+	// arithmetic.
+	for _, d := range analysis.ApplyDiscounts() {
+		log.Printf("receipt discount not matched to items: %q %.2f positions %v", d.Description, d.Amount, d.Positions)
 	}
 
 	return &analysis, nil

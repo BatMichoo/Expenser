@@ -3,16 +3,16 @@ package gemini
 // GeminiPrompts groups all prompt strings used when calling the Gemini API.
 // This provides a centralized and organized way to reference prompts.
 type GeminiPrompts struct {
-	GroceriesReceipt string // ReceiptAnalysis instructs Gemini how to extract structured data from a receipt image.
+	GroceriesReceipt string // instructs Gemini how to extract structured data from a receipt (image or text).
 }
 
 // Prompts is the main exported variable that provides access to all
 // organized prompt strings. It should be imported and used
 // globally for consistent prompt referencing.
 var Prompts = &GeminiPrompts{
-	GroceriesReceipt: `Extract the data from this receipt image and output it as a structured JSON object.
+	GroceriesReceipt: `Extract the data from this grocery receipt and output it as a structured JSON object. The receipt is given either as an image or as its extracted text (with the printed layout kept).
 
-	Crucial layout instruction for this specific receipt format: The multiplier line containing the quantity and unit price (e.g., 2.000 x 1.78) applies to the item printed on the line immediately below it, not the item above it. The total price for that item appears on the same line as the item name. If an item does not have a multiplier line preceding it, assume a quantity of 1 and that the unit price equals the total line price.
+	Quantity lines: some items have a line with the quantity and unit price (e.g. "2.000 x 1.78", "2 * 0,25" or "9,955 KG"). Receipt formats differ in where that line goes. In some (e.g. Lidl) it is printed just ABOVE its item and the item's total is on the item's own line; in others (e.g. Kaufland) it is printed just BELOW its item and carries the item's total. Work out which layout this receipt uses from the prices (quantity x unit price = line total) and pair each quantity line with the right item. Items without a quantity line have a quantity of 1 and a unit price equal to their line total. Decimal commas (4,48) are decimal points.
 
 	Categorization instruction: For each item in "items", assign a category in the "category" field. The value MUST be one of the following exact string values, matching case and spelling:
 	"Tomatoes", "Cucumbers", "Onions", "Garlic", "Peppers", "Carrots", "Lettuce", "Spinach", "Broccoli", "Mushrooms",
@@ -22,6 +22,10 @@ var Prompts = &GeminiPrompts{
 	"Chips", "Nuts", "Chocolate", "Candy", "Cookies", "Ice Cream",
 	"Water", "Juice", "Soda", "Coffee", "Tea", "Beer", "Wine", "Other".
 	If an item does not clearly fit into the specific food items listed, assign "Other". Do not use any other category names.
+
+	Items: list every item once, in the order printed on the receipt. A quantity line is part of its item, not an item of its own.
+
+	Discounts: a discount printed directly with an item belongs in that item's "total_discount" (and "discount_per_unit"). A discount printed separately, usually after the subtotal with the items it applies to (e.g. "XTRA отстъпка -3,73" followed by "Позиции:19,15"), goes in "discounts" with its amount and "positions": the 1-based numbers of those items in the printed order (here [19, 15]); do NOT also put it on the items, it is applied to them later. Give amounts as positive numbers.
 
 	Use the following JSON schema:
 	{
@@ -42,7 +46,8 @@ var Prompts = &GeminiPrompts{
 	  "discounts": [
 	    {
 	      "description": "string",
-	      "amount": number
+	      "amount": number,
+	      "positions": [number]
 	    }
 	  ],
 	  "totals": {
