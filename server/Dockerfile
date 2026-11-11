@@ -13,6 +13,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/bin/web-app ./cmd
 # --- STAGE 2: Runner ---
 FROM alpine:3.20
 
+# pdftotext reads the text of PDF receipts (sent to Gemini as text: a long
+# receipt on one tall PDF page is unreadable as a picture).
+RUN apk add --no-cache poppler-utils
+
 WORKDIR /app
 COPY --from=builder /app/bin/web-app .
 
