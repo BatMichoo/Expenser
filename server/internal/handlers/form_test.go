@@ -1,10 +1,16 @@
 package handlers
 
 import (
+	"database/sql"
+	"errors"
+	"fmt"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
+
+	"expenser/internal/models"
+	"expenser/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -59,4 +65,47 @@ func TestParamID(t *testing.T) {
 	var httpErr *HTTPError
 	require.ErrorAs(t, err, &httpErr)
 	assert.Equal(t, "error.invalid_id", httpErr.MessageKey)
+}
+
+func TestMapError(t *testing.T) {
+	errA, errB, errC := errors.New("a"), errors.New("b"), errors.New("c")
+	cases := []errorCase{
+		{Status: 404, Key: "not.found", Errs: []error{errA}},
+		{Status: 400, Key: "bad.input", Errs: []error{errB, errC}},
+	}
+	assert.NoError(t, mapError(nil, cases))
+
+	var httpErr *HTTPError
+	require.ErrorAs(t, mapError(fmt.Errorf("wrapped: %w", errC), cases), &httpErr)
+	assert.Equal(t, 400, httpErr.Status)
+	assert.Equal(t, "bad.input", httpErr.MessageKey)
+	assert.ErrorIs(t, httpErr, errC, "the cause is kept for the log")
+
+	require.ErrorAs(t, mapError(errA, cases), &httpErr)
+	assert.Equal(t, 404, httpErr.Status)
+
+	other := errors.New("db down")
+	assert.Equal(t, other, mapError(other, cases), "unknown errors pass through")
+}
+
+func TestBillErrorMessages(t *testing.T) {
+	for err, want := range map[error]struct {
+		status int
+		key    string
+	}{
+		sql.ErrNoRows:                 {404, "error.bill_not_found"},
+		services.ErrStaleUpdate:       {409, "error.bill_changed"},
+		services.ErrInvalidPaidAmount: {400, "error.amount_negative"},
+		models.ErrInvalidEmail:        {400, "error.invalid_email"},
+		models.ErrNameTooLong:         {400, "error.bill_name_too_long"},
+		models.ErrTypeMismatch:        {400, "error.bill_type_required"},
+		models.ErrInvalidCategory:     {400, "error.bill_type_required"},
+		models.ErrInvalidRepeat:       {400, "error.bill_invalid"},
+		models.ErrMissingDueDate:      {400, "error.bill_invalid"},
+	} {
+		var httpErr *HTTPError
+		require.ErrorAs(t, billError(err), &httpErr, err.Error())
+		assert.Equal(t, want.status, httpErr.Status, err.Error())
+		assert.Equal(t, want.key, httpErr.MessageKey, err.Error())
+	}
 }

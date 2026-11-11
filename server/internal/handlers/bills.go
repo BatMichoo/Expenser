@@ -42,36 +42,20 @@ func billsChanged(c *gin.Context, expenseRecorded bool) {
 	c.Header("HX-Trigger", "bills-changed")
 }
 
-// billError turns service and validation errors into user-facing errors.
-func billError(err error) error {
-	switch {
-	case err == nil:
-		return nil
-	case errors.Is(err, sql.ErrNoRows):
-		return notFound("error.bill_not_found")
-	case errors.Is(err, services.ErrStaleUpdate):
-		return &HTTPError{Status: http.StatusConflict, MessageKey: "error.bill_changed", Err: err}
-	case errors.Is(err, services.ErrInvalidPaidAmount):
-		return badRequest("error.amount_negative", err)
-	case errors.Is(err, models.ErrInvalidEmail):
-		return badRequest("error.invalid_email", err)
-	case errors.Is(err, models.ErrNameTooLong):
-		return badRequest("error.bill_name_too_long", err)
-	case errors.Is(err, models.ErrTypeMismatch), errors.Is(err, models.ErrInvalidCategory):
-		return badRequest("error.bill_type_required", err)
-	case errors.Is(err, models.ErrInvalidAmount),
-		errors.Is(err, models.ErrInvalidCycleEvery),
-		errors.Is(err, models.ErrInvalidCycleUnit),
-		errors.Is(err, models.ErrInvalidRemindDays),
-		errors.Is(err, models.ErrInvalidRepeat),
-		errors.Is(err, models.ErrInvalidMaxReminders),
-		errors.Is(err, models.ErrInvalidDateKind),
-		errors.Is(err, models.ErrInvalidNotify),
-		errors.Is(err, models.ErrMissingDueDate):
-		return badRequest("error.bill_invalid", err)
-	}
-	return err
+// billErrors are the bill errors users can fix or need to know about.
+var billErrors = []errorCase{
+	{Status: http.StatusNotFound, Key: "error.bill_not_found", Errs: []error{sql.ErrNoRows}},
+	{Status: http.StatusConflict, Key: "error.bill_changed", Errs: []error{services.ErrStaleUpdate}},
+	badInput("error.amount_negative", services.ErrInvalidPaidAmount),
+	badInput("error.invalid_email", models.ErrInvalidEmail),
+	badInput("error.bill_name_too_long", models.ErrNameTooLong),
+	badInput("error.bill_type_required", models.ErrTypeMismatch, models.ErrInvalidCategory),
+	badInput("error.bill_invalid", models.ErrInvalidAmount, models.ErrInvalidCycleEvery, models.ErrInvalidCycleUnit,
+		models.ErrInvalidRemindDays, models.ErrInvalidRepeat, models.ErrInvalidMaxReminders,
+		models.ErrInvalidDateKind, models.ErrInvalidNotify, models.ErrMissingDueDate),
 }
+
+func billError(err error) error { return mapError(err, billErrors) }
 
 func billID(c *gin.Context) (uuid.UUID, error) {
 	id, err := uuid.Parse(c.Param("id"))

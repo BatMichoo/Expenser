@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -53,18 +52,14 @@ func parseBackfillForm(v url.Values, section models.Section, userID uuid.UUID) (
 	return req, nil
 }
 
-// backfillError turns a refused backfill into a user-facing message.
-func backfillError(err error) error {
-	switch {
-	case errors.Is(err, services.ErrBackfillRange):
-		return badRequest("error.backfill_months", err)
-	case errors.Is(err, services.ErrBackfillFuture):
-		return badRequest("error.backfill_future", err)
-	case errors.Is(err, services.ErrBackfillTooLong):
-		return badRequest("error.backfill_too_long", err)
-	}
-	return err
+// backfillErrors explain a refused backfill.
+var backfillErrors = []errorCase{
+	badInput("error.backfill_months", services.ErrBackfillRange),
+	badInput("error.backfill_future", services.ErrBackfillFuture),
+	badInput("error.backfill_too_long", services.ErrBackfillTooLong),
 }
+
+func backfillError(err error) error { return mapError(err, backfillErrors) }
 
 // typeName checks the type belongs to the section and returns its name.
 func (h *BackfillHandler) typeName(section models.Section, typeID int) (string, error) {
