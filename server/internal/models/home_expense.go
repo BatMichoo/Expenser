@@ -113,21 +113,10 @@ type HomeUtilityType struct {
 
 // HouseExpResponse is the data structure returned to the client
 // after a new expense has been successfully created.
-// It includes details of the newly created expense and updated summary data.
 type HouseExpResponse struct {
-	Expense        *HouseExpense   // Expense is the newly created home expense record.
-	MonthlyExpense *MonthlyExpense // MonthlyExpense provides the updated total for the current month.
-	HighestExpense *HighestExpense // HighestExpense provides the updated highest expense for the current month.
-	Modal          *ModalContent
-	Lang           string
-}
-
-type HouseData struct {
-	Name           string
-	MonthlyExpense *MonthlyExpense // MonthlyExpense summarizes the total spending for the current month.
-	HighestExpense *HighestExpense // HighestExpense identifies the single largest expense in the current month.
-	RecentExpenses *[]HouseExpense // RecentExpenses lists individual expenses for the current month.
-	Lang           string
+	Expense *HouseExpense // Expense is the newly created home expense record.
+	Modal   *ModalContent
+	Lang    string
 }
 
 type EditHouseFormData struct {

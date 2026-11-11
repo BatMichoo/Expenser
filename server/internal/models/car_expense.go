@@ -118,21 +118,10 @@ type CarExpenseType struct {
 
 // CarExpResponse is the data structure returned to the client
 // after a new expense has been successfully created.
-// It includes details of the newly created expense and updated summary data.
 type CarExpResponse struct {
-	Expense        *CarExpense     // Expense is the newly created car expense record.
-	MonthlyExpense *MonthlyExpense // MonthlyExpense provides the updated total for the current month.
-	HighestExpense *HighestExpense // HighestExpense provides the updated highest expense for the current month.
-	Modal          *ModalContent
-	Lang           string
-}
-
-type CarData struct {
-	Name           string
-	MonthlyExpense *MonthlyExpense // MonthlyExpense summarizes the total spending for the current month.
-	HighestExpense *HighestExpense // HighestExpense identifies the single largest expense in the current month.
-	RecentExpenses *[]CarExpense   // RecentExpenses lists individual expenses for the current month.
-	Lang           string
+	Expense *CarExpense // Expense is the newly created car expense record.
+	Modal   *ModalContent
+	Lang    string
 }
 
 type EditCarFormData struct {
