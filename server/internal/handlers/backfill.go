@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
-	"strings"
 	"time"
 
 	database "expenser/internal/db"
@@ -33,26 +31,9 @@ func NewBackfillHandler(db *database.DB) *BackfillHandler {
 // of the date is the day of the month for every payment.
 func parseBackfillForm(v url.Values, section models.Section, userID uuid.UUID) (services.BackfillRequest, error) {
 	var req services.BackfillRequest
-	typeID, err := strconv.Atoi(v.Get("typeID"))
+	f, err := parseExpenseFields(v)
 	if err != nil {
-		return req, badRequest("error.invalid_type", err)
-	}
-	amount, err := strconv.ParseFloat(v.Get("amount"), 64)
-	if err != nil {
-		return req, badRequest("error.invalid_amount", err)
-	}
-	discount := 0.0
-	if s := strings.TrimSpace(v.Get("discount_amount")); s != "" {
-		if discount, err = strconv.ParseFloat(s, 64); err != nil {
-			return req, badRequest("error.invalid_amount", err)
-		}
-	}
-	if amount < 0 || discount < 0 {
-		return req, badRequest("error.amount_negative", fmt.Errorf("amount %v, discount %v", amount, discount))
-	}
-	date, err := time.Parse(utilities.DateFormats.Input, v.Get("date"))
-	if err != nil {
-		return req, badRequest("error.invalid_date", err)
+		return req, err
 	}
 	from, err := time.Parse(utilities.DateFormats.MonthOnly, v.Get("backfill_from"))
 	if err != nil {
@@ -64,10 +45,10 @@ func parseBackfillForm(v url.Values, section models.Section, userID uuid.UUID) (
 	}
 	req.From = services.YearMonth{Year: from.Year(), Month: from.Month()}
 	req.To = services.YearMonth{Year: to.Year(), Month: to.Month()}
-	req.Day = date.Day()
+	req.Day = f.Date.Day()
 	req.Expense = models.BackfillExpense{
-		UserID: userID, Section: section, TypeID: typeID,
-		Amount: amount, Discount: discount, Notes: strings.TrimSpace(v.Get("notes")),
+		UserID: userID, Section: section, TypeID: f.TypeID,
+		Amount: f.Amount, Discount: f.Discount, Notes: f.Notes,
 	}
 	return req, nil
 }

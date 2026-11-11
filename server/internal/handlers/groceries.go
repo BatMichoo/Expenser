@@ -220,9 +220,9 @@ func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) error {
 }
 
 func (h *GroceriesHandler) GetEditGroceriesForm(c *gin.Context) error {
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := paramID(c)
 	if err != nil {
-		return badRequest("error.invalid_id", err)
+		return err
 	}
 
 	expense, err := h.BaseHandler.DB.GetGroceriesExpenseByID(id, currentUserID(c))
@@ -244,9 +244,9 @@ func (h *GroceriesHandler) GetEditGroceriesForm(c *gin.Context) error {
 }
 
 func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) error {
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := paramID(c)
 	if err != nil {
-		return badRequest("error.invalid_id", err)
+		return err
 	}
 
 	expense := parseGroceriesExpenseForm(c)
@@ -266,9 +266,9 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) error {
 }
 
 func (h *GroceriesHandler) DeleteGroceriesExpense(c *gin.Context) error {
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := paramID(c)
 	if err != nil {
-		return badRequest("error.invalid_id", err)
+		return err
 	}
 
 	deleted, err := h.BaseHandler.DB.DeleteGroceriesExpense(id, currentUserID(c))

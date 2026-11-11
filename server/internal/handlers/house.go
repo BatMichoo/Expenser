@@ -30,33 +30,20 @@ func NewHouseHandler(rh *RootHandler) *HouseHandler {
 
 // parseHouseExpenseForm reads the fields shared by the create and edit forms.
 func (h *HouseHandler) parseHouseExpenseForm(c *gin.Context) (*models.HouseExpense, error) {
-	utilTypeID, err := strconv.Atoi(c.Request.PostFormValue("typeID"))
+	if err := c.Request.ParseForm(); err != nil {
+		return nil, badRequest("error.invalid_form", err)
+	}
+	f, err := parseExpenseFields(c.Request.PostForm)
 	if err != nil {
-		return nil, badRequest("error.invalid_type", err)
+		return nil, err
 	}
-
-	date, err := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("date"))
-	if err != nil {
-		return nil, badRequest("error.invalid_date", err)
-	}
-
-	amount, err := strconv.ParseFloat(c.Request.PostFormValue("amount"), 64)
-	if err != nil {
-		return nil, badRequest("error.invalid_amount", err)
-	}
-	if amount < 0 {
-		return nil, badRequest("error.amount_negative", fmt.Errorf("amount %v", amount))
-	}
-
-	discountAmount, _ := strconv.ParseFloat(c.Request.PostFormValue("discount_amount"), 64)
-
 	return &models.HouseExpense{
-		Amount:         amount,
-		DiscountAmount: discountAmount,
-		UtilityTypeID:  utilTypeID,
-		ExpenseDate:    date,
-		Notes:          c.Request.PostFormValue("notes"),
-		Metadata:       h.parseHouseMetadata(c, utilTypeID),
+		Amount:         f.Amount,
+		DiscountAmount: f.Discount,
+		UtilityTypeID:  f.TypeID,
+		ExpenseDate:    f.Date,
+		Notes:          f.Notes,
+		Metadata:       h.parseHouseMetadata(c, f.TypeID),
 	}, nil
 }
 
@@ -214,9 +201,9 @@ func (h *HouseHandler) GetHome(c *gin.Context) error {
 // for editing a specific home expense.
 // It expects the expense ID to be provided as a path parameter.
 func (h *HouseHandler) GetEditHouseForm(c *gin.Context) error {
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := paramID(c)
 	if err != nil {
-		return badRequest("error.invalid_id", err)
+		return err
 	}
 
 	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id, currentUserID(c))
@@ -249,9 +236,9 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) error {
 func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) error {
 	lang := currentLang(c)
 
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := paramID(c)
 	if err != nil {
-		return badRequest("error.invalid_id", err)
+		return err
 	}
 
 	editExpense, err := h.parseHouseExpenseForm(c)
@@ -281,9 +268,9 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) error {
 
 func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) error {
 	lang := currentLang(c)
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := paramID(c)
 	if err != nil {
-		return badRequest("error.invalid_id", err)
+		return err
 	}
 
 	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id, currentUserID(c))
@@ -315,9 +302,9 @@ func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) error {
 func (h *HouseHandler) DeleteHouseExp(c *gin.Context) error {
 	lang := currentLang(c)
 
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := paramID(c)
 	if err != nil {
-		return badRequest("error.invalid_id", err)
+		return err
 	}
 
 	deleted, err := h.BaseHandler.DB.DeleteHouseExpense(id, currentUserID(c))
