@@ -1,10 +1,33 @@
 package utilities
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"math"
 )
+
+// ParseTemplates parses the app's templates with TemplateFuncs, plus two
+// functions that need the parsed set itself:
+//   - include renders a template by name, so the layout can show whichever
+//     page a handler chose without a list of page names;
+//   - hasTemplate reports whether a template with that name exists.
+func ParseTemplates(glob string) (*template.Template, error) {
+	var set *template.Template
+	pages := template.FuncMap{
+		"include": func(name string, data any) (template.HTML, error) {
+			var b bytes.Buffer
+			if err := set.ExecuteTemplate(&b, name, data); err != nil {
+				return "", err
+			}
+			// Safe: the output was escaped by html/template as it rendered.
+			return template.HTML(b.String()), nil
+		},
+		"hasTemplate": func(name string) bool { return name != "" && set.Lookup(name) != nil },
+	}
+	set, err := template.New("").Funcs(TemplateFuncs()).Funcs(pages).ParseGlob(glob)
+	return set, err
+}
 
 // TemplateFuncs returns the functions available to every HTML template.
 func TemplateFuncs() template.FuncMap {
