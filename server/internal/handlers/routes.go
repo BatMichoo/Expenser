@@ -33,7 +33,6 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 
 	am := middleware.NewAuthMiddleware(as)
 	chartHandler := NewChartHandler(db)
-	searchHandler := NewSearchHandler(db)
 
 	houseHandler := NewHouseHandler(rootHandler)
 	protectedHouse := router.Group("/house")
@@ -42,8 +41,6 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 
 		protectedHouse.GET("", wrap(houseHandler.GetHome))
 		protectedHouse.GET("/current", wrap(houseHandler.GetCurrentMonth))
-		protectedHouse.GET("/search", wrap(searchHandler.GetSearch))
-		protectedHouse.POST("/search", wrap(searchHandler.GetResultsHouse))
 		protectedHouse.GET("/chart", chartHandler.HouseRoot)
 		protectedHouse.GET("/chart/search", chartHandler.HouseSearch)
 		protectedHouse.GET("/expenses/new", wrap(houseHandler.GetCreateHouseForm))
@@ -63,7 +60,6 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedGroceries.POST("/confirm-batch", wrap(groceriesHandler.ConfirmBatchReceipt))
 		protectedGroceries.GET("", wrap(groceriesHandler.GetGroceriesHome))
 		protectedGroceries.GET("/current", wrap(groceriesHandler.GetCurrentMonth))
-		protectedGroceries.GET("/search", wrap(groceriesHandler.GetGroceriesHome))
 		protectedGroceries.GET("/chart", chartHandler.GroceriesRoot)
 		protectedGroceries.GET("/chart/search", chartHandler.GroceriesChartSearch)
 		protectedGroceries.POST("", wrap(groceriesHandler.PostCreateGroceriesExpense))
@@ -80,8 +76,6 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 
 		protectedCar.GET("", wrap(carHandler.GetHome))
 		protectedCar.GET("/current", wrap(carHandler.GetCurrentMonth))
-		protectedCar.GET("/search", wrap(searchHandler.GetSearch))
-		protectedCar.POST("/search", wrap(searchHandler.GetResultsCar))
 		protectedCar.GET("/chart", chartHandler.CarRoot)
 		protectedCar.GET("/chart/search", chartHandler.CarSearch)
 		protectedCar.GET("/expenses/new", wrap(carHandler.GetCreateCarForm))

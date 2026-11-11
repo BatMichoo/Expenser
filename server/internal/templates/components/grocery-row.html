@@ -1,25 +1,13 @@
 {{ define "grocery-row" }}{{ $g := .G }}
 <tr id="grocery-{{ $g.ID }}" class="exp-row" hx-get="/groceries/edit/{{ $g.ID }}" hx-target="#action-dialog"
   hx-trigger="click[!event.target.closest('button')]">
-  <td class="c-date">{{ $g.PurchaseDate.Format "2006-01-02" }}</td>
-  <td class="c-category">{{ T $.Lang (print "category." $g.CategoryName) }}</td>
+  <td class="c-date">{{ $g.PurchaseDate.Format "02.01" }}</td>
   <td class="c-product">{{ $g.Product }}</td>
-  <td class="c-qty">{{ $g.Quantity }}</td>
-  <td class="c-unit">{{ printf "%.2f" $g.UnitPrice }}</td>
-  <td class="c-unit-discount">{{ printf "%.2f" $g.DiscountPerUnit }}</td>
-  <td class="c-amount">{{ printf "%.2f" $g.TotalPrice }}</td>
-  <td class="c-discount{{ if le $g.TotalDiscount 0.0 }} is-empty{{ end }}">{{ printf "%.2f" $g.TotalDiscount }}</td>
-  <td class="c-store">{{ $g.SupermarketName }}</td>
+  <td class="c-category">{{ T $.Lang (print "category." $g.CategoryName) }}</td>
+  <td class="c-details">{{ $g.Quantity }} × {{ printf "%.2f" $g.UnitPrice }}{{ if $g.SupermarketName }} · {{ $g.SupermarketName }}{{ end }}</td>
+  <td class="c-discount num{{ if le $g.TotalDiscount 0.0 }} is-empty{{ end }}">{{ if gt $g.TotalDiscount 0.0 }}{{ printf "%.2f" $g.TotalDiscount }}{{ else }}—{{ end }}</td>
+  <td class="c-amount num">{{ money $g.TotalPrice }}</td>
   <td class="c-meta">{{ $g.Quantity }} × {{ printf "%.2f" $g.UnitPrice }}{{ if $g.SupermarketName }} · {{ $g.SupermarketName }}{{ end }} · {{ $g.PurchaseDate.Format "02.01" }}</td>
-  <td class="c-actions">
-    <button class="table-action-button blue" hx-get="/groceries/edit/{{ $g.ID }}" hx-target="#action-dialog"
-      hx-swap="innerHTML">
-      {{ T $.Lang "common.edit" }}
-    </button>
-    <button class="table-action-button red" hx-delete="/groceries/{{ $g.ID }}" hx-target="#grocery-{{ $g.ID }}"
-      hx-swap="outerHTML" hx-confirm='{{ T $.Lang "modal.delete_confirm" }}'>
-      {{ T $.Lang "common.delete" }}
-    </button>
-  </td>
+  <td class="c-actions">{{ template "row-actions" (dict "Lang" $.Lang "EditURL" (print "/groceries/edit/" $g.ID) "DeleteURL" (print "/groceries/" $g.ID) "RowID" (print "#grocery-" $g.ID) "DeleteConfirm" (T $.Lang "modal.delete_confirm")) }}</td>
 </tr>
 {{ end }}

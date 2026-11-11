@@ -224,3 +224,51 @@ document.addEventListener(
   },
   true,
 );
+
+// --- Keyboard shortcuts (desktop): N adds an expense, Escape closes the panel ---
+document.addEventListener("keydown", (event) => {
+  if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) {
+    return;
+  }
+  const actionDialog = document.getElementById("action-dialog");
+  const dialogOpen = actionDialog && actionDialog.open;
+
+  if (event.key === "Escape" && dialogOpen) {
+    hideDialog();
+    return;
+  }
+
+  const target = event.target;
+  const typing =
+    target.closest("input, textarea, select, [contenteditable]") !== null;
+  if ((event.key === "n" || event.key === "N") && !typing && !dialogOpen) {
+    const addButton = document.querySelector(".month-toolbar .add-btn");
+    if (addButton && addButton.offsetParent !== null) {
+      event.preventDefault();
+      addButton.click();
+    }
+  }
+});
+
+// --- List | Chart switcher follows whatever is loaded into the section ---
+// Anything can load the chart or the list (the tabs, the mini chart, the
+// month arrows), so the highlight is set from the request that filled the
+// section rather than from which button was clicked.
+function sectionViewOf(path) {
+  return (path || "").split("?")[0].endsWith("/chart") ? "chart" : "list";
+}
+
+function syncSectionButtons(path) {
+  const view = sectionViewOf(path);
+  document.querySelectorAll(".section-button").forEach((button) => {
+    const buttonView = sectionViewOf(button.getAttribute("hx-get"));
+    button.classList.toggle("active", buttonView === view);
+  });
+}
+
+document.body.addEventListener("htmx:afterSwap", (event) => {
+  const target = event.detail.target;
+  if (target && (target.id === "section-content" || target.id === "month-view")) {
+    syncSectionButtons(event.detail.pathInfo.requestPath);
+  }
+});

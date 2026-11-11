@@ -560,4 +560,143 @@
     width: 100%;
     min-height: 2.75em;
   }
+
+  /* Month view on phones: one column, no side chart */
+  .header-section {
+    padding: 0 0.75em;
+    min-height: 3.25em;
+    gap: 0;
+  }
+
+  .header-left {
+    margin-left: auto;
+  }
+
+  #section-list {
+    margin: 0 0.75em 0.75em;
+    padding: 0.2em;
+    width: auto;
+  }
+
+  #section-list li {
+    flex: 1;
+  }
+
+  #section-list .section-button {
+    width: 100%;
+  }
+
+  .month-view {
+    display: block;
+    padding: 0 0 1em;
+  }
+
+  .month-side,
+  .month-toolbar .add-btn,
+  .month-type,
+  .kpi-count {
+    display: none;
+  }
+
+  .month-toolbar {
+    gap: 0.5em;
+    margin: 0 0.75em 0.75em;
+  }
+
+  .month-switcher {
+    width: 100%;
+    justify-content: space-between;
+    box-sizing: border-box;
+  }
+
+  .month-step {
+    width: 2.75em;
+    height: 2.75em;
+  }
+
+  .month-label {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .month-today {
+    position: absolute;
+    right: 3.5em;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .month-filters {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .month-search {
+    height: 2.75em;
+    font-size: 16px;
+  }
+
+  .kpi-tiles {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6em;
+    margin: 0 0.75em 0.5em;
+  }
+
+  .kpi {
+    padding: 0.6em 0.8em;
+  }
+
+  .kpi-value {
+    font-size: 1.25em;
+  }
+
+  #add-expense-section {
+    margin: 0 0.75em 0.5em;
+    justify-content: stretch;
+  }
+
+  #add-expense-section .upload-btn {
+    display: inline-flex;
+    width: 100%;
+    min-height: 2.75em;
+  }
+
+  .month-toolbar .upload-btn {
+    display: none;
+  }
+
+  .month-view .expenses-table {
+    display: block;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .month-view .expenses-table tr.exp-row td.c-amount {
+    text-align: right;
+  }
+
+  .month-view .expenses-table tr.empty-row td {
+    padding: 1.5em 1em;
+  }
+
+  /* Add/edit sheet v2 on phones: edge-to-edge header and footer */
+  .sheet .new-expense-heading {
+    margin: 0;
+    padding: 0.4rem 0.75rem 0.75rem 1rem;
+    font-size: 1.1rem;
+  }
+
+  .sheet .new-expense-form {
+    padding: 1rem 1rem 0;
+  }
+
+  .sheet .new-expense-form .sheet-actions {
+    margin: 0.5rem -1rem 0;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  }
+
+  .sheet .new-expense-form .sheet-actions .sheet-save {
+    flex: 1;
+  }
 }

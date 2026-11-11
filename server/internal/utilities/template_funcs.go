@@ -3,11 +3,30 @@ package utilities
 import (
 	"fmt"
 	"html/template"
+	"math"
 )
 
 // TemplateFuncs returns the functions available to every HTML template.
 func TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
+		// cat maps a list position to one of the 6 categorical colours
+		// (cat-1 … cat-6) used for per-type charts.
+		"neg": func(v float64) float64 {
+			return -v
+		},
+		"cat": func(i int) int {
+			return i%6 + 1
+		},
+		// pct is part as a percentage of whole, clamped to 0–100 for bars.
+		"pct": func(part, whole float64) float64 {
+			if whole <= 0 {
+				return 0
+			}
+			return math.Max(0, math.Min(100, part/whole*100))
+		},
+		"money": func(v float64) string {
+			return fmt.Sprintf("%.2f %s", v, CurrencySymbol())
+		},
 		"contains": func(slice interface{}, item string) bool {
 			s, ok := slice.([]string)
 			if !ok {

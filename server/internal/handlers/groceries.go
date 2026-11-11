@@ -3,94 +3,38 @@ package handlers
 import (
 	"bytes"
 	"expenser/internal/models"
+	"expenser/internal/services"
 	"expenser/internal/services/gemini"
 	"expenser/internal/utilities"
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type GroceriesHandler struct {
 	BaseHandler BaseHandler
 	GeminiS     *gemini.GeminiService
+	months      *services.MonthViewService
 }
 
 func NewGroceriesHandler(rh *RootHandler, gs *gemini.GeminiService) *GroceriesHandler {
 	return &GroceriesHandler{
 		BaseHandler: rh.BaseHandler,
 		GeminiS:     gs,
+		months:      services.NewMonthViewService(rh.BaseHandler.DB),
 	}
 }
 
-func (h *GroceriesHandler) getGroceriesPageData(c *gin.Context) (*models.GroceriesData, error) {
-	userID := currentUserID(c)
-
-	highest, monthly, err := h.monthSummary(userID)
-	if err != nil {
-		return nil, err
-	}
-	highest.IsOOB = false
-	monthly.IsOOB = false
-
-	recentExpenses, err := h.BaseHandler.DB.GetRecentGroceriesExpenses(userID)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching recent groceries expenses: %w", err)
-	}
-
-	return &models.GroceriesData{
-		Name:           "current",
-		MonthlyExpense: monthly,
-		HighestExpense: highest,
-		RecentExpenses: &recentExpenses,
-		Lang:           currentLang(c),
-	}, nil
-}
-
-// monthSummary returns the current month's highest category and total
-// expense as out-of-band fragments, used to refresh the summary cards.
-func (h *GroceriesHandler) monthSummary(userID uuid.UUID) (*models.HighestExpense, *models.MonthlyExpense, error) {
-	month := time.Now().Month()
-
-	highestExp, category, err := h.BaseHandler.DB.GetHighestGroceriesCategoryForMonth(month, userID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error fetching highest groceries category: %w", err)
-	}
-
-	monthlyTotal, err := h.BaseHandler.DB.GetTotalGroceriesExpenseForMonth(month, userID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error fetching total groceries expense: %w", err)
-	}
-
-	highest := &models.HighestExpense{
-		Amount: highestExp,
-		Type:   strings.TrimSpace(category),
-		IsOOB:  true,
-	}
-	monthly := &models.MonthlyExpense{
-		Amount: monthlyTotal,
-		Month:  month.String(),
-		IsOOB:  true,
-	}
-	return highest, monthly, nil
-}
-
-// renderGroceryRows renders the given rows plus out-of-band summary cards.
+// renderGroceryRows renders the given rows and tells the page that expenses
+// changed, so the month view refreshes its totals.
 func (h *GroceriesHandler) renderGroceryRows(c *gin.Context, status int, rows []gin.H) error {
-	highest, monthly, err := h.monthSummary(currentUserID(c))
-	if err != nil {
-		return err
-	}
-
+	expensesChanged(c)
 	c.HTML(status, "grocery-rows", gin.H{
-		"Rows":           rows,
-		"HighestExpense": highest,
-		"MonthlyExpense": monthly,
-		"Lang":           currentLang(c),
+		"Rows": rows,
+		"Lang": currentLang(c),
 	})
 	return nil
 }
@@ -209,15 +153,9 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 		rows = append(rows, groceryRowData(expense, lang))
 	}
 
-	highest, monthly, err := h.monthSummary(userID)
-	if err != nil {
-		return err
-	}
-
+	expensesChanged(c)
 	c.HTML(http.StatusCreated, "confirm-batch-groceries", gin.H{
-		"Rows":           rows,
-		"HighestExpense": highest,
-		"MonthlyExpense": monthly,
+		"Rows": rows,
 		"Modal": &models.ModalContent{
 			Title:   utilities.T(lang, "modal.success_title"),
 			Message: utilities.T(lang, "modal.create_success"),
@@ -229,7 +167,7 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 }
 
 func (h *GroceriesHandler) GetGroceriesHome(c *gin.Context) error {
-	pageData, err := h.getGroceriesPageData(c)
+	pageData, err := h.monthView(c)
 	if err != nil {
 		return err
 	}
@@ -340,11 +278,19 @@ func (h *GroceriesHandler) DeleteGroceriesExpense(c *gin.Context) error {
 }
 
 func (h *GroceriesHandler) GetCurrentMonth(c *gin.Context) error {
-	pageData, err := h.getGroceriesPageData(c)
+	pageData, err := h.monthView(c)
 	if err != nil {
 		return err
 	}
 
 	renderView(c, utilities.Templates.Components.GroceriesCurrent, utilities.Templates.Pages.Groceries, pageData)
 	return nil
+}
+
+// monthView builds the groceries page for the month, search and category
+// filter in the request's query string (current month when missing).
+func (h *GroceriesHandler) monthView(c *gin.Context) (*models.MonthView, error) {
+	now := time.Now()
+	ym := services.ParseYearMonth(c.Query("month"), now)
+	return h.months.Groceries(currentUserID(c), ym, monthFilter(c), currentLang(c), now)
 }

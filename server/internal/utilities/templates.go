@@ -23,8 +23,6 @@ type HTMXComponents struct {
 	EditGroceriesForm    string
 	HouseExpRow          string
 	CarExpRow            string
-	TotalCard            string
-	HighestCard          string
 	Modal                string
 	ModalSuccess         string
 	ModalError           string
@@ -33,9 +31,6 @@ type HTMXComponents struct {
 	HouseCurrent         string
 	CarCurrent           string
 	Dialog               string
-	Search               string
-	SearchResultsHouse   string
-	SearchResultsCar     string
 	GroceriesCurrent     string
 	GroceriesReceiptForm string
 	CreateGroceriesForm  string
@@ -81,8 +76,6 @@ var components = &HTMXComponents{
 	EditHouseExpForm:     "edit-house-exp-form",
 	CreateCarExpForm:     "create-car-exp-form",
 	EditCarExpForm:       "edit-car-exp-form",
-	TotalCard:            "total-card",
-	HighestCard:          "highest-card",
 	Modal:                "modal",
 	ModalSuccess:         "success-modal",
 	ModalError:           "error-modal",
@@ -91,9 +84,6 @@ var components = &HTMXComponents{
 	HouseCurrent:         "house-current",
 	CarCurrent:           "car-current",
 	Dialog:               "confirm-modal",
-	Search:               "search",
-	SearchResultsHouse:   "search-results-house",
-	SearchResultsCar:     "search-results-car",
 	GroceriesCurrent:     "groceries-current",
 	GroceriesReceiptForm: "groceries-receipt-form",
 	EditGroceriesForm:    "edit-groceries-form",
