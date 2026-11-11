@@ -41,28 +41,21 @@ func (h *RootHandler) GetRoot(c *gin.Context) error {
 		"Year":       time.Now().Year(),
 	}
 	if isLoggedIn(c) {
-		// The home page must always load: without the extras it just
-		// greets without a name.
-		home, err := h.homeData(c)
+		// The home page must always load: without its data it just greets.
+		home, err := h.home(c)
 		if err != nil {
 			log.Printf("home page data: %v", err)
-		}
-		for k, v := range home {
-			data[k] = v
+		} else {
+			data["Home"] = home
 		}
 	}
 	renderPage(c, utilities.Templates.Pages.Index, data)
 	return nil
 }
 
-// homeData is what the logged-in home shows: whom to greet and how many
-// bills need attention.
-func (h *RootHandler) homeData(c *gin.Context) (gin.H, error) {
+// home builds the logged-in home page's cards.
+func (h *RootHandler) home(c *gin.Context) (*models.HomeView, error) {
 	user, err := h.DB.GetUserByID(currentUserID(c))
-	if err != nil {
-		return nil, err
-	}
-	payments, err := h.DB.ListRecurringPayments(c.Request.Context(), user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -70,10 +63,7 @@ func (h *RootHandler) homeData(c *gin.Context) (gin.H, error) {
 	if name == "" {
 		name = user.Username
 	}
-	return gin.H{
-		"Name":           name,
-		"BillsAttention": services.BuildBillsView(payments, time.Now()).NeedsAttention(),
-	}, nil
+	return services.NewHomeService(h.DB).Build(c.Request.Context(), user.ID, name, currentLang(c), time.Now())
 }
 
 // GetFlash pops the pending flash error up as the error modal.

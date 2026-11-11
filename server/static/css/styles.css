@@ -3691,7 +3691,7 @@ tr:hover .row-actions,
 .home {
   box-sizing: border-box;
   width: 100%;
-  max-width: 760px;
+  max-width: 920px;
   margin: 3rem auto;
   padding: 0 1rem;
   text-align: left;
@@ -3708,61 +3708,6 @@ tr:hover .row-actions,
 .home-sub {
   margin: 0.25rem 0 1.5rem;
   color: var(--text-muted);
-}
-
-.home-tiles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-.home-tile {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 0.9rem;
-  row-gap: 0.15rem;
-  align-items: center;
-  margin: 0;
-  padding: 1.25rem;
-  text-align: left;
-  font: inherit;
-  color: var(--text);
-  border: 1px solid var(--bg-dark);
-  border-radius: var(--radius);
-  background: var(--bg-light);
-  box-shadow: none;
-  cursor: pointer;
-  transition: border-color 0.15s, transform 0.15s;
-}
-
-.home-tile:hover {
-  border-color: var(--accent);
-  transform: translateY(-1px);
-}
-
-.home-tile svg {
-  grid-row: 1 / span 2;
-  box-sizing: content-box;
-  padding: 0.6rem;
-  border-radius: 0.75rem;
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.home-tile-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.home-tile-sub {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.home-tile-alert .home-tile-sub {
-  font-weight: 600;
-  color: var(--warning);
 }
 
 /* Settings > Account: password change, folded by default */
@@ -3838,12 +3783,190 @@ tr:hover .row-actions,
     margin: 1.5rem auto;
   }
 
-  .home-tiles {
+}
+
+/* Logged-in home: a 2x2 grid of section cards. Each whole card is a link to
+   its tab. */
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.home-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 1.25rem 1.35rem;
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid var(--bg-dark);
+  border-radius: var(--radius);
+  background: var(--bg-light);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.home-card:hover,
+.home-card:focus-visible {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px oklch(0 0 0 / 0.12);
+  outline: none;
+}
+
+.home-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+}
+
+.home-icon {
+  display: inline-flex;
+  padding: 0.45rem;
+  border-radius: 0.6rem;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.home-big {
+  margin-top: 0.5rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-cmp {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.home-cmp > span {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.home-cmp.up {
+  color: var(--warning);
+}
+
+.home-cmp.down {
+  color: var(--success);
+}
+
+.home-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--bg-dark);
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.home-row b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.home-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 2.5rem;
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+
+.home-bars span {
+  flex: 1;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--accent);
+  opacity: 0.4;
+}
+
+.home-bars span.current {
+  opacity: 1;
+}
+
+.home-empty {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.home-bill-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.home-bill {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--bg-dark);
+}
+
+.home-bill:first-child {
+  border-top: 0;
+}
+
+.home-bill-main,
+.home-bill-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-bill-side {
+  align-items: flex-end;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.home-bill-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.home-bill-due,
+.home-bill-last {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.home-bill.late .home-bill-due {
+  font-weight: 600;
+  color: var(--danger);
+}
+
+.home-more {
+  margin-top: auto;
+  padding-top: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+@media (max-width: 760px) {
+  .home-grid {
     grid-template-columns: 1fr;
-    gap: 0.6rem;
+    gap: 0.75rem;
   }
 
-  .home-tile {
-    padding: 0.9rem 1rem;
+  .home-card {
+    padding: 1rem;
   }
 }

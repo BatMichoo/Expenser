@@ -228,3 +228,15 @@ func (db *DB) GetGroceriesCategoryTotals(userID uuid.UUID, from, to time.Time) (
 		WHERE e.user_id = $1 AND e.purchase_date >= $2 AND e.purchase_date < $3
 		GROUP BY c.name`, userID, from, to)
 }
+
+// GetGroceriesStoreTotals returns net groceries spending per supermarket,
+// keyed by its name, for [from, to). Purchases without a store name are
+// left out.
+func (db *DB) GetGroceriesStoreTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
+	return db.monthlyTotals(`
+		SELECT TRIM(supermarket_name), SUM(total_price - total_discount)
+		FROM groceries_expenses
+		WHERE user_id = $1 AND purchase_date >= $2 AND purchase_date < $3
+			AND TRIM(COALESCE(supermarket_name, '')) <> ''
+		GROUP BY 1`, userID, from, to)
+}

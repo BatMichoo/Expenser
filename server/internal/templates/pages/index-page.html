@@ -1,37 +1,22 @@
 {{/* Home. Logged out: the brand panel with Log in / Create account (logout
      lands here). Logged in: a greeting and shortcuts to each section.
-     Data: Lang, IsLoggedIn, Name, BillsAttention (all optional). */}}
+     Data: Lang, IsLoggedIn, Home (*models.HomeView, missing when its data
+     couldn't be loaded). */}}
 {{ define "index-page" }}
 {{ if .IsLoggedIn }}
 <section class="home">
-  <h2 class="home-greeting">{{ if .Name }}{{ printf (T .Lang "home.greeting") .Name }}{{ else }}{{ T .Lang "home.greeting_plain" }}{{ end }}</h2>
-  <p class="home-sub">{{ T .Lang "home.where_to" }}</p>
-  <div class="home-tiles">
-    <button type="button" class="home-tile" hx-get="/house" hx-target="#tracker-content" hx-push-url="true">
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-      <span class="home-tile-title">{{ T .Lang "nav.house" }}</span>
-      <span class="home-tile-sub">{{ T .Lang "home.house_sub" }}</span>
-    </button>
-    <button type="button" class="home-tile" hx-get="/car" hx-target="#tracker-content" hx-push-url="true">
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" /><circle cx="7" cy="17" r="2" /><path d="M9 17h6" /><circle cx="17" cy="17" r="2" /></svg>
-      <span class="home-tile-title">{{ T .Lang "nav.car" }}</span>
-      <span class="home-tile-sub">{{ T .Lang "home.car_sub" }}</span>
-    </button>
-    <button type="button" class="home-tile" hx-get="/groceries" hx-target="#tracker-content" hx-push-url="true">
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
-      <span class="home-tile-title">{{ T .Lang "nav.groceries" }}</span>
-      <span class="home-tile-sub">{{ T .Lang "home.groceries_sub" }}</span>
-    </button>
-    <button type="button" class="home-tile{{ if .BillsAttention }} home-tile-alert{{ end }}" hx-get="/bills" hx-target="#tracker-content" hx-push-url="true">
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /><path d="m9 16 2 2 4-4" /></svg>
-      <span class="home-tile-title">{{ T .Lang "nav.bills" }}</span>
-      <span class="home-tile-sub">{{ if .BillsAttention }}{{ printf (T .Lang "home.bills_attention") .BillsAttention }}{{ else }}{{ T .Lang "home.bills_ok" }}{{ end }}</span>
-    </button>
+  {{ with .Home }}
+  <h2 class="home-greeting">{{ printf (T .Lang "home.greeting") .Name }}</h2>
+  <p class="home-sub">{{ T .Lang "home.year_so_far" }}</p>
+  <div class="home-grid">
+    {{ template "home-card" (dict "C" .House "Title" "nav.house" "TopLabel" "home.biggest" "TopIsType" true "Lang" .Lang) }}
+    {{ template "home-card" (dict "C" .Car "Title" "nav.car" "TopLabel" "home.biggest" "TopIsType" true "Lang" .Lang) }}
+    {{ template "home-card" (dict "C" .Groceries "Title" "nav.groceries" "TopLabel" "home.top_store" "Lang" .Lang) }}
+    {{ template "home-bills-card" . }}
   </div>
+  {{ else }}
+  <h2 class="home-greeting">{{ T .Lang "home.greeting_plain" }}</h2>
+  {{ end }}
 </section>
 {{ else }}
 <section class="auth-split">
@@ -41,11 +26,86 @@
       <h1 class="auth-title">{{ T .Lang "home.welcome_title" }}</h1>
       <p class="auth-sub">{{ T .Lang "home.welcome_sub" }}</p>
       <div class="home-actions">
-        <a class="auth-submit" href="/login" hx-get="/login" hx-target="#tracker-content" hx-push-url="true">{{ T .Lang "login.submit" }}</a>
-        <a class="auth-secondary" href="/register" hx-get="/register" hx-target="#tracker-content" hx-push-url="true">{{ T .Lang "home.create_account" }}</a>
+        <a class="auth-submit" href="/login" hx-get="/login" hx-target="#tracker-content" hx-swap="innerHTML show:window:top" hx-push-url="true">{{ T .Lang "login.submit" }}</a>
+        <a class="auth-secondary" href="/register" hx-get="/register" hx-target="#tracker-content" hx-swap="innerHTML show:window:top" hx-push-url="true">{{ T .Lang "home.create_account" }}</a>
       </div>
     </div>
   </div>
 </section>
 {{ end }}
+{{ end }}
+
+{{/* One expense section on the home page. Expects C (models.HomeCategory),
+     Title and TopLabel (i18n keys), TopIsType (translate TopName), Lang. */}}
+{{ define "home-card" }}
+{{ $c := .C }}
+<a class="home-card" href="/{{ $c.Section }}" hx-get="/{{ $c.Section }}" hx-target="#tracker-content" hx-swap="innerHTML show:window:top" hx-push-url="true">
+  <span class="home-card-head">
+    {{ template "home-icon" $c.Section }}
+    <span class="home-card-title">{{ T .Lang .Title }}</span>
+  </span>
+  <span class="home-big">{{ money $c.YearTotal }}</span>
+  {{ if $c.HasLastYear }}
+  <span class="home-cmp {{ if ge $c.ChangePct 0.0 }}up{{ else }}down{{ end }}">
+    {{ if ge $c.ChangePct 0.0 }}▲{{ else }}▼{{ end }} {{ printf "%.0f" (abs $c.ChangePct) }}%
+    <span>{{ printf (T .Lang "home.vs_last_year") (money $c.LastYearTotal) }}</span>
+  </span>
+  {{ else }}
+  <span class="home-cmp"><span>{{ T .Lang "home.no_last_year" }}</span></span>
+  {{ end }}
+  {{ if $c.Empty }}
+  <span class="home-empty">{{ T .Lang "home.nothing_yet" }}</span>
+  {{ else }}
+  <span class="home-row"><span>{{ T .Lang "home.this_month" }}</span><b>{{ money $c.ThisMonth }}</b></span>
+  {{ if $c.TopName }}
+  <span class="home-row"><span>{{ T .Lang .TopLabel }}</span><b>{{ if .TopIsType }}{{ T .Lang (print "type." $c.TopName) }}{{ else }}{{ $c.TopName }}{{ end }} · {{ printf "%.0f" $c.TopPct }}%</b></span>
+  {{ end }}
+  <span class="home-bars" aria-hidden="true">
+    {{ range $c.Bars }}<span{{ if .Current }} class="current"{{ end }} style="height: {{ printf "%.0f" .Height }}%"
+      title="{{ T $.Lang (print "month." .MonthNum) }}: {{ money .Total }}"></span>{{ end }}
+  </span>
+  {{ end }}
+</a>
+{{ end }}
+
+{{/* The home page's Bills card: the next few bills, each with what its type
+     cost in the same month last year. Expects a *models.HomeView. */}}
+{{ define "home-bills-card" }}
+<a class="home-card home-bills" href="/bills" hx-get="/bills" hx-target="#tracker-content" hx-swap="innerHTML show:window:top" hx-push-url="true">
+  <span class="home-card-head">
+    {{ template "home-icon" "bills" }}
+    <span class="home-card-title">{{ T .Lang "home.upcoming_bills" }}</span>
+  </span>
+  {{ if .Bills }}
+  <span class="home-bill-list">
+    {{ range .Bills }}
+    <span class="home-bill{{ if and (lt .DaysLeft 0) (ne (print .Payment.DateKind) "arrives") }} late{{ end }}">
+      <span class="home-bill-main">
+        <span class="home-bill-name">{{ template "bill-label" (dict "P" .Payment "Lang" $.Lang) }}</span>
+        <span class="home-bill-due">{{ template "due-text" (dict "Days" .DaysLeft "Arrives" (eq (print .Payment.DateKind) "arrives") "Lang" $.Lang) }}</span>
+      </span>
+      <span class="home-bill-side">
+        {{ if .Payment.ExpectedAmount }}<b>{{ money (deref .Payment.ExpectedAmount) }}</b>{{ end }}
+        {{ if .HasLastYear }}<span class="home-bill-last">{{ printf (T $.Lang "home.last_year_month") (T $.Lang (print "month_short." .LastYearMonth)) (money .LastYear) }}</span>{{ end }}
+      </span>
+    </span>
+    {{ end }}
+  </span>
+  {{ if .MoreBills }}<span class="home-more">{{ printf (T .Lang "home.more_bills") .MoreBills }}</span>{{ end }}
+  {{ else }}
+  <span class="home-empty">{{ T .Lang "home.no_bills" }}</span>
+  {{ end }}
+</a>
+{{ end }}
+
+{{ define "home-icon" }}
+<span class="home-icon" aria-hidden="true">
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    {{ if eq . "house" }}<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+    {{ else if eq . "car" }}<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" /><circle cx="7" cy="17" r="2" /><path d="M9 17h6" /><circle cx="17" cy="17" r="2" />
+    {{ else if eq . "groceries" }}<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" />
+    {{ else }}<rect width="18" height="18" x="3" y="4" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /><path d="m9 16 2 2 4-4" />{{ end }}
+  </svg>
+</span>
 {{ end }}

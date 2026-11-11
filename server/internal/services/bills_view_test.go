@@ -73,18 +73,3 @@ func TestBuildBillsViewWaiting(t *testing.T) {
 	assert.Equal(t, 1, v.OverdueCount)
 	assert.Equal(t, 1, v.WaitingCount)
 }
-
-func TestBillsViewNeedsAttention(t *testing.T) {
-	today := day(2026, 11, 11)
-	arrived := bill("Gas", day(2026, 11, 8), true, 40, 0)
-	arrived.DateKind = models.DateArrives
-	v := BuildBillsView([]models.RecurringPayment{
-		bill("Overdue", day(2026, 11, 5), true, 10, 3),
-		arrived,
-		bill("Soon", day(2026, 11, 13), true, 10, 3),
-		bill("Later", day(2026, 12, 20), true, 10, 3),
-		bill("Paused", day(2026, 11, 1), false, 10, 3),
-	}, today)
-	assert.Equal(t, 3, v.NeedsAttention(), "overdue, waiting and due soon; not later or paused")
-	assert.Equal(t, 0, models.BillsView{}.NeedsAttention())
-}
