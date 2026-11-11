@@ -132,7 +132,7 @@ func (s *MonthViewService) House(userID uuid.UUID, ym YearMonth, filter MonthFil
 	items := make([]SummaryItem, 0, len(*rows))
 	shown := []models.HouseExpense{}
 	for _, e := range *rows {
-		items = append(items, SummaryItem{Type: e.UtilityType, Amount: e.Amount})
+		items = append(items, SummaryItem{Type: e.UtilityType, Amount: e.Amount - e.DiscountAmount})
 		if filter.TypeID != 0 && e.UtilityTypeID != filter.TypeID {
 			continue
 		}
@@ -178,7 +178,7 @@ func (s *MonthViewService) Car(userID uuid.UUID, ym YearMonth, filter MonthFilte
 	items := make([]SummaryItem, 0, len(*rows))
 	shown := []models.CarExpense{}
 	for _, e := range *rows {
-		items = append(items, SummaryItem{Type: e.Type, Amount: e.Amount})
+		items = append(items, SummaryItem{Type: e.Type, Amount: e.Amount - e.DiscountAmount})
 		if filter.TypeID != 0 && e.ExpenseTypeID != filter.TypeID {
 			continue
 		}

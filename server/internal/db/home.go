@@ -162,10 +162,12 @@ func (db *DB) GetHouseExpensesForMonth(month time.Month, year int, userId uuid.U
 	return &expenses, nil
 }
 
+// GetHouseExpensesForYear feeds the yearly chart; Amount is net of the discount, like
+// every other total.
 func (db *DB) GetHouseExpensesForYear(year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
 		SELECT
-			he.id, ut.name, he.amount, he.expense_date, he.notes, he.metadata, he.created_at, he.created_by
+			he.id, ut.name, he.amount - he.discount_amount, he.expense_date, he.notes, he.metadata, he.created_at, he.created_by
 			FROM home_expenses he
 		JOIN
 			utility_types ut ON he.utility_type_id = ut.id
@@ -209,9 +211,11 @@ func (db *DB) GetHouseExpensesForYear(year int, userId uuid.UUID) (*[]models.Hou
 	return &expenses, nil
 }
 
+// GetHouseExpenseTypeForYear feeds the yearly chart; Amount is net of the discount, like
+// every other total.
 func (db *DB) GetHouseExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
-		SELECT he.id, ut.name, he.amount, he.expense_date, he.metadata FROM home_expenses he
+		SELECT he.id, ut.name, he.amount - he.discount_amount, he.expense_date, he.metadata FROM home_expenses he
 		JOIN utility_types ut ON he.utility_type_id = ut.id
 		WHERE he.utility_type_id = $1 AND he.created_by = $3 AND ($2 = 0 OR EXTRACT(YEAR FROM he.expense_date) = $2)
 		ORDER BY he.expense_date
@@ -312,20 +316,20 @@ func (db *DB) DeleteHouseExpense(id int, userID uuid.UUID) (bool, error) {
 	return true, nil
 }
 
-// GetHouseMonthlyTotals returns house spending per month, keyed "YYYY-MM", for expenses
+// GetHouseMonthlyTotals returns net house spending (amount minus discount) per month, keyed "YYYY-MM", for expenses
 // dated in [from, to).
 func (db *DB) GetHouseMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
 	return db.monthlyTotals(`
-		SELECT to_char(expense_date, 'YYYY-MM'), SUM(amount)
+		SELECT to_char(expense_date, 'YYYY-MM'), SUM(amount - discount_amount)
 		FROM home_expenses
 		WHERE created_by = $1 AND expense_date >= $2 AND expense_date < $3
 		GROUP BY 1`, userID, from, to)
 }
 
-// GetHouseTypeTotals returns house spending per utility type, keyed by name, for [from, to).
+// GetHouseTypeTotals returns net house spending per utility type, keyed by name, for [from, to).
 func (db *DB) GetHouseTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
 	return db.monthlyTotals(`
-		SELECT ut.name, SUM(he.amount)
+		SELECT ut.name, SUM(he.amount - he.discount_amount)
 		FROM home_expenses he
 		JOIN utility_types ut ON ut.id = he.utility_type_id
 		WHERE he.created_by = $1 AND he.expense_date >= $2 AND he.expense_date < $3

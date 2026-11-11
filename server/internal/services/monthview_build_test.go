@@ -196,3 +196,15 @@ func TestHouseMonthViewUpcomingBills(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, past.UpcomingBills, "only on the current month")
 }
+
+func TestHouseMonthViewSubtractsDiscounts(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	store := newMonthStore()
+	store.house = []models.HouseExpense{
+		{ID: 1, UtilityTypeID: 3, UtilityType: "Gas", Amount: 85, DiscountAmount: 5},
+		{ID: 2, UtilityTypeID: 2, UtilityType: "Water", Amount: 20},
+	}
+	v, err := NewMonthViewService(store).House(uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	require.NoError(t, err)
+	assert.InDelta(t, 100, v.Summary.Total, 0.001, "85 - 5 + 20")
+}
