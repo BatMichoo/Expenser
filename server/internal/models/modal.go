@@ -15,4 +15,6 @@ type ModalConfirmContent struct {
 	Endpoint template.URL
 	Message  string
 	Lang     string
+	// ConfirmLabel replaces the default "Ok" on the confirm button.
+	ConfirmLabel string
 }

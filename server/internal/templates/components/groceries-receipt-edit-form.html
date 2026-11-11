@@ -1,104 +1,53 @@
+{{/* Step 2 of a receipt upload: check what was read, then save all items. */}}
 {{ define "groceries-receipt-edit-form" }}
-<div class="receipt-edit-modal">
-  <h3>{{ .Store }}</h3>
-  <form
-    hx-post="/groceries/confirm-batch"
-    hx-target="#recent-expenses"
-    hx-swap="afterbegin"
-    hx-on::after-request="if(event.detail.successful && event.target === this) hideDialog()"
-  >
-    <div class="overflow-x-auto">
-    <table class="expenses-table">
-      <thead>
-        <tr>
-          <th>Category</th>
-          <th>Product</th>
-          <th>Qty</th>
-          <th>Unit Price</th>
-          <th>Discount/Unit</th>
-          <th>Total Price</th>
-          <th>Total Discount</th>
-          <th>Supermarket</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{ range $index, $item := .Items }}
-        <tr>
-          <td>
-            <select name="items[{{ $index }}].category_id" required>
-              {{ range $.Categories }}
-              <option value="{{ .ID }}" {{ if eq .Name $item.Category }}selected{{ else if and (eq $item.Category "") (eq .Name "Other") }}selected{{ end }}>{{ T $.Lang (print "category." .Name) }}</option>
-              {{ end }}
-            </select>
-          </td>
-          <td>
-            <input
-              type="text"
-              name="items[{{ $index }}].product"
-              value="{{ $item.Name }}"
-              required
-            />
-          </td>
-          <td>
-            <input
-              type="number"
-              name="items[{{ $index }}].quantity"
-              value="{{ $item.Quantity }}"
-              step="0.001"
-              required
-            />
-          </td>
-          <td>
-            <input
-              type="number"
-              name="items[{{ $index }}].unit_price"
-              value="{{ $item.UnitPrice }}"
-              step="0.01"
-              required
-            />
-          </td>
-          <td>
-            <input
-              type="number"
-              name="items[{{ $index }}].discount_per_unit"
-              value="{{ $item.DiscountPerUnit }}"
-              step="0.01"
-            />
-          </td>
-          <td>
-            <input
-              type="number"
-              name="items[{{ $index }}].total_price"
-              value="{{ $item.TotalPrice }}"
-              step="0.01"
-              required
-            />
-          </td>
-          <td>
-            <input
-              type="number"
-              name="items[{{ $index }}].total_discount"
-              value="{{ $item.TotalDiscount }}"
-              step="0.01"
-            />
-          </td>
-          <td>
-            <input
-              type="hidden"
-              name="items[{{ $index }}].supermarket_name"
-              value="{{ $.Store }}"
-            />{{ $.Store }}
-          </td>
-        </tr>
-        {{ end }}
-      </tbody>
-    </table>
-    </div>
-    <div class="btn-container" style="margin-top: 1.5em;">
-      <button type="submit" class="btn-primary">Confirm & Save All</button>
-      <button type="button" class="btn-secondary" onclick="hideDialog()">
-        {{ T $.Lang "common.cancel" }}
-      </button>
+<div class="sheet">
+  {{ template "sheet-heading" (dict "Title" (or .Store (T .Lang "receipt.store_unknown")) "Lang" .Lang) }}
+  <form class="new-expense-form receipt-review-form" hx-post="/groceries/confirm-batch" hx-target="#recent-expenses"
+    hx-swap="afterbegin" hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    <p class="receipt-summary">
+      <strong>{{ printf (T .Lang "receipt.items") (len .Items) }} · {{ money .Total }}</strong>
+      <span>{{ T .Lang "receipt.review" }}</span>
+    </p>
+    {{ range $i, $item := .Items }}
+    <fieldset class="receipt-item">
+      <input type="hidden" name="items[{{ $i }}].supermarket_name" value="{{ $.Store }}" />
+      <div class="receipt-item-head">
+        <input type="text" name="items[{{ $i }}].product" value="{{ $item.Name }}" required
+          aria-label='{{ T $.Lang "groceries.product" }}' class="receipt-product" />
+        <span class="receipt-item-total">{{ money $item.TotalPrice }}</span>
+      </div>
+      <div class="receipt-item-grid">
+        <label class="span-2">
+          <span>{{ T $.Lang "groceries.category" }}</span>
+          <select name="items[{{ $i }}].category_id" required>
+            {{ range $.Categories }}
+            <option value="{{ .ID }}" {{ if eq .Name $item.Category }}selected{{ else if and (eq $item.Category "") (eq .Name "Other") }}selected{{ end }}>{{ T $.Lang (print "category." .Name) }}</option>
+            {{ end }}
+          </select>
+        </label>
+        <label>
+          <span>{{ T $.Lang "groceries.quantity" }}</span>
+          <input type="number" name="items[{{ $i }}].quantity" value="{{ $item.Quantity }}" step="0.001" inputmode="decimal" required />
+        </label>
+        <label>
+          <span>{{ T $.Lang "groceries.unit_price" }}</span>
+          <input type="number" name="items[{{ $i }}].unit_price" value="{{ $item.UnitPrice }}" step="0.01" inputmode="decimal" required />
+        </label>
+        <label>
+          <span>{{ T $.Lang "groceries.total_price" }}</span>
+          <input type="number" name="items[{{ $i }}].total_price" value="{{ $item.TotalPrice }}" step="0.01" inputmode="decimal" required />
+        </label>
+        <label>
+          <span>{{ T $.Lang "groceries.total_discount" }}</span>
+          <input type="number" name="items[{{ $i }}].total_discount" value="{{ $item.TotalDiscount }}" step="0.01" inputmode="decimal" />
+        </label>
+        <input type="hidden" name="items[{{ $i }}].discount_per_unit" value="{{ $item.DiscountPerUnit }}" />
+      </div>
+    </fieldset>
+    {{ end }}
+    <div class="sheet-actions">
+      <button type="button" class="sheet-cancel" onClick="hideDialog();">{{ T .Lang "common.cancel" }}</button>
+      <button type="submit" class="btn-primary sheet-save">{{ printf (T .Lang "receipt.save_items") (len .Items) }}</button>
     </div>
   </form>
 </div>

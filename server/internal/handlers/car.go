@@ -284,13 +284,23 @@ func (h *CarHandler) GetDeleteConfirm(c *gin.Context) error {
 		return badRequest("error.invalid_id", err)
 	}
 
+	exp, err := h.BaseHandler.DB.GetCarExpenseByID(id, currentUserID(c))
+	if err != nil {
+		return err
+	}
+	if exp == nil {
+		return notFound("error.expense_not_found")
+	}
+
 	c.HTML(http.StatusOK, utilities.Templates.Components.ModalConfirm, &models.ModalConfirmContent{
 		Title:    utilities.T(lang, "modal.delete_confirm"),
 		Method:   "DELETE",
 		Endpoint: template.URL(fmt.Sprintf("/car/expenses/%v", id)),
 		Target:   fmt.Sprintf("#exp-%v", id),
-		Message:  fmt.Sprintf(utilities.T(lang, "modal.delete_message"), id),
-		Lang:     lang,
+		Message: fmt.Sprintf(utilities.T(lang, "modal.delete_expense_message"),
+			utilities.T(lang, "type."+exp.Type), exp.Amount, utilities.CurrencySymbol(), exp.Date.Format("02.01.2006")),
+		ConfirmLabel: utilities.T(lang, "common.delete"),
+		Lang:         lang,
 	})
 	return nil
 }

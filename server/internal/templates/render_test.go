@@ -500,3 +500,91 @@ func TestListTabKeepsViewedMonth(t *testing.T) {
 		})
 	}
 }
+
+func TestConfirmModalLabel(t *testing.T) {
+	data := &models.ModalConfirmContent{Title: "Delete?", Method: "DELETE", Endpoint: "/house/expenses/2", Target: "#exp-2", Message: "Water", Lang: "en"}
+	doc := parseHTML(t, render(t, "confirm-modal", data))
+	assert.Equal(t, "Ok", strings.TrimSpace(doc.Find("#confirm-btn").Text()), "default label")
+
+	data.ConfirmLabel = "Delete"
+	doc = parseHTML(t, render(t, "confirm-modal", data))
+	assert.Equal(t, "Delete", strings.TrimSpace(doc.Find("#confirm-btn").Text()))
+}
+
+func TestToasts(t *testing.T) {
+	cases := map[string]string{"success-modal": "success", "error-modal": "error", "modal": "info"}
+	for tmpl, kind := range cases {
+		t.Run(tmpl, func(t *testing.T) {
+			doc := parseHTML(t, render(t, tmpl, &models.ModalContent{Title: "Saved", Message: "Gas updated", Lang: "en"}))
+			toast := doc.Find("dialog#modal .toast")
+			require.Equal(t, 1, toast.Length())
+			assert.True(t, toast.HasClass(kind))
+			assert.Equal(t, 1, toast.Find(".toast-icon svg").Length())
+			assert.Equal(t, "Saved", strings.TrimSpace(toast.Find(".toast-title").Text()))
+			assert.Equal(t, "Gas updated", strings.TrimSpace(toast.Find(".toast-message").Text()))
+			closeBtn := toast.Find("button#confirm-btn.toast-close")
+			require.Equal(t, 1, closeBtn.Length(), "keeps the id main.js focuses")
+			label, _ := closeBtn.Attr("aria-label")
+			assert.Equal(t, "Close", label)
+			assert.Equal(t, 1, toast.Find("progress#countdown-progress").Length(), "auto-dismiss countdown")
+		})
+	}
+}
+
+func TestReceiptUploadSheet(t *testing.T) {
+	doc := parseHTML(t, render(t, "groceries-receipt-form", map[string]any{"Lang": "en"}))
+	require.Equal(t, 1, doc.Find(".sheet .sheet-grab").Length(), "same panel as add/edit")
+	assert.Contains(t, doc.Find(".new-expense-heading").Text(), "Upload Receipt")
+
+	form := doc.Find("form.receipt-upload-form")
+	target, _ := form.Attr("hx-target")
+	assert.Equal(t, "#action-dialog", target, "the review replaces the upload step")
+	indicator, _ := form.Attr("hx-indicator")
+	assert.Equal(t, "#receipt-reading", indicator)
+	assert.Equal(t, 1, doc.Find("#receipt-reading").Length(), "reading state while the AI works")
+
+	drop := doc.Find("label.dropzone")
+	require.Equal(t, 1, drop.Length())
+	input := drop.Find(`input[type="file"][name="receipt"]`)
+	require.Equal(t, 1, input.Length(), "the whole drop zone is the file picker")
+	accept, _ := input.Attr("accept")
+	assert.Equal(t, "image/*,.pdf", accept)
+
+	assert.Equal(t, 1, doc.Find(".sheet-actions .sheet-save").Length())
+	assert.Equal(t, 1, doc.Find(".sheet-actions .sheet-cancel").Length())
+}
+
+func TestReceiptReviewSheet(t *testing.T) {
+	items := []models.ReceiptItem{
+		{Name: "Chicken breast", Quantity: 0.8, UnitPrice: 9.9, TotalPrice: 7.92, TotalDiscount: 1.2, Category: "Meat"},
+		{Name: "Milk", Quantity: 2, UnitPrice: 1.45, TotalPrice: 2.9, Category: ""},
+	}
+	cats := []models.Category{{ID: 1, Name: "Meat"}, {ID: 2, Name: "Dairy"}, {ID: 9, Name: "Other"}}
+	doc := parseHTML(t, render(t, "groceries-receipt-edit-form", map[string]any{
+		"Store": "Lidl", "Items": items, "Categories": cats, "Total": 9.62, "Lang": "en",
+	}))
+
+	head := doc.Find(".new-expense-heading")
+	assert.Contains(t, head.Text(), "Lidl")
+	assert.Contains(t, doc.Find(".receipt-summary").Text(), "2 items")
+	assert.Contains(t, doc.Find(".receipt-summary").Text(), "9.62 €")
+
+	cards := doc.Find(".receipt-item")
+	require.Equal(t, 2, cards.Length(), "one card per item instead of a wide table")
+	assert.Equal(t, 0, doc.Find("table").Length())
+	product, _ := cards.Eq(0).Find(`input[name="items[0].product"]`).Attr("value")
+	assert.Equal(t, "Chicken breast", product)
+	sel, _ := cards.Eq(0).Find(`select[name="items[0].category_id"] option[selected]`).Attr("value")
+	assert.Equal(t, "1", sel)
+	other, _ := cards.Eq(1).Find(`select[name="items[1].category_id"] option[selected]`).Attr("value")
+	assert.Equal(t, "9", other, "unknown category falls back to Other")
+	for _, f := range []string{"quantity", "unit_price", "total_price", "discount_per_unit", "total_discount", "supermarket_name"} {
+		assert.Equal(t, 1, cards.Eq(1).Find(`[name="items[1].`+f+`"]`).Length(), f)
+	}
+
+	form := doc.Find("form")
+	post, _ := form.Attr("hx-post")
+	assert.Equal(t, "/groceries/confirm-batch", post)
+	assert.Contains(t, doc.Find(".sheet-save").Text(), "Save 2 items")
+	assert.NotContains(t, doc.Text(), "Confirm & Save All", "no hard-coded English")
+}

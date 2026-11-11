@@ -39,14 +39,13 @@ type HTMXComponents struct {
 // Responses defines the names for specific HTMX partial responses.
 // These are often fragments returned by HTMX requests that swap content on the page.
 type Responses struct {
-	CreateHouseExp         string // CreateHouseExp is the name for the response partial after creating a home expense.
-	UpdateHouseExp         string // UpdateHomeExp is the name for the response partial after updating a home expense.
-	DeleteHouseExp         string // DeleteHomeExp is the name for the response partial after deleting a home expense.
-	CreateCarExp           string // CreateHomeExp is the name for the response partial after creating a home expense.
-	UpdateCarExp           string // UpdateHomeExp is the name for the response partial after updating a home expense.
-	DeleteCarExp           string // DeleteHomeExp is the name for the response partial after deleting a home expense.
-	RegisterSuccess        string
-	GroceriesReceiptResult string
+	CreateHouseExp  string // CreateHouseExp is the name for the response partial after creating a home expense.
+	UpdateHouseExp  string // UpdateHomeExp is the name for the response partial after updating a home expense.
+	DeleteHouseExp  string // DeleteHomeExp is the name for the response partial after deleting a home expense.
+	CreateCarExp    string // CreateHomeExp is the name for the response partial after creating a home expense.
+	UpdateCarExp    string // UpdateHomeExp is the name for the response partial after updating a home expense.
+	DeleteCarExp    string // DeleteHomeExp is the name for the response partial after deleting a home expense.
+	RegisterSuccess string
 }
 
 // HTMLTemplates groups all template names used throughout the application.
@@ -92,12 +91,11 @@ var components = &HTMXComponents{
 
 // responses initializes the Responses struct with specific template identifiers.
 var responses = &Responses{
-	CreateHouseExp:         "create-house-exp",
-	DeleteHouseExp:         "delete-house-exp",
-	CreateCarExp:           "create-car-exp",
-	DeleteCarExp:           "delete-car-exp",
-	RegisterSuccess:        "register-success",
-	GroceriesReceiptResult: "groceries-receipt-result",
+	CreateHouseExp:  "create-house-exp",
+	DeleteHouseExp:  "delete-house-exp",
+	CreateCarExp:    "create-car-exp",
+	DeleteCarExp:    "delete-car-exp",
+	RegisterSuccess: "register-success",
 }
 
 // Templates is the main exported variable that provides access to all

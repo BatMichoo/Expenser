@@ -15,7 +15,7 @@
       end }} hx-target="{{ .Target }}" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) {
         hideDialog();
     }">
-      {{ T .Lang "modal.confirm_btn" }}
+      {{ if .ConfirmLabel }}{{ .ConfirmLabel }}{{ else }}{{ T .Lang "modal.confirm_btn" }}{{ end }}
     </button>
     <button id="cancel-btn" type="button" onClick="hideDialog()">{{ T .Lang "modal.cancel_btn" }}</button>
   </div>

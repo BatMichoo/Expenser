@@ -185,7 +185,7 @@
   "modal.error_title": "Нещо се обърка!",
   "modal.success_title": "Успех!",
   "modal.delete_confirm": "Сигурни ли сте, че искате да изтриете това?",
-  "modal.delete_message": "Моля потвърдете ако искате да изтриете разход с ID: %d",
+  "modal.delete_expense_message": "%s — %.2f %s от %s ще бъде изтрит. Това не може да се отмени.",
   "modal.create_success": "Успешно добавен разход.",
   "modal.update_success": "Успешно редактиран разход.",
   "modal.update_success_message": "Разход с ID: %d редактиран!",
@@ -267,5 +267,13 @@
   "insights.vs_usual_hint": "▲▼ спрямо средното за 6 месеца",
   "insights.this_month": "Този месец",
   "insights.average": "средно",
-  "insights.spent_so_far": "Похарчено досега"
+  "insights.spent_so_far": "Похарчено досега",
+  "modal.close": "Затвори",
+  "receipt.choose_file": "Изберете снимка или PDF на бележката",
+  "receipt.file_hint": "Ще прочетем продуктите и цените, за да ги проверите преди запис.",
+  "receipt.reading": "Четене на бележката…",
+  "receipt.items": "%d продукта",
+  "receipt.save_items": "Запази %d продукта",
+  "receipt.review": "Проверете продуктите преди запис.",
+  "receipt.store_unknown": "Бележка"
 }
