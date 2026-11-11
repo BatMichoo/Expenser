@@ -377,5 +377,17 @@
   "email.subject": "Reminder: %s — %s",
   "email.greeting": "Hi %s,",
   "email.intro": "A reminder about this bill:",
-  "email.footer": "You're getting this because reminders are on for this bill in Expenser. Mark it paid in the app to stop them."
+  "email.footer": "You're getting this because reminders are on for this bill in Expenser. Mark it paid in the app to stop them.",
+  "settings.reminder_email": "Reminder email",
+  "settings.reminder_email_hint": "Bill reminders are sent here unless a bill has its own address. Leave it empty and bills without their own address get no reminders.",
+  "settings.email_saved": "Reminder email saved",
+  "settings.email_cleared": "Reminder email removed",
+  "bills.notify": "Send reminders",
+  "bills.notify.email": "By email",
+  "bills.notify.none": "Don't send",
+  "bills.notify_email": "Send to",
+  "bills.notify_email_hint": "Leave empty to use your reminder email from Settings.",
+  "bills.no_email_placeholder": "Set a reminder email in Settings",
+  "bills.no_email": "No email, no reminders",
+  "error.invalid_email": "That doesn't look like an email address."
 }

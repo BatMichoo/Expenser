@@ -53,6 +53,8 @@ func billError(err error) error {
 		return &HTTPError{Status: http.StatusConflict, MessageKey: "error.bill_changed", Err: err}
 	case errors.Is(err, services.ErrInvalidPaidAmount):
 		return badRequest("error.amount_negative", err)
+	case errors.Is(err, models.ErrInvalidEmail):
+		return badRequest("error.invalid_email", err)
 	case errors.Is(err, models.ErrNameTooLong):
 		return badRequest("error.bill_name_too_long", err)
 	case errors.Is(err, models.ErrTypeMismatch), errors.Is(err, models.ErrInvalidCategory):
@@ -64,6 +66,7 @@ func billError(err error) error {
 		errors.Is(err, models.ErrInvalidRepeat),
 		errors.Is(err, models.ErrInvalidMaxReminders),
 		errors.Is(err, models.ErrInvalidDateKind),
+		errors.Is(err, models.ErrInvalidNotify),
 		errors.Is(err, models.ErrMissingDueDate):
 		return badRequest("error.bill_invalid", err)
 	}
@@ -132,6 +135,8 @@ func parseBillForm(v url.Values) (*models.RecurringPayment, error) {
 	}
 
 	p.DateKind = models.BillDateKind(v.Get("date_kind"))
+	p.Notify = models.NotifyType(v.Get("notify"))
+	p.NotifyEmail = v.Get("notify_email")
 	if s := v.Get("remind_days_after"); s != "" {
 		if p.RemindDaysAfter, err = strconv.Atoi(s); err != nil {
 			return nil, fmt.Errorf("remind after: %w", models.ErrInvalidRemindDays)
@@ -209,6 +214,7 @@ type billFormData struct {
 	Options      map[string]bool
 	OtherOption  string
 	KnownOptions []string
+	UserEmail    string // the user's reminder email, shown as the default
 	Lang         string
 }
 
@@ -247,6 +253,9 @@ func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEd
 	d := &billFormData{
 		Bill: p, IsEdit: isEdit, Types: types, Category: category,
 		Options: map[string]bool{}, KnownOptions: knownPaymentOptions, Lang: currentLang(c),
+	}
+	if user, err := h.BaseHandler.DB.GetUserByID(currentUserID(c)); err == nil {
+		d.UserEmail = user.Email
 	}
 	if p.UtilityTypeID != nil {
 		d.TypeID = *p.UtilityTypeID
@@ -288,6 +297,7 @@ func (h *BillsHandler) GetNewBillForm(c *gin.Context) error {
 		CycleEvery:       1,
 		RemindDaysBefore: 3,
 		DateKind:         models.DatePayBy,
+		Notify:           models.NotifyEmail,
 		RepeatEveryDays:  &defaultRepeat,
 		PaymentOptions:   models.DefaultPaymentOptions(),
 		Active:           true,

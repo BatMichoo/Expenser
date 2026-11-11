@@ -107,3 +107,17 @@ func TestParseBillFormReminderSchedule(t *testing.T) {
 	_, err = parseBillForm(v)
 	assert.Error(t, err)
 }
+
+func TestParseBillFormDelivery(t *testing.T) {
+	v := url.Values{"category": {"house"}, "typeID": {"4"}, "due_date": {"2026-12-01"}, "cycle_every": {"1"}, "cycle_unit": {"month"},
+		"notify": {"email"}, "notify_email": {" partner@example.com "}}
+	p, err := parseBillForm(v)
+	require.NoError(t, err)
+	assert.Equal(t, models.NotifyEmail, p.Notify)
+	assert.Equal(t, " partner@example.com ", p.NotifyEmail, "trimmed by the model")
+
+	v.Set("notify", "none")
+	p, err = parseBillForm(v)
+	require.NoError(t, err)
+	assert.Equal(t, models.NotifyNone, p.Notify)
+}

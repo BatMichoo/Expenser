@@ -407,7 +407,7 @@ type BillsView struct {
 // ReminderRecipient is where this bill's reminders go: the bill's own
 // address, else the owner's preferred email. Empty means nobody, and then
 // no reminder is sent at all.
-func (p *RecurringPayment) ReminderRecipient() string {
+func (p RecurringPayment) ReminderRecipient() string {
 	if p.Notify == NotifyNone {
 		return ""
 	}

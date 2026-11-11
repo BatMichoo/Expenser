@@ -69,6 +69,14 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedGroceries.PUT("/:id", wrap(groceriesHandler.EditGroceriesExpense))
 		protectedGroceries.DELETE("/:id", wrap(groceriesHandler.DeleteGroceriesExpense))
 	}
+	settingsHandler := NewSettingsHandler(rootHandler)
+	protectedSettings := router.Group("/settings")
+	{
+		protectedSettings.Use(am.AuthMiddleware())
+		protectedSettings.GET("/email", wrap(settingsHandler.GetReminderEmailForm))
+		protectedSettings.POST("/email", wrap(settingsHandler.SaveReminderEmail))
+	}
+
 	billsHandler := NewBillsHandler(rootHandler)
 	protectedBills := router.Group("/bills")
 	{

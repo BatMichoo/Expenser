@@ -97,7 +97,7 @@
   <div class="bill-main">
     <span class="bill-name">{{ template "bill-label" (dict "P" $p "Lang" .Lang) }}</span>
     <span class="bill-meta">
-      {{ if $p.Name }}{{ T .Lang (print "type." $p.TypeName) }} · {{ end }}{{ template "cycle-text" (dict "P" $p "Lang" .Lang) }}{{ if $p.PaymentHours }} · {{ $p.PaymentHours }}{{ end }}
+      {{ if and $p.Active (eq (print $p.Notify) "email") (not $p.ReminderRecipient) }}<span class="no-email">{{ T .Lang "bills.no_email" }}</span> · {{ end }}{{ if $p.Name }}{{ T .Lang (print "type." $p.TypeName) }} · {{ end }}{{ template "cycle-text" (dict "P" $p "Lang" .Lang) }}{{ if $p.PaymentHours }} · {{ $p.PaymentHours }}{{ end }}
     </span>
   </div>
   <div class="bill-due">
@@ -222,6 +222,19 @@
         <span class="inline-suffix">{{ T .Lang "bills.reminders_suffix" }}</span>
       </div>
 
+      <div class="category-switch segmented notify-kind" role="group" aria-label='{{ T .Lang "bills.notify" }}'>
+        <label><input type="radio" name="notify" value="email" {{ if ne (print .Bill.Notify) "none" }}checked{{ end }} />
+          <span>{{ T .Lang "bills.notify.email" }}</span></label>
+        <label><input type="radio" name="notify" value="none" {{ if eq (print .Bill.Notify) "none" }}checked{{ end }} />
+          <span>{{ T .Lang "bills.notify.none" }}</span></label>
+      </div>
+      <div class="notify-address">
+        <label for="bill-notify-email">{{ T .Lang "bills.notify_email" }}</label>
+        <input type="email" id="bill-notify-email" name="notify_email" value="{{ .Bill.NotifyEmail }}" autocomplete="email"
+          placeholder='{{ if .UserEmail }}{{ .UserEmail }}{{ else }}{{ T .Lang "bills.no_email_placeholder" }}{{ end }}' />
+        <span class="field-hint">{{ T .Lang "bills.notify_email_hint" }}</span>
+      </div>
+
       {{ if .IsEdit }}
       <div>
         <label for="bill-snooze">{{ T .Lang "bills.snooze" }}</label>
@@ -322,3 +335,20 @@
 {{ end }}
 
 {{ define "arrives-text" }}{{ if eq .Days 0 }}{{ T .Lang "bills.due.arrives_today" }}{{ else if eq .Days 1 }}{{ T .Lang "bills.due.arrives_tomorrow" }}{{ else if gt .Days 1 }}{{ printf (T .Lang "bills.due.arrives_in") .Days }}{{ else if eq .Days -1 }}{{ T .Lang "bills.due.waiting_one" }}{{ else }}{{ printf (T .Lang "bills.due.waiting") (negi .Days) }}{{ end }}{{ end }}
+
+{{/* Settings > Reminder email: where bill reminders go by default. */}}
+{{ define "reminder-email-form" }}
+<div class="sheet">
+  {{ template "sheet-heading" (dict "Title" (T .Lang "settings.reminder_email") "Lang" .Lang) }}
+  <form class="new-expense-form" hx-post="/settings/email" hx-swap="none"
+    hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    <div>
+      <label for="reminder-email">{{ T .Lang "settings.reminder_email" }}</label>
+      <input type="email" id="reminder-email" name="email" value="{{ .Email }}" autocomplete="email"
+        placeholder="you@example.com" />
+      <span class="field-hint">{{ T .Lang "settings.reminder_email_hint" }}</span>
+    </div>
+    {{ template "sheet-actions" (dict "Lang" .Lang "SaveLabel" "common.save") }}
+  </form>
+</div>
+{{ end }}
