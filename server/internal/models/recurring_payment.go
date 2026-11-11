@@ -17,6 +17,17 @@ const (
 	RecurringCategoryCar   RecurringPaymentCategory = "car"
 )
 
+// BillDateKind says what a bill's date means.
+type BillDateKind string
+
+const (
+	// DatePayBy: the date is a deadline (electricity, internet, insurance).
+	DatePayBy BillDateKind = "pay_by"
+	// DateArrives: the date is roughly when the bill shows up; there is no
+	// deadline (gas). Such bills are never overdue, only waiting.
+	DateArrives BillDateKind = "arrives"
+)
+
 type CycleUnit string
 
 const (
@@ -60,6 +71,14 @@ type RecurringPayment struct {
 	PaymentHours     string
 	PaymentOptions   []string // nil means "use defaults" on create
 	Notes            string
+
+	// Reminder schedule (see ShouldRemind).
+	DateKind        BillDateKind
+	RemindDaysAfter int        // arrives bills: first reminder N days after the date
+	RepeatEveryDays *int       // nil: remind once; 1: daily; N: every N days until paid
+	MaxReminders    *int       // nil: no limit; counted per cycle
+	RemindersSent   int        // reminders sent for the current due date (read-only)
+	SnoozedUntil    *time.Time // no reminders before this date; cleared when paid
 	// ExpectedAmount is what the bill usually costs (nil when unknown). It
 	// pre-fills MarkPaid and is shown in reminders.
 	ExpectedAmount *float64
@@ -74,14 +93,17 @@ type RecurringPayment struct {
 }
 
 var (
-	ErrInvalidCategory   = errors.New("category must be 'house' or 'car'")
-	ErrTypeMismatch      = errors.New("house payments need a utility type and car payments need a car expense type, not both")
-	ErrInvalidCycleUnit  = errors.New("cycle unit must be one of day, week, month, year")
-	ErrInvalidCycleEvery = errors.New("cycle every must be at least 1")
-	ErrInvalidRemindDays = errors.New("remind days before cannot be negative")
-	ErrMissingDueDate    = errors.New("due date is required")
-	ErrInvalidAmount     = errors.New("amount cannot be negative")
-	ErrNameTooLong       = fmt.Errorf("name cannot be longer than %d characters", MaxRecurringPaymentNameLength)
+	ErrInvalidCategory     = errors.New("category must be 'house' or 'car'")
+	ErrTypeMismatch        = errors.New("house payments need a utility type and car payments need a car expense type, not both")
+	ErrInvalidCycleUnit    = errors.New("cycle unit must be one of day, week, month, year")
+	ErrInvalidCycleEvery   = errors.New("cycle every must be at least 1")
+	ErrInvalidRemindDays   = errors.New("remind days before cannot be negative")
+	ErrMissingDueDate      = errors.New("due date is required")
+	ErrInvalidAmount       = errors.New("amount cannot be negative")
+	ErrInvalidDateKind     = errors.New("date kind must be pay_by or arrives")
+	ErrInvalidRepeat       = errors.New("reminders can repeat at most once a day")
+	ErrInvalidMaxReminders = errors.New("the reminder limit must be at least 1")
+	ErrNameTooLong         = fmt.Errorf("name cannot be longer than %d characters", MaxRecurringPaymentNameLength)
 )
 
 // MaxRecurringPaymentNameLength matches recurring_payments.name VARCHAR(100).
@@ -91,6 +113,9 @@ const MaxRecurringPaymentNameLength = 100
 // payment options (see NormalizePaymentOptions). Call before Validate.
 func (p *RecurringPayment) Normalize() {
 	p.Name = strings.TrimSpace(p.Name)
+	if p.DateKind == "" {
+		p.DateKind = DatePayBy
+	}
 	p.PaymentOptions = NormalizePaymentOptions(p.PaymentOptions)
 }
 
@@ -137,8 +162,19 @@ func (p *RecurringPayment) Validate() error {
 	if p.CycleEvery < 1 {
 		return ErrInvalidCycleEvery
 	}
-	if p.RemindDaysBefore < 0 {
+	if p.RemindDaysBefore < 0 || p.RemindDaysAfter < 0 {
 		return ErrInvalidRemindDays
+	}
+	switch p.DateKind {
+	case "", DatePayBy, DateArrives:
+	default:
+		return ErrInvalidDateKind
+	}
+	if p.RepeatEveryDays != nil && *p.RepeatEveryDays < 1 {
+		return ErrInvalidRepeat
+	}
+	if p.MaxReminders != nil && *p.MaxReminders < 1 {
+		return ErrInvalidMaxReminders
 	}
 	if p.DueDate.IsZero() {
 		return ErrMissingDueDate
@@ -250,10 +286,56 @@ func (p *RecurringPayment) DaysUntilDue(today time.Time) int {
 	return int(DateOnly(p.DueDate).Sub(DateOnly(today)).Hours() / 24)
 }
 
-// ReminderDate is the first day a reminder should go out for the current
-// due date.
-func (p *RecurringPayment) ReminderDate() time.Time {
-	return DateOnly(p.DueDate).AddDate(0, 0, -p.RemindDaysBefore)
+// FirstReminderDate is the first day a reminder goes out for the current
+// due date: N days before a deadline, or N days after an arrival date.
+func (p *RecurringPayment) FirstReminderDate() time.Time {
+	due := DateOnly(p.DueDate)
+	if p.DateKind == DateArrives {
+		return due.AddDate(0, 0, p.RemindDaysAfter)
+	}
+	return due.AddDate(0, 0, -p.RemindDaysBefore)
+}
+
+// IsOverdue: a pay-by bill whose deadline has passed unpaid.
+func (p *RecurringPayment) IsOverdue(today time.Time) bool {
+	return p.DateKind != DateArrives && DateOnly(p.DueDate).Before(DateOnly(today))
+}
+
+// IsWaiting: an arrives bill past its date and not yet paid.
+func (p *RecurringPayment) IsWaiting(today time.Time) bool {
+	return p.DateKind == DateArrives && DateOnly(p.DueDate).Before(DateOnly(today))
+}
+
+// ShouldRemind reports whether a reminder is due today:
+//  1. paused or snoozed: no;
+//  2. before the first reminder date: no;
+//  3. not yet reminded for this due date: yes;
+//  4. the per-cycle cap is reached: no;
+//  5. otherwise only if repeating and the repeat interval has passed.
+//
+// Past a pay-by deadline the bill keeps its own rhythm.
+func (p *RecurringPayment) ShouldRemind(today time.Time) bool {
+	today = DateOnly(today)
+	if !p.Active {
+		return false
+	}
+	if p.SnoozedUntil != nil && today.Before(DateOnly(*p.SnoozedUntil)) {
+		return false
+	}
+	if today.Before(p.FirstReminderDate()) {
+		return false
+	}
+	thisCycle := p.LastNotifiedFor != nil && DateOnly(*p.LastNotifiedFor).Equal(DateOnly(p.DueDate))
+	if !thisCycle || p.LastNotifiedOn == nil {
+		return true
+	}
+	if p.MaxReminders != nil && p.RemindersSent >= *p.MaxReminders {
+		return false
+	}
+	if p.RepeatEveryDays == nil {
+		return false
+	}
+	return !today.Before(DateOnly(*p.LastNotifiedOn).AddDate(0, 0, *p.RepeatEveryDays))
 }
 
 // UpcomingPayment is an unpaid recurring payment due within a time window,

@@ -94,7 +94,7 @@ func TestDaysUntilDue(t *testing.T) {
 
 func TestReminderDate(t *testing.T) {
 	p := &RecurringPayment{DueDate: date(2026, 3, 2), RemindDaysBefore: 3}
-	assert.Equal(t, date(2026, 2, 27), p.ReminderDate())
+	assert.Equal(t, date(2026, 2, 27), p.FirstReminderDate())
 }
 
 func TestValidate(t *testing.T) {
@@ -156,4 +156,107 @@ func TestMissedCycles(t *testing.T) {
 	assert.True(t, p.MissedCycles(date(2026, 11, 11)), "Sep and Oct due dates both passed")
 	assert.False(t, p.MissedCycles(date(2026, 10, 9)), "overdue but the next cycle has not come yet")
 	assert.False(t, p.MissedCycles(date(2026, 9, 1)), "not overdue")
+}
+
+func ip(i int) *int { return &i }
+
+func reminderBill() RecurringPayment {
+	return RecurringPayment{
+		Active: true, DateKind: DatePayBy, DueDate: date(2026, 11, 20), StartDate: date(2026, 11, 20),
+		CycleUnit: CycleMonth, CycleEvery: 1, RemindDaysBefore: 3,
+	}
+}
+
+func TestFirstReminderDate(t *testing.T) {
+	p := reminderBill()
+	assert.Equal(t, date(2026, 11, 17), p.FirstReminderDate(), "pay-by: N days before")
+	p.DateKind, p.RemindDaysAfter = DateArrives, 2
+	assert.Equal(t, date(2026, 11, 22), p.FirstReminderDate(), "arrives: N days after")
+}
+
+func TestShouldRemind(t *testing.T) {
+	sent := func(p *RecurringPayment, forDue, on time.Time, count int) {
+		p.LastNotifiedFor, p.LastNotifiedOn, p.RemindersSent = &forDue, &on, count
+	}
+	tests := []struct {
+		name  string
+		setup func(p *RecurringPayment)
+		today time.Time
+		want  bool
+	}{
+		{"before the window", func(p *RecurringPayment) {}, date(2026, 11, 16), false},
+		{"window opens", func(p *RecurringPayment) {}, date(2026, 11, 17), true},
+		{"first reminder late is still sent", func(p *RecurringPayment) {}, date(2026, 11, 25), true},
+		{"once: not again", func(p *RecurringPayment) { sent(p, date(2026, 11, 20), date(2026, 11, 17), 1) }, date(2026, 11, 25), false},
+		{"every 3 days: too soon", func(p *RecurringPayment) {
+			p.RepeatEveryDays = ip(3)
+			sent(p, date(2026, 11, 20), date(2026, 11, 17), 1)
+		}, date(2026, 11, 19), false},
+		{"every 3 days: due again", func(p *RecurringPayment) {
+			p.RepeatEveryDays = ip(3)
+			sent(p, date(2026, 11, 20), date(2026, 11, 17), 1)
+		}, date(2026, 11, 20), true},
+		{"keeps the rhythm past the deadline", func(p *RecurringPayment) {
+			p.RepeatEveryDays = ip(3)
+			sent(p, date(2026, 11, 20), date(2026, 11, 20), 2)
+		}, date(2026, 11, 23), true},
+		{"daily", func(p *RecurringPayment) {
+			p.RepeatEveryDays = ip(1)
+			sent(p, date(2026, 11, 20), date(2026, 11, 17), 1)
+		}, date(2026, 11, 18), true},
+		{"cap reached", func(p *RecurringPayment) {
+			p.RepeatEveryDays, p.MaxReminders = ip(1), ip(2)
+			sent(p, date(2026, 11, 20), date(2026, 11, 18), 2)
+		}, date(2026, 11, 19), false},
+		{"cap counts per cycle", func(p *RecurringPayment) {
+			p.MaxReminders = ip(1)
+			sent(p, date(2026, 10, 20), date(2026, 10, 17), 1) // last cycle
+		}, date(2026, 11, 17), true},
+		{"snoozed", func(p *RecurringPayment) { s := date(2026, 11, 22); p.SnoozedUntil = &s }, date(2026, 11, 21), false},
+		{"snooze over", func(p *RecurringPayment) { s := date(2026, 11, 22); p.SnoozedUntil = &s }, date(2026, 11, 22), true},
+		{"paused", func(p *RecurringPayment) { p.Active = false }, date(2026, 11, 18), false},
+		{"arrives: from the arrival date", func(p *RecurringPayment) { p.DateKind = DateArrives }, date(2026, 11, 19), false},
+		{"arrives: on the date", func(p *RecurringPayment) { p.DateKind = DateArrives }, date(2026, 11, 20), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := reminderBill()
+			tt.setup(&p)
+			assert.Equal(t, tt.want, p.ShouldRemind(tt.today))
+		})
+	}
+}
+
+func TestOverdueVersusWaiting(t *testing.T) {
+	p := reminderBill()
+	assert.True(t, p.IsOverdue(date(2026, 11, 21)))
+	assert.False(t, p.IsWaiting(date(2026, 11, 21)))
+	p.DateKind = DateArrives
+	assert.False(t, p.IsOverdue(date(2026, 11, 21)), "no deadline, never overdue")
+	assert.True(t, p.IsWaiting(date(2026, 11, 21)))
+	assert.False(t, p.IsWaiting(date(2026, 11, 20)), "arrival day itself is not waiting yet")
+}
+
+func TestValidateReminderSettings(t *testing.T) {
+	base := func() RecurringPayment {
+		p := reminderBill()
+		p.Category, p.UtilityTypeID = RecurringCategoryHouse, intPtr(4)
+		return p
+	}
+	p := base()
+	p.DateKind = "sometime"
+	assert.ErrorIs(t, p.Validate(), ErrInvalidDateKind)
+	p = base()
+	p.RepeatEveryDays = ip(0)
+	assert.ErrorIs(t, p.Validate(), ErrInvalidRepeat)
+	p = base()
+	p.MaxReminders = ip(0)
+	assert.ErrorIs(t, p.Validate(), ErrInvalidMaxReminders)
+	p = base()
+	p.RemindDaysAfter = -1
+	assert.ErrorIs(t, p.Validate(), ErrInvalidRemindDays)
+	p = base()
+	p.DateKind = ""
+	p.Normalize()
+	assert.Equal(t, DatePayBy, p.DateKind, "defaults to pay-by")
 }

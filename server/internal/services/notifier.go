@@ -52,7 +52,11 @@ func FormatReminder(r Reminder) string {
 	if p.ExpectedAmount != nil {
 		fmt.Fprintf(&b, " %.2f %s", *p.ExpectedAmount, utilities.Currency)
 	}
-	fmt.Fprintf(&b, " due %s (%s)", p.DueDate.Format("2006-01-02"), daysLeftText(r.DaysLeft))
+	if p.DateKind == models.DateArrives {
+		fmt.Fprintf(&b, " arrives around %s (%s)", p.DueDate.Format("2006-01-02"), waitingText(r.DaysLeft))
+	} else {
+		fmt.Fprintf(&b, " due %s (%s)", p.DueDate.Format("2006-01-02"), daysLeftText(r.DaysLeft))
+	}
 	if p.PaymentHours != "" {
 		fmt.Fprintf(&b, " | hours: %s", p.PaymentHours)
 	}
@@ -80,4 +84,16 @@ func daysLeftText(days int) string {
 	default:
 		return fmt.Sprintf("in %d days", days)
 	}
+}
+
+// waitingText describes an arrives bill: there is no deadline, so past its
+// date it is waiting to be paid rather than overdue.
+func waitingText(days int) string {
+	switch {
+	case days == -1:
+		return "waiting 1 day"
+	case days < 0:
+		return fmt.Sprintf("waiting %d days", -days)
+	}
+	return daysLeftText(days)
 }

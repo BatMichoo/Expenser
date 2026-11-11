@@ -14,13 +14,12 @@ import (
 // ReminderStore is the data access the scheduler needs. *database.DB
 // implements it.
 type ReminderStore interface {
-	GetRecurringPaymentsToRemind(ctx context.Context, today time.Time) ([]models.RecurringPayment, error)
+	GetActiveRecurringPayments(ctx context.Context) ([]models.RecurringPayment, error)
 	MarkRecurringPaymentNotified(ctx context.Context, id uuid.UUID, dueDate, sentOn time.Time) error
 }
 
-// ReminderScheduler periodically sends reminders for recurring payments:
-// once when the reminder window opens, then daily while the payment is
-// overdue. Payments only move to their next due date when marked paid
+// ReminderScheduler periodically sends reminders for recurring payments,
+// following each bill's schedule (RecurringPayment.ShouldRemind). Payments only move to their next due date when marked paid
 // (see RecurringPaymentService.MarkPaid).
 type ReminderScheduler struct {
 	store      ReminderStore
@@ -86,9 +85,15 @@ func (s *ReminderScheduler) safeRunOnce(ctx context.Context) (err error) {
 func (s *ReminderScheduler) RunOnce(ctx context.Context) error {
 	today := models.DateOnly(s.now())
 
-	due, err := s.store.GetRecurringPaymentsToRemind(ctx, today)
+	active, err := s.store.GetActiveRecurringPayments(ctx)
 	if err != nil {
 		return err
+	}
+	due := make([]models.RecurringPayment, 0, len(active))
+	for _, p := range active {
+		if p.ShouldRemind(today) {
+			due = append(due, p)
+		}
 	}
 
 	var errs []error

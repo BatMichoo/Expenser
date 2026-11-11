@@ -205,47 +205,92 @@ func ids(ps []models.RecurringPayment) []uuid.UUID {
 	return out
 }
 
-func TestReminderQueries(t *testing.T) {
+func TestGetActiveRecurringPayments(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
-	today := rpDate(2026, 11, 10)
 
-	inWindow := newInternetPayment(userID, rpDate(2026, 11, 12))         // reminder from Nov 9
-	windowOpensToday := newInternetPayment(userID, rpDate(2026, 11, 13)) // reminder from Nov 10
-	tooEarly := newInternetPayment(userID, rpDate(2026, 11, 20))
-	overdue := newInternetPayment(userID, rpDate(2026, 11, 5))
-	inactive := newInternetPayment(userID, rpDate(2026, 11, 11))
-	for _, p := range []*models.RecurringPayment{inWindow, windowOpensToday, tooEarly, overdue, inactive} {
+	active := newInternetPayment(userID, rpDate(2026, 11, 12))
+	paused := newInternetPayment(userID, rpDate(2026, 11, 11))
+	for _, p := range []*models.RecurringPayment{active, paused} {
 		require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
 	}
-	inactive.Active = false
-	require.NoError(t, testDB.UpdateRecurringPayment(ctx, inactive, userID))
+	paused.Active = false
+	require.NoError(t, testDB.UpdateRecurringPayment(ctx, paused, userID))
 
-	toRemind, err := testDB.GetRecurringPaymentsToRemind(ctx, today)
+	got, err := testDB.GetActiveRecurringPayments(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, []uuid.UUID{overdue.ID, inWindow.ID, windowOpensToday.ID}, ids(toRemind))
+	assert.Equal(t, []uuid.UUID{active.ID}, ids(got), "the scheduler decides who gets reminded")
+	assert.Equal(t, "RecurringTester", got[0].Username)
+}
 
-	// Not-yet-due payments are reminded once per due date; overdue ones once per day.
-	for _, p := range toRemind {
-		require.NoError(t, testDB.MarkRecurringPaymentNotified(ctx, p.ID, p.DueDate, today))
-	}
-	toRemind, err = testDB.GetRecurringPaymentsToRemind(ctx, today)
-	require.NoError(t, err)
-	assert.Empty(t, toRemind)
+func TestReminderScheduleRoundTrip(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
 
-	toRemind, err = testDB.GetRecurringPaymentsToRemind(ctx, today.AddDate(0, 0, 1))
-	require.NoError(t, err)
-	assert.Equal(t, []uuid.UUID{overdue.ID}, ids(toRemind))
+	p := newInternetPayment(userID, rpDate(2026, 11, 8))
+	p.DateKind = models.DateArrives
+	p.RemindDaysAfter = 1
+	every, max := 3, 5
+	p.RepeatEveryDays, p.MaxReminders = &every, &max
+	snooze := rpDate(2026, 11, 15)
+	p.SnoozedUntil = &snooze
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
 
-	// The day after inWindow's due date it is overdue and nudged again.
-	toRemind, err = testDB.GetRecurringPaymentsToRemind(ctx, rpDate(2026, 11, 13))
+	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
 	require.NoError(t, err)
-	assert.Contains(t, ids(toRemind), inWindow.ID)
+	assert.Equal(t, models.DateArrives, got.DateKind)
+	assert.Equal(t, 1, got.RemindDaysAfter)
+	require.NotNil(t, got.RepeatEveryDays)
+	assert.Equal(t, 3, *got.RepeatEveryDays)
+	require.NotNil(t, got.MaxReminders)
+	assert.Equal(t, 5, *got.MaxReminders)
+	require.NotNil(t, got.SnoozedUntil)
+	assert.Equal(t, rpDate(2026, 11, 15), *got.SnoozedUntil)
 
-	got, err := testDB.GetRecurringPaymentByID(ctx, inWindow.ID, userID)
+	got.RepeatEveryDays, got.MaxReminders, got.SnoozedUntil = nil, nil, nil
+	got.DateKind = models.DatePayBy
+	require.NoError(t, testDB.UpdateRecurringPayment(ctx, got, userID))
+	got, err = testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
 	require.NoError(t, err)
-	assert.Equal(t, rpDate(2026, 11, 12), *got.LastNotifiedFor)
-	assert.Equal(t, today, *got.LastNotifiedOn)
+	assert.Nil(t, got.RepeatEveryDays, "remind once")
+	assert.Nil(t, got.MaxReminders)
+	assert.Nil(t, got.SnoozedUntil)
+	assert.Equal(t, models.DatePayBy, got.DateKind)
+}
+
+func TestMarkNotifiedCountsPerCycle(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+	p := newInternetPayment(userID, rpDate(2026, 11, 20))
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+
+	require.NoError(t, testDB.MarkRecurringPaymentNotified(ctx, p.ID, rpDate(2026, 11, 20), rpDate(2026, 11, 17)))
+	require.NoError(t, testDB.MarkRecurringPaymentNotified(ctx, p.ID, rpDate(2026, 11, 20), rpDate(2026, 11, 20)))
+	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, 2, got.RemindersSent)
+	assert.Equal(t, rpDate(2026, 11, 20), *got.LastNotifiedOn)
+
+	require.NoError(t, testDB.MarkRecurringPaymentNotified(ctx, p.ID, rpDate(2026, 12, 20), rpDate(2026, 12, 17)))
+	got, err = testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, 1, got.RemindersSent, "a new due date starts counting again")
+}
+
+func TestMarkPaidClearsSnooze(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+	p := newInternetPayment(userID, rpDate(2026, 11, 20))
+	snooze := rpDate(2026, 11, 25)
+	p.SnoozedUntil = &snooze
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+
+	res, err := testDB.MarkRecurringPaymentPaid(ctx, userID, p.ID, 30, rpDate(2026, 11, 21))
+	require.NoError(t, err)
+	assert.Nil(t, res.Payment.SnoozedUntil)
+	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	require.NoError(t, err)
+	assert.Nil(t, got.SnoozedUntil, "a snooze only covers the cycle it was set in")
 }
 
 func TestRecurringPaymentAmounts(t *testing.T) {

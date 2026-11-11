@@ -37,7 +37,9 @@ func (f *fakeStore) find(id uuid.UUID) *models.RecurringPayment {
 	return nil
 }
 
-func (f *fakeStore) GetRecurringPaymentsToRemind(ctx context.Context, today time.Time) ([]models.RecurringPayment, error) {
+// GetActiveRecurringPayments returns active payments, like the database;
+// the scheduler decides which get a reminder.
+func (f *fakeStore) GetActiveRecurringPayments(ctx context.Context) ([]models.RecurringPayment, error) {
 	if f.panicMsg != "" {
 		panic(f.panicMsg)
 	}
@@ -47,12 +49,7 @@ func (f *fakeStore) GetRecurringPaymentsToRemind(ctx context.Context, today time
 	}
 	out := []models.RecurringPayment{}
 	for _, p := range f.payments {
-		if !p.Active || p.ReminderDate().After(today) {
-			continue
-		}
-		notifiedForDue := p.LastNotifiedFor != nil && p.LastNotifiedFor.Equal(p.DueDate)
-		notifiedToday := p.LastNotifiedOn != nil && !p.LastNotifiedOn.Before(today)
-		if (!p.DueDate.Before(today) && !notifiedForDue) || (p.DueDate.Before(today) && !notifiedToday) {
+		if p.Active {
 			out = append(out, *p)
 		}
 	}
@@ -64,6 +61,11 @@ func (f *fakeStore) MarkRecurringPaymentNotified(_ context.Context, id uuid.UUID
 		return f.markErr
 	}
 	p := f.find(id)
+	if p.LastNotifiedFor != nil && p.LastNotifiedFor.Equal(due) {
+		p.RemindersSent++
+	} else {
+		p.RemindersSent = 1
+	}
 	p.LastNotifiedFor, p.LastNotifiedOn = &due, &sentOn
 	return nil
 }
@@ -127,8 +129,10 @@ func TestRunOnceSkipsBeforeWindow(t *testing.T) {
 	assert.Empty(t, n.sent)
 }
 
-func TestRunOnceRemindsOverdueDaily(t *testing.T) {
+func TestRunOnceKeepsTheRhythmPastTheDeadline(t *testing.T) {
 	p := monthly(day(2026, 11, 10), 2)
+	every := 3
+	p.RepeatEveryDays = &every
 	store := &fakeStore{payments: []*models.RecurringPayment{p}}
 	n := &fakeNotifier{}
 
@@ -137,19 +141,29 @@ func TestRunOnceRemindsOverdueDaily(t *testing.T) {
 		require.NoError(t, newTestScheduler(store, n, today).RunOnce(context.Background()))
 	}
 
-	run(day(2026, 11, 8)) // window opens
-	run(day(2026, 11, 9)) // already reminded for this due date
-	run(day(2026, 11, 10))
-	require.Len(t, n.sent, 1)
-	assert.Equal(t, 2, n.sent[0].DaysLeft)
-
-	run(day(2026, 11, 11)) // overdue
-	run(day(2026, 11, 11)) // same day, no repeat
-	run(day(2026, 11, 13))
+	run(day(2026, 11, 8))  // window opens
+	run(day(2026, 11, 9))  // too soon
+	run(day(2026, 11, 11)) // 3 days later, now overdue
+	run(day(2026, 11, 12)) // too soon
+	run(day(2026, 11, 14))
 	require.Len(t, n.sent, 3)
-	assert.Equal(t, -1, n.sent[1].DaysLeft)
-	assert.Equal(t, -3, n.sent[2].DaysLeft)
+	assert.Equal(t, []int{2, -1, -4}, []int{n.sent[0].DaysLeft, n.sent[1].DaysLeft, n.sent[2].DaysLeft})
 	assert.Equal(t, day(2026, 11, 10), p.DueDate, "scheduler never moves the due date")
+	assert.Equal(t, 3, p.RemindersSent)
+}
+
+func TestRunOnceArrivesBillEvery3DaysUntilPaid(t *testing.T) {
+	p := monthly(day(2026, 11, 8), 0) // gas: arrives around the 8th
+	p.DateKind = models.DateArrives
+	every := 3
+	p.RepeatEveryDays = &every
+	store := &fakeStore{payments: []*models.RecurringPayment{p}}
+	n := &fakeNotifier{}
+	for d := 5; d <= 15; d++ {
+		require.NoError(t, newTestScheduler(store, n, day(2026, 11, d)).RunOnce(context.Background()))
+	}
+	require.Len(t, n.sent, 3, "the 8th, 11th and 14th")
+	assert.Equal(t, -6, n.sent[2].DaysLeft)
 }
 
 func TestRunOnceRetriesFailedNotification(t *testing.T) {
@@ -264,4 +278,11 @@ func TestFormatReminderMinimal(t *testing.T) {
 	amount := 29.9
 	p.ExpectedAmount = &amount
 	assert.Contains(t, FormatReminder(Reminder{Payment: p}), "TV 29.90 EUR due 2026-12-01")
+}
+
+func TestFormatReminderArrivesBill(t *testing.T) {
+	p := models.RecurringPayment{Username: "ivan", Category: models.RecurringCategoryHouse, TypeName: "Gas", DueDate: day(2026, 11, 8), DateKind: models.DateArrives}
+	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -3}), "(waiting 3 days)", "no deadline, so not overdue")
+	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -1}), "(waiting 1 day)")
+	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: 0}), "arrives around 2026-11-08 (today)")
 }
