@@ -27,6 +27,17 @@
     </svg>
     {{ T .Lang "nav.groceries" }}
   </button>
+  <button class="tracker-nav-button" hx-get="/bills" hx-target="#tracker-content" hx-push-url="true" data-path="/bills">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M16 2v4" />
+      <path d="M8 2v4" />
+      <path d="M3 10h18" />
+      <path d="m9 16 2 2 4-4" />
+    </svg>
+    {{ T .Lang "nav.bills" }}
+  </button>
   {{ else }}
   <button class="tracker-nav-button" hx-get="/login" hx-target="#tracker-content" hx-push-url="true" data-path="/login">
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"

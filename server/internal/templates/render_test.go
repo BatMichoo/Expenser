@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -75,7 +76,9 @@ func TestHeaderSettingsMenu(t *testing.T) {
 	assert.Equal(t, 1, menu.Find(`[hx-get="/logout"]`).Length(), "logout inside menu")
 
 	nav := doc.Find("#tracker-navigation")
-	assert.Equal(t, 3, nav.Find(".tracker-nav-button").Length(), "house, car, groceries")
+	assert.Equal(t, 4, nav.Find(".tracker-nav-button").Length(), "house, car, groceries, bills")
+	bills, _ := nav.Find(`.tracker-nav-button[data-path="/bills"]`).Attr("hx-get")
+	assert.Equal(t, "/bills", bills)
 	assert.Equal(t, 0, nav.Find(`[hx-get="/logout"]`).Length(), "logout no longer a tab")
 }
 
@@ -587,4 +590,158 @@ func TestReceiptReviewSheet(t *testing.T) {
 	assert.Equal(t, "/groceries/confirm-batch", post)
 	assert.Contains(t, doc.Find(".sheet-save").Text(), "Save 2 items")
 	assert.NotContains(t, doc.Text(), "Confirm & Save All", "no hard-coded English")
+}
+
+func sampleBill(name string, due time.Time, active bool) models.RecurringPayment {
+	amount := 29.9
+	typeID := 4
+	return models.RecurringPayment{
+		ID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), Name: name, Category: models.RecurringCategoryHouse,
+		UtilityTypeID: &typeID, TypeName: "Internet", DueDate: due, StartDate: due, CycleUnit: models.CycleMonth,
+		CycleEvery: 1, ExpectedAmount: &amount, Active: active, PaymentOptions: []string{"cash", "card"},
+		UpdatedAt: time.Date(2026, 11, 11, 9, 0, 0, 123456000, time.UTC),
+	}
+}
+
+func TestBillsView(t *testing.T) {
+	overdue := sampleBill("Fiber", time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), true)
+	soon := sampleBill("", time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC), true)
+	soon.ID = uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	soon.CycleEvery = 6
+	v := &models.BillsView{
+		Overdue:      []models.BillRow{{Payment: overdue, DaysLeft: -71, Missed: true}},
+		DueSoon:      []models.BillRow{{Payment: soon, DaysLeft: 3}},
+		OverdueCount: 1, DueThisMonth: 59.8, Total: 2, Lang: "en",
+	}
+	v.Next = &v.DueSoon[0]
+	doc := parseHTML(t, render(t, "bills-view", v))
+
+	wrapper := doc.Find("#bills-view")
+	trig, _ := wrapper.Attr("hx-trigger")
+	assert.Equal(t, "bills-changed from:body", trig)
+	dis, _ := wrapper.Attr("hx-disinherit")
+	assert.Equal(t, "*", dis)
+	add, _ := doc.Find(".month-toolbar .add-btn").Attr("hx-get")
+	assert.Equal(t, "/bills/new", add)
+	fab, _ := doc.Find("button.fab").Attr("hx-get")
+	assert.Equal(t, "/bills/new", fab)
+
+	assert.Contains(t, doc.Find(".kpi-total").Text(), "59.80 €")
+	assert.Contains(t, doc.Find(".kpi-overdue").Text(), "1")
+
+	groups := doc.Find(".bill-group")
+	require.Equal(t, 2, groups.Length(), "empty groups are not shown")
+	assert.Contains(t, groups.Eq(0).Find("h3").Text(), "Overdue")
+
+	row := doc.Find("#bill-11111111-1111-1111-1111-111111111111")
+	require.Equal(t, 1, row.Length())
+	assert.Contains(t, row.Find(".bill-name").Text(), "Fiber")
+	assert.Contains(t, row.Find(".bill-meta").Text(), "Internet")
+	assert.Contains(t, row.Find(".bill-meta").Text(), "Monthly")
+	assert.Contains(t, row.Find(".bill-due").Text(), "71 days overdue")
+	assert.Contains(t, row.Find(".bill-amount").Text(), "29.90 €")
+	edit, _ := row.Attr("hx-get")
+	assert.Equal(t, "/bills/edit/11111111-1111-1111-1111-111111111111", edit)
+	pay, _ := row.Find("button.pay-btn").Attr("hx-get")
+	assert.Equal(t, "/bills/pay/11111111-1111-1111-1111-111111111111", pay)
+	skip, _ := row.Find("button.skip-btn").Attr("hx-post")
+	assert.Equal(t, "/bills/11111111-1111-1111-1111-111111111111/skip", skip)
+
+	soonRow := doc.Find("#bill-22222222-2222-2222-2222-222222222222")
+	assert.Contains(t, soonRow.Find(".bill-name").Text(), "Internet", "falls back to the type name")
+	assert.Contains(t, soonRow.Find(".bill-meta").Text(), "Every 6 months")
+	assert.Contains(t, soonRow.Find(".bill-due").Text(), "in 3 days")
+	assert.Equal(t, 0, soonRow.Find("button.skip-btn").Length(), "only bills several cycles behind can be skipped")
+}
+
+func TestBillsViewEmpty(t *testing.T) {
+	doc := parseHTML(t, render(t, "bills-view", &models.BillsView{Lang: "en"}))
+	assert.Equal(t, 1, doc.Find(".bills-empty").Length())
+	assert.Equal(t, 0, doc.Find(".bill-group").Length())
+}
+
+func TestBillFormEdit(t *testing.T) {
+	b := sampleBill("Fiber", time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC), true)
+	b.PaymentOptions = []string{"cash", "ePay"}
+	doc := parseHTML(t, render(t, "bill-form", map[string]any{
+		"Bill": &b, "IsEdit": true, "Category": "house", "TypeID": 4, "DueDate": "2026-12-01",
+		"Version": b.UpdatedAt.Format(time.RFC3339Nano),
+		"Types":   []models.TypeOption{{ID: 4, Name: "Internet"}, {ID: 5, Name: "TV"}},
+		"Options": map[string]bool{"cash": true}, "OtherOption": "ePay",
+		"KnownOptions": []string{"cash", "card", "bank_transfer", "online"}, "Lang": "en",
+	}))
+	form := doc.Find("form.bill-form")
+	put, _ := form.Attr("hx-put")
+	assert.Equal(t, "/bills/11111111-1111-1111-1111-111111111111", put)
+	ver, _ := form.Find(`input[name="version"]`).Attr("value")
+	assert.Equal(t, "2026-11-11T09:00:00.123456Z", ver, "stale edits are detected")
+
+	cat, _ := form.Find(`input[name="category"][checked]`).Attr("value")
+	assert.Equal(t, "house", cat)
+	switcher, _ := form.Find("fieldset.category-switch").Attr("hx-get")
+	assert.Equal(t, "/bills/types", switcher)
+	typ, _ := form.Find(`#bill-type-chips input[name="typeID"][checked]`).Attr("value")
+	assert.Equal(t, "4", typ)
+	_, hasMeta := form.Find("#bill-type-chips fieldset").Attr("hx-get")
+	assert.False(t, hasMeta, "bills have no per-type detail fields")
+
+	amount, _ := form.Find(`input[name="expected_amount"]`).Attr("value")
+	assert.Equal(t, "29.9", amount)
+	unit, _ := form.Find(`select[name="cycle_unit"] option[selected]`).Attr("value")
+	assert.Equal(t, "month", unit)
+	assert.Equal(t, 1, form.Find(`input[name="payment_options"][value="cash"][checked]`).Length())
+	assert.Equal(t, 0, form.Find(`input[name="payment_options"][value="card"][checked]`).Length())
+	other, _ := form.Find(`input[name="payment_option_other"]`).Attr("value")
+	assert.Equal(t, "ePay", other)
+	assert.Equal(t, 1, form.Find(`input[name="paused"]`).Length(), "pause/resume when editing")
+	del, _ := form.Find(".sheet-delete").Attr("hx-get")
+	assert.Equal(t, "/bills/delete/11111111-1111-1111-1111-111111111111", del)
+}
+
+func TestBillFormCreate(t *testing.T) {
+	b := models.RecurringPayment{Category: "house", CycleUnit: models.CycleMonth, CycleEvery: 1, RemindDaysBefore: 3, PaymentOptions: []string{"cash"}, Active: true}
+	doc := parseHTML(t, render(t, "bill-form", map[string]any{
+		"Bill": &b, "IsEdit": false, "Category": "house", "DueDate": "2026-12-11",
+		"Types": []models.TypeOption{{ID: 4, Name: "Internet"}}, "Options": map[string]bool{"cash": true},
+		"KnownOptions": []string{"cash", "card", "bank_transfer", "online"}, "Lang": "en",
+	}))
+	post, _ := doc.Find("form.bill-form").Attr("hx-post")
+	assert.Equal(t, "/bills", post)
+	assert.Equal(t, 0, doc.Find(`input[name="version"]`).Length())
+	assert.Equal(t, 0, doc.Find(`input[name="paused"]`).Length())
+	assert.Equal(t, 0, doc.Find(".sheet-delete").Length())
+	assert.Equal(t, 1, doc.Find(`input[name="payment_options"][value="cash"][checked]`).Length(), "cash pre-selected")
+}
+
+func TestBillPayForm(t *testing.T) {
+	b := sampleBill("Fiber", time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC), true)
+	doc := parseHTML(t, render(t, "bill-pay-form", map[string]any{"Bill": &b, "Label": "Fiber", "Today": "2026-11-11", "Lang": "en"}))
+	form := doc.Find("form")
+	post, _ := form.Attr("hx-post")
+	assert.Equal(t, "/bills/11111111-1111-1111-1111-111111111111/paid", post)
+	amount, _ := form.Find(`input[name="amount"]`).Attr("value")
+	assert.Equal(t, "29.9", amount, "pre-filled with the expected amount")
+	min, _ := form.Find(`input[name="amount"]`).Attr("min")
+	assert.Equal(t, "0", min, "a free month is allowed")
+	paid, _ := form.Find(`input[name="paid_on"]`).Attr("value")
+	assert.Equal(t, "2026-11-11", paid)
+	assert.Contains(t, doc.Find(".new-expense-heading").Text(), "Fiber")
+}
+
+func TestUpcomingBillsPanel(t *testing.T) {
+	v := monthView("house")
+	b := sampleBill("Fiber", time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC), true)
+	v.UpcomingBills = []models.UpcomingPayment{{Payment: b, DaysLeft: 3}}
+	doc := parseHTML(t, render(t, "house-current", v))
+	panel := doc.Find(".month-side .upcoming-bills")
+	require.Equal(t, 1, panel.Length())
+	assert.Contains(t, panel.Text(), "Fiber")
+	assert.Contains(t, panel.Text(), "in 3 days")
+	pay, _ := panel.Find("button.pay-btn").Attr("hx-get")
+	assert.Equal(t, "/bills/pay/11111111-1111-1111-1111-111111111111", pay)
+	all, _ := panel.Find("a.all-bills").Attr("hx-get")
+	assert.Equal(t, "/bills", all)
+
+	doc = parseHTML(t, render(t, "house-current", monthView("house")))
+	assert.Equal(t, 0, doc.Find(".upcoming-bills").Length(), "hidden when nothing is coming up")
 }

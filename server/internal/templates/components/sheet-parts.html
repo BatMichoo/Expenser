@@ -16,8 +16,8 @@
 
 {{/* Type chips: one radio per type. Selecting one loads its detail fields. */}}
 {{ define "type-chips" }}
-<fieldset class="type-chips" hx-get="{{ .MetaURL }}" hx-target="#metadata-fields" hx-swap="innerHTML"
-  hx-trigger="change" hx-include="this">
+<fieldset class="type-chips"{{ if .MetaURL }} hx-get="{{ .MetaURL }}" hx-target="#metadata-fields" hx-swap="innerHTML"
+  hx-trigger="change" hx-include="this"{{ end }}>
   <legend>{{ T .Lang .Label }}</legend>
   {{ range .Types }}
   <label class="chip">

@@ -11,6 +11,19 @@ func TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		// cat maps a list position to one of the 6 categorical colours
 		// (cat-1 … cat-6) used for per-type charts.
+		// deref reads an optional amount (callers check it is set).
+		"deref": func(v *float64) float64 {
+			if v == nil {
+				return 0
+			}
+			return *v
+		},
+		"negi": func(v int) int {
+			return -v
+		},
+		"list": func(items ...string) []string {
+			return items
+		},
 		"neg": func(v float64) float64 {
 			return -v
 		},

@@ -8,6 +8,7 @@ type Pages struct {
 	House     string // Home is the name for the expense page template.
 	Car       string
 	Groceries string
+	Bills     string
 }
 
 // HTMXComponents defines the names for reusable HTMX-specific UI components.
@@ -64,6 +65,7 @@ var pages = &Pages{
 	House:     "house-page",
 	Car:       "car-page",
 	Groceries: "groceries-page",
+	Bills:     "bills-page",
 }
 
 var components = &HTMXComponents{
