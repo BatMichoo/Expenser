@@ -76,6 +76,7 @@ func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) error {
 		"Lang":  currentLang(c),
 		"Year":  time.Now().Year(),
 		"Date":  time.Now().Format(utilities.DateFormats.HTML),
+		"Month": time.Now().Format(utilities.DateFormats.MonthOnly), // latest month a backfill may reach
 	})
 	return nil
 }

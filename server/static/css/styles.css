@@ -3974,3 +3974,77 @@ tr:hover .row-actions,
     padding: 1rem;
   }
 }
+
+/* "Several months" in the house and car add panels */
+.backfill {
+  display: grid;
+  gap: 0.6rem;
+  grid-column: 1 / -1;
+}
+
+.backfill .check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.sheet .new-expense-form .backfill .check-row input {
+  width: auto;
+  min-height: 0;
+}
+
+.backfill-range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--bg-dark);
+  border-radius: 0.75rem;
+}
+
+.backfill-range .field-hint {
+  grid-column: 1 / -1;
+}
+
+.backfill:not(:has(input[name="backfill"]:checked)) .backfill-range {
+  display: none;
+}
+
+/* The preview before a backfill is added */
+.backfill-summary {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.backfill-count {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.backfill-what {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.backfill-when,
+.backfill-skipped span:last-child {
+  color: var(--text-muted);
+}
+
+.backfill-skipped {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: var(--bg);
+}
+
+.backfill-nothing {
+  margin: 0;
+  color: var(--text-muted);
+}

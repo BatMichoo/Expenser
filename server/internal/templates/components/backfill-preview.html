@@ -1,0 +1,39 @@
+{{/* What a "Several months" add will do, with Confirm. Expects Plan
+     (*services.BackfillPlan), First and Last (its first and last dates),
+     TypeName, Section (house/car), Values (the submitted form), Lang. */}}
+{{ define "backfill-preview" }}
+{{ $p := .Plan }}
+<div class="sheet">
+  {{ template "sheet-heading" (dict "Title" (T .Lang "backfill.title") "Lang" .Lang) }}
+  <form class="new-expense-form backfill-preview" hx-post="/{{ .Section }}/expenses/backfill" hx-swap="none"
+    hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    {{ range $k := (list "typeID" "amount" "discount_amount" "notes" "date" "backfill_from" "backfill_to") }}
+    <input type="hidden" name="{{ $k }}" value="{{ $.Values.Get $k }}" />
+    {{ end }}
+
+    {{ if $p.Dates }}
+    <div class="backfill-summary">
+      <span class="backfill-count">{{ printf (T .Lang "backfill.adds") (len $p.Dates) }}</span>
+      <span class="backfill-what">{{ T .Lang (print "type." .TypeName) }} · {{ money $p.Request.Expense.Amount }}{{ if gt $p.Request.Expense.Discount 0.0 }} ({{ T .Lang "common.discount" }} {{ money $p.Request.Expense.Discount }}){{ end }}</span>
+      <span class="backfill-when">{{ template "ym" (dict "M" .First "Lang" .Lang) }} – {{ template "ym" (dict "M" .Last "Lang" .Lang) }}, {{ printf (T .Lang "backfill.on_day") $p.Request.Day }}</span>
+    </div>
+    {{ else }}
+    <p class="backfill-nothing">{{ T .Lang "backfill.nothing" }}</p>
+    {{ end }}
+
+    {{ if $p.Skipped }}
+    <div class="backfill-skipped">
+      <span class="field-label">{{ printf (T .Lang "backfill.skips") (len $p.Skipped) }}</span>
+      <span>{{ range $i, $m := $p.Skipped }}{{ if $i }}, {{ end }}{{ T $.Lang (print "month_short." $m.Month) }} {{ $m.Year }}{{ end }}</span>
+    </div>
+    {{ end }}
+
+    <div class="sheet-actions">
+      <button type="button" class="sheet-cancel" onClick="hideDialog();">{{ T .Lang "common.cancel" }}</button>
+      {{ if $p.Dates }}<button type="submit" class="btn-primary sheet-save">{{ printf (T .Lang "backfill.confirm") (len $p.Dates) }}</button>{{ end }}
+    </div>
+  </form>
+</div>
+{{ end }}
+
+{{ define "ym" }}{{ T .Lang (print "month_short." .M.Month) }} {{ .M.Year }}{{ end }}

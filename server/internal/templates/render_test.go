@@ -3,8 +3,10 @@ package templates
 import (
 	"bytes"
 	"expenser/internal/models"
+	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"html/template"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -1079,4 +1081,50 @@ func TestHomeNoBills(t *testing.T) {
 	card := doc.Find(`.home-card[hx-get="/bills"]`)
 	assert.Contains(t, card.Text(), "No bills yet")
 	assert.NotContains(t, card.Text(), "more")
+}
+
+func TestAddFormsHaveBackfill(t *testing.T) {
+	for _, form := range []string{"create-house-exp-form", "create-car-exp-form"} {
+		doc := parseHTML(t, render(t, form, map[string]any{"Lang": "en", "Date": "2026-11-11", "Month": "2026-11"}))
+		require.Equal(t, 1, doc.Find(`.backfill input[type="checkbox"][name="backfill"]`).Length(), form)
+		from := doc.Find(`input[type="month"][name="backfill_from"]`)
+		max, _ := from.Attr("max")
+		assert.Equal(t, "2026-11", max, form+": no future months")
+		to, _ := doc.Find(`input[type="month"][name="backfill_to"]`).Attr("value")
+		assert.Equal(t, "2026-11", to, form+": To starts at this month")
+		after, _ := doc.Find("form").Attr("hx-on::after-request")
+		assert.Contains(t, after, "HX-Retarget", form+": the preview keeps the panel open")
+	}
+}
+
+func TestBackfillPreview(t *testing.T) {
+	dates := []time.Time{time.Date(2024, 1, 20, 0, 0, 0, 0, time.Local), time.Date(2024, 2, 20, 0, 0, 0, 0, time.Local), time.Date(2024, 4, 20, 0, 0, 0, 0, time.Local)}
+	plan := &services.BackfillPlan{
+		Request: services.BackfillRequest{Day: 20, Expense: models.BackfillExpense{Amount: 15, Discount: 1}},
+		Dates:   dates, Skipped: []services.YearMonth{{Year: 2024, Month: time.March}}, Months: 4,
+	}
+	values := url.Values{"typeID": {"4"}, "amount": {"15"}, "discount_amount": {"1"}, "notes": {"fiber"}, "date": {"2026-11-20"}, "backfill_from": {"2024-01"}, "backfill_to": {"2024-04"}}
+	doc := parseHTML(t, render(t, "backfill-preview", map[string]any{
+		"Plan": plan, "First": dates[0], "Last": dates[2], "TypeName": "Internet", "Section": "house", "Values": values, "Lang": "en",
+	}))
+	form := doc.Find("form.backfill-preview")
+	post, _ := form.Attr("hx-post")
+	assert.Equal(t, "/house/expenses/backfill", post)
+	for k := range values {
+		v, _ := form.Find(`input[type="hidden"][name="` + k + `"]`).Attr("value")
+		assert.Equal(t, values.Get(k), v, k)
+	}
+	text := form.Text()
+	assert.Contains(t, text, "Adds 3 payments")
+	assert.Contains(t, text, "Internet · 15.00")
+	assert.Contains(t, text, "Discount 1.00")
+	assert.Contains(t, text, "Jan 2024 – Apr 2024, on day 20 of each month")
+	assert.Contains(t, text, "Skipping 1 already recorded")
+	assert.Contains(t, form.Find(".backfill-skipped").Text(), "Mar 2024")
+	assert.Contains(t, form.Find("button[type=submit]").Text(), "Add 3 payments")
+
+	empty := &services.BackfillPlan{Request: plan.Request, Skipped: plan.Skipped, Months: 1}
+	none := parseHTML(t, render(t, "backfill-preview", map[string]any{"Plan": empty, "TypeName": "Internet", "Section": "car", "Values": values, "Lang": "en"}))
+	assert.Contains(t, none.Text(), "Nothing to add")
+	assert.Equal(t, 0, none.Find("button[type=submit]").Length(), "nothing to confirm")
 }

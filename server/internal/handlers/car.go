@@ -92,6 +92,7 @@ func (h *CarHandler) GetCreateCarForm(c *gin.Context) error {
 		"Types": expTypes,
 		"Lang":  currentLang(c),
 		"Date":  time.Now().Format(utilities.DateFormats.HTML),
+		"Month": time.Now().Format(utilities.DateFormats.MonthOnly), // latest month a backfill may reach
 	})
 	return nil
 }
