@@ -5,6 +5,7 @@ import (
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
+	"log"
 	"net/http"
 	"time"
 
@@ -34,12 +35,45 @@ func NewRootHandler(db *database.DB, as *services.AuthService) *RootHandler {
 }
 
 func (h *RootHandler) GetRoot(c *gin.Context) error {
-	renderPage(c, utilities.Templates.Pages.Index, gin.H{
+	data := gin.H{
 		"Lang":       currentLang(c),
 		"IsLoggedIn": isLoggedIn(c),
 		"Year":       time.Now().Year(),
-	})
+	}
+	if isLoggedIn(c) {
+		// The home page must always load: without the extras it just
+		// greets without a name.
+		home, err := h.homeData(c)
+		if err != nil {
+			log.Printf("home page data: %v", err)
+		}
+		for k, v := range home {
+			data[k] = v
+		}
+	}
+	renderPage(c, utilities.Templates.Pages.Index, data)
 	return nil
+}
+
+// homeData is what the logged-in home shows: whom to greet and how many
+// bills need attention.
+func (h *RootHandler) homeData(c *gin.Context) (gin.H, error) {
+	user, err := h.DB.GetUserByID(currentUserID(c))
+	if err != nil {
+		return nil, err
+	}
+	payments, err := h.DB.ListRecurringPayments(c.Request.Context(), user.ID)
+	if err != nil {
+		return nil, err
+	}
+	name := user.DisplayName
+	if name == "" {
+		name = user.Username
+	}
+	return gin.H{
+		"Name":           name,
+		"BillsAttention": services.BuildBillsView(payments, time.Now()).NeedsAttention(),
+	}, nil
 }
 
 // GetFlash pops the pending flash error up as the error modal.

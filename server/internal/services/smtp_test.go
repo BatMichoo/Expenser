@@ -175,3 +175,15 @@ func TestSMTPMailerFromWithName(t *testing.T) {
 	assert.Equal(t, "MAIL FROM:<app@gmail.com>", srv.from, "envelope uses the bare address")
 	assert.Contains(t, srv.data, `From: "Expenser" <app@gmail.com>`)
 }
+
+func TestSMTPMailerToWithName(t *testing.T) {
+	srv := startFakeSMTP(t)
+	host, port, _ := net.SplitHostPort(srv.addr)
+	m := NewSMTPMailer(SMTPConfig{Host: host, Port: port, From: "app@gmail.com"})
+	require.NoError(t, m.Send(context.Background(), EmailMessage{To: "me@example.com", ToName: "Мирослав", Subject: "s", Text: "t", HTML: "h"}))
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+	assert.Equal(t, []string{"RCPT TO:<me@example.com>"}, srv.rcpt, "envelope gets the bare address")
+	assert.Contains(t, srv.data, "To: =?utf-8?q?", "non-ASCII name is encoded")
+	assert.Contains(t, srv.data, "<me@example.com>")
+}

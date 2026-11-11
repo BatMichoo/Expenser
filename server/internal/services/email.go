@@ -14,6 +14,7 @@ import (
 // EmailMessage is one email, already rendered.
 type EmailMessage struct {
 	To      string
+	ToName  string // optional name shown with the address in the To header
 	Subject string
 	Text    string // plain-text body
 	HTML    string // HTML body
@@ -91,7 +92,7 @@ func BuildReminderEmail(r Reminder) EmailMessage {
 		fields = append(fields, emailField{t("common.notes"), p.Notes})
 	}
 
-	greeting := fmt.Sprintf(t("email.greeting"), p.Username)
+	greeting := fmt.Sprintf(t("email.greeting"), p.GreetingName())
 	var text strings.Builder
 	fmt.Fprintf(&text, "%s\n\n%s\n\n%s\n", greeting, t("email.intro"), label)
 	for _, f := range fields {
@@ -107,6 +108,7 @@ func BuildReminderEmail(r Reminder) EmailMessage {
 
 	return EmailMessage{
 		To:      r.To,
+		ToName:  p.RecipientName(r.To),
 		Subject: fmt.Sprintf(t("email.subject"), label, when),
 		Text:    text.String(),
 		HTML:    html.String(),
@@ -166,10 +168,11 @@ var reminderEmailHTML = template.Must(template.New("reminder").Parse(`<!doctype 
 
 // BuildTestReminderEmail is a sample reminder with a "[Test]" subject, so
 // the SMTP setup and the email's look can be checked without waiting for a
-// real reminder. Every field the email can show is filled, with long values,
+// real reminder. It greets and addresses the user like their reminders
+// would. Every field the email can show is filled, with long values,
 // a custom payment option, a multi-line note and HTML-like characters, to
 // see how all of it renders. Dev mode only.
-func BuildTestReminderEmail(username, lang, to string, today time.Time) EmailMessage {
+func BuildTestReminderEmail(username, displayName, lang, to string, today time.Time) EmailMessage {
 	if lang == "" {
 		lang = "en"
 	}
@@ -178,7 +181,7 @@ func BuildTestReminderEmail(username, lang, to string, today time.Time) EmailMes
 		To:       to,
 		DaysLeft: 3,
 		Payment: models.RecurringPayment{
-			Username: username, Name: "Vivacom Fiber 500 Mbps + TV (apartment & garage)",
+			Username: username, UserDisplayName: displayName, UserEmail: to, Name: "Vivacom Fiber 500 Mbps + TV (apartment & garage)",
 			TypeName: "Internet", Category: models.RecurringCategoryHouse,
 			DateKind: models.DatePayBy, DueDate: today.AddDate(0, 0, 3),
 			ExpectedAmount: &amount,

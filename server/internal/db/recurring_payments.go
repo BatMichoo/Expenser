@@ -21,7 +21,8 @@ const recurringPaymentSelect = `
 		rp.last_notified_on, rp.active, rp.created_at, rp.updated_at,
 		rp.date_kind, rp.remind_days_after, rp.repeat_every_days, rp.max_reminders,
 		rp.reminders_sent, rp.snoozed_until,
-		rp.notify, COALESCE(rp.notify_email, ''), COALESCE(u.email, ''), u.preferred_language
+		rp.notify, COALESCE(rp.notify_email, ''), COALESCE(u.email, ''), u.preferred_language,
+		COALESCE(u.display_name, '')
 	FROM recurring_payments rp
 	JOIN users u ON u.id = rp.user_id
 	LEFT JOIN utility_types ut ON ut.id = rp.utility_type_id
@@ -55,6 +56,7 @@ func scanRecurringPayment(row rowScanner) (*models.RecurringPayment, error) {
 		&p.DateKind, &p.RemindDaysAfter, &repeatEvery, &maxReminders,
 		&p.RemindersSent, &snoozedUntil,
 		&p.Notify, &p.NotifyEmail, &p.UserEmail, &p.UserLang,
+		&p.UserDisplayName,
 	)
 	if err != nil {
 		return nil, err

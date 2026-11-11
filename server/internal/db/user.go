@@ -37,20 +37,31 @@ func (db *DB) CreateUser(user *models.User) error {
 	return nil
 }
 
-// GetUserByID retrieves a user by their ID
+// GetUserByID retrieves a user by their ID, with their account settings.
 func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
 	query := `
-		SELECT id, username, password_hash, preferred_language, COALESCE(email, ''), created_at, updated_at
+		SELECT id, username, password_hash, preferred_language, COALESCE(email, ''),
+			COALESCE(display_name, ''), default_notify, default_remind_days_before,
+			default_remind_days_after, default_repeat_every_days, default_max_reminders,
+			created_at, updated_at
 		FROM users
 		WHERE id = $1`
 
 	user := &models.User{}
+	var repeatEvery, maxReminders sql.NullInt64
+	d := &user.ReminderDefaults
 	err := db.conn.QueryRow(query, id).Scan(
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
 		&user.PreferredLanguage,
 		&user.Email,
+		&user.DisplayName,
+		&d.Notify,
+		&d.RemindDaysBefore,
+		&d.RemindDaysAfter,
+		&repeatEvery,
+		&maxReminders,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -61,6 +72,8 @@ func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
 		}
 		return nil, fmt.Errorf("failed to get user by ID: %w", err)
 	}
+	d.RepeatEveryDays = nullInt(repeatEvery)
+	d.MaxReminders = nullInt(maxReminders)
 
 	return user, nil
 }
@@ -217,13 +230,33 @@ func (db *DB) UserExists(username string) (bool, error) {
 	return exists, nil
 }
 
-// SetUserEmail stores the user's preferred email for reminders; an empty
-// string clears it.
-func (db *DB) SetUserEmail(ctx context.Context, id uuid.UUID, email string) error {
-	_, err := db.conn.ExecContext(ctx,
-		`UPDATE users SET email = NULLIF($1, ''), updated_at = CURRENT_TIMESTAMP WHERE id = $2`, email, id)
+// UpdateUserAccount saves the account settings: display name and reminder
+// email (empty clears either) and the reminder defaults for new bills.
+func (db *DB) UpdateUserAccount(ctx context.Context, id uuid.UUID, displayName, email string, d models.ReminderDefaults) error {
+	_, err := db.conn.ExecContext(ctx, `
+		UPDATE users SET
+			display_name = NULLIF($1, ''), email = NULLIF($2, ''),
+			default_notify = $3, default_remind_days_before = $4, default_remind_days_after = $5,
+			default_repeat_every_days = $6, default_max_reminders = $7,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $8`,
+		displayName, email, d.Notify, d.RemindDaysBefore, d.RemindDaysAfter,
+		d.RepeatEveryDays, d.MaxReminders, id)
 	if err != nil {
-		return fmt.Errorf("failed to set user email: %w", err)
+		return fmt.Errorf("failed to update account: %w", err)
+	}
+	return nil
+}
+
+// UpdateUserPassword stores a new password hash.
+func (db *DB) UpdateUserPassword(ctx context.Context, id uuid.UUID, hash string) error {
+	res, err := db.conn.ExecContext(ctx,
+		`UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, hash, id)
+	if err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+	if n, err := res.RowsAffected(); err == nil && n == 0 {
+		return fmt.Errorf("user not found")
 	}
 	return nil
 }

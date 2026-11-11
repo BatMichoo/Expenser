@@ -1,32 +1,20 @@
+{{/* After registering (already logged in): a short confirmation that moves
+     on to the home page by itself after 3 seconds. */}}
 {{ define "register-success"}}
-<div class="redirect-message-container">
-  <h2>{{ T .Lang "register.redirecting" }}</h2>
-  <p>
-    {{ T .Lang "register.redirect_msg" }}
-    <span id="countdown">5</span> {{ T .Lang "register.seconds" }}.
-  </p>
-  <p>
-    {{ T .Lang "register.manual_redirect" }}
-    <a href="/">{{ T .Lang "register.click_here" }}</a>.
-  </p>
-
+<section class="auth-split auth-split-single">
+  <div class="auth-main">
+    <div class="auth-card auth-done">
+      <div class="auth-done-icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+      </div>
+      <h1 class="auth-title">{{ T .Lang "register.done_title" }}</h1>
+      <p class="auth-sub">{{ printf (T .Lang "register.done_msg") .User.Username }}</p>
+      <a class="auth-submit" href="/">{{ T .Lang "register.continue" }}</a>
+    </div>
+  </div>
   <script>
-    // Get the countdown element
-    const countdownElement = document.getElementById("countdown");
-    let countdown = 5;
-
-    // Update the countdown every second
-    const intervalId = setInterval(() => {
-      countdown--;
-      if (countdownElement) {
-        countdownElement.textContent = countdown;
-      }
-
-      if (countdown <= 0) {
-        clearInterval(intervalId); // Stop the countdown
-        window.location.href = "/"; // Perform the redirect
-      }
-    }, 1000); // Every 1000 milliseconds (1 second)
+    setTimeout(() => { window.location.href = "/"; }, 3000);
   </script>
-</div>
+</section>
 {{ end }}

@@ -550,21 +550,6 @@
     flex: 1;
   }
 
-  /* Login / register: use the full width */
-  .register-form-container,
-  .login-form-container {
-    max-width: none;
-    width: auto;
-    margin: 1em 0.75em;
-    box-sizing: border-box;
-  }
-
-  .register-form-container .form-control,
-  .login-form-container .form-control {
-    width: 100%;
-    min-height: 2.75em;
-  }
-
   /* Month view on phones: one column, no side chart */
   .header-section {
     padding: 0 0.75em;

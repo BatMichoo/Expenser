@@ -410,60 +410,12 @@ footer {
   padding: 1em;
 }
 
-.register-form-container {
-  max-width: 50vw;
-  margin: 50px auto;
-  padding: 20px;
-  border: 1px solid transparent;
-  background-color: var(--bg);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-}
 
-.redirect-message-container {
-  background-color: var(--bg-color-light-acc);
-  text-align: center;
-  padding: 50px;
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-  max-width: 500px;
-  margin: 50px auto;
-}
 
-.register-form-container h2 {
-  text-align: center;
-  margin-bottom: 20px;
-  color: white;
-}
 
-.form-group {
-  margin-bottom: 15px;
-}
 
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: white;
-}
 
-.form-control {
-  width: calc(100% - 20px);
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-  font-size: 16px;
-}
 
-#index-section {
-  margin-top: 10em;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  gap: 1em;
-}
 
 #add-expense-section {
   margin: 2.5em;
@@ -934,50 +886,12 @@ select {
   align-self: flex-end;
 }
 
-.login-form-container {
-  max-width: 400px;
-  margin: 50px auto;
-  padding: 20px;
-  border: 1px solid var(--bg-sec);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-  background-color: var(--bg);
-}
 
-.login-form-container h2 {
-  text-align: center;
-  margin-bottom: 20px;
-}
 
-.form-group {
-  margin-bottom: 15px;
-}
 
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: var(--text);
-}
 
-.form-group input {
-  color: var(--text-muted);
-  background-color: var(--bg-light);
-}
 
-.form-control {
-  width: calc(100% - 20px);
-  padding: 10px;
-  border: 1px solid transparent;
-  box-shadow: var(--shadow);
-  border-radius: 0.5em;
-}
 
-.form-control:focus {
-  border-color: var(--bg-sec);
-  outline: none;
-  box-shadow: var(--shadow);
-}
 
 .btn-primary {
   margin-top: 1em;
@@ -3518,9 +3432,418 @@ tr:hover .row-actions,
 }
 
 /* Dev mode: "Send test email" under the reminder email field */
-.send-test-email {
+.new-expense-form .send-test-email {
   align-self: flex-start;
   margin-top: 0.75em;
-  padding: 0.45em 1.2em;
+  padding: 0.4em 1em;
   border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+/* Settings > Account: the defaults block reuses the bill reminder block. */
+.account-form .reminder-block > .field-hint {
+  margin: -0.25em 0 0.5em;
+}
+
+.account-form:has(input[name="keep_reminding"]:not(:checked)) .repeat-row {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------
+   Login, register and home (split screen). Brand panel on the left, the
+   card on the right; phones stack them (mobile.css).
+   --------------------------------------------------------------------- */
+.auth-split {
+  text-align: left;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  max-width: 980px;
+  min-height: min(560px, calc(100vh - 10rem));
+  margin: 2.5rem auto;
+  overflow: hidden;
+  border: 1px solid var(--bg-dark);
+  border-radius: 1.25rem;
+  background: var(--bg-light);
+  box-shadow: 0 18px 48px oklch(0 0 0 / 0.18);
+}
+
+.auth-split-single {
+  grid-template-columns: 1fr;
+  max-width: 460px;
+  min-height: 0;
+}
+
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 2.75rem;
+  color: #fff;
+  background:
+    radial-gradient(120% 90% at 0% 0%, oklch(0.62 0.2 290 / 0.55), transparent 60%),
+    linear-gradient(160deg, var(--accent), oklch(0.32 0.12 var(--hue)));
+}
+
+.auth-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.9rem;
+  background: oklch(1 0 0 / 0.16);
+  border: 1px solid oklch(1 0 0 / 0.25);
+}
+
+.auth-tagline {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1.9rem;
+  line-height: 1.2;
+  font-weight: 700;
+  text-align: left;
+  color: inherit;
+}
+
+.auth-points {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-points li {
+  position: relative;
+  padding-left: 1.6rem;
+  font-size: 0.98rem;
+  line-height: 1.4;
+  color: oklch(1 0 0 / 0.88);
+}
+
+.auth-points li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.3em;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: oklch(1 0 0 / 0.22) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 60% no-repeat;
+}
+
+.auth-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 2rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 340px;
+  color: var(--text);
+}
+
+.auth-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.6rem;
+  line-height: 1.25;
+  font-weight: 700;
+  text-align: left;
+  color: var(--text);
+}
+
+.auth-sub {
+  margin: 0 0 1.5rem;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.auth-field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.auth-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--bg-dark);
+  border-radius: 0.6rem;
+  box-shadow: none;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--text);
+  background: var(--bg);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.auth-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.auth-field input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.field-error {
+  color: var(--danger);
+}
+
+.field-error:empty {
+  display: none;
+}
+
+.auth-submit,
+.auth-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.75rem;
+  margin: 0.25rem 0 0;
+  padding: 0 1.25rem;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: #fff;
+  background: var(--accent);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.auth-submit:hover {
+  filter: brightness(1.1);
+}
+
+.auth-secondary {
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--bg-dark);
+}
+
+.auth-secondary:hover {
+  background: var(--bg-dark);
+}
+
+.auth-switch {
+  margin: 1.25rem 0 0;
+  font-size: 0.9rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.auth-switch a {
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.home-actions {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.auth-done {
+  text-align: center;
+}
+
+.auth-done .auth-title,
+.auth-done .auth-sub {
+  text-align: center;
+}
+
+.auth-done-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin-bottom: 0.75rem;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--success);
+}
+
+/* Logged-in home: greeting and a tile per section */
+.home {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 760px;
+  margin: 3rem auto;
+  padding: 0 1rem;
+  text-align: left;
+}
+
+.home-greeting {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 700;
+  text-align: left;
+  color: var(--text);
+}
+
+.home-sub {
+  margin: 0.25rem 0 1.5rem;
+  color: var(--text-muted);
+}
+
+.home-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.home-tile {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.9rem;
+  row-gap: 0.15rem;
+  align-items: center;
+  margin: 0;
+  padding: 1.25rem;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  border: 1px solid var(--bg-dark);
+  border-radius: var(--radius);
+  background: var(--bg-light);
+  box-shadow: none;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.home-tile:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.home-tile svg {
+  grid-row: 1 / span 2;
+  box-sizing: content-box;
+  padding: 0.6rem;
+  border-radius: 0.75rem;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.home-tile-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.home-tile-sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.home-tile-alert .home-tile-sub {
+  font-weight: 600;
+  color: var(--warning);
+}
+
+/* Settings > Account: password change, folded by default */
+.password-section {
+  border: 1px solid var(--bg-dark);
+  border-radius: 0.75rem;
+  padding: 0.25rem 0.9rem;
+}
+
+.password-section summary {
+  padding: 0.6rem 0;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.password-fields {
+  display: grid;
+  gap: 0.9rem;
+  padding: 0.25rem 0 0.9rem;
+}
+
+.new-expense-form .change-password {
+  justify-self: start;
+  margin: 0;
+  padding: 0.45em 1.1em;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+/* Narrow screens (phones, small tablets): stack the split screen. */
+@media (max-width: 760px) {
+  /* Login, register and home: the brand panel becomes a short header above
+     the card; the home tiles go to one column. */
+  .auth-split {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    margin: 1rem 0.75rem;
+    border-radius: 1rem;
+  }
+
+  .auth-brand {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.25rem;
+  }
+
+  .auth-logo {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .auth-tagline {
+    margin: 0;
+    font-size: 1.2rem;
+  }
+
+  .auth-points {
+    display: none;
+  }
+
+  .auth-main {
+    padding: 1.5rem 1.25rem 1.75rem;
+  }
+
+  .auth-card {
+    max-width: none;
+  }
+
+  .home {
+    margin: 1.5rem auto;
+  }
+
+  .home-tiles {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .home-tile {
+    padding: 0.9rem 1rem;
+  }
 }

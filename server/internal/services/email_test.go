@@ -68,7 +68,7 @@ func TestBuildReminderEmailUnknownLanguageFallsBackToEnglish(t *testing.T) {
 func TestBuildTestReminderEmail(t *testing.T) {
 	require.NoError(t, utilities.InitI18n())
 	today := time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC)
-	m := BuildTestReminderEmail("ivan", "en", "me@example.com", today)
+	m := BuildTestReminderEmail("ivan", "", "en", "me@example.com", today)
 
 	assert.Equal(t, "me@example.com", m.To)
 	assert.Equal(t, "[Test] Reminder: Vivacom Fiber 500 Mbps + TV (apartment & garage) — in 3 days", m.Subject)
@@ -81,6 +81,37 @@ func TestBuildTestReminderEmail(t *testing.T) {
 	assert.Contains(t, m.HTML, "white-space:pre-line", "line breaks in notes survive in HTML")
 	assert.Contains(t, m.HTML, "vertical-align:top", "labels line up with the first line of long values")
 
-	bg := BuildTestReminderEmail("ivan", "bg", "me@example.com", today)
+	bg := BuildTestReminderEmail("ivan", "", "bg", "me@example.com", today)
 	assert.True(t, strings.HasPrefix(bg.Subject, "[Тест] Напомняне:"), bg.Subject)
+}
+
+func TestReminderEmailUsesDisplayName(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	r := gasReminder("en")
+	r.Payment.UserEmail = "me@example.com"
+	r.Payment.UserDisplayName = "Miro"
+
+	m := BuildReminderEmail(r)
+	assert.Contains(t, m.Text, "Hi Miro,")
+	assert.Contains(t, m.HTML, "Hi Miro,")
+	assert.NotContains(t, m.Text, "ivan")
+	assert.Equal(t, "Miro", m.ToName, "own address: named")
+
+	r.To = "partner@example.com"
+	m = BuildReminderEmail(r)
+	assert.Contains(t, m.Text, "Hi Miro,", "still greets the owner")
+	assert.Empty(t, m.ToName, "a partner's address gets no name")
+
+	r.Payment.UserDisplayName = ""
+	r.To = "me@example.com"
+	m = BuildReminderEmail(r)
+	assert.Contains(t, m.Text, "Hi ivan,", "no name: username")
+	assert.Empty(t, m.ToName)
+}
+
+func TestBuildTestReminderEmailUsesDisplayName(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	m := BuildTestReminderEmail("ivan", "Miro", "en", "me@example.com", time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC))
+	assert.Contains(t, m.Text, "Hi Miro,")
+	assert.Equal(t, "Miro", m.ToName)
 }

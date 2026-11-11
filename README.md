@@ -65,7 +65,7 @@ SMTP_FROM=Expenser &lt;you@gmail.com&gt;<br>
 
 Reminder emails need a Gmail **app password** (Google account → Security → 2-Step Verification → App passwords), not your normal password. Without `SMTP_HOST` reminders are only written to the log.
 
-In development, `DEV_MODE=true` (in `server/.env.dev`) adds a **Send test email** button to Settings → Reminder email. It mails a sample reminder to the address typed there, so you can check the SMTP setup straight away. Leave `DEV_MODE` unset in production.
+In development, `DEV_MODE=true` (in `server/.env.dev`) adds a **Send test email** button to Settings → Account. It mails a sample reminder to the address typed there, so you can check the SMTP setup straight away. Leave `DEV_MODE` unset in production.
 
 # Auto-deploy
 

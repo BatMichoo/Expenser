@@ -25,8 +25,9 @@
         "groceries-page" }} {{ template "groceries-page" .TemplateContent }} {{
         else if eq .TemplateName "login-page" }} {{ template "login-page"
         .TemplateContent }} {{ else if eq .TemplateName "register-page" }} {{
-        template "register-page" .TemplateContent }} {{ else }} {{ template
-        "index-page" . }} {{ end }}
+        template "register-page" .TemplateContent }} {{ else if eq .TemplateName "index-page" }} {{ template "index-page"
+        .TemplateContent }} {{ else }} {{ template "index-page" (dict "Lang" .Lang
+        "IsLoggedIn" .IsLoggedIn) }} {{ end }}
       </div>
     </div>
     <footer>
