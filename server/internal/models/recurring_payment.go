@@ -363,10 +363,12 @@ type BillRow struct {
 // BillsView is the Bills page: payments grouped by urgency plus totals.
 type BillsView struct {
 	Overdue      []BillRow
+	Waiting      []BillRow // arrives bills past their date, not yet paid
 	DueSoon      []BillRow
 	Later        []BillRow
 	Paused       []BillRow
 	OverdueCount int
+	WaitingCount int
 	DueThisMonth float64 // expected amounts of active bills due by month end
 	Next         *BillRow
 	Total        int

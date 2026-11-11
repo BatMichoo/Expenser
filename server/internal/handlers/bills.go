@@ -61,6 +61,9 @@ func billError(err error) error {
 		errors.Is(err, models.ErrInvalidCycleEvery),
 		errors.Is(err, models.ErrInvalidCycleUnit),
 		errors.Is(err, models.ErrInvalidRemindDays),
+		errors.Is(err, models.ErrInvalidRepeat),
+		errors.Is(err, models.ErrInvalidMaxReminders),
+		errors.Is(err, models.ErrInvalidDateKind),
 		errors.Is(err, models.ErrMissingDueDate):
 		return badRequest("error.bill_invalid", err)
 	}
@@ -126,6 +129,34 @@ func parseBillForm(v url.Values) (*models.RecurringPayment, error) {
 	p.PaymentOptions = append([]string{}, v["payment_options"]...)
 	if other := strings.TrimSpace(v.Get("payment_option_other")); other != "" {
 		p.PaymentOptions = append(p.PaymentOptions, other)
+	}
+
+	p.DateKind = models.BillDateKind(v.Get("date_kind"))
+	if s := v.Get("remind_days_after"); s != "" {
+		if p.RemindDaysAfter, err = strconv.Atoi(s); err != nil {
+			return nil, fmt.Errorf("remind after: %w", models.ErrInvalidRemindDays)
+		}
+	}
+	if v.Get("keep_reminding") != "" {
+		every, err := strconv.Atoi(v.Get("repeat_every_days"))
+		if err != nil {
+			return nil, fmt.Errorf("repeat: %w", models.ErrInvalidRepeat)
+		}
+		p.RepeatEveryDays = &every
+	}
+	if s := strings.TrimSpace(v.Get("max_reminders")); s != "" {
+		max, err := strconv.Atoi(s)
+		if err != nil {
+			return nil, fmt.Errorf("max reminders: %w", models.ErrInvalidMaxReminders)
+		}
+		p.MaxReminders = &max
+	}
+	if s := v.Get("snoozed_until"); s != "" {
+		d, err := time.Parse(utilities.DateFormats.HTML, s)
+		if err != nil {
+			return nil, fmt.Errorf("snooze: %w", models.ErrMissingDueDate)
+		}
+		p.SnoozedUntil = &d
 	}
 
 	if s := v.Get("version"); s != "" {
@@ -244,6 +275,9 @@ func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEd
 	return d, nil
 }
 
+// defaultRepeat: new bills keep reminding every 3 days until paid.
+var defaultRepeat = 3
+
 // GetNewBillForm renders the add form: house by default, monthly, due in a
 // month, cash pre-selected.
 func (h *BillsHandler) GetNewBillForm(c *gin.Context) error {
@@ -253,6 +287,8 @@ func (h *BillsHandler) GetNewBillForm(c *gin.Context) error {
 		CycleUnit:        models.CycleMonth,
 		CycleEvery:       1,
 		RemindDaysBefore: 3,
+		DateKind:         models.DatePayBy,
+		RepeatEveryDays:  &defaultRepeat,
 		PaymentOptions:   models.DefaultPaymentOptions(),
 		Active:           true,
 	}

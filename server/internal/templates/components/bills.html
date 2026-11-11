@@ -24,13 +24,13 @@
       <div class="kpi kpi-overdue{{ if .OverdueCount }} has-overdue{{ end }}">
         <span class="kpi-title">{{ T .Lang "bills.overdue_kpi" }}</span>
         <span class="kpi-value">{{ .OverdueCount }}</span>
-        <span class="kpi-sub">{{ T .Lang "bills.overdue_hint" }}</span>
+        <span class="kpi-sub">{{ if .WaitingCount }}{{ printf (T .Lang "bills.waiting_hint") .WaitingCount }}{{ else }}{{ T .Lang "bills.overdue_hint" }}{{ end }}</span>
       </div>
       <div class="kpi kpi-next">
         <span class="kpi-title">{{ T .Lang "bills.next" }}</span>
         {{ with .Next }}
         <span class="kpi-value">{{ template "bill-label" (dict "P" .Payment "Lang" $.Lang) }}</span>
-        <span class="kpi-sub">{{ template "due-text" (dict "Days" .DaysLeft "Lang" $.Lang) }} · {{ .Payment.DueDate.Format "02.01.2006" }}</span>
+        <span class="kpi-sub">{{ template "due-text" (dict "Days" .DaysLeft "Arrives" (eq (print .Payment.DateKind) "arrives") "Lang" $.Lang) }} · {{ .Payment.DueDate.Format "02.01.2006" }}</span>
         {{ else }}
         <span class="kpi-value">—</span>
         <span class="kpi-sub">{{ T .Lang "bills.none_next" }}</span>
@@ -39,6 +39,7 @@
     </div>
 
     {{ template "bill-group" (dict "Rows" .Overdue "Kind" "overdue" "Title" (T .Lang "bills.group.overdue") "Lang" .Lang) }}
+    {{ template "bill-group" (dict "Rows" .Waiting "Kind" "waiting" "Title" (T .Lang "bills.group.waiting") "Lang" .Lang) }}
     {{ template "bill-group" (dict "Rows" .DueSoon "Kind" "soon" "Title" (T .Lang "bills.group.soon") "Lang" .Lang) }}
     {{ template "bill-group" (dict "Rows" .Later "Kind" "later" "Title" (T .Lang "bills.group.later") "Lang" .Lang) }}
     {{ template "bill-group" (dict "Rows" .Paused "Kind" "paused" "Title" (T .Lang "bills.group.paused") "Lang" .Lang) }}
@@ -101,7 +102,7 @@
   </div>
   <div class="bill-due">
     {{ if eq .Kind "paused" }}<span class="due-pill paused">{{ T .Lang "bills.group.paused" }}</span>
-    {{ else }}<span class="due-pill {{ .Kind }}">{{ template "due-text" (dict "Days" .R.DaysLeft "Lang" .Lang) }}</span>{{ end }}
+    {{ else }}<span class="due-pill {{ .Kind }}">{{ template "due-text" (dict "Days" .R.DaysLeft "Arrives" (eq (print $p.DateKind) "arrives") "Lang" .Lang) }}</span>{{ end }}
     <span class="bill-date">{{ $p.DueDate.Format "02.01.2006" }}</span>
   </div>
   <div class="bill-amount">{{ if $p.ExpectedAmount }}{{ money (deref $p.ExpectedAmount) }}{{ else }}—{{ end }}</div>
@@ -123,7 +124,7 @@
 
 {{ define "cycle-text" }}{{ if eq .P.CycleEvery 1 }}{{ T .Lang (print "bills.cycle." .P.CycleUnit ".one") }}{{ else }}{{ printf (T .Lang (print "bills.cycle." .P.CycleUnit ".many")) .P.CycleEvery }}{{ end }}{{ end }}
 
-{{ define "due-text" }}{{ if eq .Days 0 }}{{ T .Lang "bills.due.today" }}{{ else if eq .Days 1 }}{{ T .Lang "bills.due.tomorrow" }}{{ else if gt .Days 1 }}{{ printf (T .Lang "bills.due.in") .Days }}{{ else if eq .Days -1 }}{{ T .Lang "bills.due.overdue_one" }}{{ else }}{{ printf (T .Lang "bills.due.overdue") (negi .Days) }}{{ end }}{{ end }}
+{{ define "due-text" }}{{ if .Arrives }}{{ template "arrives-text" . }}{{ else if eq .Days 0 }}{{ T .Lang "bills.due.today" }}{{ else if eq .Days 1 }}{{ T .Lang "bills.due.tomorrow" }}{{ else if gt .Days 1 }}{{ printf (T .Lang "bills.due.in") .Days }}{{ else if eq .Days -1 }}{{ T .Lang "bills.due.overdue_one" }}{{ else }}{{ printf (T .Lang "bills.due.overdue") (negi .Days) }}{{ end }}{{ end }}
 
 {{/* Add / edit a bill, in the side panel. */}}
 {{ define "bill-form" }}
@@ -161,7 +162,7 @@
     </label>
 
     <div>
-      <label for="bill-due">{{ T .Lang "bills.next_due_date" }}</label>
+      <label for="bill-due"><span class="when-payby">{{ T .Lang "bills.date.pay_by" }}</span><span class="when-arrives">{{ T .Lang "bills.date.arrives" }}</span></label>
       <input type="date" id="bill-due" name="due_date" required value="{{ .DueDate }}" />
     </div>
 
@@ -177,13 +178,58 @@
       </div>
     </div>
 
-    <div class="inline-fields">
-      <label for="bill-remind">{{ T .Lang "bills.remind" }}</label>
-      <div class="inline-row">
-        <input type="number" id="bill-remind" name="remind_days_before" min="0" step="1" value="{{ .Bill.RemindDaysBefore }}" />
-        <span class="inline-suffix">{{ T .Lang "bills.days_before" }}</span>
+    <fieldset class="reminder-block">
+      <legend>{{ T .Lang "bills.reminders" }}</legend>
+
+      <div class="category-switch segmented date-kind">
+        <label><input type="radio" name="date_kind" value="pay_by" {{ if ne (print .Bill.DateKind) "arrives" }}checked{{ end }} />
+          <span>{{ T .Lang "bills.kind.pay_by" }}</span></label>
+        <label><input type="radio" name="date_kind" value="arrives" {{ if eq (print .Bill.DateKind) "arrives" }}checked{{ end }} />
+          <span>{{ T .Lang "bills.kind.arrives" }}</span></label>
       </div>
-    </div>
+
+      <div class="inline-fields">
+        <span class="field-label">{{ T .Lang "bills.first_reminder" }}</span>
+        <div class="inline-row when-payby">
+          <input type="number" name="remind_days_before" min="0" step="1" value="{{ .Bill.RemindDaysBefore }}"
+            aria-label='{{ T .Lang "bills.days_before_date" }}' />
+          <span class="inline-suffix">{{ T .Lang "bills.days_before_date" }}</span>
+        </div>
+        <div class="inline-row when-arrives">
+          <input type="number" name="remind_days_after" min="0" step="1" value="{{ .Bill.RemindDaysAfter }}"
+            aria-label='{{ T .Lang "bills.days_after_date" }}' />
+          <span class="inline-suffix">{{ T .Lang "bills.days_after_date" }}</span>
+        </div>
+      </div>
+
+      <label class="check-row">
+        <input type="checkbox" name="keep_reminding" {{ if .Bill.RepeatEveryDays }}checked{{ end }} />
+        <span>{{ T .Lang "bills.keep_reminding" }}</span>
+      </label>
+      <div class="inline-row repeat-row">
+        <span class="inline-suffix">{{ T .Lang "bills.every" }}</span>
+        <input type="number" name="repeat_every_days" min="1" step="1"
+          value="{{ if .Bill.RepeatEveryDays }}{{ derefi .Bill.RepeatEveryDays }}{{ else }}3{{ end }}"
+          aria-label='{{ T .Lang "bills.every" }}' />
+        <span class="inline-suffix">{{ T .Lang "bills.days" }}</span>
+      </div>
+
+      <div class="inline-row">
+        <span class="inline-suffix">{{ T .Lang "bills.max_reminders" }}</span>
+        <input type="number" name="max_reminders" min="1" step="1" placeholder="∞"
+          value="{{ if .Bill.MaxReminders }}{{ derefi .Bill.MaxReminders }}{{ end }}"
+          aria-label='{{ T .Lang "bills.max_reminders" }}' />
+        <span class="inline-suffix">{{ T .Lang "bills.reminders_suffix" }}</span>
+      </div>
+
+      {{ if .IsEdit }}
+      <div>
+        <label for="bill-snooze">{{ T .Lang "bills.snooze" }}</label>
+        <input type="date" id="bill-snooze" name="snoozed_until"
+          value="{{ if .Bill.SnoozedUntil }}{{ .Bill.SnoozedUntil.Format "2006-01-02" }}{{ end }}" />
+      </div>
+      {{ end }}
+    </fieldset>
 
     <details class="more-fields"{{ if .IsEdit }} open{{ end }}>
       <summary>{{ T .Lang "bills.more" }}</summary>
@@ -260,7 +306,8 @@
     <li class="upcoming-item">
       <div class="upcoming-main">
         <span class="upcoming-name">{{ template "bill-label" (dict "P" .Payment "Lang" $.Lang) }}</span>
-        <span class="due-pill {{ if lt .DaysLeft 0 }}overdue{{ else }}soon{{ end }}">{{ template "due-text" (dict "Days" .DaysLeft "Lang" $.Lang) }}</span>
+        {{ $arrives := eq (print .Payment.DateKind) "arrives" }}
+        <span class="due-pill {{ if and (lt .DaysLeft 0) $arrives }}waiting{{ else if lt .DaysLeft 0 }}overdue{{ else }}soon{{ end }}">{{ template "due-text" (dict "Days" .DaysLeft "Arrives" $arrives "Lang" $.Lang) }}</span>
       </div>
       <div class="upcoming-side">
         <span class="upcoming-amount">{{ if .Payment.ExpectedAmount }}{{ money (deref .Payment.ExpectedAmount) }}{{ end }}</span>
@@ -273,3 +320,5 @@
   <a class="all-bills" href="/bills" hx-get="/bills" hx-target="#tracker-content" hx-push-url="/bills">{{ T .Lang "insights.all_bills" }} →</a>
 </section>
 {{ end }}
+
+{{ define "arrives-text" }}{{ if eq .Days 0 }}{{ T .Lang "bills.due.arrives_today" }}{{ else if eq .Days 1 }}{{ T .Lang "bills.due.arrives_tomorrow" }}{{ else if gt .Days 1 }}{{ printf (T .Lang "bills.due.arrives_in") .Days }}{{ else if eq .Days -1 }}{{ T .Lang "bills.due.waiting_one" }}{{ else }}{{ printf (T .Lang "bills.due.waiting") (negi .Days) }}{{ end }}{{ end }}

@@ -745,3 +745,69 @@ func TestUpcomingBillsPanel(t *testing.T) {
 	doc = parseHTML(t, render(t, "house-current", monthView("house")))
 	assert.Equal(t, 0, doc.Find(".upcoming-bills").Length(), "hidden when nothing is coming up")
 }
+
+func TestBillFormReminderFields(t *testing.T) {
+	b := sampleBill("Gas", time.Date(2026, 12, 8, 0, 0, 0, 0, time.UTC), true)
+	b.DateKind = models.DateArrives
+	b.RemindDaysAfter = 1
+	b.RemindDaysBefore = 3
+	every, max := 3, 5
+	b.RepeatEveryDays, b.MaxReminders = &every, &max
+	snooze := time.Date(2026, 12, 12, 0, 0, 0, 0, time.UTC)
+	b.SnoozedUntil = &snooze
+	doc := parseHTML(t, render(t, "bill-form", map[string]any{
+		"Bill": &b, "IsEdit": true, "Category": "house", "TypeID": 3, "DueDate": "2026-12-08",
+		"Types": []models.TypeOption{{ID: 3, Name: "Gas"}}, "Options": map[string]bool{},
+		"KnownOptions": []string{"cash"}, "Lang": "en",
+	}))
+	form := doc.Find("form.bill-form")
+	kind, _ := form.Find(`input[name="date_kind"][checked]`).Attr("value")
+	assert.Equal(t, "arrives", kind)
+	assert.Equal(t, 2, form.Find(`input[name="date_kind"]`).Length(), "pay by / arrives around")
+	before, _ := form.Find(`input[name="remind_days_before"]`).Attr("value")
+	assert.Equal(t, "3", before, "kept for when switching back to pay-by")
+	after, _ := form.Find(`input[name="remind_days_after"]`).Attr("value")
+	assert.Equal(t, "1", after)
+	assert.Equal(t, 1, form.Find(`input[name="keep_reminding"][checked]`).Length())
+	repeat, _ := form.Find(`input[name="repeat_every_days"]`).Attr("value")
+	assert.Equal(t, "3", repeat)
+	cap, _ := form.Find(`input[name="max_reminders"]`).Attr("value")
+	assert.Equal(t, "5", cap)
+	sn, _ := form.Find(`input[name="snoozed_until"]`).Attr("value")
+	assert.Equal(t, "2026-12-12", sn)
+}
+
+func TestBillFormNewHasNoSnooze(t *testing.T) {
+	every := 3
+	b := models.RecurringPayment{Category: "house", DateKind: models.DatePayBy, CycleUnit: models.CycleMonth, CycleEvery: 1, RemindDaysBefore: 3, RepeatEveryDays: &every, Active: true}
+	doc := parseHTML(t, render(t, "bill-form", map[string]any{
+		"Bill": &b, "IsEdit": false, "Category": "house", "DueDate": "2026-12-11",
+		"Types": []models.TypeOption{{ID: 4, Name: "Internet"}}, "Options": map[string]bool{},
+		"KnownOptions": []string{"cash"}, "Lang": "en",
+	}))
+	assert.Equal(t, 0, doc.Find(`input[name="snoozed_until"]`).Length(), "nothing to snooze yet")
+	kind, _ := doc.Find(`input[name="date_kind"][checked]`).Attr("value")
+	assert.Equal(t, "pay_by", kind)
+	assert.Equal(t, 1, doc.Find(`input[name="keep_reminding"][checked]`).Length(), "keeps reminding by default")
+	max, _ := doc.Find(`input[name="max_reminders"]`).Attr("value")
+	assert.Empty(t, max, "no limit by default")
+}
+
+func TestBillsViewWaiting(t *testing.T) {
+	gas := sampleBill("Gas", time.Date(2026, 11, 8, 0, 0, 0, 0, time.UTC), true)
+	gas.DateKind = models.DateArrives
+	soon := sampleBill("Gas next", time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC), true)
+	soon.ID = uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	soon.DateKind = models.DateArrives
+	v := &models.BillsView{
+		Waiting:      []models.BillRow{{Payment: gas, DaysLeft: -3}},
+		DueSoon:      []models.BillRow{{Payment: soon, DaysLeft: 3}},
+		WaitingCount: 1, Total: 2, Lang: "en",
+	}
+	doc := parseHTML(t, render(t, "bills-view", v))
+	group := doc.Find(".bill-group.waiting")
+	require.Equal(t, 1, group.Length())
+	assert.Contains(t, group.Find("h3").Text(), "Waiting")
+	assert.Contains(t, group.Find(".bill-due").Text(), "waiting 3 days")
+	assert.Contains(t, doc.Find("#bill-33333333-3333-3333-3333-333333333333 .bill-due").Text(), "arrives in 3 days")
+}

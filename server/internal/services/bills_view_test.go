@@ -62,3 +62,14 @@ func TestBuildBillsViewEmpty(t *testing.T) {
 	assert.Zero(t, v.Total)
 	assert.Nil(t, v.Next)
 }
+
+func TestBuildBillsViewWaiting(t *testing.T) {
+	gas := bill("gas", day(2026, 11, 8), true, 40, 0)
+	gas.DateKind = models.DateArrives
+	late := bill("internet", day(2026, 11, 5), true, 30, 3)
+	v := BuildBillsView([]models.RecurringPayment{gas, late}, day(2026, 11, 11))
+	assert.Equal(t, []string{"gas"}, names(v.Waiting), "no deadline: waiting, not overdue")
+	assert.Equal(t, []string{"internet"}, names(v.Overdue))
+	assert.Equal(t, 1, v.OverdueCount)
+	assert.Equal(t, 1, v.WaitingCount)
+}

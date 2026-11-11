@@ -18,6 +18,12 @@ func TemplateFuncs() template.FuncMap {
 			}
 			return *v
 		},
+		"derefi": func(v *int) int {
+			if v == nil {
+				return 0
+			}
+			return *v
+		},
 		"negi": func(v int) int {
 			return -v
 		},

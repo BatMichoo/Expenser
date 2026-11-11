@@ -3423,3 +3423,79 @@ tr:hover .row-actions,
 .bills-view {
   padding-top: 1rem;
 }
+
+/* Bill reminders block: the "Pay by" / "Arrives around" switch decides
+   which date label and first-reminder field show. */
+.sheet .reminder-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.9rem;
+  border: 1px solid var(--bg-dark);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+
+.reminder-block legend {
+  padding: 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.reminder-block .check-row {
+  margin: 0 !important;
+}
+
+.reminder-block .inline-row .inline-suffix {
+  font-size: 0.85rem;
+}
+
+.sheet .new-expense-form .reminder-block .inline-row input[type="number"] {
+  width: 4.5rem;
+}
+
+.bill-form .when-arrives {
+  display: none;
+}
+
+.bill-form:has(input[name="date_kind"][value="arrives"]:checked) .when-arrives {
+  display: inherit;
+}
+
+.bill-form:has(input[name="date_kind"][value="arrives"]:checked) .inline-row.when-arrives {
+  display: flex;
+}
+
+.bill-form:has(input[name="date_kind"][value="arrives"]:checked) .when-payby {
+  display: none;
+}
+
+/* Repeat interval only matters when "keep reminding" is on */
+.bill-form:has(input[name="keep_reminding"]:not(:checked)) .repeat-row {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.date-kind span {
+  font-size: 0.85rem;
+}
+
+/* Waiting (no deadline, past its date) */
+.due-pill.waiting {
+  color: var(--warning);
+  background: oklch(0.75 0.2 100 / 0.15);
+}
+
+.bill-group.waiting h3 {
+  color: var(--warning);
+}

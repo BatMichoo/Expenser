@@ -10,8 +10,8 @@ import (
 // longer reminder window is due soon as soon as its reminder would fire.
 const dueSoonDays = 14
 
-// BuildBillsView groups payments by urgency (overdue, due soon, later,
-// paused), each soonest first, and computes the page totals.
+// BuildBillsView groups payments by urgency (overdue, waiting, due soon,
+// later, paused), each soonest first, and computes the page totals.
 func BuildBillsView(payments []models.RecurringPayment, today time.Time) models.BillsView {
 	today = models.DateOnly(today)
 	monthEnd := time.Date(today.Year(), today.Month()+1, 0, 0, 0, 0, 0, time.UTC)
@@ -37,6 +37,8 @@ func BuildBillsView(payments []models.RecurringPayment, today time.Time) models.
 			soon = p.RemindDaysBefore
 		}
 		switch {
+		case p.IsWaiting(today):
+			v.Waiting = append(v.Waiting, row)
 		case row.DaysLeft < 0:
 			v.Overdue = append(v.Overdue, row)
 		case row.DaysLeft <= soon:
@@ -54,5 +56,6 @@ func BuildBillsView(payments []models.RecurringPayment, today time.Time) models.
 		}
 	}
 	v.OverdueCount = len(v.Overdue)
+	v.WaitingCount = len(v.Waiting)
 	return v
 }

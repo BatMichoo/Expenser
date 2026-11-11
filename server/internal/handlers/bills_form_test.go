@@ -75,3 +75,35 @@ func TestParseBillFormErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestParseBillFormReminderSchedule(t *testing.T) {
+	v := url.Values{
+		"category": {"house"}, "typeID": {"3"}, "due_date": {"2026-12-08"}, "cycle_every": {"1"}, "cycle_unit": {"month"},
+		"date_kind": {"arrives"}, "remind_days_after": {"1"},
+		"keep_reminding": {"on"}, "repeat_every_days": {"3"}, "max_reminders": {"5"},
+		"snoozed_until": {"2026-12-12"},
+	}
+	p, err := parseBillForm(v)
+	require.NoError(t, err)
+	assert.Equal(t, models.DateArrives, p.DateKind)
+	assert.Equal(t, 1, p.RemindDaysAfter)
+	require.NotNil(t, p.RepeatEveryDays)
+	assert.Equal(t, 3, *p.RepeatEveryDays)
+	require.NotNil(t, p.MaxReminders)
+	assert.Equal(t, 5, *p.MaxReminders)
+	require.NotNil(t, p.SnoozedUntil)
+	assert.Equal(t, time.Date(2026, 12, 12, 0, 0, 0, 0, time.UTC), *p.SnoozedUntil)
+
+	v.Del("keep_reminding")
+	v.Set("max_reminders", "")
+	v.Set("snoozed_until", "")
+	p, err = parseBillForm(v)
+	require.NoError(t, err)
+	assert.Nil(t, p.RepeatEveryDays, "remind once")
+	assert.Nil(t, p.MaxReminders, "no limit")
+	assert.Nil(t, p.SnoozedUntil)
+
+	v.Set("max_reminders", "lots")
+	_, err = parseBillForm(v)
+	assert.Error(t, err)
+}
