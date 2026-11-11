@@ -44,15 +44,14 @@ type ytdRange struct {
 
 func yearToDate(now time.Time) ytdRange {
 	y, m, d := now.Date()
-	loc := now.Location()
-	lastDay := time.Date(y-1, m, d, 0, 0, 0, 0, loc)
+	lastDay := models.Date(y-1, m, d)
 	if lastDay.Month() != m { // 29 February: last year ends on the 28th
-		lastDay = time.Date(y-1, m+1, 0, 0, 0, 0, 0, loc)
+		lastDay = models.Date(y-1, m+1, 0)
 	}
 	return ytdRange{
-		ThisFrom: time.Date(y, time.January, 1, 0, 0, 0, 0, loc),
-		ThisTo:   time.Date(y, m, d+1, 0, 0, 0, 0, loc),
-		LastFrom: time.Date(y-1, time.January, 1, 0, 0, 0, 0, loc),
+		ThisFrom: models.Date(y, time.January, 1),
+		ThisTo:   models.Date(y, m, d+1),
+		LastFrom: models.Date(y-1, time.January, 1),
 		LastTo:   lastDay.AddDate(0, 0, 1),
 	}
 }

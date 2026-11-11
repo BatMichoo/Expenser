@@ -22,8 +22,8 @@ func TestYearMonthBoundaries(t *testing.T) {
 	assert.Equal(t, YearMonth{2026, time.February}, jan.Next())
 	assert.Equal(t, YearMonth{2027, time.January}, YearMonth{2026, time.December}.Next())
 	assert.Equal(t, "2026-01", jan.String())
-	assert.Equal(t, time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local), jan.Start())
-	assert.Equal(t, time.Date(2026, 2, 1, 0, 0, 0, 0, time.Local), jan.End(), "end is exclusive")
+	assert.Equal(t, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), jan.Start(), "calendar days are midnight UTC")
+	assert.Equal(t, time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC), jan.End(), "end is exclusive")
 }
 
 func TestSummarize(t *testing.T) {

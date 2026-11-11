@@ -220,13 +220,6 @@ func validCycleUnit(u CycleUnit) bool {
 	return false
 }
 
-// DateOnly strips the time of day, returning midnight UTC of t's calendar
-// date. All recurring payment dates are compared in this form.
-func DateOnly(t time.Time) time.Time {
-	y, m, d := t.Date()
-	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
-}
-
 // AddCycles returns the date n cycles after anchor. An unknown unit returns
 // anchor unchanged; callers should validate the unit first. Month and year cycles
 // clamp to the last day of shorter months (Jan 31 + 1 month = Feb 28/29),

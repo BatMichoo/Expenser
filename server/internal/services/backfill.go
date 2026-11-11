@@ -59,7 +59,7 @@ func PlanBackfill(req BackfillRequest, existing map[string]bool, now time.Time) 
 		if last := m.End().AddDate(0, 0, -1).Day(); day > last {
 			day = last
 		}
-		plan.Dates = append(plan.Dates, time.Date(m.Year, m.Month, day, 0, 0, 0, 0, time.Local))
+		plan.Dates = append(plan.Dates, models.Date(m.Year, m.Month, day))
 	}
 	return plan, nil
 }
