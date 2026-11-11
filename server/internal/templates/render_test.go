@@ -871,6 +871,29 @@ func TestAccountFormEmptyDefaults(t *testing.T) {
 	assert.Equal(t, "email", func() string { v, _ := doc.Find(`input[name="notify"][checked]`).Attr("value"); return v }())
 }
 
+func TestAccountFormPasswordSection(t *testing.T) {
+	doc := parseHTML(t, render(t, "account-form", map[string]any{"User": accountUser(), "Lang": "en"}))
+	sec := doc.Find("details.password-section")
+	require.Equal(t, 1, sec.Length())
+	_, open := sec.Attr("open")
+	assert.False(t, open, "folded by default")
+
+	for name, auto := range map[string]string{"current_password": "current-password", "new_password": "new-password", "confirm_password": "new-password"} {
+		in := sec.Find(`input[type="password"][name="` + name + `"]`)
+		require.Equal(t, 1, in.Length(), name)
+		ac, _ := in.Attr("autocomplete")
+		assert.Equal(t, auto, ac, name)
+		_, req := in.Attr("required")
+		assert.False(t, req, "must not block saving the rest of the panel")
+	}
+	btn := sec.Find(`button[hx-post="/settings/account/password"]`)
+	require.Equal(t, 1, btn.Length())
+	typ, _ := btn.Attr("type")
+	assert.Equal(t, "button", typ, "its own action, not the panel's Save")
+	inc, _ := btn.Attr("hx-include")
+	assert.Equal(t, ".password-section input", inc)
+}
+
 func TestAccountFormTestButtonOnlyInDevMode(t *testing.T) {
 	doc := parseHTML(t, render(t, "account-form", map[string]any{"User": accountUser(), "Lang": "en"}))
 	assert.Equal(t, 0, doc.Find(`[hx-post="/settings/account/test-email"]`).Length(), "hidden outside dev mode")
@@ -913,4 +936,83 @@ func TestBillRowNoEmailHint(t *testing.T) {
 	v.DueSoon[0].Payment = b
 	doc = parseHTML(t, render(t, "bills-view", v))
 	assert.Equal(t, 0, doc.Find(".no-email").Length())
+}
+
+func TestLoginPageSplitLayout(t *testing.T) {
+	doc := parseHTML(t, render(t, "login-page", map[string]any{"Lang": "en"}))
+	split := doc.Find("section.auth-split")
+	require.Equal(t, 1, split.Length())
+	assert.Equal(t, 1, split.Find(".auth-brand").Length(), "brand panel")
+	assert.GreaterOrEqual(t, split.Find(".auth-brand li").Length(), 3, "what the app does")
+
+	form := split.Find(".auth-card form")
+	post, _ := form.Attr("hx-post")
+	assert.Equal(t, "/login", post)
+	user := form.Find(`input[name="username"]`)
+	ac, _ := user.Attr("autocomplete")
+	assert.Equal(t, "username", ac)
+	pw := form.Find(`input[type="password"][name="password"]`)
+	ac, _ = pw.Attr("autocomplete")
+	assert.Equal(t, "current-password", ac)
+	assert.Equal(t, 1, form.Find(`button[type="submit"].auth-submit`).Length())
+	link, _ := split.Find(".auth-switch a").Attr("hx-get")
+	assert.Equal(t, "/register", link)
+}
+
+func TestRegisterPageSplitLayout(t *testing.T) {
+	doc := parseHTML(t, render(t, "register-page", map[string]any{"Lang": "en"}))
+	form := doc.Find("section.auth-split .auth-card form")
+	post, _ := form.Attr("hx-post")
+	assert.Equal(t, "/register", post)
+	for name, auto := range map[string]string{"username": "username", "password": "new-password", "confirm_password": "new-password"} {
+		ac, _ := form.Find(`input[name="` + name + `"]`).Attr("autocomplete")
+		assert.Equal(t, auto, ac, name)
+	}
+	hint := form.Find("#password-match-feedback")
+	require.Equal(t, 1, hint.Length())
+	assert.True(t, hint.HasClass("field-error"))
+	_, styled := hint.Attr("style")
+	assert.False(t, styled, "no inline red text")
+	link, _ := doc.Find(".auth-switch a").Attr("hx-get")
+	assert.Equal(t, "/login", link)
+	assert.NotContains(t, render(t, "register-page", map[string]any{"Lang": "en"}), "DOMContentLoaded",
+		"the check must also work when the page is swapped in by HTMX")
+}
+
+func TestRegisterSuccessCard(t *testing.T) {
+	doc := parseHTML(t, render(t, "register-success", map[string]any{"Lang": "en", "User": &models.User{Username: "newbie"}}))
+	card := doc.Find(".auth-card.auth-done")
+	require.Equal(t, 1, card.Length())
+	assert.Contains(t, card.Text(), "Account created")
+	href, _ := card.Find("a.auth-submit").Attr("href")
+	assert.Equal(t, "/", href, "continue button")
+	assert.Contains(t, card.Text(), "newbie")
+}
+
+func TestHomeLoggedOut(t *testing.T) {
+	doc := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en"}))
+	assert.Equal(t, 1, doc.Find("section.auth-split .auth-brand").Length(), "same brand panel as login")
+	login, _ := doc.Find(`.home-actions [hx-get="/login"]`).Attr("hx-push-url")
+	assert.Equal(t, "true", login)
+	assert.Equal(t, 1, doc.Find(`.home-actions [hx-get="/register"]`).Length())
+	assert.Equal(t, 0, doc.Find(".home-tiles").Length())
+	assert.NotContains(t, doc.Text(), "top left corner", "old hints are gone")
+}
+
+func TestHomeLoggedIn(t *testing.T) {
+	doc := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true, "Name": "Miro", "BillsAttention": 2}))
+	assert.Contains(t, doc.Find("h2").Text(), "Hi Miro")
+	tiles := doc.Find(".home-tiles .home-tile")
+	require.Equal(t, 4, tiles.Length())
+	var paths []string
+	tiles.Each(func(_ int, s *goquery.Selection) { p, _ := s.Attr("hx-get"); paths = append(paths, p) })
+	assert.Equal(t, []string{"/house", "/car", "/groceries", "/bills"}, paths)
+	assert.Contains(t, doc.Find(`.home-tile[hx-get="/bills"]`).Text(), "2 need attention")
+	assert.Equal(t, 0, doc.Find(".auth-split").Length())
+
+	plain := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true}))
+	assert.Equal(t, "Welcome back", strings.TrimSpace(plain.Find("h2").Text()), "no data: no empty name")
+
+	none := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true, "Name": "dev"}))
+	assert.Contains(t, none.Find(`.home-tile[hx-get="/bills"]`).Text(), "All caught up")
 }

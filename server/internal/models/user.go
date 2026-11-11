@@ -111,3 +111,33 @@ func copyInt(p *int) *int {
 	v := *p
 	return &v
 }
+
+// Password rules: at least 6 characters (as when registering) and at most
+// 72 bytes, the most bcrypt can hash.
+const (
+	MinPasswordLength = 6
+	MaxPasswordBytes  = 72
+)
+
+var (
+	ErrPasswordTooShort  = errors.New("the password must be at least 6 characters")
+	ErrPasswordTooLong   = errors.New("the password must be at most 72 bytes")
+	ErrPasswordMismatch  = errors.New("the passwords don't match")
+	ErrPasswordUnchanged = errors.New("the new password is the same as the current one")
+)
+
+// ValidateNewPassword checks a password change before the current password
+// is verified.
+func ValidateNewPassword(current, next, confirm string) error {
+	switch {
+	case utf8.RuneCountInString(next) < MinPasswordLength:
+		return ErrPasswordTooShort
+	case len(next) > MaxPasswordBytes:
+		return ErrPasswordTooLong
+	case next != confirm:
+		return ErrPasswordMismatch
+	case next == current:
+		return ErrPasswordUnchanged
+	}
+	return nil
+}

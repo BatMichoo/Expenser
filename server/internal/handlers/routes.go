@@ -77,6 +77,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 		protectedSettings.Use(am.AuthMiddleware())
 		protectedSettings.GET("/account", wrap(settingsHandler.GetAccountForm))
 		protectedSettings.POST("/account", wrap(settingsHandler.SaveAccount))
+		protectedSettings.POST("/account/password", wrap(settingsHandler.ChangePassword))
 		if cfg.DevMode {
 			protectedSettings.POST("/account/test-email", wrap(settingsHandler.SendTestEmail))
 		}

@@ -92,3 +92,13 @@ func TestRecipientName(t *testing.T) {
 	p.UserDisplayName = ""
 	assert.Empty(t, p.RecipientName("me@example.com"), "no name set")
 }
+
+func TestValidateNewPassword(t *testing.T) {
+	assert.NoError(t, ValidateNewPassword("old-secret", "123456", "123456"), "6 is enough")
+	assert.ErrorIs(t, ValidateNewPassword("old", "12345", "12345"), ErrPasswordTooShort)
+	assert.NoError(t, ValidateNewPassword("old", "пароль", "пароль"), "6 characters, not bytes")
+	assert.NoError(t, ValidateNewPassword("old", strings.Repeat("x", 72), strings.Repeat("x", 72)), "72 bytes is bcrypt's limit")
+	assert.ErrorIs(t, ValidateNewPassword("old", strings.Repeat("я", 37), strings.Repeat("я", 37)), ErrPasswordTooLong, "74 bytes")
+	assert.ErrorIs(t, ValidateNewPassword("old", "new-secret", "other"), ErrPasswordMismatch)
+	assert.ErrorIs(t, ValidateNewPassword("same-one", "same-one", "same-one"), ErrPasswordUnchanged)
+}

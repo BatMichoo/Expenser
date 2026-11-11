@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"errors"
 	"expenser/internal/models"
+	"expenser/internal/services"
 	"net/url"
 	"testing"
 	"time"
@@ -86,4 +88,21 @@ func TestNewBillUsesReminderDefaults(t *testing.T) {
 	assert.Equal(t, time.Date(2026, 12, 12, 0, 0, 0, 0, time.UTC), p.DueDate)
 	assert.Equal(t, models.DefaultPaymentOptions(), p.PaymentOptions)
 	assert.True(t, p.Active)
+}
+
+func TestPasswordErrorMessages(t *testing.T) {
+	for err, key := range map[error]string{
+		services.ErrWrongPassword:   "auth.wrong_current_password",
+		models.ErrPasswordTooShort:  "auth.password_too_short",
+		models.ErrPasswordTooLong:   "auth.password_too_long",
+		models.ErrPasswordMismatch:  "auth.passwords_mismatch",
+		models.ErrPasswordUnchanged: "auth.password_unchanged",
+	} {
+		var httpErr *HTTPError
+		require.ErrorAs(t, passwordError(err), &httpErr, err.Error())
+		assert.Equal(t, 400, httpErr.Status, err.Error())
+		assert.Equal(t, key, httpErr.MessageKey)
+	}
+	other := errors.New("db down")
+	assert.Equal(t, other, passwordError(other), "anything else stays a server error")
 }

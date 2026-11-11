@@ -99,6 +99,35 @@ func (h *SettingsHandler) SaveAccount(c *gin.Context) error {
 	return nil
 }
 
+// passwordError turns a refused password change into a user-facing message.
+func passwordError(err error) error {
+	switch {
+	case errors.Is(err, services.ErrWrongPassword):
+		return badRequest("auth.wrong_current_password", err)
+	case errors.Is(err, models.ErrPasswordTooShort):
+		return badRequest("auth.password_too_short", err)
+	case errors.Is(err, models.ErrPasswordTooLong):
+		return badRequest("auth.password_too_long", err)
+	case errors.Is(err, models.ErrPasswordMismatch):
+		return badRequest("auth.passwords_mismatch", err)
+	case errors.Is(err, models.ErrPasswordUnchanged):
+		return badRequest("auth.password_unchanged", err)
+	}
+	return err
+}
+
+// ChangePassword sets a new password after checking the current one. The
+// user stays logged in; other logins last until their token expires.
+func (h *SettingsHandler) ChangePassword(c *gin.Context) error {
+	err := services.ChangePassword(c.Request.Context(), h.BaseHandler.DB, currentUserID(c),
+		c.PostForm("current_password"), c.PostForm("new_password"), c.PostForm("confirm_password"))
+	if err != nil {
+		return passwordError(err)
+	}
+	renderSuccess(c, http.StatusOK, utilities.T(currentLang(c), "settings.password_changed"), "")
+	return nil
+}
+
 // SendTestEmail (dev mode only) emails a sample reminder to the address in
 // the form, saved or not, so the SMTP setup can be checked right away. The
 // SMTP error is shown as is: this is a developer tool.

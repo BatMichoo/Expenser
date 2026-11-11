@@ -75,6 +75,33 @@
       </div>
     </fieldset>
 
+    {{/* Its own button and request: the panel's Save ignores these fields, and
+         nothing here is required so a half-typed password never blocks it. */}}
+    <details class="password-section">
+      <summary>{{ T .Lang "settings.change_password" }}</summary>
+      <div class="password-fields">
+        <div>
+          <label for="current-password">{{ T .Lang "settings.current_password" }}</label>
+          <input type="password" id="current-password" name="current_password" autocomplete="current-password" />
+        </div>
+        <div>
+          <label for="new-password">{{ T .Lang "settings.new_password" }}</label>
+          <input type="password" id="new-password" name="new_password" autocomplete="new-password" />
+          <span class="field-hint">{{ T .Lang "settings.new_password_hint" }}</span>
+        </div>
+        <div>
+          <label for="confirm-password">{{ T .Lang "settings.confirm_password" }}</label>
+          <input type="password" id="confirm-password" name="confirm_password" autocomplete="new-password"
+            oninput="document.getElementById('password-match').hidden = !this.value || this.value === document.getElementById('new-password').value" />
+          <span class="field-hint field-error" id="password-match" hidden>{{ T .Lang "auth.passwords_mismatch" }}</span>
+        </div>
+        <button type="button" class="btn-secondary change-password" hx-post="/settings/account/password"
+          hx-include=".password-section input" hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) { this.closest('.password-section').querySelectorAll('input').forEach(i => i.value = ''); this.closest('.password-section').open = false; }">
+          {{ T .Lang "settings.change_password" }}</button>
+      </div>
+    </details>
+
     {{ template "sheet-actions" (dict "Lang" .Lang "SaveLabel" "common.save") }}
   </form>
 </div>

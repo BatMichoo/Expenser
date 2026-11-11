@@ -247,3 +247,16 @@ func (db *DB) UpdateUserAccount(ctx context.Context, id uuid.UUID, displayName, 
 	}
 	return nil
 }
+
+// UpdateUserPassword stores a new password hash.
+func (db *DB) UpdateUserPassword(ctx context.Context, id uuid.UUID, hash string) error {
+	res, err := db.conn.ExecContext(ctx,
+		`UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, hash, id)
+	if err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+	if n, err := res.RowsAffected(); err == nil && n == 0 {
+		return fmt.Errorf("user not found")
+	}
+	return nil
+}

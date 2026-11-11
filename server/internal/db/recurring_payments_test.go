@@ -520,6 +520,16 @@ func TestUserAccountSettings(t *testing.T) {
 	assert.Error(t, testDB.UpdateUserAccount(ctx, userID, "", "", bad), "the database refuses invalid defaults too")
 }
 
+func TestUpdateUserPassword(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	require.NoError(t, testDB.UpdateUserPassword(context.Background(), userID, "new-hash"))
+	u, err := testDB.GetUserByID(userID)
+	require.NoError(t, err)
+	assert.Equal(t, "new-hash", u.PasswordHash)
+
+	assert.Error(t, testDB.UpdateUserPassword(context.Background(), uuid.New(), "x"), "unknown user")
+}
+
 func setUserEmail(t *testing.T, testDB *DB, userID uuid.UUID, email, name string) {
 	t.Helper()
 	require.NoError(t, testDB.UpdateUserAccount(context.Background(), userID, name, email, models.DefaultReminderDefaults()))
