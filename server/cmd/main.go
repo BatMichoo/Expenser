@@ -53,6 +53,9 @@ func main() {
 	}
 
 	router.Static("/static", sPath)
+	// Browsers ask for /favicon.ico on pages without an icon link; without
+	// this the 404 pops up as an error on the next page.
+	router.StaticFile("/favicon.ico", filepath.Join(sPath, "favicon.png"))
 
 	mailer := smtpMailer(cfg)
 	if cfg.DevMode {

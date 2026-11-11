@@ -138,9 +138,16 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 	return nil
 }
 
+// Logout clears the login cookie and sends the browser home: through HTMX
+// from the Logout button, or with a plain redirect when /logout is opened
+// directly (otherwise the browser shows a blank page).
 func (h *AuthHandler) Logout(c *gin.Context) error {
 	h.BaseHandler.AS.ClearCookie(c)
 
+	if !isHTMX(c) {
+		c.Redirect(http.StatusSeeOther, "/")
+		return nil
+	}
 	c.Header("HX-Redirect", "/")
 	c.Status(http.StatusOK)
 	return nil
