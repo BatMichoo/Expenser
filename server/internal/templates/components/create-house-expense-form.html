@@ -2,9 +2,10 @@
 <div class="sheet">
   {{ template "sheet-heading" (dict "Title" (T .Lang "form.add_new") "Lang" .Lang) }}
   <form class="new-expense-form" hx-post="/house/expenses" hx-target="#recent-expenses" hx-swap="afterbegin"
-    hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    hx-on::after-request="if(event.detail.successful && event.target === this && !event.detail.xhr.getResponseHeader('HX-Retarget')) { hideDialog(); }">
     {{ template "type-chips" (dict "Types" .Types "Selected" 0 "Lang" .Lang "Label" "form.utility_type" "MetaURL" "/house/expenses/metadata") }}
     {{ template "amount-date-fields" (dict "Lang" .Lang "Date" .Date) }}
+    {{ template "backfill-fields" (dict "Lang" .Lang "Month" .Month) }}
     <details class="more-fields">
       <summary>{{ T .Lang "form.more_fields" }}</summary>
       <div class="more-fields-body">

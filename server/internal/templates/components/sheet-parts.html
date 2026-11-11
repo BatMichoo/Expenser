@@ -64,3 +64,25 @@
   <button type="submit" class="btn-primary sheet-save">{{ T .Lang .SaveLabel }}</button>
 </div>
 {{ end }}
+
+{{/* "Several months": repeat the expense on the same day of every month
+     from/to (house and car add panels). The server shows a preview first. */}}
+{{ define "backfill-fields" }}
+<div class="backfill">
+  <label class="check-row">
+    <input type="checkbox" name="backfill" />
+    <span>{{ T .Lang "backfill.toggle" }}</span>
+  </label>
+  <div class="backfill-range">
+    <div>
+      <label for="backfill-from">{{ T .Lang "backfill.from" }}</label>
+      <input type="month" id="backfill-from" name="backfill_from" max="{{ .Month }}" />
+    </div>
+    <div>
+      <label for="backfill-to">{{ T .Lang "backfill.to" }}</label>
+      <input type="month" id="backfill-to" name="backfill_to" value="{{ .Month }}" max="{{ .Month }}" />
+    </div>
+    <span class="field-hint">{{ T .Lang "backfill.hint" }}</span>
+  </div>
+</div>
+{{ end }}

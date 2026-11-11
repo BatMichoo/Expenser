@@ -4,6 +4,7 @@ import (
 	"expenser/internal/config"
 	database "expenser/internal/db"
 	"expenser/internal/middleware"
+	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/services/gemini"
 
@@ -36,6 +37,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 	am := middleware.NewAuthMiddleware(as)
 	chartHandler := NewChartHandler(db)
 
+	backfillHandler := NewBackfillHandler(db)
 	houseHandler := NewHouseHandler(rootHandler)
 	protectedHouse := router.Group("/house")
 	{
@@ -47,7 +49,8 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 		protectedHouse.GET("/chart/search", chartHandler.HouseSearch)
 		protectedHouse.GET("/expenses/new", wrap(houseHandler.GetCreateHouseForm))
 		protectedHouse.GET("/expenses/metadata", wrap(houseHandler.GetMetadataFields))
-		protectedHouse.POST("/expenses", wrap(houseHandler.CreateHouseExpense))
+		protectedHouse.POST("/expenses", wrap(backfillHandler.WithPreview(models.RecurringCategoryHouse, houseHandler.CreateHouseExpense)))
+		protectedHouse.POST("/expenses/backfill", wrap(backfillHandler.Confirm(models.RecurringCategoryHouse)))
 		protectedHouse.GET("/expenses/edit/:id", wrap(houseHandler.GetEditHouseForm))
 		protectedHouse.PUT("/expenses/:id", wrap(houseHandler.EditHouseExpenseById))
 		protectedHouse.GET("/expenses/delete/:id", wrap(houseHandler.GetDeleteConfirm))
@@ -113,7 +116,8 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 		protectedCar.GET("/chart/search", chartHandler.CarSearch)
 		protectedCar.GET("/expenses/new", wrap(carHandler.GetCreateCarForm))
 		protectedCar.GET("/expenses/metadata", wrap(carHandler.GetMetadataFields))
-		protectedCar.POST("/expenses", wrap(carHandler.CreateCarExpense))
+		protectedCar.POST("/expenses", wrap(backfillHandler.WithPreview(models.RecurringCategoryCar, carHandler.CreateCarExpense)))
+		protectedCar.POST("/expenses/backfill", wrap(backfillHandler.Confirm(models.RecurringCategoryCar)))
 		protectedCar.GET("/expenses/edit/:id", wrap(carHandler.GetEditCarForm))
 		protectedCar.PUT("/expenses/:id", wrap(carHandler.EditCarExpenseById))
 		protectedCar.GET("/expenses/delete/:id", wrap(carHandler.GetDeleteConfirm))

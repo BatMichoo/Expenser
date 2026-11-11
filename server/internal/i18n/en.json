@@ -428,5 +428,20 @@
   "home.last_year_month": "last %s: %s",
   "home.more_bills": "+%d more",
   "home.no_bills": "No bills yet. Add one to get reminders before it's due.",
-  "home.upcoming_bills": "Upcoming bills"
+  "home.upcoming_bills": "Upcoming bills",
+  "backfill.toggle": "Several months",
+  "backfill.from": "From",
+  "backfill.to": "To",
+  "backfill.hint": "Adds one payment a month, on the day of the date above. Months that already have one of this type are skipped. You'll see a preview first.",
+  "backfill.title": "Add several months",
+  "backfill.adds": "Adds %d payments",
+  "backfill.on_day": "on day %d of each month",
+  "backfill.nothing": "Nothing to add: every month in this range already has one.",
+  "backfill.skips": "Skipping %d already recorded",
+  "backfill.confirm": "Add %d payments",
+  "backfill.added": "Added %d payments",
+  "backfill.skipped_n": "%d skipped, already recorded",
+  "error.backfill_months": "Pick both months, with From no later than To.",
+  "error.backfill_future": "The months can't go past this month.",
+  "error.backfill_too_long": "Add at most 60 months (5 years) at a time."
 }
