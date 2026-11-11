@@ -6,6 +6,7 @@
       <h1 class="auth-title">{{ T .Lang "login.title" }}</h1>
       <p class="auth-sub">{{ T .Lang "login.subtitle" }}</p>
       <form class="auth-form" hx-post="/login" hx-swap="none">
+        {{ if .Next }}<input type="hidden" name="next" value="{{ .Next }}" />{{ end }}
         <div class="auth-field">
           <label for="login-username">{{ T .Lang "login.username" }}</label>
           <input type="text" id="login-username" name="username" autocomplete="username" autocapitalize="none"

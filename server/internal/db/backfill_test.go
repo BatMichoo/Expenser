@@ -7,6 +7,7 @@ import (
 
 	"expenser/internal/models"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -60,4 +61,30 @@ func TestCreateBackfillExpenses(t *testing.T) {
 	jun, err := db.GetHouseExpensesForMonth(time.June, 2026, userID)
 	require.NoError(t, err)
 	assert.Empty(t, *jun, "all or nothing")
+}
+
+func TestSnoozeRecurringPayment(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+	p := newInternetPayment(userID, day(2026, 12, 1))
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+
+	until := time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC)
+	require.NoError(t, testDB.SnoozeRecurringPayment(ctx, p.ID, userID, until))
+	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	require.NoError(t, err)
+	require.NotNil(t, got.SnoozedUntil)
+	assert.Equal(t, "2026-11-20", got.SnoozedUntil.Format("2006-01-02"))
+
+	require.NoError(t, testDB.SnoozeRecurringPayment(ctx, p.ID, userID, until.AddDate(0, 0, -5)))
+	got, _ = testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	assert.Equal(t, "2026-11-20", got.SnoozedUntil.Format("2006-01-02"), "a shorter snooze never cuts a longer one")
+
+	assert.Error(t, testDB.SnoozeRecurringPayment(ctx, p.ID, uuid.New(), until), "someone else's bill")
+
+	byID, err := testDB.GetRecurringPaymentByIDForSnooze(ctx, p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, userID, byID.UserID, "carries its owner")
+	_, err = testDB.GetRecurringPaymentByIDForSnooze(ctx, uuid.New())
+	assert.Error(t, err)
 }

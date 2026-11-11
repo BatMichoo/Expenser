@@ -19,11 +19,12 @@ type SettingsHandler struct {
 	BaseHandler BaseHandler
 	// Mailer sends the dev-mode test email; nil when SMTP isn't configured.
 	Mailer  services.Mailer
+	Links   *services.ReminderLinkBuilder // nil: emails have no links
 	DevMode bool
 }
 
-func NewSettingsHandler(rh *RootHandler, mailer services.Mailer, devMode bool) *SettingsHandler {
-	return &SettingsHandler{BaseHandler: rh.BaseHandler, Mailer: mailer, DevMode: devMode}
+func NewSettingsHandler(rh *RootHandler, mailer services.Mailer, links *services.ReminderLinkBuilder, devMode bool) *SettingsHandler {
+	return &SettingsHandler{BaseHandler: rh.BaseHandler, Mailer: mailer, Links: links, DevMode: devMode}
 }
 
 // accountForm is what Settings > Account saves.
@@ -148,7 +149,7 @@ func (h *SettingsHandler) SendTestEmail(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := h.Mailer.Send(c.Request.Context(), services.BuildTestReminderEmail(user.Username, user.DisplayName, lang, email, time.Now())); err != nil {
+	if err := h.Mailer.Send(c.Request.Context(), services.BuildTestReminderEmail(user.Username, user.DisplayName, lang, email, time.Now(), h.Links)); err != nil {
 		log.Printf("test email to %s: %v", email, err)
 		renderError(c, http.StatusBadGateway, utilities.T(lang, "settings.test_failed"), err.Error())
 		return nil

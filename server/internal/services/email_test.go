@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -68,7 +69,7 @@ func TestBuildReminderEmailUnknownLanguageFallsBackToEnglish(t *testing.T) {
 func TestBuildTestReminderEmail(t *testing.T) {
 	require.NoError(t, utilities.InitI18n())
 	today := time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC)
-	m := BuildTestReminderEmail("ivan", "", "en", "me@example.com", today)
+	m := BuildTestReminderEmail("ivan", "", "en", "me@example.com", today, nil)
 
 	assert.Equal(t, "me@example.com", m.To)
 	assert.Equal(t, "[Test] Reminder: Vivacom Fiber 500 Mbps + TV (apartment & garage) — in 3 days", m.Subject)
@@ -81,7 +82,7 @@ func TestBuildTestReminderEmail(t *testing.T) {
 	assert.Contains(t, m.HTML, "white-space:pre-line", "line breaks in notes survive in HTML")
 	assert.Contains(t, m.HTML, "vertical-align:top", "labels line up with the first line of long values")
 
-	bg := BuildTestReminderEmail("ivan", "", "bg", "me@example.com", today)
+	bg := BuildTestReminderEmail("ivan", "", "bg", "me@example.com", today, nil)
 	assert.True(t, strings.HasPrefix(bg.Subject, "[Тест] Напомняне:"), bg.Subject)
 }
 
@@ -111,7 +112,64 @@ func TestReminderEmailUsesDisplayName(t *testing.T) {
 
 func TestBuildTestReminderEmailUsesDisplayName(t *testing.T) {
 	require.NoError(t, utilities.InitI18n())
-	m := BuildTestReminderEmail("ivan", "Miro", "en", "me@example.com", time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC))
+	m := BuildTestReminderEmail("ivan", "Miro", "en", "me@example.com", time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC), nil)
 	assert.Contains(t, m.Text, "Hi Miro,")
 	assert.Equal(t, "Miro", m.ToName)
+}
+
+func TestReminderLinks(t *testing.T) {
+	signer := NewSnoozeSigner("secret")
+	now := time.Date(2026, 11, 11, 9, 0, 0, 0, time.Local)
+	b := NewReminderLinks("https://expenser.home.lan/", signer, func() time.Time { return now })
+	r := gasReminder("en")
+	r.Payment.ID, r.Payment.UserID = uuid.New(), uuid.New()
+	every := 3
+	r.Payment.RepeatEveryDays = &every
+
+	links := b.For(r.Payment)
+	require.NotNil(t, links)
+	assert.Equal(t, "https://expenser.home.lan/bills", links.BillsURL, "trailing slash trimmed")
+	require.Len(t, links.Snooze, 3)
+	assert.Equal(t, []int{1, 3, 7}, []int{links.Snooze[0].Days, links.Snooze[1].Days, links.Snooze[2].Days})
+	for _, s := range links.Snooze {
+		token := strings.TrimPrefix(s.URL, "https://expenser.home.lan/snooze/")
+		require.NotEqual(t, s.URL, token)
+		c, err := signer.Verify(token, now)
+		require.NoError(t, err)
+		assert.Equal(t, r.Payment.ID, c.BillID)
+		assert.Equal(t, "2026-11-08", c.DueFor.Format("2006-01-02"), "tied to this cycle")
+		assert.Equal(t, now.AddDate(0, 0, s.Days).Format("2006-01-02"), c.Until.Format("2006-01-02"))
+		_, err = signer.Verify(token, now.AddDate(0, 0, 14))
+		assert.NoError(t, err, "links last 14 days")
+		_, err = signer.Verify(token, now.AddDate(0, 0, 15))
+		assert.ErrorIs(t, err, ErrSnoozeLinkExpired)
+		assert.Less(t, len(s.URL), len("https://expenser.home.lan/snooze/")+50)
+	}
+
+	r.Payment.RepeatEveryDays = nil
+	assert.Empty(t, b.For(r.Payment).Snooze, "remind-once bills get no snooze: there is nothing to pause")
+	assert.Nil(t, NewReminderLinks("", signer, nil), "no APP_URL, no links")
+	assert.Nil(t, NewReminderLinks("ftp://x", signer, nil), "only http(s)")
+}
+
+func TestReminderEmailWithLinks(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	r := gasReminder("en")
+	r.Links = &ReminderLinks{BillsURL: "https://app.lan/bills", Snooze: []ReminderSnooze{
+		{Days: 1, URL: "https://app.lan/snooze/a"}, {Days: 3, URL: "https://app.lan/snooze/b"}, {Days: 7, URL: "https://app.lan/snooze/c"},
+	}}
+	m := BuildReminderEmail(r)
+	for _, u := range []string{"https://app.lan/bills", "https://app.lan/snooze/a", "https://app.lan/snooze/b", "https://app.lan/snooze/c"} {
+		assert.Contains(t, m.HTML, `href="`+u+`"`)
+		assert.Contains(t, m.Text, u)
+	}
+	assert.Contains(t, m.HTML, "Open bills")
+	assert.Contains(t, m.HTML, "1 week")
+	assert.Contains(t, m.Text, "home network", "explains where links work")
+	assert.Equal(t, 3, strings.Count(m.HTML, `align="center"`), "the button, the snooze row and the note are centred")
+
+	r.Links.Snooze = nil
+	m = BuildReminderEmail(r)
+	assert.NotContains(t, m.HTML, "snooze")
+	assert.Contains(t, m.HTML, "https://app.lan/bills")
 }

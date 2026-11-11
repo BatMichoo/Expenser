@@ -40,3 +40,19 @@ func TestLogoutVisitedDirectly(t *testing.T) {
 	assert.Equal(t, "/", w.Header().Get("Location"))
 	assert.NotEmpty(t, w.Header().Get("Set-Cookie"), "clears the login cookie")
 }
+
+func TestSafeNext(t *testing.T) {
+	for in, want := range map[string]string{
+		"":                      "/",
+		"/bills":                "/bills",
+		"/house?month=2026-01":  "/house?month=2026-01",
+		"//evil.example":        "/",
+		"/\\evil.example":       "/",
+		"https://evil.example/": "/",
+		"bills":                 "/",
+		"/login":                "/",
+		"javascript:alert(1)":   "/",
+	} {
+		assert.Equal(t, want, safeNext(in), in)
+	}
+}

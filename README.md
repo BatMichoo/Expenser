@@ -65,6 +65,8 @@ SMTP_FROM=Expenser &lt;you@gmail.com&gt;<br>
 
 Reminder emails need a Gmail **app password** (Google account → Security → 2-Step Verification → App passwords), not your normal password. Without `SMTP_HOST` reminders are only written to the log.
 
+Set `APP_URL` (e.g. `https://expenser.homeserver.lan`) to give reminder emails an **Open bills** button and, for bills that keep reminding, links to pause reminders for 1 day, 3 days or 1 week. Snooze links are signed, so they work without logging in, only for the reminder they came in, and for 14 days; opening one asks for a confirming click before anything changes. They only work on devices that can reach `APP_URL`, i.e. your home network.
+
 In development, `DEV_MODE=true` (in `server/.env.dev`) adds a **Send test email** button to Settings → Account. It mails a sample reminder to the address typed there, so you can check the SMTP setup straight away. Leave `DEV_MODE` unset in production.
 
 # Auto-deploy

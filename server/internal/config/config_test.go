@@ -57,3 +57,13 @@ func TestDevModeIsOffUnlessExplicitlyOn(t *testing.T) {
 	assert.True(t, parseDevMode("true"))
 	assert.True(t, parseDevMode(" TRUE "))
 }
+
+func TestAppURLFromEnv(t *testing.T) {
+	t.Setenv("JWT_SECRET", "x")
+	t.Setenv("APP_URL", " https://expenser.home.lan/ ")
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "https://expenser.home.lan", cfg.AppURL, "trimmed, no trailing slash")
+}
