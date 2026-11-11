@@ -58,7 +58,7 @@ func main() {
 
 	schedulerCtx, stopScheduler := context.WithCancel(context.Background())
 	schedulerDone := make(chan struct{})
-	reminderScheduler := services.NewReminderScheduler(db, services.NewConsoleNotifier(nil), cfg.ReminderCheckInterval)
+	reminderScheduler := services.NewReminderScheduler(db, reminderNotifier(cfg), cfg.ReminderCheckInterval)
 	go func() {
 		reminderScheduler.Run(schedulerCtx)
 		close(schedulerDone)
@@ -83,4 +83,22 @@ func main() {
 	fmt.Println("Shutting down server...")
 	stopScheduler()
 	<-schedulerDone
+}
+
+// reminderNotifier emails reminders when SMTP is configured; otherwise
+// they are only written to the log (development, CI).
+func reminderNotifier(cfg *config.Config) services.Notifier {
+	smtpCfg := services.SMTPConfig{
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+	}
+	if !smtpCfg.Configured() {
+		log.Println("SMTP not configured: reminders are logged, not emailed.")
+		return services.NewConsoleNotifier(nil)
+	}
+	log.Printf("Reminders are emailed via %s:%s.", smtpCfg.Host, smtpCfg.Port)
+	return services.NewEmailNotifier(services.NewSMTPMailer(smtpCfg))
 }

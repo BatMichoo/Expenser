@@ -89,6 +89,7 @@ func (f *fakeNotifier) Notify(_ context.Context, r Reminder) error {
 
 func monthly(due time.Time, remind int) *models.RecurringPayment {
 	return &models.RecurringPayment{
+		UserEmail:        "me@example.com",
 		ID:               uuid.New(),
 		Category:         models.RecurringCategoryHouse,
 		TypeName:         "Internet",
@@ -285,4 +286,21 @@ func TestFormatReminderArrivesBill(t *testing.T) {
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -3}), "(waiting 3 days)", "no deadline, so not overdue")
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -1}), "(waiting 1 day)")
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: 0}), "arrives around 2026-11-08 (today)")
+}
+
+func TestRunOnceSkipsBillsWithoutRecipient(t *testing.T) {
+	noEmail := monthly(day(2026, 11, 10), 0)
+	noEmail.UserEmail = ""
+	off := monthly(day(2026, 11, 10), 0)
+	off.Notify = models.NotifyNone
+	toPartner := monthly(day(2026, 11, 10), 0)
+	toPartner.NotifyEmail = "partner@example.com"
+	store := &fakeStore{payments: []*models.RecurringPayment{noEmail, off, toPartner}}
+	n := &fakeNotifier{}
+
+	require.NoError(t, newTestScheduler(store, n, day(2026, 11, 10)).RunOnce(context.Background()))
+	require.Len(t, n.sent, 1, "no address means no reminder at all")
+	assert.Equal(t, "partner@example.com", n.sent[0].To)
+	assert.Nil(t, noEmail.LastNotifiedFor, "skipped bills are not counted")
+	assert.Equal(t, 0, noEmail.RemindersSent)
 }

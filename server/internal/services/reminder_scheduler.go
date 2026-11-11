@@ -91,6 +91,10 @@ func (s *ReminderScheduler) RunOnce(ctx context.Context) error {
 	}
 	due := make([]models.RecurringPayment, 0, len(active))
 	for _, p := range active {
+		// Nobody to send to: skip entirely (not sent, not counted).
+		if p.ReminderRecipient() == "" {
+			continue
+		}
 		if p.ShouldRemind(today) {
 			due = append(due, p)
 		}
@@ -105,6 +109,7 @@ func (s *ReminderScheduler) RunOnce(ctx context.Context) error {
 		r := Reminder{
 			Payment:  p,
 			DaysLeft: p.DaysUntilDue(today),
+			To:       p.ReminderRecipient(),
 		}
 		if err := s.notify(ctx, r); err != nil {
 			errs = append(errs, fmt.Errorf("send reminder for %s: %w", p.ID, err))

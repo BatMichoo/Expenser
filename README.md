@@ -57,6 +57,13 @@ JWT_EXPIRATION_HOURS=24<br>
 ### Reminders
 
 REMINDER_CHECK_INTERVAL=24h<br>
+SMTP_HOST=smtp.gmail.com<br>
+SMTP_PORT=587<br>
+SMTP_USER=you@gmail.com<br>
+SMTP_PASSWORD=your-app-password<br>
+SMTP_FROM=Expenser &lt;you@gmail.com&gt;<br>
+
+Reminder emails need a Gmail **app password** (Google account → Security → 2-Step Verification → App passwords), not your normal password. Without `SMTP_HOST` reminders are only written to the log.
 
 # Auto-deploy
 

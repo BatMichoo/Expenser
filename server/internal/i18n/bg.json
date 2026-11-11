@@ -373,5 +373,9 @@
   "bills.due.arrives_tomorrow": "идва утре",
   "bills.due.waiting_one": "чака 1 ден",
   "bills.due.waiting": "чака %d дни",
-  "bills.waiting_hint": "+ %d чакат плащане"
+  "bills.waiting_hint": "+ %d чакат плащане",
+  "email.subject": "Напомняне: %s — %s",
+  "email.greeting": "Здравей, %s,",
+  "email.intro": "Напомняне за тази сметка:",
+  "email.footer": "Получавате това, защото напомнянията за тази сметка в Expenser са включени. Отбележете я като платена в приложението, за да спрат."
 }

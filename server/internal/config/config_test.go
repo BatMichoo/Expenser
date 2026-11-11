@@ -29,3 +29,23 @@ func TestParseReminderCheckInterval(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadSMTP(t *testing.T) {
+	env := map[string]string{}
+	get := func(k string) string { return env[k] }
+
+	assert.Equal(t, SMTP{Port: "587"}, loadSMTP(get), "not configured: console reminders")
+
+	env = map[string]string{"SMTP_HOST": "smtp.gmail.com", "SMTP_USER": "me@gmail.com", "SMTP_PASSWORD": "abcd efgh ijkl mnop"}
+	s := loadSMTP(get)
+	assert.Equal(t, "smtp.gmail.com", s.Host)
+	assert.Equal(t, "587", s.Port, "Gmail's STARTTLS port by default")
+	assert.Equal(t, "me@gmail.com", s.From, "From defaults to the login")
+	assert.Equal(t, "abcdefghijklmnop", s.Password, "Google shows app passwords with spaces")
+
+	env["SMTP_FROM"] = "Expenser <me@gmail.com>"
+	env["SMTP_PORT"] = "2525"
+	s = loadSMTP(get)
+	assert.Equal(t, "Expenser <me@gmail.com>", s.From)
+	assert.Equal(t, "2525", s.Port)
+}
