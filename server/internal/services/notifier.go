@@ -12,7 +12,8 @@ import (
 // Reminder is a single notification about an upcoming recurring payment.
 type Reminder struct {
 	Payment  models.RecurringPayment
-	DaysLeft int // negative when overdue
+	DaysLeft int    // negative when overdue
+	To       string // recipient email address
 }
 
 // Notifier delivers reminders to users. Implementations can send email,
@@ -45,7 +46,11 @@ func FormatReminder(r Reminder) string {
 	p := r.Payment
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "[reminder] user=%s [%s] %s", p.Username, p.Category, p.TypeName)
+	fmt.Fprintf(&b, "[reminder] user=%s", p.Username)
+	if r.To != "" {
+		fmt.Fprintf(&b, " to=%s", r.To)
+	}
+	fmt.Fprintf(&b, " [%s] %s", p.Category, p.TypeName)
 	if p.Name != "" {
 		fmt.Fprintf(&b, " %q", p.Name)
 	}

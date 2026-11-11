@@ -54,11 +54,15 @@ func main() {
 
 	router.Static("/static", sPath)
 
-	handlers.RegisterRoutes(router, db, cfg)
+	mailer := smtpMailer(cfg)
+	if cfg.DevMode {
+		log.Println("Dev mode: developer helpers (test email) are on.")
+	}
+	handlers.RegisterRoutes(router, db, cfg, mailer)
 
 	schedulerCtx, stopScheduler := context.WithCancel(context.Background())
 	schedulerDone := make(chan struct{})
-	reminderScheduler := services.NewReminderScheduler(db, services.NewConsoleNotifier(nil), cfg.ReminderCheckInterval)
+	reminderScheduler := services.NewReminderScheduler(db, reminderNotifier(mailer), cfg.ReminderCheckInterval)
 	go func() {
 		reminderScheduler.Run(schedulerCtx)
 		close(schedulerDone)
@@ -83,4 +87,30 @@ func main() {
 	fmt.Println("Shutting down server...")
 	stopScheduler()
 	<-schedulerDone
+}
+
+// smtpMailer is the mail sender, or nil when SMTP isn't configured.
+func smtpMailer(cfg *config.Config) services.Mailer {
+	smtpCfg := services.SMTPConfig{
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+	}
+	if !smtpCfg.Configured() {
+		return nil
+	}
+	log.Printf("Email is sent via %s:%s.", smtpCfg.Host, smtpCfg.Port)
+	return services.NewSMTPMailer(smtpCfg)
+}
+
+// reminderNotifier emails reminders when there is a mailer; otherwise they
+// are only written to the log (development, CI).
+func reminderNotifier(mailer services.Mailer) services.Notifier {
+	if mailer == nil {
+		log.Println("SMTP not configured: reminders are logged, not emailed.")
+		return services.NewConsoleNotifier(nil)
+	}
+	return services.NewEmailNotifier(mailer)
 }

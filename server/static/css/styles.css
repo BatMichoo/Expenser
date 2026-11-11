@@ -3499,3 +3499,28 @@ tr:hover .row-actions,
 .bill-group.waiting h3 {
   color: var(--warning);
 }
+
+/* Reminder delivery */
+.field-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.bill-form:has(input[name="notify"][value="none"]:checked) .notify-address {
+  display: none;
+}
+
+.no-email {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+/* Dev mode: "Send test email" under the reminder email field */
+.send-test-email {
+  align-self: flex-start;
+  margin-top: 0.75em;
+  padding: 0.45em 1.2em;
+  border-radius: 999px;
+}

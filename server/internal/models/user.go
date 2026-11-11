@@ -12,6 +12,7 @@ type User struct {
 	Username          string `form:"username" binding:"required,min=3,max=50"`
 	PasswordHash      string
 	PreferredLanguage string
+	Email             string // optional preferred email for reminders
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }

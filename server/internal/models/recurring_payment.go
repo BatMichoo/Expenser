@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"net/mail"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -26,6 +27,14 @@ const (
 	// DateArrives: the date is roughly when the bill shows up; there is no
 	// deadline (gas). Such bills are never overdue, only waiting.
 	DateArrives BillDateKind = "arrives"
+)
+
+// NotifyType is how reminders for a bill are delivered.
+type NotifyType string
+
+const (
+	NotifyEmail NotifyType = "email"
+	NotifyNone  NotifyType = "none"
 )
 
 type CycleUnit string
@@ -79,6 +88,12 @@ type RecurringPayment struct {
 	MaxReminders    *int       // nil: no limit; counted per cycle
 	RemindersSent   int        // reminders sent for the current due date (read-only)
 	SnoozedUntil    *time.Time // no reminders before this date; cleared when paid
+
+	// Delivery (see ReminderRecipient).
+	Notify      NotifyType
+	NotifyEmail string // optional; overrides the user's preferred email
+	UserEmail   string // read-only: the owner's preferred email, may be empty
+	UserLang    string // read-only: the owner's preferred language
 	// ExpectedAmount is what the bill usually costs (nil when unknown). It
 	// pre-fills MarkPaid and is shown in reminders.
 	ExpectedAmount *float64
@@ -101,6 +116,8 @@ var (
 	ErrMissingDueDate      = errors.New("due date is required")
 	ErrInvalidAmount       = errors.New("amount cannot be negative")
 	ErrInvalidDateKind     = errors.New("date kind must be pay_by or arrives")
+	ErrInvalidNotify       = errors.New("notify must be email or none")
+	ErrInvalidEmail        = errors.New("not a valid email address")
 	ErrInvalidRepeat       = errors.New("reminders can repeat at most once a day")
 	ErrInvalidMaxReminders = errors.New("the reminder limit must be at least 1")
 	ErrNameTooLong         = fmt.Errorf("name cannot be longer than %d characters", MaxRecurringPaymentNameLength)
@@ -116,6 +133,10 @@ func (p *RecurringPayment) Normalize() {
 	if p.DateKind == "" {
 		p.DateKind = DatePayBy
 	}
+	if p.Notify == "" {
+		p.Notify = NotifyEmail
+	}
+	p.NotifyEmail = strings.TrimSpace(p.NotifyEmail)
 	p.PaymentOptions = NormalizePaymentOptions(p.PaymentOptions)
 }
 
@@ -175,6 +196,14 @@ func (p *RecurringPayment) Validate() error {
 	}
 	if p.MaxReminders != nil && *p.MaxReminders < 1 {
 		return ErrInvalidMaxReminders
+	}
+	switch p.Notify {
+	case "", NotifyEmail, NotifyNone:
+	default:
+		return ErrInvalidNotify
+	}
+	if p.NotifyEmail != "" && !ValidEmail(p.NotifyEmail) {
+		return ErrInvalidEmail
 	}
 	if p.DueDate.IsZero() {
 		return ErrMissingDueDate
@@ -373,4 +402,23 @@ type BillsView struct {
 	Next         *BillRow
 	Total        int
 	Lang         string
+}
+
+// ReminderRecipient is where this bill's reminders go: the bill's own
+// address, else the owner's preferred email. Empty means nobody, and then
+// no reminder is sent at all.
+func (p RecurringPayment) ReminderRecipient() string {
+	if p.Notify == NotifyNone {
+		return ""
+	}
+	if p.NotifyEmail != "" {
+		return p.NotifyEmail
+	}
+	return p.UserEmail
+}
+
+// ValidEmail accepts a plain address like "name@example.com".
+func ValidEmail(s string) bool {
+	addr, err := mail.ParseAddress(s)
+	return err == nil && addr.Address == s && addr.Name == ""
 }

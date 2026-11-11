@@ -485,3 +485,51 @@ func TestGetUpcomingRecurringPayments(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []uuid.UUID{overdue.ID, soon.ID, edge.ID}, ids(got))
 }
+
+func TestUserReminderEmail(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+
+	u, err := testDB.GetUserByID(userID)
+	require.NoError(t, err)
+	assert.Empty(t, u.Email, "not required")
+
+	require.NoError(t, testDB.SetUserEmail(ctx, userID, "me@example.com"))
+	u, err = testDB.GetUserByID(userID)
+	require.NoError(t, err)
+	assert.Equal(t, "me@example.com", u.Email)
+
+	require.NoError(t, testDB.SetUserEmail(ctx, userID, ""))
+	u, err = testDB.GetUserByID(userID)
+	require.NoError(t, err)
+	assert.Empty(t, u.Email, "cleared")
+}
+
+func TestBillDeliveryRoundTrip(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+	require.NoError(t, testDB.SetUserEmail(ctx, userID, "me@example.com"))
+
+	p := newInternetPayment(userID, rpDate(2026, 12, 1))
+	p.NotifyEmail = "partner@example.com"
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+
+	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, models.NotifyEmail, got.Notify, "email by default")
+	assert.Equal(t, "partner@example.com", got.NotifyEmail)
+	assert.Equal(t, "me@example.com", got.UserEmail)
+	assert.Equal(t, "en", got.UserLang)
+
+	got.Notify, got.NotifyEmail = models.NotifyNone, ""
+	require.NoError(t, testDB.UpdateRecurringPayment(ctx, got, userID))
+	got, err = testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, models.NotifyNone, got.Notify)
+	assert.Empty(t, got.NotifyEmail)
+
+	active, err := testDB.GetActiveRecurringPayments(ctx)
+	require.NoError(t, err)
+	require.Len(t, active, 1)
+	assert.Equal(t, "me@example.com", active[0].UserEmail, "the scheduler knows where to send")
+}

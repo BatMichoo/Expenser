@@ -10,7 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
+// RegisterRoutes wires every route. mailer sends the dev-mode test email and
+// is nil when SMTP isn't configured.
+func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mailer services.Mailer) {
 	// Public routes (no authentication required)
 	as := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration, cfg.LanDomain)
 
@@ -69,6 +71,17 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config) {
 		protectedGroceries.PUT("/:id", wrap(groceriesHandler.EditGroceriesExpense))
 		protectedGroceries.DELETE("/:id", wrap(groceriesHandler.DeleteGroceriesExpense))
 	}
+	settingsHandler := NewSettingsHandler(rootHandler, mailer, cfg.DevMode)
+	protectedSettings := router.Group("/settings")
+	{
+		protectedSettings.Use(am.AuthMiddleware())
+		protectedSettings.GET("/email", wrap(settingsHandler.GetReminderEmailForm))
+		protectedSettings.POST("/email", wrap(settingsHandler.SaveReminderEmail))
+		if cfg.DevMode {
+			protectedSettings.POST("/email/test", wrap(settingsHandler.SendTestEmail))
+		}
+	}
+
 	billsHandler := NewBillsHandler(rootHandler)
 	protectedBills := router.Group("/bills")
 	{

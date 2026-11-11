@@ -20,7 +20,8 @@ const recurringPaymentSelect = `
 		rp.expected_amount, rp.remember_last_amount, rp.last_paid_on, rp.last_notified_for,
 		rp.last_notified_on, rp.active, rp.created_at, rp.updated_at,
 		rp.date_kind, rp.remind_days_after, rp.repeat_every_days, rp.max_reminders,
-		rp.reminders_sent, rp.snoozed_until
+		rp.reminders_sent, rp.snoozed_until,
+		rp.notify, COALESCE(rp.notify_email, ''), COALESCE(u.email, ''), u.preferred_language
 	FROM recurring_payments rp
 	JOIN users u ON u.id = rp.user_id
 	LEFT JOIN utility_types ut ON ut.id = rp.utility_type_id
@@ -53,6 +54,7 @@ func scanRecurringPayment(row rowScanner) (*models.RecurringPayment, error) {
 		&lastNotifiedOn, &p.Active, &p.CreatedAt, &p.UpdatedAt,
 		&p.DateKind, &p.RemindDaysAfter, &repeatEvery, &maxReminders,
 		&p.RemindersSent, &snoozedUntil,
+		&p.Notify, &p.NotifyEmail, &p.UserEmail, &p.UserLang,
 	)
 	if err != nil {
 		return nil, err
@@ -148,8 +150,10 @@ func (db *DB) CreateRecurringPayment(ctx context.Context, p *models.RecurringPay
 		INSERT INTO recurring_payments (user_id, category, utility_type_id, car_expense_type_id, name,
 			start_date, due_date, cycle_unit, cycle_every, remind_days_before, payment_hours,
 			payment_options, notes, expected_amount, remember_last_amount,
-			date_kind, remind_days_after, repeat_every_days, max_reminders, snoozed_until)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+			date_kind, remind_days_after, repeat_every_days, max_reminders, snoozed_until,
+			notify, notify_email)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+			$21, NULLIF($22, ''))
 		RETURNING id, active, created_at, updated_at`
 
 	err := db.conn.QueryRowContext(ctx, query,
@@ -157,6 +161,7 @@ func (db *DB) CreateRecurringPayment(ctx context.Context, p *models.RecurringPay
 		p.StartDate, p.DueDate, p.CycleUnit, p.CycleEvery, p.RemindDaysBefore, p.PaymentHours,
 		pq.Array(p.PaymentOptions), p.Notes, p.ExpectedAmount, p.RememberLastAmount,
 		p.DateKind, p.RemindDaysAfter, p.RepeatEveryDays, p.MaxReminders, p.SnoozedUntil,
+		p.Notify, p.NotifyEmail,
 	).Scan(&p.ID, &p.Active, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create recurring payment: %w", err)
@@ -204,6 +209,7 @@ func (db *DB) UpdateRecurringPayment(ctx context.Context, p *models.RecurringPay
 			active = $13, expected_amount = $14, remember_last_amount = $15,
 			date_kind = $18, remind_days_after = $19, repeat_every_days = $20,
 			max_reminders = $21, snoozed_until = $22,
+			notify = $23, notify_email = NULLIF($24, ''),
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = $16 AND user_id = $17
 		RETURNING updated_at`
@@ -214,6 +220,7 @@ func (db *DB) UpdateRecurringPayment(ctx context.Context, p *models.RecurringPay
 		p.RemindDaysBefore, p.PaymentHours, pq.Array(p.PaymentOptions), p.Notes,
 		p.Active, p.ExpectedAmount, p.RememberLastAmount, p.ID, userID,
 		p.DateKind, p.RemindDaysAfter, p.RepeatEveryDays, p.MaxReminders, p.SnoozedUntil,
+		p.Notify, p.NotifyEmail,
 	).Scan(&p.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to update recurring payment: %w", err)

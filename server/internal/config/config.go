@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -23,6 +24,45 @@ type Config struct {
 	// ReminderCheckInterval is how often the recurring payment reminder
 	// scheduler runs.
 	ReminderCheckInterval time.Duration
+	// SMTP sends reminder emails; without a host they are only logged.
+	SMTP SMTP
+	// DevMode turns on developer-only helpers such as the "Send test email"
+	// button. Off unless DEV_MODE=true.
+	DevMode bool
+}
+
+// parseDevMode is true only for an explicit "true", so production never
+// gets dev helpers by accident.
+func parseDevMode(v string) bool {
+	return strings.EqualFold(strings.TrimSpace(v), "true")
+}
+
+// SMTP holds the mail server settings (e.g. Gmail with an app password).
+type SMTP struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	From     string
+}
+
+// loadSMTP reads SMTP_HOST, SMTP_PORT (default 587), SMTP_USER,
+// SMTP_PASSWORD and SMTP_FROM (default: SMTP_USER).
+func loadSMTP(get func(string) string) SMTP {
+	s := SMTP{
+		Host:     strings.TrimSpace(get("SMTP_HOST")),
+		Port:     strings.TrimSpace(get("SMTP_PORT")),
+		User:     strings.TrimSpace(get("SMTP_USER")),
+		Password: strings.ReplaceAll(get("SMTP_PASSWORD"), " ", ""),
+		From:     strings.TrimSpace(get("SMTP_FROM")),
+	}
+	if s.Port == "" {
+		s.Port = "587"
+	}
+	if s.From == "" {
+		s.From = s.User
+	}
+	return s
 }
 
 // JWT holds JWT-related configuration
@@ -105,10 +145,12 @@ func LoadConfig() (*Config, error) {
 			TokenExpiration: jwtExpiration,
 		},
 		Mode:         mode,
+		DevMode:      parseDevMode(os.Getenv("DEV_MODE")),
 		GeminiAPIKey: geminiAPIKey,
 		SeedDevData:  seedDevData,
 
 		ReminderCheckInterval: reminderCheckInterval,
+		SMTP:                  loadSMTP(os.Getenv),
 	}, nil
 }
 

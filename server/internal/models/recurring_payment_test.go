@@ -260,3 +260,47 @@ func TestValidateReminderSettings(t *testing.T) {
 	p.Normalize()
 	assert.Equal(t, DatePayBy, p.DateKind, "defaults to pay-by")
 }
+
+func TestReminderRecipient(t *testing.T) {
+	p := reminderBill()
+	assert.Equal(t, "", p.ReminderRecipient(), "no address anywhere: nobody to remind")
+
+	p.UserEmail = "me@example.com"
+	assert.Equal(t, "me@example.com", p.ReminderRecipient(), "preferred email by default")
+
+	p.NotifyEmail = "partner@example.com"
+	assert.Equal(t, "partner@example.com", p.ReminderRecipient(), "the bill's own address wins")
+
+	p.Notify = NotifyNone
+	assert.Equal(t, "", p.ReminderRecipient(), "notifications off")
+}
+
+func TestValidateNotifySettings(t *testing.T) {
+	base := func() RecurringPayment {
+		p := reminderBill()
+		p.Category, p.UtilityTypeID = RecurringCategoryHouse, intPtr(4)
+		return p
+	}
+	p := base()
+	p.Notify = "pigeon"
+	assert.ErrorIs(t, p.Validate(), ErrInvalidNotify)
+	p = base()
+	p.NotifyEmail = "not an email"
+	assert.ErrorIs(t, p.Validate(), ErrInvalidEmail)
+	p = base()
+	p.NotifyEmail = "  Partner@Example.com "
+	p.Normalize()
+	assert.NoError(t, p.Validate())
+	assert.Equal(t, "Partner@Example.com", p.NotifyEmail, "trimmed")
+	p = base()
+	p.Notify = ""
+	p.Normalize()
+	assert.Equal(t, NotifyEmail, p.Notify, "email by default")
+}
+
+func TestValidEmail(t *testing.T) {
+	assert.True(t, ValidEmail("a@b.co"))
+	assert.False(t, ValidEmail("Ivan <a@b.co>"), "plain address only")
+	assert.False(t, ValidEmail("nope"))
+	assert.False(t, ValidEmail(""))
+}

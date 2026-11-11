@@ -811,3 +811,69 @@ func TestBillsViewWaiting(t *testing.T) {
 	assert.Contains(t, group.Find(".bill-due").Text(), "waiting 3 days")
 	assert.Contains(t, doc.Find("#bill-33333333-3333-3333-3333-333333333333 .bill-due").Text(), "arrives in 3 days")
 }
+
+func TestSettingsHasReminderEmail(t *testing.T) {
+	doc := parseHTML(t, render(t, "header", models.HeaderOptions{IsLoggedIn: true, Lang: "en"}))
+	btn := doc.Find("details.settings-menu .settings-email")
+	require.Equal(t, 1, btn.Length())
+	hx, _ := btn.Attr("hx-get")
+	assert.Equal(t, "/settings/email", hx)
+
+	out := parseHTML(t, render(t, "header", models.HeaderOptions{Lang: "en"}))
+	assert.Equal(t, 0, out.Find(".settings-email").Length(), "only when logged in")
+}
+
+func TestReminderEmailForm(t *testing.T) {
+	doc := parseHTML(t, render(t, "reminder-email-form", map[string]any{"Email": "me@example.com", "Lang": "en"}))
+	form := doc.Find("form")
+	post, _ := form.Attr("hx-post")
+	assert.Equal(t, "/settings/email", post)
+	val, _ := form.Find(`input[type="email"][name="email"]`).Attr("value")
+	assert.Equal(t, "me@example.com", val)
+	_, required := form.Find(`input[name="email"]`).Attr("required")
+	assert.False(t, required, "optional: empty clears it")
+}
+
+func TestReminderEmailFormTestButtonOnlyInDevMode(t *testing.T) {
+	doc := parseHTML(t, render(t, "reminder-email-form", map[string]any{"Email": "me@example.com", "Lang": "en"}))
+	assert.Equal(t, 0, doc.Find(`[hx-post="/settings/email/test"]`).Length(), "hidden outside dev mode")
+
+	doc = parseHTML(t, render(t, "reminder-email-form", map[string]any{"Email": "me@example.com", "Lang": "en", "DevMode": true}))
+	btn := doc.Find(`button[hx-post="/settings/email/test"]`)
+	require.Equal(t, 1, btn.Length())
+	typ, _ := btn.Attr("type")
+	assert.Equal(t, "button", typ, "must not submit the save form")
+	inc, _ := btn.Attr("hx-include")
+	assert.Equal(t, "#reminder-email", inc, "tests the address typed, saved or not")
+}
+
+func TestBillFormDelivery(t *testing.T) {
+	b := sampleBill("Fiber", time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC), true)
+	b.Notify = models.NotifyEmail
+	b.NotifyEmail = "partner@example.com"
+	doc := parseHTML(t, render(t, "bill-form", map[string]any{
+		"Bill": &b, "IsEdit": true, "Category": "house", "TypeID": 4, "DueDate": "2026-12-01",
+		"Types": []models.TypeOption{{ID: 4, Name: "Internet"}}, "Options": map[string]bool{},
+		"KnownOptions": []string{"cash"}, "UserEmail": "me@example.com", "Lang": "en",
+	}))
+	notify, _ := doc.Find(`input[name="notify"][checked]`).Attr("value")
+	assert.Equal(t, "email", notify)
+	addr := doc.Find(`input[name="notify_email"]`)
+	val, _ := addr.Attr("value")
+	assert.Equal(t, "partner@example.com", val)
+	ph, _ := addr.Attr("placeholder")
+	assert.Equal(t, "me@example.com", ph, "shows where it goes by default")
+}
+
+func TestBillRowNoEmailHint(t *testing.T) {
+	b := sampleBill("Fiber", time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC), true)
+	b.Notify = models.NotifyEmail
+	v := &models.BillsView{DueSoon: []models.BillRow{{Payment: b, DaysLeft: 3}}, Total: 1, Lang: "en"}
+	doc := parseHTML(t, render(t, "bills-view", v))
+	assert.Contains(t, doc.Find(".bill-row .no-email").Text(), "No email", "no address: no reminders")
+
+	b.UserEmail = "me@example.com"
+	v.DueSoon[0].Payment = b
+	doc = parseHTML(t, render(t, "bills-view", v))
+	assert.Equal(t, 0, doc.Find(".no-email").Length())
+}
