@@ -181,13 +181,13 @@ var reminderEmailHTML = template.Must(template.New("reminder").Parse(`<!doctype 
 {{ range .Fields }}<tr><td style="padding:8px 0;border-top:1px solid #eef0f5;color:#5b6478;width:40%;vertical-align:top">{{ .Label }}</td><td style="padding:8px 0;border-top:1px solid #eef0f5;font-weight:bold;vertical-align:top;white-space:pre-line">{{ .Value }}</td></tr>
 {{ end }}</table>
 </td></tr>
-{{ with .Links }}<tr><td style="padding:4px 24px 8px">
+{{ with .Links }}<tr><td align="center" style="padding:4px 24px 8px;text-align:center">
 <a href="{{ .BillsURL }}" style="display:inline-block;padding:10px 18px;border-radius:999px;background:#2f5bea;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none">{{ $.OpenBills }}</a>
 </td></tr>
-{{ if .Snooze }}<tr><td style="padding:12px 24px 0;font-size:13px;color:#5b6478">{{ $.SnoozeTitle }}
-<div style="margin-top:8px">{{ range $i, $s := .Snooze }}<a href="{{ $s.URL }}" style="display:inline-block;margin:0 6px 6px 0;padding:6px 12px;border-radius:999px;border:1px solid #c9d2ea;color:#2f5bea;font-size:13px;font-weight:bold;text-decoration:none">{{ index $.SnoozeLabels $i }}</a>{{ end }}</div>
+{{ if .Snooze }}<tr><td align="center" style="padding:12px 24px 0;font-size:13px;color:#5b6478;text-align:center">{{ $.SnoozeTitle }}
+<div style="margin-top:8px">{{ range $i, $s := .Snooze }}<a href="{{ $s.URL }}" style="display:inline-block;margin:0 3px 6px;padding:6px 12px;border-radius:999px;border:1px solid #c9d2ea;color:#2f5bea;font-size:13px;font-weight:bold;text-decoration:none">{{ index $.SnoozeLabels $i }}</a>{{ end }}</div>
 </td></tr>{{ end }}
-<tr><td style="padding:8px 24px 0;font-size:12px;color:#8a92a6">{{ $.LinksNote }}</td></tr>{{ end }}
+<tr><td align="center" style="padding:8px 24px 0;font-size:12px;color:#8a92a6;text-align:center">{{ $.LinksNote }}</td></tr>{{ end }}
 <tr><td style="padding:16px 24px 24px;font-size:12px;color:#8a92a6">{{ .Footer }}</td></tr>
 </table></body></html>`))
 

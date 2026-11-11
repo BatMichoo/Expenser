@@ -166,6 +166,7 @@ func TestReminderEmailWithLinks(t *testing.T) {
 	assert.Contains(t, m.HTML, "Open bills")
 	assert.Contains(t, m.HTML, "1 week")
 	assert.Contains(t, m.Text, "home network", "explains where links work")
+	assert.Equal(t, 3, strings.Count(m.HTML, `align="center"`), "the button, the snooze row and the note are centred")
 
 	r.Links.Snooze = nil
 	m = BuildReminderEmail(r)
