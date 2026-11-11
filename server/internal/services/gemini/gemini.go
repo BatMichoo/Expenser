@@ -29,7 +29,7 @@ func (gs *GeminiService) AnalyzeReceipt(ctx context.Context, receiptData []byte)
 		return nil, fmt.Errorf("gemini API key is not configured")
 	}
 
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=%s", gs.apiKey)
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=%s", gs.apiKey)
 	requestBody := map[string]any{
 		"contents": []map[string]any{
 			{"parts": receiptParts(ctx, receiptData, pdfToText)},
