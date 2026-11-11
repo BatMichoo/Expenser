@@ -267,5 +267,13 @@
   "insights.vs_usual_hint": "▲▼ compared with your 6-month average",
   "insights.this_month": "This month",
   "insights.average": "average",
-  "insights.spent_so_far": "Spent so far"
+  "insights.spent_so_far": "Spent so far",
+  "modal.close": "Close",
+  "receipt.choose_file": "Choose a photo or PDF of the receipt",
+  "receipt.file_hint": "We'll read the items and prices for you to check before saving.",
+  "receipt.reading": "Reading the receipt…",
+  "receipt.items": "%d items",
+  "receipt.save_items": "Save %d items",
+  "receipt.review": "Check the items before saving.",
+  "receipt.store_unknown": "Receipt"
 }

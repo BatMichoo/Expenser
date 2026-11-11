@@ -173,10 +173,14 @@
     box-shadow: 0 -4px 20px oklch(0 0 0 / 0.35);
   }
 
+  /* Toasts: full width under the top bar */
   #modal {
-    top: 10%;
-    min-width: 95vw;
-    transform: translateX(-103%);
+    top: 3.75em;
+    left: 0.75em;
+    right: 0.75em;
+    width: auto;
+    min-width: 0;
+    transform: none;
   }
 
   /* Forms */

@@ -98,9 +98,15 @@ func (h *GroceriesHandler) UploadReceipt(c *gin.Context) error {
 		return err
 	}
 
+	total := 0.0
+	for _, item := range analysis.Items {
+		total += item.TotalPrice - item.TotalDiscount
+	}
+
 	c.HTML(http.StatusOK, "groceries-receipt-edit-form", gin.H{
 		"Store":      analysis.Store,
 		"Items":      analysis.Items,
+		"Total":      total,
 		"Categories": categories,
 		"Lang":       lang,
 	})

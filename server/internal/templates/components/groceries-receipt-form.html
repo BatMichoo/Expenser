@@ -1,21 +1,32 @@
+{{/* Step 1 of a receipt upload: pick the file. The review (step 2) replaces
+     the panel's content. */}}
 {{ define "groceries-receipt-form" }}
-<form
-  class="new-expense-form receipt-upload-form"
-  hx-post="/groceries/upload"
-  hx-encoding="multipart/form-data"
-  hx-target="#receipt-result"
-  hx-disabled-elt="find button[type='submit']"
-  hx-swap="innerHTML"
->
-  <h3>{{ T .Lang "groceries.upload_receipt" }}</h3>
-  <div>
-    <label for="receipt">{{ T .Lang "groceries.select_file" }}</label>
-    <input type="file" id="receipt" name="receipt" accept="image/*,.pdf" required />
-  </div>
-  <div>
-    <button type="submit" class="btn-primary">{{ T .Lang "common.upload" }}</button>
-    <button type="button" class="btn-secondary" onclick="hideDialog()">{{ T .Lang "common.cancel" }}</button>
-  </div>
-</form>
-<div id="receipt-result"></div>
+<div class="sheet">
+  {{ template "sheet-heading" (dict "Title" (T .Lang "groceries.upload_receipt") "Lang" .Lang) }}
+  <form class="new-expense-form receipt-upload-form" hx-post="/groceries/upload" hx-encoding="multipart/form-data"
+    hx-target="#action-dialog" hx-swap="innerHTML" hx-indicator="#receipt-reading"
+    hx-disabled-elt="find button[type='submit']">
+    <label class="dropzone">
+      <input type="file" name="receipt" accept="image/*,.pdf" required
+        onchange="this.closest('.dropzone').querySelector('.dropzone-file').textContent = this.files[0] ? this.files[0].name : ''" />
+      <span class="dropzone-icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+          <path d="M8 8h8" /><path d="M8 12h8" /><path d="M8 16h5" />
+        </svg>
+      </span>
+      <span class="dropzone-title">{{ T .Lang "receipt.choose_file" }}</span>
+      <span class="dropzone-hint">{{ T .Lang "receipt.file_hint" }}</span>
+      <span class="dropzone-file"></span>
+    </label>
+    <div id="receipt-reading" class="receipt-reading" role="status">
+      <span class="spinner" aria-hidden="true"></span>{{ T .Lang "receipt.reading" }}
+    </div>
+    <div class="sheet-actions">
+      <button type="button" class="sheet-cancel" onClick="hideDialog();">{{ T .Lang "common.cancel" }}</button>
+      <button type="submit" class="btn-primary sheet-save">{{ T .Lang "common.upload" }}</button>
+    </div>
+  </form>
+</div>
 {{ end }}
