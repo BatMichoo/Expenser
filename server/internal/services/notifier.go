@@ -12,8 +12,9 @@ import (
 // Reminder is a single notification about an upcoming recurring payment.
 type Reminder struct {
 	Payment  models.RecurringPayment
-	DaysLeft int    // negative when overdue
-	To       string // recipient email address
+	DaysLeft int            // negative when overdue
+	To       string         // recipient email address
+	Links    *ReminderLinks // nil: the email has no links (no APP_URL)
 }
 
 // Notifier delivers reminders to users. Implementations can send email,

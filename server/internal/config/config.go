@@ -26,6 +26,9 @@ type Config struct {
 	ReminderCheckInterval time.Duration
 	// SMTP sends reminder emails; without a host they are only logged.
 	SMTP SMTP
+	// AppURL is where the app is reached, e.g. https://expenser.home.lan.
+	// Reminder emails link to it; empty means no links.
+	AppURL string
 	// DevMode turns on developer-only helpers such as the "Send test email"
 	// button. Off unless DEV_MODE=true.
 	DevMode bool
@@ -146,6 +149,7 @@ func LoadConfig() (*Config, error) {
 		},
 		Mode:         mode,
 		DevMode:      parseDevMode(os.Getenv("DEV_MODE")),
+		AppURL:       strings.TrimRight(strings.TrimSpace(os.Getenv("APP_URL")), "/"),
 		GeminiAPIKey: geminiAPIKey,
 		SeedDevData:  seedDevData,
 

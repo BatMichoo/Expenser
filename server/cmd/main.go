@@ -61,11 +61,18 @@ func main() {
 	if cfg.DevMode {
 		log.Println("Dev mode: developer helpers (test email) are on.")
 	}
-	handlers.RegisterRoutes(router, db, cfg, mailer)
+	links := services.NewReminderLinks(cfg.AppURL, services.NewSnoozeSigner(cfg.JWT.SecretKey), nil)
+	switch {
+	case links != nil:
+		log.Printf("Reminder emails link to %s.", cfg.AppURL)
+	case cfg.AppURL != "":
+		log.Printf("APP_URL %q is not an http(s) address: reminder emails have no links.", cfg.AppURL)
+	}
+	handlers.RegisterRoutes(router, db, cfg, mailer, links)
 
 	schedulerCtx, stopScheduler := context.WithCancel(context.Background())
 	schedulerDone := make(chan struct{})
-	reminderScheduler := services.NewReminderScheduler(db, reminderNotifier(mailer), cfg.ReminderCheckInterval)
+	reminderScheduler := services.NewReminderScheduler(db, reminderNotifier(mailer, links), cfg.ReminderCheckInterval)
 	go func() {
 		reminderScheduler.Run(schedulerCtx)
 		close(schedulerDone)
@@ -110,10 +117,10 @@ func smtpMailer(cfg *config.Config) services.Mailer {
 
 // reminderNotifier emails reminders when there is a mailer; otherwise they
 // are only written to the log (development, CI).
-func reminderNotifier(mailer services.Mailer) services.Notifier {
+func reminderNotifier(mailer services.Mailer, links *services.ReminderLinkBuilder) services.Notifier {
 	if mailer == nil {
 		log.Println("SMTP not configured: reminders are logged, not emailed.")
 		return services.NewConsoleNotifier(nil)
 	}
-	return services.NewEmailNotifier(mailer)
+	return services.NewEmailNotifier(mailer, links)
 }

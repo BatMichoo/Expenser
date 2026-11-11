@@ -13,7 +13,7 @@ import (
 
 // RegisterRoutes wires every route. mailer sends the dev-mode test email and
 // is nil when SMTP isn't configured.
-func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mailer services.Mailer) {
+func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mailer services.Mailer, links *services.ReminderLinkBuilder) {
 	// Public routes (no authentication required)
 	as := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration, cfg.LanDomain)
 
@@ -27,6 +27,11 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 	router.POST("/settings/language", wrap(rootHandler.ChangeLanguage))
 
 	authHandler := NewAuthHandler(rootHandler)
+
+	// Snooze links in reminder emails: signed, so no login needed.
+	snoozeHandler := NewSnoozeHandler(db, services.NewSnoozeSigner(cfg.JWT.SecretKey))
+	router.GET("/snooze/:token", wrap(snoozeHandler.GetSnooze))
+	router.POST("/snooze/:token", wrap(snoozeHandler.PostSnooze))
 
 	router.GET("/login", wrap(authHandler.GetLogin))
 	router.POST("/login", wrap(authHandler.Login))
@@ -74,7 +79,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 		protectedGroceries.PUT("/:id", wrap(groceriesHandler.EditGroceriesExpense))
 		protectedGroceries.DELETE("/:id", wrap(groceriesHandler.DeleteGroceriesExpense))
 	}
-	settingsHandler := NewSettingsHandler(rootHandler, mailer, cfg.DevMode)
+	settingsHandler := NewSettingsHandler(rootHandler, mailer, links, cfg.DevMode)
 	protectedSettings := router.Group("/settings")
 	{
 		protectedSettings.Use(am.AuthMiddleware())

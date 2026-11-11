@@ -9,6 +9,8 @@ import (
 	"html/template"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // EmailMessage is one email, already rendered.
@@ -28,15 +30,19 @@ type Mailer interface {
 // EmailNotifier sends reminders as emails in the bill owner's language.
 type EmailNotifier struct {
 	mailer Mailer
+	links  *ReminderLinkBuilder // nil: no links in emails
 }
 
-func NewEmailNotifier(m Mailer) *EmailNotifier {
-	return &EmailNotifier{mailer: m}
+func NewEmailNotifier(m Mailer, links *ReminderLinkBuilder) *EmailNotifier {
+	return &EmailNotifier{mailer: m, links: links}
 }
 
 func (n *EmailNotifier) Notify(ctx context.Context, r Reminder) error {
 	if r.To == "" {
 		return fmt.Errorf("reminder for %s has no recipient", r.Payment.ID)
+	}
+	if n.links != nil && r.Links == nil {
+		r.Links = n.links.For(r.Payment)
 	}
 	return n.mailer.Send(ctx, BuildReminderEmail(r))
 }
@@ -98,12 +104,24 @@ func BuildReminderEmail(r Reminder) EmailMessage {
 	for _, f := range fields {
 		fmt.Fprintf(&text, "%s: %s\n", f.Label, f.Value)
 	}
+	if l := r.Links; l != nil {
+		fmt.Fprintf(&text, "\n%s: %s\n", t("email.open_bills"), l.BillsURL)
+		if len(l.Snooze) > 0 {
+			fmt.Fprintf(&text, "\n%s\n", t("email.snooze"))
+			for _, s := range l.Snooze {
+				fmt.Fprintf(&text, "- %s: %s\n", snoozeLabel(lang, s.Days), s.URL)
+			}
+		}
+		fmt.Fprintf(&text, "\n%s\n", t("email.links_note"))
+	}
 	fmt.Fprintf(&text, "\n%s\n", t("email.footer"))
 
 	var html bytes.Buffer
 	_ = reminderEmailHTML.Execute(&html, map[string]any{
 		"Greeting": greeting, "Intro": t("email.intro"), "Label": label, "When": when,
 		"Fields": fields, "Footer": t("email.footer"), "Lang": lang,
+		"Links": r.Links, "OpenBills": t("email.open_bills"), "SnoozeTitle": t("email.snooze"),
+		"SnoozeLabels": snoozeLabels(lang, r.Links), "LinksNote": t("email.links_note"),
 	})
 
 	return EmailMessage{
@@ -163,6 +181,13 @@ var reminderEmailHTML = template.Must(template.New("reminder").Parse(`<!doctype 
 {{ range .Fields }}<tr><td style="padding:8px 0;border-top:1px solid #eef0f5;color:#5b6478;width:40%;vertical-align:top">{{ .Label }}</td><td style="padding:8px 0;border-top:1px solid #eef0f5;font-weight:bold;vertical-align:top;white-space:pre-line">{{ .Value }}</td></tr>
 {{ end }}</table>
 </td></tr>
+{{ with .Links }}<tr><td style="padding:4px 24px 8px">
+<a href="{{ .BillsURL }}" style="display:inline-block;padding:10px 18px;border-radius:999px;background:#2f5bea;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none">{{ $.OpenBills }}</a>
+</td></tr>
+{{ if .Snooze }}<tr><td style="padding:12px 24px 0;font-size:13px;color:#5b6478">{{ $.SnoozeTitle }}
+<div style="margin-top:8px">{{ range $i, $s := .Snooze }}<a href="{{ $s.URL }}" style="display:inline-block;margin:0 6px 6px 0;padding:6px 12px;border-radius:999px;border:1px solid #c9d2ea;color:#2f5bea;font-size:13px;font-weight:bold;text-decoration:none">{{ index $.SnoozeLabels $i }}</a>{{ end }}</div>
+</td></tr>{{ end }}
+<tr><td style="padding:8px 24px 0;font-size:12px;color:#8a92a6">{{ $.LinksNote }}</td></tr>{{ end }}
 <tr><td style="padding:16px 24px 24px;font-size:12px;color:#8a92a6">{{ .Footer }}</td></tr>
 </table></body></html>`))
 
@@ -172,12 +197,13 @@ var reminderEmailHTML = template.Must(template.New("reminder").Parse(`<!doctype 
 // would. Every field the email can show is filled, with long values,
 // a custom payment option, a multi-line note and HTML-like characters, to
 // see how all of it renders. Dev mode only.
-func BuildTestReminderEmail(username, displayName, lang, to string, today time.Time) EmailMessage {
+func BuildTestReminderEmail(username, displayName, lang, to string, today time.Time, links *ReminderLinkBuilder) EmailMessage {
 	if lang == "" {
 		lang = "en"
 	}
 	amount := 1234.56
-	m := BuildReminderEmail(Reminder{
+	sampleRepeat := 3
+	r := Reminder{
 		To:       to,
 		DaysLeft: 3,
 		Payment: models.RecurringPayment{
@@ -189,9 +215,37 @@ func BuildTestReminderEmail(username, displayName, lang, to string, today time.T
 			PaymentOptions: []string{"cash", "card", "bank_transfer", "online", "ePay.bg"},
 			Notes: "Client no. 1234567 — pay at the office on <Vitosha 15> or via ePay.\n" +
 				"Second line: ask for the \"loyalty\" discount & keep the receipt.",
-			UserLang: lang,
+			UserLang: lang, ID: uuid.New(), RepeatEveryDays: &sampleRepeat,
 		},
-	})
+	}
+	if links != nil {
+		// Snooze links in the sample point at a bill that doesn't exist,
+		// so they open the "out of date" page.
+		r.Links = links.For(r.Payment)
+	}
+	m := BuildReminderEmail(r)
 	m.Subject = utilities.T(lang, "email.test_prefix") + " " + m.Subject
 	return m
+}
+
+// snoozeLabel is a snooze button's text: "1 day", "3 days", "1 week".
+func snoozeLabel(lang string, days int) string {
+	switch {
+	case days == 7:
+		return utilities.T(lang, "email.snooze_week")
+	case days == 1:
+		return utilities.T(lang, "email.snooze_day")
+	}
+	return fmt.Sprintf(utilities.T(lang, "email.snooze_days"), days)
+}
+
+func snoozeLabels(lang string, l *ReminderLinks) []string {
+	if l == nil {
+		return nil
+	}
+	out := make([]string, len(l.Snooze))
+	for i, s := range l.Snooze {
+		out[i] = snoozeLabel(lang, s.Days)
+	}
+	return out
 }

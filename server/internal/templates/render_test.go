@@ -1128,3 +1128,33 @@ func TestBackfillPreview(t *testing.T) {
 	assert.Contains(t, none.Text(), "Nothing to add")
 	assert.Equal(t, 0, none.Find("button[type=submit]").Length(), "nothing to confirm")
 }
+
+func TestLoginKeepsNext(t *testing.T) {
+	doc := parseHTML(t, render(t, "login-page", map[string]any{"Lang": "en", "Next": "/bills"}))
+	v, _ := doc.Find(`form input[type="hidden"][name="next"]`).Attr("value")
+	assert.Equal(t, "/bills", v)
+	plain := parseHTML(t, render(t, "login-page", map[string]any{"Lang": "en"}))
+	assert.Equal(t, 0, plain.Find(`input[name="next"]`).Length())
+}
+
+func TestSnoozePage(t *testing.T) {
+	until := time.Date(2026, 11, 15, 0, 0, 0, 0, time.UTC)
+	confirm := parseHTML(t, render(t, "snooze-page", map[string]any{"State": "confirm", "Bill": "Internet", "Until": until, "Token": "tok.en", "Lang": "en"}))
+	form := confirm.Find("form")
+	post, _ := form.Attr("hx-post")
+	assert.Equal(t, "/snooze/tok.en", post)
+	assert.Contains(t, confirm.Text(), "Internet")
+	assert.Contains(t, confirm.Text(), "15.11.2026")
+	assert.Equal(t, 1, form.Find("button[type=submit]").Length(), "a click on the email link changes nothing by itself")
+
+	done := parseHTML(t, render(t, "snooze-page", map[string]any{"State": "done", "Bill": "Internet", "Until": until, "Lang": "en"}))
+	assert.Contains(t, done.Text(), "Snoozed")
+	assert.Equal(t, 0, done.Find("form").Length())
+
+	for state, want := range map[string]string{"stale": "out of date", "expired": "expired", "invalid": "doesn't work"} {
+		doc := parseHTML(t, render(t, "snooze-page", map[string]any{"State": state, "Lang": "en"}))
+		assert.Contains(t, doc.Text(), want, state)
+		assert.Equal(t, 0, doc.Find("form").Length(), state)
+		assert.Equal(t, 1, doc.Find(`a[href="/bills"]`).Length(), state+": a way into the app")
+	}
+}

@@ -374,3 +374,31 @@ func (db *DB) GetBillTypeTotal(ctx context.Context, userID uuid.UUID, category m
 	}
 	return total, count > 0, nil
 }
+
+// SnoozeRecurringPayment pauses a bill's reminders until the given date. A
+// later snooze already set is kept. Returns an error when the bill isn't
+// the user's.
+func (db *DB) SnoozeRecurringPayment(ctx context.Context, id, userID uuid.UUID, until time.Time) error {
+	res, err := db.conn.ExecContext(ctx, `
+		UPDATE recurring_payments
+		SET snoozed_until = GREATEST(COALESCE(snoozed_until, $3::date), $3::date), updated_at = CURRENT_TIMESTAMP
+		WHERE id = $1 AND user_id = $2`, id, userID, models.DateOnly(until))
+	if err != nil {
+		return fmt.Errorf("failed to snooze recurring payment: %w", err)
+	}
+	if n, err := res.RowsAffected(); err == nil && n == 0 {
+		return fmt.Errorf("failed to snooze recurring payment: %w", sql.ErrNoRows)
+	}
+	return nil
+}
+
+// GetRecurringPaymentByIDForSnooze loads a bill by ID alone, for signed
+// snooze links: the signature already proves the link was made for this
+// bill, and the bill carries its owner.
+func (db *DB) GetRecurringPaymentByIDForSnooze(ctx context.Context, id uuid.UUID) (*models.RecurringPayment, error) {
+	p, err := scanRecurringPayment(db.conn.QueryRowContext(ctx, recurringPaymentSelect+` WHERE rp.id = $1`, id))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get recurring payment: %w", err)
+	}
+	return p, nil
+}

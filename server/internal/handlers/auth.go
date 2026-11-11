@@ -6,6 +6,8 @@ import (
 	"expenser/internal/utilities"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -104,8 +106,29 @@ func (h *AuthHandler) Register(c *gin.Context) error {
 }
 
 func (h *AuthHandler) GetLogin(c *gin.Context) error {
-	renderPage(c, utilities.Templates.Pages.Login, gin.H{"Lang": currentLang(c)})
+	renderPage(c, utilities.Templates.Pages.Login, gin.H{"Lang": currentLang(c), "Next": nextParam(c.Query("next"))})
 	return nil
+}
+
+// safeNext is where to go after logging in: a path inside the app, never
+// another site; "/" otherwise.
+func safeNext(next string) string {
+	if !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") || strings.HasPrefix(next, "/\\") {
+		return "/"
+	}
+	u, err := url.Parse(next)
+	if err != nil || u.Scheme != "" || u.Host != "" || u.Path == "/login" {
+		return "/"
+	}
+	return u.RequestURI()
+}
+
+// nextParam is safeNext for the login form: empty when it would be home.
+func nextParam(next string) string {
+	if n := safeNext(next); n != "/" {
+		return n
+	}
+	return ""
 }
 
 // Login verifies the credentials, sets the auth cookie and redirects home.
@@ -133,7 +156,7 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 	}
 
 	h.BaseHandler.AS.SetCookie(token, c)
-	c.Header("HX-Redirect", "/")
+	c.Header("HX-Redirect", safeNext(c.PostForm("next")))
 	c.Status(http.StatusOK)
 	return nil
 }

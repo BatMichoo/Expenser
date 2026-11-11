@@ -1,0 +1,33 @@
+{{/* Opened from a snooze link in a reminder email (no login needed: the
+     link is signed). Confirming is a separate click, so link scanners
+     that open the link change nothing. Expects State (confirm, done,
+     stale, expired, invalid), Lang, and for confirm/done Bill, Until and
+     (confirm) Token. */}}
+{{ define "snooze-page" }}
+<section class="auth-split auth-split-single">
+  <div class="auth-main">
+    <div class="auth-card snooze-card">
+      {{ if eq .State "confirm" }}
+      <h1 class="auth-title">{{ T .Lang "snooze.title" }}</h1>
+      <p class="auth-sub">{{ printf (T .Lang "snooze.confirm") .Bill (.Until.Format "02.01.2006") }}</p>
+      <form hx-post="/snooze/{{ .Token }}" hx-target="closest .snooze-card" hx-select=".snooze-card" hx-swap="outerHTML">
+        <button type="submit" class="auth-submit">{{ T .Lang "snooze.button" }}</button>
+      </form>
+      <p class="auth-switch"><a href="/bills">{{ T .Lang "snooze.open_bills" }}</a></p>
+      {{ else if eq .State "done" }}
+      <div class="auth-done-icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+      </div>
+      <h1 class="auth-title">{{ T .Lang "snooze.done_title" }}</h1>
+      <p class="auth-sub">{{ printf (T .Lang "snooze.done") .Bill (.Until.Format "02.01.2006") }}</p>
+      <a class="auth-secondary" href="/bills">{{ T .Lang "snooze.open_bills" }}</a>
+      {{ else }}
+      <h1 class="auth-title">{{ T .Lang (print "snooze." .State "_title") }}</h1>
+      <p class="auth-sub">{{ T .Lang (print "snooze." .State) }}</p>
+      <a class="auth-secondary" href="/bills">{{ T .Lang "snooze.open_bills" }}</a>
+      {{ end }}
+    </div>
+  </div>
+</section>
+{{ end }}
