@@ -9,12 +9,7 @@
     <section id="add-expense-section">
       {{ if eq .Section "groceries" }}
       <button type="button" class="upload-btn" hx-get="/groceries/form" hx-target="#action-dialog">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
-          <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
-          <path d="M12 17.5v-11" />
-        </svg>
+        {{ template "icon" (dict "Name" "receipt") }}
         {{ T .Lang "groceries.upload_receipt" }}
       </button>
       {{ end }}
@@ -83,12 +78,7 @@
   </form>
   {{ if eq .Section "groceries" }}
   <button type="button" class="upload-btn" hx-get="/groceries/form" hx-target="#action-dialog">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
-      <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
-      <path d="M12 17.5v-11" />
-    </svg>
+    {{ template "icon" (dict "Name" "receipt") }}
     {{ T .Lang "groceries.upload_receipt" }}
   </button>
   {{ end }}
@@ -229,12 +219,7 @@
 {{/* Panel header: icon, title and optional value on the right. */}}
 {{ define "side-panel-head" }}
 <div class="side-panel-head">
-  <span class="side-icon" aria-hidden="true">
-    {{ if eq .Icon "chart" }}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="M7 16v-3" /><path d="M12 16V8" /><path d="M17 16v-6" /></svg>{{ end }}
-    {{ if eq .Icon "pie" }}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></svg>{{ end }}
-    {{ if eq .Icon "calendar" }}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /></svg>{{ end }}
-    {{ if eq .Icon "target" }}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>{{ end }}
-  </span>
+  <span class="side-icon" aria-hidden="true">{{ template "icon" (dict "Name" .Icon "Size" 16) }}</span>
   <h3>{{ .Title }}</h3>
   {{ if .Meta }}<span class="side-meta">{{ .Meta }}</span>{{ end }}
 </div>
