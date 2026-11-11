@@ -1,0 +1,89 @@
+{{/* What visitors see below the login panel on the logged-out home page:
+     the pitch, features, a sample dashboard, how it works and a last call
+     to sign up. Purely presentational; expects .Lang. */}}
+{{ define "landing" }}
+<section class="landing">
+  <div class="landing-pitch">
+    <span class="landing-kicker">{{ T .Lang "landing.kicker" }}</span>
+    <h2 class="landing-headline">{{ T .Lang "landing.headline" }}</h2>
+    <p class="landing-lead">{{ T .Lang "landing.lead" }}</p>
+  </div>
+
+  <div class="landing-features">
+    {{ range $f := (list "track" "receipts" "bills" "year" "backfill" "anywhere") }}
+    <article class="landing-feature">
+      <span class="landing-feature-icon" aria-hidden="true">{{ template "landing-icon" $f }}</span>
+      <h3>{{ T $.Lang (print "landing.f." $f ".title") }}</h3>
+      <p>{{ T $.Lang (print "landing.f." $f ".text") }}</p>
+    </article>
+    {{ end }}
+  </div>
+
+  <div class="landing-preview">
+    <div class="landing-preview-copy">
+      <h2>{{ T .Lang "landing.preview.title" }}</h2>
+      <p>{{ T .Lang "landing.preview.text" }}</p>
+      <span class="landing-sample-tag">{{ T .Lang "landing.preview.sample" }}</span>
+    </div>
+    <div class="landing-preview-cards" aria-hidden="true">
+      <div class="home-card">
+        <span class="home-card-head">{{ template "home-icon" "house" }}<span class="home-card-title">{{ T .Lang "nav.house" }}</span></span>
+        <span class="home-big">2 840.00 €</span>
+        <span class="home-cmp down">▼ 6% <span>{{ printf (T .Lang "home.vs_last_year") "3 021.00 €" }}</span></span>
+        <span class="home-bars">{{ range (list "55" "70" "62" "40" "35" "33" "38" "36" "44" "60" "85") }}<span style="height: {{ . }}%"></span>{{ end }}<span class="current" style="height: 48%"></span></span>
+      </div>
+      <div class="home-card">
+        <span class="home-card-head">{{ template "home-icon" "bills" }}<span class="home-card-title">{{ T .Lang "home.upcoming_bills" }}</span></span>
+        <span class="home-bill-list">
+          <span class="home-bill"><span class="home-bill-main"><span class="home-bill-name">{{ T .Lang "type.Internet" }}</span><span class="home-bill-due">{{ printf (T .Lang "bills.due.in") 3 }}</span></span><span class="home-bill-side"><b>15.00 €</b></span></span>
+          <span class="home-bill"><span class="home-bill-main"><span class="home-bill-name">{{ T .Lang "type.Electricity" }}</span><span class="home-bill-due">{{ printf (T .Lang "bills.due.in") 9 }}</span></span><span class="home-bill-side"><b>64.00 €</b></span></span>
+          <span class="home-bill"><span class="home-bill-main"><span class="home-bill-name">{{ T .Lang "type.Insurance" }}</span><span class="home-bill-due">{{ printf (T .Lang "bills.due.in") 21 }}</span></span><span class="home-bill-side"><b>230.00 €</b></span></span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="landing-steps">
+    <h2>{{ T .Lang "landing.steps.title" }}</h2>
+    <ol>
+      {{ range $i, $s := (list "1" "2" "3") }}
+      <li class="landing-step">
+        <span class="landing-step-num">{{ $s }}</span>
+        <h3>{{ T $.Lang (print "landing.step" $s ".title") }}</h3>
+        <p>{{ T $.Lang (print "landing.step" $s ".text") }}</p>
+      </li>
+      {{ end }}
+    </ol>
+  </div>
+
+  <div class="landing-stats">
+    {{ range $s := (list "spreadsheets" "languages" "receipts" "forgotten") }}
+    <div class="landing-stat">
+      <span class="landing-stat-value">{{ T $.Lang (print "landing.stat." $s ".value") }}</span>
+      <span class="landing-stat-label">{{ T $.Lang (print "landing.stat." $s ".label") }}</span>
+    </div>
+    {{ end }}
+  </div>
+
+  <div class="landing-cta">
+    <h2>{{ T .Lang "landing.cta.title" }}</h2>
+    <p>{{ T .Lang "landing.cta.text" }}</p>
+    <div class="landing-cta-actions">
+      <a class="auth-submit" href="/register" hx-get="/register" hx-target="#tracker-content" hx-swap="innerHTML show:window:top" hx-push-url="true">{{ T .Lang "home.create_account" }}</a>
+      <a class="auth-secondary" href="/login" hx-get="/login" hx-target="#tracker-content" hx-swap="innerHTML show:window:top" hx-push-url="true">{{ T .Lang "login.submit" }}</a>
+    </div>
+  </div>
+</section>
+{{ end }}
+
+{{ define "landing-icon" }}
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  {{ if eq . "track" }}<path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" />
+  {{ else if eq . "receipts" }}<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /><path d="M12 17.5v-11" />
+  {{ else if eq . "bills" }}<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+  {{ else if eq . "year" }}<rect width="18" height="18" x="3" y="4" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /><path d="M8 14h.01" /><path d="M12 14h.01" /><path d="M16 14h.01" />
+  {{ else if eq . "backfill" }}<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" />
+  {{ else }}<rect width="14" height="20" x="5" y="2" rx="2" /><path d="M12 18h.01" />{{ end }}
+</svg>
+{{ end }}

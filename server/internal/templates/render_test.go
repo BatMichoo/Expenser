@@ -1128,3 +1128,31 @@ func TestBackfillPreview(t *testing.T) {
 	assert.Contains(t, none.Text(), "Nothing to add")
 	assert.Equal(t, 0, none.Find("button[type=submit]").Length(), "nothing to confirm")
 }
+
+func TestLandingPage(t *testing.T) {
+	doc := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en"}))
+	land := doc.Find("section.landing")
+	require.Equal(t, 1, land.Length(), "below the login panel for visitors")
+	assert.Equal(t, 6, land.Find(".landing-feature").Length())
+	assert.Equal(t, 3, land.Find(".landing-step").Length())
+	assert.GreaterOrEqual(t, land.Find(".landing-stat").Length(), 3)
+	preview := land.Find(".landing-preview")
+	require.Equal(t, 1, preview.Length())
+	_, hidden := preview.Find(".landing-preview-cards").Attr("aria-hidden")
+	assert.True(t, hidden, "the sample dashboard is decoration")
+	assert.Equal(t, 0, preview.Find("a, button").Length(), "nothing in the sample is clickable")
+	cta := land.Find(".landing-cta")
+	reg, _ := cta.Find(`[hx-get="/register"]`).Attr("hx-push-url")
+	assert.Equal(t, "true", reg)
+	assert.Equal(t, 1, cta.Find(`[hx-get="/login"]`).Length())
+
+	logged := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true, "Home": homeView()}))
+	assert.Equal(t, 0, logged.Find(".landing").Length(), "not for logged-in users")
+}
+
+func TestLandingPageTranslated(t *testing.T) {
+	for _, lang := range []string{"en", "bg"} {
+		out := render(t, "index-page", map[string]any{"Lang": lang})
+		assert.NotContains(t, out, "landing.", lang+": every text has a translation")
+	}
+}
