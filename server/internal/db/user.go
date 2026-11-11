@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"expenser/internal/models"
 	"fmt"
@@ -39,7 +40,7 @@ func (db *DB) CreateUser(user *models.User) error {
 // GetUserByID retrieves a user by their ID
 func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
 	query := `
-		SELECT id, username, password_hash, preferred_language, created_at, updated_at
+		SELECT id, username, password_hash, preferred_language, COALESCE(email, ''), created_at, updated_at
 		FROM users
 		WHERE id = $1`
 
@@ -49,6 +50,7 @@ func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
 		&user.Username,
 		&user.PasswordHash,
 		&user.PreferredLanguage,
+		&user.Email,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -85,33 +87,6 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 			return nil, fmt.Errorf("user not found")
 		}
 		return nil, fmt.Errorf("failed to get user by username: %w", err)
-	}
-
-	return user, nil
-}
-
-// GetUserByEmail retrieves a user by their email
-func (db *DB) GetUserByEmail(email string) (*models.User, error) {
-	query := `
-		SELECT id, username, password_hash, preferred_language, created_at, updated_at
-		FROM users
-		WHERE email = $1`
-
-	user := &models.User{}
-	err := db.conn.QueryRow(query, email).Scan(
-		&user.ID,
-		&user.Username,
-		&user.PasswordHash,
-		&user.PreferredLanguage,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
-		}
-		return nil, fmt.Errorf("failed to get user by email: %w", err)
 	}
 
 	return user, nil
@@ -240,4 +215,15 @@ func (db *DB) UserExists(username string) (bool, error) {
 	}
 
 	return exists, nil
+}
+
+// SetUserEmail stores the user's preferred email for reminders; an empty
+// string clears it.
+func (db *DB) SetUserEmail(ctx context.Context, id uuid.UUID, email string) error {
+	_, err := db.conn.ExecContext(ctx,
+		`UPDATE users SET email = NULLIF($1, ''), updated_at = CURRENT_TIMESTAMP WHERE id = $2`, email, id)
+	if err != nil {
+		return fmt.Errorf("failed to set user email: %w", err)
+	}
+	return nil
 }
