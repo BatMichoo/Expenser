@@ -185,7 +185,7 @@
   "modal.error_title": "Нещо се обърка!",
   "modal.success_title": "Успех!",
   "modal.delete_confirm": "Сигурни ли сте, че искате да изтриете това?",
-  "modal.delete_message": "Моля потвърдете ако искате да изтриете разход с ID: %d",
+  "modal.delete_expense_message": "%s — %.2f %s от %s ще бъде изтрит. Това не може да се отмени.",
   "modal.create_success": "Успешно добавен разход.",
   "modal.update_success": "Успешно редактиран разход.",
   "modal.update_success_message": "Разход с ID: %d редактиран!",

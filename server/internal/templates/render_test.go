@@ -500,3 +500,13 @@ func TestListTabKeepsViewedMonth(t *testing.T) {
 		})
 	}
 }
+
+func TestConfirmModalLabel(t *testing.T) {
+	data := &models.ModalConfirmContent{Title: "Delete?", Method: "DELETE", Endpoint: "/house/expenses/2", Target: "#exp-2", Message: "Water", Lang: "en"}
+	doc := parseHTML(t, render(t, "confirm-modal", data))
+	assert.Equal(t, "Ok", strings.TrimSpace(doc.Find("#confirm-btn").Text()), "default label")
+
+	data.ConfirmLabel = "Delete"
+	doc = parseHTML(t, render(t, "confirm-modal", data))
+	assert.Equal(t, "Delete", strings.TrimSpace(doc.Find("#confirm-btn").Text()))
+}
