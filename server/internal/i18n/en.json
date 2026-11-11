@@ -417,11 +417,16 @@
   "home.welcome_sub": "Log in to see your expenses, or create an account to start.",
   "home.create_account": "Create account",
   "home.greeting": "Hi %s",
-  "home.where_to": "Where to?",
-  "home.house_sub": "Utilities and home costs",
-  "home.car_sub": "Fuel, service and more",
-  "home.groceries_sub": "Shopping and receipts",
-  "home.bills_attention": "%d need attention",
-  "home.bills_ok": "All caught up",
-  "home.greeting_plain": "Welcome back"
+  "home.greeting_plain": "Welcome back",
+  "home.year_so_far": "Your year so far",
+  "home.vs_last_year": "vs %s by this date last year",
+  "home.no_last_year": "Nothing recorded by this date last year",
+  "home.nothing_yet": "Nothing spent yet this year.",
+  "home.this_month": "This month",
+  "home.biggest": "Biggest",
+  "home.top_store": "Top store",
+  "home.last_year_month": "last %s: %s",
+  "home.more_bills": "+%d more",
+  "home.no_bills": "No bills yet. Add one to get reminders before it's due.",
+  "home.upcoming_bills": "Upcoming bills"
 }

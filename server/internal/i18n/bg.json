@@ -417,11 +417,16 @@
   "home.welcome_sub": "Влезте, за да видите разходите си, или създайте профил.",
   "home.create_account": "Създай профил",
   "home.greeting": "Здравей, %s",
-  "home.where_to": "Накъде?",
-  "home.house_sub": "Сметки и разходи за дома",
-  "home.car_sub": "Гориво, сервиз и още",
-  "home.groceries_sub": "Пазаруване и бележки",
-  "home.bills_attention": "%d изискват внимание",
-  "home.bills_ok": "Всичко е платено",
-  "home.greeting_plain": "Добре дошли отново"
+  "home.greeting_plain": "Добре дошли отново",
+  "home.year_so_far": "Годината досега",
+  "home.vs_last_year": "спрямо %s към тази дата миналата година",
+  "home.no_last_year": "Няма записи към тази дата миналата година",
+  "home.nothing_yet": "Още няма разходи тази година.",
+  "home.this_month": "Този месец",
+  "home.biggest": "Най-голям дял",
+  "home.top_store": "Основен магазин",
+  "home.last_year_month": "миналия %s: %s",
+  "home.more_bills": "+%d още",
+  "home.no_bills": "Още няма сметки. Добавете, за да получавате напомняния преди падежа.",
+  "home.upcoming_bills": "Предстоящи сметки"
 }

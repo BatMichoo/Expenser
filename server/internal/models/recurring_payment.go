@@ -443,9 +443,3 @@ func (p RecurringPayment) RecipientName(to string) string {
 	}
 	return p.UserDisplayName
 }
-
-// NeedsAttention counts the bills that are overdue, waiting to be paid or
-// due soon (the home page's Bills tile).
-func (v BillsView) NeedsAttention() int {
-	return len(v.Overdue) + len(v.Waiting) + len(v.DueSoon)
-}

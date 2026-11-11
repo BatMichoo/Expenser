@@ -43,6 +43,7 @@ func TemplateFuncs() template.FuncMap {
 			}
 			return math.Max(0, math.Min(100, part/whole*100))
 		},
+		"abs": math.Abs,
 		"money": func(v float64) string {
 			return fmt.Sprintf("%.2f %s", v, CurrencySymbol())
 		},

@@ -163,9 +163,11 @@ func (db *DB) GetCarExpensesForMonth(month time.Month, year int, userId uuid.UUI
 	return &expenses, nil
 }
 
+// GetCarExpensesForYear feeds the yearly chart; Amount is net of the discount, like
+// every other total.
 func (db *DB) GetCarExpensesForYear(year int, userId uuid.UUID) (*[]models.CarExpense, error) {
 	query := `
-		SELECT ce.id, ct.name, ce.amount, ce.expense_date, ce.notes, ce.metadata, ce.created_at
+		SELECT ce.id, ct.name, ce.amount - ce.discount_amount, ce.expense_date, ce.notes, ce.metadata, ce.created_at
 			FROM car_expenses ce
 		JOIN
 			car_expense_types ct ON ce.car_expense_type_id = ct.id
@@ -271,9 +273,11 @@ func (db *DB) DeleteCarExpense(id int, userID uuid.UUID) (bool, error) {
 	return true, nil
 }
 
+// GetCarExpenseTypeForYear feeds the yearly chart; Amount is net of the discount, like
+// every other total.
 func (db *DB) GetCarExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]models.CarExpense, error) {
 	query := `
-		SELECT ce.id, ct.name, ce.amount, ce.expense_date, ce.metadata FROM car_expenses ce
+		SELECT ce.id, ct.name, ce.amount - ce.discount_amount, ce.expense_date, ce.metadata FROM car_expenses ce
 		JOIN car_expense_types ct ON ce.car_expense_type_id = ct.id
 		WHERE ce.car_expense_type_id = $1 AND ce.created_by = $3 AND ($2 = 0 OR EXTRACT(YEAR FROM ce.expense_date) = $2)
 	`
@@ -312,20 +316,20 @@ func (db *DB) GetCarExpenseTypeForYear(utility, year int, userId uuid.UUID) (*[]
 	return &expenses, nil
 }
 
-// GetCarMonthlyTotals returns car spending per month, keyed "YYYY-MM", for expenses
+// GetCarMonthlyTotals returns net car spending (amount minus discount) per month, keyed "YYYY-MM", for expenses
 // dated in [from, to).
 func (db *DB) GetCarMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
 	return db.monthlyTotals(`
-		SELECT to_char(expense_date, 'YYYY-MM'), SUM(amount)
+		SELECT to_char(expense_date, 'YYYY-MM'), SUM(amount - discount_amount)
 		FROM car_expenses
 		WHERE created_by = $1 AND expense_date >= $2 AND expense_date < $3
 		GROUP BY 1`, userID, from, to)
 }
 
-// GetCarTypeTotals returns car spending per expense type, keyed by name, for [from, to).
+// GetCarTypeTotals returns net car spending per expense type, keyed by name, for [from, to).
 func (db *DB) GetCarTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
 	return db.monthlyTotals(`
-		SELECT ct.name, SUM(ce.amount)
+		SELECT ct.name, SUM(ce.amount - ce.discount_amount)
 		FROM car_expenses ce
 		JOIN car_expense_types ct ON ct.id = ce.car_expense_type_id
 		WHERE ce.created_by = $1 AND ce.expense_date >= $2 AND ce.expense_date < $3

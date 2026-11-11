@@ -995,24 +995,88 @@ func TestHomeLoggedOut(t *testing.T) {
 	login, _ := doc.Find(`.home-actions [hx-get="/login"]`).Attr("hx-push-url")
 	assert.Equal(t, "true", login)
 	assert.Equal(t, 1, doc.Find(`.home-actions [hx-get="/register"]`).Length())
-	assert.Equal(t, 0, doc.Find(".home-tiles").Length())
+	assert.Equal(t, 0, doc.Find(".home-grid").Length())
 	assert.NotContains(t, doc.Text(), "top left corner", "old hints are gone")
 }
 
+func homeView() *models.HomeView {
+	bars := make([]models.MonthBar, 12)
+	for i := range bars {
+		bars[i] = models.MonthBar{MonthNum: time.Month((i+11)%12 + 1), Total: float64(i * 10), Height: float64(i * 8)}
+	}
+	bars[11].Current = true
+	amount := 64.0
+	elec := models.RecurringPayment{Name: "Electricity", TypeName: "Electricity", ExpectedAmount: &amount, Active: true}
+	gas := models.RecurringPayment{TypeName: "Gas", DateKind: models.DateArrives, Active: true}
+	return &models.HomeView{
+		Name: "Miro", Lang: "en",
+		House:     models.HomeCategory{Section: "house", YearTotal: 2840, LastYearTotal: 2535, HasLastYear: true, ChangePct: 12, ThisMonth: 212, TopName: "Electricity", TopPct: 41, Bars: bars},
+		Car:       models.HomeCategory{Section: "car", YearTotal: 1190, LastYearTotal: 1295, HasLastYear: true, ChangePct: -8.1, ThisMonth: 96, TopName: "Fuel", TopPct: 63, Bars: bars},
+		Groceries: models.HomeCategory{Section: "groceries", Empty: true, Bars: bars},
+		Bills: []models.HomeBillRow{
+			{Payment: elec, DaysLeft: 3, LastYear: 58, HasLastYear: true, LastYearMonth: time.November},
+			{Payment: gas, DaysLeft: -4},
+		},
+		MoreBills: 3,
+	}
+}
+
 func TestHomeLoggedIn(t *testing.T) {
-	doc := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true, "Name": "Miro", "BillsAttention": 2}))
+	doc := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true, "Home": homeView()}))
 	assert.Contains(t, doc.Find("h2").Text(), "Hi Miro")
-	tiles := doc.Find(".home-tiles .home-tile")
-	require.Equal(t, 4, tiles.Length())
+	cards := doc.Find(".home-grid .home-card")
+	require.Equal(t, 4, cards.Length())
 	var paths []string
-	tiles.Each(func(_ int, s *goquery.Selection) { p, _ := s.Attr("hx-get"); paths = append(paths, p) })
-	assert.Equal(t, []string{"/house", "/car", "/groceries", "/bills"}, paths)
-	assert.Contains(t, doc.Find(`.home-tile[hx-get="/bills"]`).Text(), "2 need attention")
+	cards.Each(func(_ int, s *goquery.Selection) { p, _ := s.Attr("hx-get"); paths = append(paths, p) })
+	assert.Equal(t, []string{"/house", "/car", "/groceries", "/bills"}, paths, "each card opens its tab")
 	assert.Equal(t, 0, doc.Find(".auth-split").Length())
 
+	house := doc.Find(`.home-card[hx-get="/house"]`)
+	assert.Contains(t, house.Find(".home-big").Text(), "2840.00")
+	cmp := house.Find(".home-cmp")
+	assert.True(t, cmp.HasClass("up"), "more than last year")
+	assert.Contains(t, cmp.Text(), "12%")
+	assert.Contains(t, cmp.Text(), "2535.00")
+	assert.Contains(t, house.Text(), "212.00", "this month")
+	assert.Contains(t, house.Text(), "Electricity · 41%")
+	assert.Equal(t, 12, house.Find(".home-bars span").Length())
+	assert.Equal(t, 1, house.Find(".home-bars span.current").Length())
+
+	car := doc.Find(`.home-card[hx-get="/car"]`)
+	assert.True(t, car.Find(".home-cmp").HasClass("down"))
+	assert.Contains(t, car.Find(".home-cmp").Text(), "8%")
+
+	groceries := doc.Find(`.home-card[hx-get="/groceries"]`)
+	assert.Contains(t, groceries.Text(), "Nothing spent yet this year")
+	assert.Equal(t, 0, groceries.Find(".home-bars").Length(), "no extras when empty")
+
+	bills := doc.Find(`.home-card[hx-get="/bills"] .home-bill`)
+	require.Equal(t, 2, bills.Length())
+	first := bills.Eq(0).Text()
+	assert.Contains(t, first, "Electricity")
+	assert.Contains(t, first, "in 3 days")
+	assert.Contains(t, first, "64.00")
+	assert.Contains(t, first, "last Nov: 58.00")
+	second := bills.Eq(1).Text()
+	assert.Contains(t, second, "Gas", "no name: the type")
+	assert.Contains(t, second, "waiting 4 days")
+	assert.NotContains(t, second, "last ", "no last-year figure when there was none")
+	assert.False(t, bills.Eq(1).HasClass("late"), "waiting is not overdue")
+	assert.Contains(t, doc.Find(`.home-card[hx-get="/bills"]`).Text(), "+3 more")
+	assert.Equal(t, "Upcoming bills", strings.TrimSpace(doc.Find(`.home-card[hx-get="/bills"] .home-card-title`).Text()), "the title says it; no extra label line")
+}
+
+func TestHomeLoggedInWithoutData(t *testing.T) {
 	plain := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true}))
 	assert.Equal(t, "Welcome back", strings.TrimSpace(plain.Find("h2").Text()), "no data: no empty name")
+	assert.Equal(t, 0, plain.Find(".home-card").Length())
+}
 
-	none := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true, "Name": "dev"}))
-	assert.Contains(t, none.Find(`.home-tile[hx-get="/bills"]`).Text(), "All caught up")
+func TestHomeNoBills(t *testing.T) {
+	v := homeView()
+	v.Bills, v.MoreBills = nil, 0
+	doc := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true, "Home": v}))
+	card := doc.Find(`.home-card[hx-get="/bills"]`)
+	assert.Contains(t, card.Text(), "No bills yet")
+	assert.NotContains(t, card.Text(), "more")
 }
