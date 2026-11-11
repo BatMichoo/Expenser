@@ -270,3 +270,23 @@ type PaidRecurringPayment struct {
 	ExpenseID int               // id in home_expenses or car_expenses
 	PaidDue   time.Time         // the due date that was paid
 }
+
+// BillRow is one recurring payment as shown on the Bills page.
+type BillRow struct {
+	Payment  RecurringPayment
+	DaysLeft int  // negative when overdue
+	Missed   bool // more than one cycle behind; can be skipped forward
+}
+
+// BillsView is the Bills page: payments grouped by urgency plus totals.
+type BillsView struct {
+	Overdue      []BillRow
+	DueSoon      []BillRow
+	Later        []BillRow
+	Paused       []BillRow
+	OverdueCount int
+	DueThisMonth float64 // expected amounts of active bills due by month end
+	Next         *BillRow
+	Total        int
+	Lang         string
+}
