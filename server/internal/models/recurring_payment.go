@@ -93,7 +93,9 @@ type RecurringPayment struct {
 	Notify      NotifyType
 	NotifyEmail string // optional; overrides the user's preferred email
 	UserEmail   string // read-only: the owner's preferred email, may be empty
-	UserLang    string // read-only: the owner's preferred language
+	// UserDisplayName is read-only: the owner's optional display name.
+	UserDisplayName string
+	UserLang        string // read-only: the owner's preferred language
 	// ExpectedAmount is what the bill usually costs (nil when unknown). It
 	// pre-fills MarkPaid and is shown in reminders.
 	ExpectedAmount *float64
@@ -421,4 +423,23 @@ func (p RecurringPayment) ReminderRecipient() string {
 func ValidEmail(s string) bool {
 	addr, err := mail.ParseAddress(s)
 	return err == nil && addr.Address == s && addr.Name == ""
+}
+
+// GreetingName is how reminder emails greet the owner: their display name,
+// else their username.
+func (p RecurringPayment) GreetingName() string {
+	if p.UserDisplayName != "" {
+		return p.UserDisplayName
+	}
+	return p.Username
+}
+
+// RecipientName is the name to show next to the recipient address: the
+// owner's display name, but only when the email goes to the owner's own
+// address (a partner's address on a bill gets no name).
+func (p RecurringPayment) RecipientName(to string) string {
+	if p.UserDisplayName == "" || !strings.EqualFold(to, p.UserEmail) {
+		return ""
+	}
+	return p.UserDisplayName
 }

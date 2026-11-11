@@ -486,29 +486,49 @@ func TestGetUpcomingRecurringPayments(t *testing.T) {
 	assert.Equal(t, []uuid.UUID{overdue.ID, soon.ID, edge.ID}, ids(got))
 }
 
-func TestUserReminderEmail(t *testing.T) {
+func TestUserAccountSettings(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
 
 	u, err := testDB.GetUserByID(userID)
 	require.NoError(t, err)
 	assert.Empty(t, u.Email, "not required")
+	assert.Empty(t, u.DisplayName, "not required")
+	assert.Equal(t, models.DefaultReminderDefaults(), u.ReminderDefaults, "existing users start with today's defaults")
 
-	require.NoError(t, testDB.SetUserEmail(ctx, userID, "me@example.com"))
+	two, five := 2, 5
+	want := models.ReminderDefaults{Notify: models.NotifyNone, RemindDaysBefore: 7, RemindDaysAfter: 1, RepeatEveryDays: &two, MaxReminders: &five}
+	require.NoError(t, testDB.UpdateUserAccount(ctx, userID, "Miro", "me@example.com", want))
 	u, err = testDB.GetUserByID(userID)
 	require.NoError(t, err)
+	assert.Equal(t, "Miro", u.DisplayName)
 	assert.Equal(t, "me@example.com", u.Email)
+	assert.Equal(t, want, u.ReminderDefaults)
 
-	require.NoError(t, testDB.SetUserEmail(ctx, userID, ""))
+	off := models.DefaultReminderDefaults()
+	off.RepeatEveryDays = nil
+	require.NoError(t, testDB.UpdateUserAccount(ctx, userID, "", "", off))
 	u, err = testDB.GetUserByID(userID)
 	require.NoError(t, err)
+	assert.Empty(t, u.DisplayName, "cleared")
 	assert.Empty(t, u.Email, "cleared")
+	assert.Nil(t, u.ReminderDefaults.RepeatEveryDays, "repeat off")
+	assert.Nil(t, u.ReminderDefaults.MaxReminders, "no limit")
+
+	bad := models.DefaultReminderDefaults()
+	bad.Notify = "sms"
+	assert.Error(t, testDB.UpdateUserAccount(ctx, userID, "", "", bad), "the database refuses invalid defaults too")
+}
+
+func setUserEmail(t *testing.T, testDB *DB, userID uuid.UUID, email, name string) {
+	t.Helper()
+	require.NoError(t, testDB.UpdateUserAccount(context.Background(), userID, name, email, models.DefaultReminderDefaults()))
 }
 
 func TestBillDeliveryRoundTrip(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
-	require.NoError(t, testDB.SetUserEmail(ctx, userID, "me@example.com"))
+	setUserEmail(t, testDB, userID, "me@example.com", "Miro")
 
 	p := newInternetPayment(userID, rpDate(2026, 12, 1))
 	p.NotifyEmail = "partner@example.com"
@@ -519,6 +539,7 @@ func TestBillDeliveryRoundTrip(t *testing.T) {
 	assert.Equal(t, models.NotifyEmail, got.Notify, "email by default")
 	assert.Equal(t, "partner@example.com", got.NotifyEmail)
 	assert.Equal(t, "me@example.com", got.UserEmail)
+	assert.Equal(t, "Miro", got.UserDisplayName)
 	assert.Equal(t, "en", got.UserLang)
 
 	got.Notify, got.NotifyEmail = models.NotifyNone, ""

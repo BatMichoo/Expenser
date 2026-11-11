@@ -3518,9 +3518,20 @@ tr:hover .row-actions,
 }
 
 /* Dev mode: "Send test email" under the reminder email field */
-.send-test-email {
+.new-expense-form .send-test-email {
   align-self: flex-start;
   margin-top: 0.75em;
-  padding: 0.45em 1.2em;
+  padding: 0.4em 1em;
   border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+/* Settings > Account: the defaults block reuses the bill reminder block. */
+.account-form .reminder-block > .field-hint {
+  margin: -0.25em 0 0.5em;
+}
+
+.account-form:has(input[name="keep_reminding"]:not(:checked)) .repeat-row {
+  opacity: 0.45;
+  pointer-events: none;
 }

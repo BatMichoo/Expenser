@@ -139,7 +139,11 @@ func buildMIME(from *mail.Address, msg EmailMessage) ([]byte, error) {
 		fromHeader = from.String() // encodes non-ASCII names
 	}
 	header("From", fromHeader)
-	header("To", msg.To)
+	toHeader := msg.To
+	if msg.ToName != "" {
+		toHeader = (&mail.Address{Name: msg.ToName, Address: msg.To}).String() // encodes non-ASCII names
+	}
+	header("To", toHeader)
 	header("Subject", mime.QEncoding.Encode("UTF-8", msg.Subject))
 	header("Date", time.Now().Format(time.RFC1123Z))
 	header("Message-ID", fmt.Sprintf("<%s@%s>", id, domain))

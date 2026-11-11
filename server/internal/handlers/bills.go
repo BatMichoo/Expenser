@@ -88,6 +88,44 @@ var knownPaymentOptions = []string{
 }
 
 // parseBillForm reads the add/edit bill form. The model validates the
+
+// parseReminderFields reads the reminder settings shared by the bill form
+// and the account form's defaults: notify, remind_days_before/after,
+// keep_reminding + repeat_every_days, max_reminders. Empty day counts mean
+// 0; validation happens in the model.
+func parseReminderFields(v url.Values) (models.ReminderDefaults, error) {
+	var (
+		d   models.ReminderDefaults
+		err error
+	)
+	d.Notify = models.NotifyType(v.Get("notify"))
+	if s := strings.TrimSpace(v.Get("remind_days_before")); s != "" {
+		if d.RemindDaysBefore, err = strconv.Atoi(s); err != nil {
+			return d, fmt.Errorf("remind: %w", models.ErrInvalidRemindDays)
+		}
+	}
+	if s := strings.TrimSpace(v.Get("remind_days_after")); s != "" {
+		if d.RemindDaysAfter, err = strconv.Atoi(s); err != nil {
+			return d, fmt.Errorf("remind after: %w", models.ErrInvalidRemindDays)
+		}
+	}
+	if v.Get("keep_reminding") != "" {
+		every, err := strconv.Atoi(strings.TrimSpace(v.Get("repeat_every_days")))
+		if err != nil {
+			return d, fmt.Errorf("repeat: %w", models.ErrInvalidRepeat)
+		}
+		d.RepeatEveryDays = &every
+	}
+	if s := strings.TrimSpace(v.Get("max_reminders")); s != "" {
+		max, err := strconv.Atoi(s)
+		if err != nil {
+			return d, fmt.Errorf("max reminders: %w", models.ErrInvalidMaxReminders)
+		}
+		d.MaxReminders = &max
+	}
+	return d, nil
+}
+
 // values; this only rejects input that cannot be parsed.
 func parseBillForm(v url.Values) (*models.RecurringPayment, error) {
 	p := &models.RecurringPayment{
@@ -123,11 +161,6 @@ func parseBillForm(v url.Values) (*models.RecurringPayment, error) {
 	if p.CycleEvery, err = strconv.Atoi(v.Get("cycle_every")); err != nil {
 		return nil, fmt.Errorf("cycle: %w", models.ErrInvalidCycleEvery)
 	}
-	if s := v.Get("remind_days_before"); s != "" {
-		if p.RemindDaysBefore, err = strconv.Atoi(s); err != nil {
-			return nil, fmt.Errorf("remind: %w", models.ErrInvalidRemindDays)
-		}
-	}
 
 	p.PaymentOptions = append([]string{}, v["payment_options"]...)
 	if other := strings.TrimSpace(v.Get("payment_option_other")); other != "" {
@@ -135,27 +168,12 @@ func parseBillForm(v url.Values) (*models.RecurringPayment, error) {
 	}
 
 	p.DateKind = models.BillDateKind(v.Get("date_kind"))
-	p.Notify = models.NotifyType(v.Get("notify"))
 	p.NotifyEmail = v.Get("notify_email")
-	if s := v.Get("remind_days_after"); s != "" {
-		if p.RemindDaysAfter, err = strconv.Atoi(s); err != nil {
-			return nil, fmt.Errorf("remind after: %w", models.ErrInvalidRemindDays)
-		}
+	reminders, err := parseReminderFields(v)
+	if err != nil {
+		return nil, err
 	}
-	if v.Get("keep_reminding") != "" {
-		every, err := strconv.Atoi(v.Get("repeat_every_days"))
-		if err != nil {
-			return nil, fmt.Errorf("repeat: %w", models.ErrInvalidRepeat)
-		}
-		p.RepeatEveryDays = &every
-	}
-	if s := strings.TrimSpace(v.Get("max_reminders")); s != "" {
-		max, err := strconv.Atoi(s)
-		if err != nil {
-			return nil, fmt.Errorf("max reminders: %w", models.ErrInvalidMaxReminders)
-		}
-		p.MaxReminders = &max
-	}
+	reminders.ApplyTo(p)
 	if s := v.Get("snoozed_until"); s != "" {
 		d, err := time.Parse(utilities.DateFormats.HTML, s)
 		if err != nil {
@@ -284,24 +302,30 @@ func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEd
 	return d, nil
 }
 
-// defaultRepeat: new bills keep reminding every 3 days until paid.
-var defaultRepeat = 3
-
-// GetNewBillForm renders the add form: house by default, monthly, due in a
-// month, cash pre-selected.
-func (h *BillsHandler) GetNewBillForm(c *gin.Context) error {
+// newBill is the add form's starting bill: due in a month, monthly, cash
+// pre-selected, with the user's reminder defaults.
+func newBill(category string, defaults models.ReminderDefaults, now time.Time) *models.RecurringPayment {
 	p := &models.RecurringPayment{
-		Category:         models.RecurringPaymentCategory(c.DefaultQuery("category", "house")),
-		DueDate:          time.Now().AddDate(0, 1, 0),
-		CycleUnit:        models.CycleMonth,
-		CycleEvery:       1,
-		RemindDaysBefore: 3,
-		DateKind:         models.DatePayBy,
-		Notify:           models.NotifyEmail,
-		RepeatEveryDays:  &defaultRepeat,
-		PaymentOptions:   models.DefaultPaymentOptions(),
-		Active:           true,
+		Category:       models.RecurringPaymentCategory(category),
+		DueDate:        now.AddDate(0, 1, 0),
+		CycleUnit:      models.CycleMonth,
+		CycleEvery:     1,
+		DateKind:       models.DatePayBy,
+		PaymentOptions: models.DefaultPaymentOptions(),
+		Active:         true,
 	}
+	defaults.ApplyTo(p)
+	return p
+}
+
+// GetNewBillForm renders the add form, pre-filled with the user's reminder
+// defaults (house by default).
+func (h *BillsHandler) GetNewBillForm(c *gin.Context) error {
+	user, err := h.BaseHandler.DB.GetUserByID(currentUserID(c))
+	if err != nil {
+		return err
+	}
+	p := newBill(c.DefaultQuery("category", "house"), user.ReminderDefaults, time.Now())
 	d, err := h.formData(c, p, false)
 	if err != nil {
 		return err

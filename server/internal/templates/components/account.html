@@ -1,0 +1,81 @@
+{{/* Settings > Account: display name, reminder email, and the reminder
+     defaults that pre-fill new bills. Expects .User (*models.User), .Lang,
+     .DevMode. */}}
+{{ define "account-form" }}
+{{ $d := .User.ReminderDefaults }}
+<div class="sheet">
+  {{ template "sheet-heading" (dict "Title" (T .Lang "settings.account") "Lang" .Lang) }}
+  <form class="new-expense-form account-form" hx-post="/settings/account" hx-swap="none"
+    hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    <div>
+      <label for="account-name">{{ T .Lang "settings.name" }}</label>
+      <input type="text" id="account-name" name="name" value="{{ .User.DisplayName }}" maxlength="60"
+        autocomplete="given-name" placeholder='{{ printf (T .Lang "settings.name_placeholder") .User.Username }}' />
+      <span class="field-hint">{{ T .Lang "settings.name_hint" }}</span>
+    </div>
+
+    <div>
+      <label for="account-email">{{ T .Lang "settings.reminder_email" }}</label>
+      <input type="email" id="account-email" name="email" value="{{ .User.Email }}" autocomplete="email"
+        placeholder="you@example.com" />
+      <span class="field-hint">{{ T .Lang "settings.reminder_email_hint" }}</span>
+      {{ if .DevMode }}
+      {{/* Dev mode only: sends a sample reminder to the address typed, saved or not. */}}
+      <button type="button" class="btn-secondary send-test-email" hx-post="/settings/account/test-email"
+        hx-include="#account-email" hx-swap="none">{{ T .Lang "settings.send_test" }}</button>
+      {{ end }}
+    </div>
+
+    <fieldset class="reminder-block">
+      <legend>{{ T .Lang "settings.defaults" }}</legend>
+      <span class="field-hint">{{ T .Lang "settings.defaults_hint" }}</span>
+
+      <div class="category-switch segmented notify-kind" role="group" aria-label='{{ T .Lang "bills.notify" }}'>
+        <label><input type="radio" name="notify" value="email" {{ if ne (print $d.Notify) "none" }}checked{{ end }} />
+          <span>{{ T .Lang "bills.notify.email" }}</span></label>
+        <label><input type="radio" name="notify" value="none" {{ if eq (print $d.Notify) "none" }}checked{{ end }} />
+          <span>{{ T .Lang "bills.notify.none" }}</span></label>
+      </div>
+
+      <div class="inline-fields">
+        <span class="field-label">{{ T .Lang "settings.defaults_pay_by" }}</span>
+        <div class="inline-row">
+          <input type="number" name="remind_days_before" min="0" step="1" value="{{ $d.RemindDaysBefore }}"
+            aria-label='{{ T .Lang "bills.days_before_date" }}' />
+          <span class="inline-suffix">{{ T .Lang "bills.days_before_date" }}</span>
+        </div>
+      </div>
+      <div class="inline-fields">
+        <span class="field-label">{{ T .Lang "settings.defaults_arrives" }}</span>
+        <div class="inline-row">
+          <input type="number" name="remind_days_after" min="0" step="1" value="{{ $d.RemindDaysAfter }}"
+            aria-label='{{ T .Lang "bills.days_after_date" }}' />
+          <span class="inline-suffix">{{ T .Lang "bills.days_after_date" }}</span>
+        </div>
+      </div>
+
+      <label class="check-row">
+        <input type="checkbox" name="keep_reminding" {{ if $d.RepeatEveryDays }}checked{{ end }} />
+        <span>{{ T .Lang "bills.keep_reminding" }}</span>
+      </label>
+      <div class="inline-row repeat-row">
+        <span class="inline-suffix">{{ T .Lang "bills.every" }}</span>
+        <input type="number" name="repeat_every_days" min="1" step="1"
+          value="{{ if $d.RepeatEveryDays }}{{ derefi $d.RepeatEveryDays }}{{ else }}3{{ end }}"
+          aria-label='{{ T .Lang "bills.every" }}' />
+        <span class="inline-suffix">{{ T .Lang "bills.days" }}</span>
+      </div>
+
+      <div class="inline-row">
+        <span class="inline-suffix">{{ T .Lang "bills.max_reminders" }}</span>
+        <input type="number" name="max_reminders" min="1" step="1" placeholder="∞"
+          value="{{ if $d.MaxReminders }}{{ derefi $d.MaxReminders }}{{ end }}"
+          aria-label='{{ T .Lang "bills.max_reminders" }}' />
+        <span class="inline-suffix">{{ T .Lang "bills.reminders_suffix" }}</span>
+      </div>
+    </fieldset>
+
+    {{ template "sheet-actions" (dict "Lang" .Lang "SaveLabel" "common.save") }}
+  </form>
+</div>
+{{ end }}

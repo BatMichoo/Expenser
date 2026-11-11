@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"errors"
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -24,32 +26,76 @@ func NewSettingsHandler(rh *RootHandler, mailer services.Mailer, devMode bool) *
 	return &SettingsHandler{BaseHandler: rh.BaseHandler, Mailer: mailer, DevMode: devMode}
 }
 
-// GetReminderEmailForm opens the "Reminder email" panel.
-func (h *SettingsHandler) GetReminderEmailForm(c *gin.Context) error {
+// accountForm is what Settings > Account saves.
+type accountForm struct {
+	DisplayName string
+	Email       string
+	Defaults    models.ReminderDefaults
+}
+
+// parseAccountForm reads and validates the Account panel. The name and
+// email are optional (empty clears them).
+func parseAccountForm(v url.Values) (*accountForm, error) {
+	name, err := models.CleanDisplayName(v.Get("name"))
+	if err != nil {
+		return nil, err
+	}
+	email := strings.TrimSpace(v.Get("email"))
+	if email != "" && !models.ValidEmail(email) {
+		return nil, models.ErrInvalidEmail
+	}
+	defaults, err := parseReminderFields(v)
+	if err != nil {
+		return nil, err
+	}
+	if err := defaults.Validate(); err != nil {
+		return nil, err
+	}
+	return &accountForm{DisplayName: name, Email: email, Defaults: defaults}, nil
+}
+
+// accountError turns validation errors into user-facing messages.
+func accountError(err error) error {
+	switch {
+	case errors.Is(err, models.ErrInvalidDisplayName):
+		return badRequest("error.invalid_display_name", err)
+	case errors.Is(err, models.ErrInvalidEmail):
+		return badRequest("error.invalid_email", err)
+	case errors.Is(err, models.ErrInvalidNotify),
+		errors.Is(err, models.ErrInvalidRemindDays),
+		errors.Is(err, models.ErrInvalidRepeat),
+		errors.Is(err, models.ErrInvalidMaxReminders):
+		return badRequest("error.invalid_reminder_defaults", err)
+	}
+	return err
+}
+
+// GetAccountForm opens the Account panel: name, reminder email and the
+// reminder defaults for new bills.
+func (h *SettingsHandler) GetAccountForm(c *gin.Context) error {
 	user, err := h.BaseHandler.DB.GetUserByID(currentUserID(c))
 	if err != nil {
 		return err
 	}
-	c.HTML(http.StatusOK, "reminder-email-form", gin.H{"Email": user.Email, "Lang": currentLang(c), "DevMode": h.DevMode})
+	c.HTML(http.StatusOK, "account-form", gin.H{"User": user, "Lang": currentLang(c), "DevMode": h.DevMode})
 	return nil
 }
 
-// SaveReminderEmail stores the preferred email; empty removes it.
-func (h *SettingsHandler) SaveReminderEmail(c *gin.Context) error {
-	email := strings.TrimSpace(c.PostForm("email"))
-	if email != "" && !models.ValidEmail(email) {
-		return badRequest("error.invalid_email", models.ErrInvalidEmail)
+// SaveAccount stores the Account panel. Defaults only affect bills added
+// from now on.
+func (h *SettingsHandler) SaveAccount(c *gin.Context) error {
+	if err := c.Request.ParseForm(); err != nil {
+		return badRequest("error.invalid_form", err)
 	}
-	if err := h.BaseHandler.DB.SetUserEmail(c.Request.Context(), currentUserID(c), email); err != nil {
+	a, err := parseAccountForm(c.Request.PostForm)
+	if err != nil {
+		return accountError(err)
+	}
+	if err := h.BaseHandler.DB.UpdateUserAccount(c.Request.Context(), currentUserID(c), a.DisplayName, a.Email, a.Defaults); err != nil {
 		return err
 	}
-	lang := currentLang(c)
-	title := utilities.T(lang, "settings.email_saved")
-	if email == "" {
-		title = utilities.T(lang, "settings.email_cleared")
-	}
 	billsChanged(c, false) // the "no email" hints on the Bills page may change
-	renderSuccess(c, http.StatusOK, title, email)
+	renderSuccess(c, http.StatusOK, utilities.T(currentLang(c), "settings.account_saved"), "")
 	return nil
 }
 
@@ -73,7 +119,7 @@ func (h *SettingsHandler) SendTestEmail(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := h.Mailer.Send(c.Request.Context(), services.BuildTestReminderEmail(user.Username, lang, email, time.Now())); err != nil {
+	if err := h.Mailer.Send(c.Request.Context(), services.BuildTestReminderEmail(user.Username, user.DisplayName, lang, email, time.Now())); err != nil {
 		log.Printf("test email to %s: %v", email, err)
 		renderError(c, http.StatusBadGateway, utilities.T(lang, "settings.test_failed"), err.Error())
 		return nil

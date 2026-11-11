@@ -380,8 +380,6 @@
   "email.footer": "You're getting this because reminders are on for this bill in Expenser. Mark it paid in the app to stop them.",
   "settings.reminder_email": "Reminder email",
   "settings.reminder_email_hint": "Bill reminders are sent here unless a bill has its own address. Leave it empty and bills without their own address get no reminders.",
-  "settings.email_saved": "Reminder email saved",
-  "settings.email_cleared": "Reminder email removed",
   "email.test_prefix": "[Test]",
   "settings.send_test": "Send test email",
   "settings.test_sent": "Test email sent",
@@ -395,5 +393,16 @@
   "bills.notify_email_hint": "Leave empty to use your reminder email from Settings.",
   "bills.no_email_placeholder": "Set a reminder email in Settings",
   "bills.no_email": "No email, no reminders",
-  "error.invalid_email": "That doesn't look like an email address."
+  "error.invalid_email": "That doesn't look like an email address.",
+  "settings.account": "Account",
+  "settings.name": "Your name",
+  "settings.name_placeholder": "Optional, e.g. Alex (otherwise %s)",
+  "settings.name_hint": "Used to greet you in reminder emails.",
+  "settings.defaults": "Defaults for new bills",
+  "settings.defaults_hint": "Pre-filled when you add a bill. Existing bills keep their own settings.",
+  "settings.defaults_pay_by": "Pay-by bills: first reminder",
+  "settings.defaults_arrives": "\"Arrives around\" bills: first reminder",
+  "settings.account_saved": "Account saved",
+  "error.invalid_display_name": "Keep the name to 60 characters on one line.",
+  "error.invalid_reminder_defaults": "Check the reminder days: whole numbers, 0 or more; repeat every 1 day or more; a limit of at least 1."
 }

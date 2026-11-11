@@ -812,39 +812,76 @@ func TestBillsViewWaiting(t *testing.T) {
 	assert.Contains(t, doc.Find("#bill-33333333-3333-3333-3333-333333333333 .bill-due").Text(), "arrives in 3 days")
 }
 
-func TestSettingsHasReminderEmail(t *testing.T) {
+func TestSettingsHasAccount(t *testing.T) {
 	doc := parseHTML(t, render(t, "header", models.HeaderOptions{IsLoggedIn: true, Lang: "en"}))
-	btn := doc.Find("details.settings-menu .settings-email")
+	btn := doc.Find("details.settings-menu .settings-account")
 	require.Equal(t, 1, btn.Length())
 	hx, _ := btn.Attr("hx-get")
-	assert.Equal(t, "/settings/email", hx)
+	assert.Equal(t, "/settings/account", hx)
+	assert.Contains(t, btn.Text(), "Account")
 
 	out := parseHTML(t, render(t, "header", models.HeaderOptions{Lang: "en"}))
-	assert.Equal(t, 0, out.Find(".settings-email").Length(), "only when logged in")
+	assert.Equal(t, 0, out.Find(".settings-account").Length(), "only when logged in")
 }
 
-func TestReminderEmailForm(t *testing.T) {
-	doc := parseHTML(t, render(t, "reminder-email-form", map[string]any{"Email": "me@example.com", "Lang": "en"}))
-	form := doc.Find("form")
+func accountUser() *models.User {
+	two, five := 2, 5
+	return &models.User{
+		Username: "dev", DisplayName: "Miro", Email: "me@example.com",
+		ReminderDefaults: models.ReminderDefaults{Notify: models.NotifyNone, RemindDaysBefore: 7, RemindDaysAfter: 1, RepeatEveryDays: &two, MaxReminders: &five},
+	}
+}
+
+func TestAccountForm(t *testing.T) {
+	doc := parseHTML(t, render(t, "account-form", map[string]any{"User": accountUser(), "Lang": "en"}))
+	form := doc.Find("form.account-form")
+	require.Equal(t, 1, form.Length())
 	post, _ := form.Attr("hx-post")
-	assert.Equal(t, "/settings/email", post)
-	val, _ := form.Find(`input[type="email"][name="email"]`).Attr("value")
-	assert.Equal(t, "me@example.com", val)
-	_, required := form.Find(`input[name="email"]`).Attr("required")
-	assert.False(t, required, "optional: empty clears it")
+	assert.Equal(t, "/settings/account", post)
+
+	val := func(sel string) string { v, _ := form.Find(sel).Attr("value"); return v }
+	assert.Equal(t, "Miro", val(`input[name="name"]`))
+	ph, _ := form.Find(`input[name="name"]`).Attr("placeholder")
+	assert.Contains(t, ph, "dev", "empty name falls back to the username")
+	_, required := form.Find(`input[name="name"]`).Attr("required")
+	assert.False(t, required)
+	ml, _ := form.Find(`input[name="name"]`).Attr("maxlength")
+	assert.Equal(t, "60", ml)
+	assert.Equal(t, "me@example.com", val(`input[type="email"][name="email"]`))
+
+	assert.Equal(t, "none", val(`input[name="notify"][checked]`))
+	assert.Equal(t, "7", val(`input[name="remind_days_before"]`))
+	assert.Equal(t, "1", val(`input[name="remind_days_after"]`))
+	assert.Equal(t, 1, form.Find(`input[name="keep_reminding"][checked]`).Length())
+	assert.Equal(t, "2", val(`input[name="repeat_every_days"]`))
+	assert.Equal(t, "5", val(`input[name="max_reminders"]`))
+	assert.Equal(t, 0, form.Find(`input[name="date_kind"]`).Length(), "defaults cover both kinds; no switch")
+	assert.Contains(t, form.Text(), "Defaults for new bills")
 }
 
-func TestReminderEmailFormTestButtonOnlyInDevMode(t *testing.T) {
-	doc := parseHTML(t, render(t, "reminder-email-form", map[string]any{"Email": "me@example.com", "Lang": "en"}))
-	assert.Equal(t, 0, doc.Find(`[hx-post="/settings/email/test"]`).Length(), "hidden outside dev mode")
+func TestAccountFormEmptyDefaults(t *testing.T) {
+	u := &models.User{Username: "dev", ReminderDefaults: models.DefaultReminderDefaults()}
+	u.ReminderDefaults.RepeatEveryDays = nil
+	doc := parseHTML(t, render(t, "account-form", map[string]any{"User": u, "Lang": "en"}))
+	assert.Equal(t, 0, doc.Find(`input[name="keep_reminding"][checked]`).Length())
+	v, _ := doc.Find(`input[name="repeat_every_days"]`).Attr("value")
+	assert.Equal(t, "3", v, "a sensible number ready when switched on")
+	v, _ = doc.Find(`input[name="max_reminders"]`).Attr("value")
+	assert.Empty(t, v, "no limit")
+	assert.Equal(t, "email", func() string { v, _ := doc.Find(`input[name="notify"][checked]`).Attr("value"); return v }())
+}
 
-	doc = parseHTML(t, render(t, "reminder-email-form", map[string]any{"Email": "me@example.com", "Lang": "en", "DevMode": true}))
-	btn := doc.Find(`button[hx-post="/settings/email/test"]`)
+func TestAccountFormTestButtonOnlyInDevMode(t *testing.T) {
+	doc := parseHTML(t, render(t, "account-form", map[string]any{"User": accountUser(), "Lang": "en"}))
+	assert.Equal(t, 0, doc.Find(`[hx-post="/settings/account/test-email"]`).Length(), "hidden outside dev mode")
+
+	doc = parseHTML(t, render(t, "account-form", map[string]any{"User": accountUser(), "Lang": "en", "DevMode": true}))
+	btn := doc.Find(`button[hx-post="/settings/account/test-email"]`)
 	require.Equal(t, 1, btn.Length())
 	typ, _ := btn.Attr("type")
 	assert.Equal(t, "button", typ, "must not submit the save form")
 	inc, _ := btn.Attr("hx-include")
-	assert.Equal(t, "#reminder-email", inc, "tests the address typed, saved or not")
+	assert.Equal(t, "#account-email", inc, "tests the address typed, saved or not")
 }
 
 func TestBillFormDelivery(t *testing.T) {
