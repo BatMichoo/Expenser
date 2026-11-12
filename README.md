@@ -86,7 +86,15 @@ This starts a `deployer` container that checks GitHub every 30 minutes. When `ma
 - Re-run `make autodeploy` after changing anything in `deploy/` so the deployer itself is rebuilt.
 - Set `AUTODEPLOY_INTERVAL` (seconds) in the environment when running `make autodeploy` to change how often it checks.
 
-Rollback does not undo database migrations, so a migration that the previous version cannot work with still needs a manual fix.
+Before each deploy it dumps the database to `backups/` in the repo (gzipped, newest 14 kept; `AUTODEPLOY_BACKUP_KEEP` changes that). If the dump fails, it does not deploy and tries again next time. The dumps are on the same disk as the database, so copy them somewhere else now and then. To restore one:
+
+```sh
+gunzip -c backups/expenser-<date>-<commit>.sql.gz | docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"'
+```
+
+(into an empty database: drop and recreate it first, or restore into a new one.)
+
+Rollback does not undo database migrations, so a migration that the previous version cannot work with still needs a manual fix, from the backup taken before the deploy if needed.
 
 ## Before merging the grocery-units migration
 
@@ -104,7 +112,7 @@ Merging to `main` is a deploy: the deployer pulls `main`, rebuilds, and the app 
    docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup-$(date +%Y%m%d).sql
    ```
 
-   Check the file is not empty (`ls -lh backup-*.sql`, `tail -n 3 backup-*.sql` should end with `PostgreSQL database dump complete`) and copy it off the server.
+   Check the file is not empty (`ls -lh backup-*.sql`, `tail -n 10 backup-*.sql` should include `PostgreSQL database dump complete`) and copy it off the server.
 
 3. Merge, then deploy by hand and watch it (or turn the deployer back on with `make autodeploy` and follow `make autodeploy-logs`):
 
