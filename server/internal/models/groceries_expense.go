@@ -29,4 +29,15 @@ type GroceriesExpense struct {
 	SupermarketName string    `json:"supermarket_name"`
 	PurchaseDate    time.Time `json:"purchase_date"`
 	CreatedAt       time.Time `json:"created_at"`
+	Unit            string    `json:"unit"`
+	UnitSize        float64   `json:"unit_size"`
+	SizeStatus      string    `json:"size_status"`
 }
+
+// Values of GroceriesExpense.SizeStatus.
+const (
+	SizeUnknown    = "unknown"
+	SizeKnown      = "known"
+	SizeSkipped    = "skipped"
+	SizeNotTracked = "not_tracked"
+)

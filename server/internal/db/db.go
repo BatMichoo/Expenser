@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"expenser/internal/config"
+	_ "expenser/internal/db/migrations" // registers Go migrations with goose
 	"expenser/internal/models"
 	"fmt"
 	"log"
