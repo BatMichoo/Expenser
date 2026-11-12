@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	database "expenser/internal/db"
 	"expenser/internal/models"
 	"expenser/internal/utilities"
 	"fmt"
@@ -58,6 +59,14 @@ func registrationError(err error) error {
 	return badRequest(messageKey, err)
 }
 
+func usernameTaken() error {
+	return &HTTPError{
+		Status:     http.StatusBadRequest,
+		TitleKey:   "auth.username_exists",
+		MessageKey: "auth.username_exists_message",
+	}
+}
+
 func (h *AuthHandler) GetRegister(c *gin.Context) error {
 	renderPage(c, utilities.Templates.Pages.Register, gin.H{"Lang": currentLang(c)})
 	return nil
@@ -72,11 +81,7 @@ func (h *AuthHandler) Register(c *gin.Context) error {
 	// Check if user already exists
 	existingUser, _ := h.BaseHandler.DB.GetUserByUsername(regData.Username)
 	if existingUser != nil {
-		return &HTTPError{
-			Status:     http.StatusBadRequest,
-			TitleKey:   "auth.username_exists",
-			MessageKey: "auth.username_exists_message",
-		}
+		return usernameTaken()
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(regData.Password), bcrypt.DefaultCost)
@@ -88,7 +93,9 @@ func (h *AuthHandler) Register(c *gin.Context) error {
 		Username:     regData.Username,
 		PasswordHash: string(hashedPassword),
 	}
-	if err := h.BaseHandler.DB.CreateUser(user); err != nil {
+	if err := h.BaseHandler.DB.CreateUser(user); errors.Is(err, database.ErrUsernameTaken) {
+		return usernameTaken()
+	} else if err != nil {
 		return err
 	}
 

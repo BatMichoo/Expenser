@@ -3,14 +3,23 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"expenser/internal/models"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
-// CreateUser creates a new user in the database
+// ErrUsernameTaken means another user already has the username.
+var ErrUsernameTaken = errors.New("username is taken")
+
+// uniqueViolation is PostgreSQL's error code for a broken UNIQUE constraint.
+const uniqueViolation = "23505"
+
+// CreateUser creates a new user in the database. It returns ErrUsernameTaken
+// when the username is in use, even if another registration got there first.
 func (db *DB) CreateUser(user *models.User) error {
 	query := `
 		INSERT INTO users (username, password_hash, preferred_language, created_at, updated_at)
@@ -30,6 +39,10 @@ func (db *DB) CreateUser(user *models.User) error {
 		now,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) && pqErr.Code == uniqueViolation {
+		return ErrUsernameTaken
+	}
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}

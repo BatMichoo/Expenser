@@ -528,3 +528,15 @@ func TestUserExists(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateUserTakenUsername(t *testing.T) {
+	cfg, err := config.LoadConfig()
+	require.NoError(t, err)
+	testDB := InitTestDB(cfg)
+	defer testDB.Close()
+	ResetTestDB(testDB)
+
+	require.NoError(t, testDB.CreateUser(&models.User{Username: "twin", PasswordHash: "h"}))
+	err = testDB.CreateUser(&models.User{Username: "twin", PasswordHash: "h2"})
+	assert.ErrorIs(t, err, ErrUsernameTaken)
+}
