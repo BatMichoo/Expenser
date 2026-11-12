@@ -27,6 +27,11 @@ COPY internal/templates/ internal/templates/
 COPY internal/db/ internal/db/
 COPY static/ static/
 
+# Run as an unprivileged user: the app only reads its files, and pdftotext
+# parses untrusted PDFs.
+RUN addgroup -S app && adduser -S -G app -H app
+USER app
+
 EXPOSE 8080
 
 CMD ["./web-app"]

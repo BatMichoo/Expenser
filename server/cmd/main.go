@@ -20,8 +20,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// trustedProxies are the private networks a reverse proxy can be on.
+var trustedProxies = []string{"127.0.0.1/32", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"}
+
 func main() {
 	router := gin.Default()
+	// Only nginx (on the Docker network) and local tools may set
+	// X-Forwarded-For; anyone else's is ignored.
+	if err := router.SetTrustedProxies(trustedProxies); err != nil {
+		log.Fatalf("Trusted proxies: %v", err)
+	}
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
