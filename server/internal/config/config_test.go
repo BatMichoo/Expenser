@@ -81,17 +81,30 @@ func TestReceiptAIConfig(t *testing.T) {
 }
 
 func TestConnString(t *testing.T) {
-	got := connString("app", "p@ss/w:rd", "db", "5432", "expenser", "")
-	assert.Equal(t, "postgres://app:p%40ss%2Fw%3Ard@db:5432/expenser?sslmode=disable", got)
+	got := connString("app", "p@ss/w:rd", "db", "5432", "expenser", "", "UTC")
+	assert.Equal(t, "postgres://app:p%40ss%2Fw%3Ard@db:5432/expenser?sslmode=disable&timezone=UTC", got)
 
-	got = connString("app", "secret", "db", "5432", "expenser", "require")
-	assert.Equal(t, "postgres://app:secret@db:5432/expenser?sslmode=require", got)
+	got = connString("app", "secret", "db", "5432", "expenser", "require", "Europe/Sofia")
+	assert.Equal(t, "postgres://app:secret@db:5432/expenser?sslmode=require&timezone=Europe%2FSofia", got)
 }
 
 func TestRedactConnStringHidesPassword(t *testing.T) {
-	conn := connString("app", "hunter2", "db", "5432", "expenser", "")
+	conn := connString("app", "hunter2", "db", "5432", "expenser", "", "UTC")
 	red := RedactConnString(conn)
 	assert.NotContains(t, red, "hunter2")
 	assert.Contains(t, red, "app:")
 	assert.Contains(t, red, "db:5432/expenser")
+}
+
+func TestLoadLocation(t *testing.T) {
+	loc, err := loadLocation("")
+	assert.NoError(t, err)
+	assert.Equal(t, DefaultTimezone, loc.String())
+
+	loc, err = loadLocation(" UTC ")
+	assert.NoError(t, err)
+	assert.Equal(t, "UTC", loc.String())
+
+	_, err = loadLocation("Mars/Olympus")
+	assert.Error(t, err)
 }
