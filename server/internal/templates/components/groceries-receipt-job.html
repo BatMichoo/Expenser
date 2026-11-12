@@ -1,0 +1,31 @@
+{{/* A receipt being read in the background (see services.ReceiptJobs).
+     State: reading (checks back every 2s; the review form replaces it when
+     ready), failed (Message says why), expired. Expects ID for reading. */}}
+{{ define "groceries-receipt-job" }}
+<div class="sheet">
+  {{ template "sheet-heading" (dict "Title" (T .Lang "groceries.upload_receipt") "Lang" .Lang) }}
+  <div class="new-expense-form receipt-job">
+    {{ if eq .State "reading" }}
+    <div class="receipt-job-status" hx-get="/groceries/upload/{{ .ID }}" hx-trigger="every 2s"
+      hx-target="#action-dialog" hx-swap="innerHTML" role="status">
+      <span class="spinner" aria-hidden="true"></span>
+      <strong>{{ T .Lang "receipt.reading" }}</strong>
+      <span class="field-hint">{{ T .Lang "receipt.reading_background" }}</span>
+    </div>
+    <div class="sheet-actions">
+      <button type="button" class="sheet-cancel" onClick="hideDialog();">{{ T .Lang "common.close" }}</button>
+    </div>
+    {{ else }}
+    <div class="receipt-job-status">
+      <span class="receipt-job-icon" aria-hidden="true">{{ template "icon" (dict "Name" "alert" "Size" 22 "Stroke" "2.5") }}</span>
+      <strong>{{ if eq .State "failed" }}{{ T .Lang "receipt.failed_title" }}{{ else }}{{ T .Lang "receipt.expired" }}{{ end }}</strong>
+      {{ if .Message }}<span class="receipt-job-message">{{ .Message }}</span>{{ end }}
+    </div>
+    <div class="sheet-actions">
+      <button type="button" class="sheet-cancel" hx-get="/groceries/create" hx-target="#action-dialog" hx-swap="innerHTML">{{ T .Lang "receipt.add_by_hand" }}</button>
+      <button type="button" class="btn-primary sheet-save" hx-get="/groceries/form?new=1" hx-target="#action-dialog" hx-swap="innerHTML">{{ T .Lang "receipt.try_again" }}</button>
+    </div>
+    {{ end }}
+  </div>
+</div>
+{{ end }}

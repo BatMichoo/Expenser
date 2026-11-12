@@ -4,93 +4,242 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"expenser/internal/models"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"regexp"
+	"strings"
+	"time"
+)
+
+// geminiAPI is the Gemini generateContent endpoint for a model.
+const geminiAPI = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent"
+
+// ErrNotConfigured means there is no Gemini API key.
+var ErrNotConfigured = errors.New("gemini API key is not configured")
+
+// APIError is an error returned by the Gemini API itself, e.g. quota
+// exhausted or the model overloaded. Message is Google's own wording.
+type APIError struct {
+	Code    int    // HTTP status
+	Status  string // e.g. RESOURCE_EXHAUSTED, UNAVAILABLE
+	Message string
+}
+
+func (e *APIError) Error() string {
+	return fmt.Sprintf("gemini api error %d %s: %s", e.Code, e.Status, e.Message)
+}
+
+// Unavailable reports a temporary outage worth retrying later.
+func (e *APIError) Unavailable() bool {
+	return e.Code == http.StatusServiceUnavailable || e.Status == "UNAVAILABLE"
+}
+
+// ReplyError means the model answered, but not with a receipt: Reply is
+// what it said instead (e.g. "the text is too small to be read"), shortened;
+// FinishReason is why it stopped when that wasn't normal (MAX_TOKENS when
+// the answer got cut off, SAFETY when it was blocked).
+type ReplyError struct {
+	Reply        string
+	FinishReason string
+	Err          error
+}
+
+func (e *ReplyError) Error() string {
+	return fmt.Sprintf("gemini reply is not a receipt (finish %s): %q: %v", e.FinishReason, e.Reply, e.Err)
+}
+
+func (e *ReplyError) Unwrap() error { return e.Err }
+
+// maxReplyRunes caps how much of the model's words reach the user.
+const maxReplyRunes = 300
+
+// shortReply collapses whitespace and trims the model's words for display.
+func shortReply(s string) string {
+	s = strings.Join(strings.Fields(s), " ")
+	if r := []rune(s); len(r) > maxReplyRunes {
+		return string(r[:maxReplyRunes]) + "…"
+	}
+	return s
+}
+
+// When Gemini is overloaded (503) the read is retried: every model in turn,
+// then again after each wait. Receipts are read in the background, so the
+// waits cost the user nothing but time on the "Reading…" panel.
+var (
+	defaultRetryWaits     = []time.Duration{5 * time.Second, 15 * time.Second, 30 * time.Second}
+	defaultAttemptTimeout = 90 * time.Second // one model that hangs mustn't use up the job
 )
 
 // GeminiService handles interactions with the Gemini API.
 type GeminiService struct {
-	apiKey string
+	apiKey   string
+	models   []string // the main model first, then fallbacks
+	endpoint string   // URL with %s for the model
+	client   *http.Client
+
+	waits          []time.Duration
+	attemptTimeout time.Duration
+	sleep          func(ctx context.Context, d time.Duration) error
 }
 
-// NewGeminiService creates a new instance of GeminiService.
-func NewGeminiService(apiKey string) *GeminiService {
+// NewGeminiService reads receipts with the given models: the first one
+// (config.ReceiptAIModel), falling back to the rest when it's overloaded.
+func NewGeminiService(apiKey string, models ...string) *GeminiService {
 	return &GeminiService{
-		apiKey: apiKey,
+		apiKey: apiKey, models: models, endpoint: geminiAPI, client: http.DefaultClient,
+		waits: defaultRetryWaits, attemptTimeout: defaultAttemptTimeout, sleep: sleepCtx,
 	}
 }
+
+func sleepCtx(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+type geminiResponse struct {
+	Error *struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Status  string `json:"status"`
+	} `json:"error"`
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		} `json:"content"`
+		FinishReason string `json:"finishReason"`
+	} `json:"candidates"`
+	PromptFeedback *struct {
+		BlockReason string `json:"blockReason"`
+	} `json:"promptFeedback"`
+}
+
+var jsonFence = regexp.MustCompile("(?s)```(?:json)?\\s*(.*?)\\s*```")
 
 // AnalyzeReceipt reads a receipt (a photo or a PDF) and returns its items.
+// Failures come back as ErrNotConfigured, *APIError (Gemini refused) or
+// *ReplyError (Gemini answered, but not with a receipt), so callers can
+// tell the user what actually went wrong.
 func (gs *GeminiService) AnalyzeReceipt(ctx context.Context, receiptData []byte) (*models.ReceiptAnalysis, error) {
-	if gs.apiKey == "" {
-		return nil, fmt.Errorf("gemini API key is not configured")
+	if gs.apiKey == "" || len(gs.models) == 0 {
+		return nil, ErrNotConfigured
 	}
-
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=%s", gs.apiKey)
-	requestBody := map[string]any{
+	jsonBody, err := json.Marshal(map[string]any{
 		"contents": []map[string]any{
 			{"parts": receiptParts(ctx, receiptData, pdfToText)},
 		},
-	}
-
-	jsonBody, err := json.Marshal(requestBody)
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
+	var lastErr error
+	for round := 0; ; round++ {
+		for _, model := range gs.models {
+			analysis, err := gs.attempt(ctx, model, jsonBody)
+			if err == nil {
+				log.Printf("receipt read by %s (round %d)", model, round+1)
+				return analysis, nil
+			}
+			if !gs.retryable(ctx, err) {
+				return nil, err
+			}
+			log.Printf("receipt: %s busy, trying the next: %v", model, err)
+			lastErr = err
+		}
+		if round >= len(gs.waits) || gs.sleep(ctx, gs.waits[round]) != nil {
+			return nil, lastErr
+		}
+	}
+}
+
+// retryable is an overloaded model, or one that didn't answer in time while
+// the job itself still has time.
+func (gs *GeminiService) retryable(ctx context.Context, err error) bool {
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.Unavailable()
+	}
+	return errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil
+}
+
+// attempt asks one model once.
+func (gs *GeminiService) attempt(ctx context.Context, model string, jsonBody []byte) (*models.ReceiptAnalysis, error) {
+	ctx, cancel := context.WithTimeout(ctx, gs.attemptTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf(gs.endpoint, model), bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	// In a header, not the URL: a failed request's error message quotes the
+	// URL, and that would put the key in the log.
+	req.Header.Set("x-goog-api-key", gs.apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := gs.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("gemini request: %w", err)
 	}
 	defer resp.Body.Close()
-
-	var geminiResp struct {
-		Error *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-		Candidates []struct {
-			Content struct {
-				Parts []struct {
-					Text string `json:"text"`
-				} `json:"parts"`
-			} `json:"content"`
-		} `json:"candidates"`
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 10<<20))
+	if err != nil {
+		return nil, fmt.Errorf("gemini response: %w", err)
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
-		return nil, err
+	var gr geminiResponse
+	decodeErr := json.Unmarshal(body, &gr)
+	if gr.Error != nil {
+		return nil, &APIError{Code: gr.Error.Code, Status: gr.Error.Status, Message: gr.Error.Message}
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, &APIError{Code: resp.StatusCode, Message: http.StatusText(resp.StatusCode)}
+	}
+	if decodeErr != nil {
+		return nil, fmt.Errorf("gemini response: %w", decodeErr)
+	}
+	if len(gr.Candidates) == 0 {
+		reason := "NO_ANSWER"
+		if gr.PromptFeedback != nil && gr.PromptFeedback.BlockReason != "" {
+			reason = gr.PromptFeedback.BlockReason
+		}
+		return nil, &ReplyError{FinishReason: reason, Err: errors.New("no candidates")}
 	}
 
-	if geminiResp.Error != nil {
-		return nil, fmt.Errorf("gemini api error: %s", geminiResp.Error.Message)
+	cand := gr.Candidates[0]
+	var text strings.Builder
+	for _, p := range cand.Content.Parts {
+		text.WriteString(p.Text)
 	}
+	raw := text.String()
+	log.Printf("Raw Gemini response (%s): %s", model, raw)
 
-	if len(geminiResp.Candidates) == 0 {
-		return nil, fmt.Errorf("no response from gemini")
+	reply := raw
+	if m := jsonFence.FindStringSubmatch(raw); len(m) > 1 {
+		reply = m[1]
 	}
-
-	text := geminiResp.Candidates[0].Content.Parts[0].Text
-	fmt.Printf("Raw Gemini response: %s\n", text)
-
-	// Clean text (remove ```json and ``` if present)
-	re := regexp.MustCompile("(?s)```json\\s*(.*?)\\s*```")
-	match := re.FindStringSubmatch(text)
-	if len(match) > 1 {
-		text = match[1]
-	}
-
 	var analysis models.ReceiptAnalysis
-	if err := json.Unmarshal([]byte(text), &analysis); err != nil {
-		return nil, err
+	if err := json.Unmarshal([]byte(reply), &analysis); err != nil {
+		replyErr := &ReplyError{Err: err}
+		if cand.FinishReason != "" && cand.FinishReason != "STOP" {
+			replyErr.FinishReason = cand.FinishReason
+		}
+		// Words are worth showing ("the text is too small to read"); a
+		// broken or cut-off JSON object is not.
+		if trimmed := strings.TrimSpace(reply); trimmed != "" && !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
+			replyErr.Reply = shortReply(trimmed)
+		}
+		return nil, replyErr
 	}
 
 	// Discounts printed apart from their items (Kaufland's "Позиции") are put

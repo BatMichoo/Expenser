@@ -4134,3 +4134,32 @@ tr:hover .row-actions,
     width: 100%;
   }
 }
+
+/* Receipt being read in the background (or why it failed) */
+.receipt-job-status {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--text);
+}
+
+.receipt-job-status .spinner {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.receipt-job-icon {
+  display: inline-flex;
+  padding: 0.6rem;
+  border-radius: 50%;
+  color: var(--danger);
+  background: oklch(0.65 0.2 30 / 0.12);
+}
+
+.receipt-job-message {
+  max-width: 32rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}

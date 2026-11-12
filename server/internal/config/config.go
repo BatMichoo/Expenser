@@ -12,15 +12,37 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// ReceiptAIModel is the Gemini model that reads receipts. It lives in code,
+// not the environment: changing it means checking the prompt still works.
+// A Lite model: fast, cheap and rarely overloaded, while the full Flash
+// models often answered 503 or took minutes.
+const ReceiptAIModel = "gemini-3.5-flash-lite"
+
+// ReceiptAIFallbacks are tried, in order, while ReceiptAIModel is
+// overloaded.
+var ReceiptAIFallbacks = []string{"gemini-3.1-flash-lite"}
+
+// ReceiptAI is the Gemini setup for reading receipts.
+type ReceiptAI struct {
+	APIKey    string   // GEMINI_API_KEY; empty disables receipt reading
+	Model     string   // always ReceiptAIModel
+	Fallbacks []string // always ReceiptAIFallbacks
+}
+
+// Models is the main model followed by the fallbacks.
+func (r ReceiptAI) Models() []string {
+	return append([]string{r.Model}, r.Fallbacks...)
+}
+
 // Config struct to hold application configuration.
 type Config struct {
-	ServerPort   string
-	LanDomain    string
-	DB           DB
-	JWT          JWT
-	Mode         string
-	GeminiAPIKey string
-	SeedDevData  bool
+	ServerPort  string
+	LanDomain   string
+	DB          DB
+	JWT         JWT
+	Mode        string
+	ReceiptAI   ReceiptAI
+	SeedDevData bool
 	// ReminderCheckInterval is how often the recurring payment reminder
 	// scheduler runs.
 	ReminderCheckInterval time.Duration
@@ -100,7 +122,6 @@ func LoadConfig() (*Config, error) {
 	dbPort := os.Getenv("DB_PORT")
 	dbName := os.Getenv("DB_NAME")
 	serverPort := os.Getenv("SERVER_PORT")
-	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
 	seedDevData := os.Getenv("SEED_DEV_DATA") == "true"
 
 	var testDBName string
@@ -147,11 +168,11 @@ func LoadConfig() (*Config, error) {
 			SecretKey:       jwtSecret,
 			TokenExpiration: jwtExpiration,
 		},
-		Mode:         mode,
-		DevMode:      parseDevMode(os.Getenv("DEV_MODE")),
-		AppURL:       strings.TrimRight(strings.TrimSpace(os.Getenv("APP_URL")), "/"),
-		GeminiAPIKey: geminiAPIKey,
-		SeedDevData:  seedDevData,
+		Mode:        mode,
+		DevMode:     parseDevMode(os.Getenv("DEV_MODE")),
+		AppURL:      strings.TrimRight(strings.TrimSpace(os.Getenv("APP_URL")), "/"),
+		ReceiptAI:   ReceiptAI{APIKey: os.Getenv("GEMINI_API_KEY"), Model: ReceiptAIModel, Fallbacks: ReceiptAIFallbacks},
+		SeedDevData: seedDevData,
 
 		ReminderCheckInterval: reminderCheckInterval,
 		SMTP:                  loadSMTP(os.Getenv),
