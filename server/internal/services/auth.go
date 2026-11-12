@@ -108,6 +108,24 @@ func (as *AuthService) GenerateToken(user *models.User) (*Token, error) {
 	}, nil
 }
 
+// NeedsRefresh reports whether a login has used up half its lifetime, so the
+// next request should renew it. An active user then stays logged in, while
+// one who is away longer than the lifetime has to log in again.
+func (as *AuthService) NeedsRefresh(t *Token, now time.Time) bool {
+	return t.ExpiresAt.Sub(now) < as.tokenExpiration/2
+}
+
+// Refresh issues a new token with the same user claims and a full lifetime.
+// Re-setting the old token would only extend the cookie, not the token's
+// own expiry.
+func (as *AuthService) Refresh(t *Token) (*Token, error) {
+	return as.GenerateToken(&models.User{
+		ID:                t.Claims.UserID,
+		Username:          t.Claims.Username,
+		PreferredLanguage: t.Claims.PreferredLanguage,
+	})
+}
+
 // ValidateToken validates and parses a JWT token
 func (as *AuthService) ValidateToken(c *gin.Context) (*Token, error) {
 	tokenString, _ := c.Cookie(authCookieName)

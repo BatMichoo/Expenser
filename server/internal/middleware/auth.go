@@ -4,6 +4,7 @@ import (
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -71,11 +72,13 @@ func (am *AuthMiddleware) AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		currentTime := time.Now()
-		diff := token.ExpiresAt.Sub(currentTime)
-
-		if time.Duration(diff.Hours()) < time.Duration(time.Hour.Hours()) {
-			am.authService.SetCookie(token, c)
+		if am.authService.NeedsRefresh(token, time.Now()) {
+			if fresh, err := am.authService.Refresh(token); err == nil {
+				am.authService.SetCookie(fresh, c)
+				token = fresh
+			} else {
+				log.Printf("refresh login token: %v", err)
+			}
 		}
 
 		// Store user information in context
