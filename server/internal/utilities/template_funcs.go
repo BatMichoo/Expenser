@@ -80,11 +80,9 @@ func TemplateFuncs() template.FuncMap {
 		"sizeValue": func(v float64) string {
 			return strconv.FormatFloat(groceryunits.Round4(v), 'f', -1, 64)
 		},
-		"abs": math.Abs,
-		"sub": func(a, b float64) float64 { return a - b },
-		"money": func(v float64) string {
-			return fmt.Sprintf("%.2f %s", v, CurrencySymbol())
-		},
+		"abs":   math.Abs,
+		"sub":   func(a, b float64) float64 { return a - b },
+		"money": Money,
 		"rough": RoughAmount,
 		"contains": func(slice interface{}, item string) bool {
 			s, ok := slice.([]string)
