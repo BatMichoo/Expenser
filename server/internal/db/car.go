@@ -123,7 +123,7 @@ func (db *DB) GetCarExpensesForMonth(month time.Month, year int, userId uuid.UUI
 		WHERE
 			EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2 AND ce.created_by = $3
 		ORDER BY
-			ce.expense_date DESC;
+			ce.expense_date DESC, ce.id DESC;
 	`
 
 	var expenses []models.CarExpense
@@ -175,7 +175,7 @@ func (db *DB) GetCarExpensesForYear(year int, userId uuid.UUID) (*[]models.CarEx
 		WHERE
 			 ($1 = 0 OR EXTRACT(YEAR FROM expense_date) = $1) AND ce.created_by = $2
 		ORDER BY 
-			ce.expense_date DESC;
+			ce.expense_date DESC, ce.id DESC;
 	`
 
 	var expenses []models.CarExpense
