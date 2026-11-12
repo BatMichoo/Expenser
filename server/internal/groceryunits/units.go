@@ -40,6 +40,11 @@ var (
 	multiRe  = regexp.MustCompile(leftPat + numPat + `\s*[xх*]\s*` + numPat + `\s*` + unitPat + rightPat)
 	singleRe = regexp.MustCompile(leftPat + numPat + `\s*` + unitPat + rightPat)
 	commaRe  = regexp.MustCompile(`(\d),(\d)`)
+	// A number glued to another by / - or en dash before a size is a fraction
+	// or range ("1/2 кг", "250-300г"), not a size.
+	rangeRe = regexp.MustCompile(`\d\s*[/\-–]\s*` + numPat + `\s*` + unitPat + rightPat)
+	// A multiplier after a size ("150г x6") makes the pack size ambiguous.
+	trailMulRe = regexp.MustCompile(unitPat + `\.?\s*[xх*]\s*\d`)
 )
 
 // normalise converts a parsed amount and unit token to a base unit.
@@ -64,6 +69,10 @@ func normalise(amount float64, token string) Size {
 func Parse(product string, quantity float64) (Size, bool) {
 	s := commaRe.ReplaceAllString(strings.ToLower(product), "$1.$2")
 
+	if rangeRe.MatchString(s) {
+		return Size{}, false
+	}
+
 	var found []Size
 
 	// Multipacks first, removed so their parts are not read again as singles.
@@ -81,6 +90,10 @@ func Parse(product string, quantity float64) (Size, bool) {
 		sz.Per *= n
 		found = append(found, sz)
 		s = s[:m[0]] + " " + s[m[1]:]
+	}
+
+	if trailMulRe.MatchString(s) {
+		return Size{}, false
 	}
 
 	// Singles. Resume at the end of each unit token so a shared delimiter can
