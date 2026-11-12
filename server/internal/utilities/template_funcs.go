@@ -3,6 +3,7 @@ package utilities
 import (
 	"bytes"
 	"expenser/internal/groceryunits"
+	"expenser/internal/version"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -75,6 +76,8 @@ func TemplateFuncs() template.FuncMap {
 		"asset": func(path string) string {
 			return "/static/" + path + "?v=" + assetVersion
 		},
+		// appVersion is the running build's version, shown in the footer.
+		"appVersion": func() string { return "v" + version.Version },
 		// sizeValue prints a pack size for a number input: rounded to the
 		// column's 4 decimals, without float noise or trailing zeros.
 		"sizeValue": func(v float64) string {

@@ -27,6 +27,7 @@
       <p>
         &copy; {{ .Year }} {{ T .Lang "header.title" }} Suite. {{ T .Lang
         "footer.rights" }}
+        <span class="footer-version">· {{ appVersion }}</span>
       </p>
     </footer>
     <dialog id="action-dialog" hx-on::after-settle="showDialog(this)"></dialog>

@@ -410,6 +410,11 @@ footer {
   padding: 1em;
 }
 
+.footer-version {
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
 #add-expense-section {
   margin: 2.5em;
 }
