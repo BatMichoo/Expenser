@@ -10,17 +10,20 @@ import (
 // are fixed identifiers, never user input, so they are safe to put into
 // SQL text.
 type expenseTable struct {
-	Table      string
-	TypeColumn string
+	Table       string
+	TypeColumn  string
+	TypeTable   string
+	DateColumn  string
+	OwnerColumn string
 }
 
 // expenseTableFor returns the house or car expense table.
 func expenseTableFor(s models.Section) (expenseTable, error) {
 	switch s {
 	case models.SectionHouse:
-		return expenseTable{Table: "home_expenses", TypeColumn: "utility_type_id"}, nil
+		return expenseTable{Table: "home_expenses", TypeColumn: "utility_type_id", TypeTable: "utility_types", DateColumn: "expense_date", OwnerColumn: "created_by"}, nil
 	case models.SectionCar:
-		return expenseTable{Table: "car_expenses", TypeColumn: "car_expense_type_id"}, nil
+		return expenseTable{Table: "car_expenses", TypeColumn: "car_expense_type_id", TypeTable: "car_expense_types", DateColumn: "expense_date", OwnerColumn: "created_by"}, nil
 	}
 	return expenseTable{}, fmt.Errorf("section %q: %w", s, models.ErrInvalidCategory)
 }
