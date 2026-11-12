@@ -171,7 +171,6 @@
   "auth.username_exists": "Username already exists!",
   "auth.invalid_credentials": "Invalid credentials!",
   "error.message": "Something went wrong on our side. Please try again in a moment.",
-  "error.ai_unavailable": "AI service is currently unavailable. Please try again later.",
   "error.not_found": "We couldn't find what you were looking for.",
   "error.page_not_found": "This page doesn't exist. Check the address or go back to the home page.",
   "error.expense_not_found": "This expense no longer exists. It may have been deleted. Refresh the page to see the latest list.",
@@ -480,5 +479,17 @@
   "landing.stat.forgotten.value": "0",
   "landing.stat.forgotten.label": "bills forgotten",
   "landing.cta.title": "Ready to meet your money?",
-  "landing.cta.text": "It's free, it's yours, and it never judges the takeaway budget."
+  "landing.cta.text": "It's free, it's yours, and it never judges the takeaway budget.",
+  "error.ai_not_configured": "Receipt reading isn't set up on this server (no Gemini API key). Add the items by hand for now.",
+  "error.ai_unavailable_said": "The receipt reader is busy right now. Try again in a minute. Gemini said: “%s”",
+  "error.ai_error": "The receipt reader refused the request. Gemini said: “%s”",
+  "error.receipt_ai_said": "We couldn't read this receipt. The AI said: “%s”",
+  "error.receipt_too_long": "This receipt is too long for the AI to read in one go. Try a photo of part of it, or add the items by hand.",
+  "error.receipt_ai_refused": "The AI declined to read this receipt (%s). Try another photo, or add the items by hand.",
+  "common.close": "Close",
+  "receipt.reading_background": "This can take a minute. You can close this panel: the receipt keeps being read, and opening Upload Receipt again shows the result.",
+  "receipt.failed_title": "The receipt couldn't be read",
+  "receipt.expired": "This upload is no longer available.",
+  "receipt.add_by_hand": "Add by hand",
+  "receipt.try_again": "Try again"
 }

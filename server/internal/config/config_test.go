@@ -67,3 +67,15 @@ func TestAppURLFromEnv(t *testing.T) {
 	}
 	assert.Equal(t, "https://expenser.home.lan", cfg.AppURL, "trimmed, no trailing slash")
 }
+
+func TestReceiptAIConfig(t *testing.T) {
+	t.Setenv("JWT_SECRET", "x")
+	t.Setenv("GEMINI_API_KEY", "key-from-env")
+	t.Setenv("GEMINI_MODEL", "ignored")
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, ReceiptAI{APIKey: "key-from-env", Model: ReceiptAIModel, Fallbacks: ReceiptAIFallbacks}, cfg.ReceiptAI, "the models come from code, not the environment")
+	assert.Equal(t, append([]string{ReceiptAIModel}, ReceiptAIFallbacks...), cfg.ReceiptAI.Models(), "main model first")
+}

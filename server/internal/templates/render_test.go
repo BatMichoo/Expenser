@@ -1228,3 +1228,25 @@ func TestEveryIconNameDraws(t *testing.T) {
 		assert.Greater(t, s.Children().Length(), 0, "landing feature %d has its icon", i)
 	})
 }
+
+func TestReceiptJobPanel(t *testing.T) {
+	reading := parseHTML(t, render(t, "groceries-receipt-job", map[string]any{"State": "reading", "ID": "abc123", "Lang": "en"}))
+	poll := reading.Find(`[hx-get="/groceries/upload/abc123"]`)
+	require.Equal(t, 1, poll.Length(), "checks back on its job")
+	trigger, _ := poll.Attr("hx-trigger")
+	assert.Equal(t, "every 2s", trigger)
+	target, _ := poll.Attr("hx-target")
+	assert.Equal(t, "#action-dialog", target, "the review form replaces the panel when ready")
+	assert.Contains(t, reading.Text(), "close this panel", "explains it keeps going in the background")
+
+	failed := parseHTML(t, render(t, "groceries-receipt-job", map[string]any{"State": "failed", "Message": "The AI said: “too small”", "Lang": "en"}))
+	assert.Equal(t, 0, failed.Find("[hx-trigger]").Length(), "stops checking")
+	assert.Contains(t, failed.Text(), "too small")
+	again, _ := failed.Find(`button[hx-get^="/groceries/form"]`).Attr("hx-get")
+	assert.Equal(t, "/groceries/form?new=1", again, "try again starts a fresh upload")
+	assert.Equal(t, 1, failed.Find(`button[hx-get="/groceries/create"]`).Length(), "or add by hand")
+
+	gone := parseHTML(t, render(t, "groceries-receipt-job", map[string]any{"State": "expired", "Lang": "en"}))
+	assert.Contains(t, gone.Text(), "no longer available")
+	assert.Equal(t, 0, gone.Find("[hx-trigger]").Length())
+}

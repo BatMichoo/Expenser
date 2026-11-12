@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"errors"
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/services/gemini"
@@ -18,6 +19,7 @@ type GroceriesHandler struct {
 	BaseHandler BaseHandler
 	GeminiS     *gemini.GeminiService
 	months      *services.MonthViewService
+	receipts    *services.ReceiptJobs // receipts being read in the background
 }
 
 func NewGroceriesHandler(rh *RootHandler, gs *gemini.GeminiService) *GroceriesHandler {
@@ -25,6 +27,7 @@ func NewGroceriesHandler(rh *RootHandler, gs *gemini.GeminiService) *GroceriesHa
 		BaseHandler: rh.BaseHandler,
 		GeminiS:     gs,
 		months:      services.NewMonthViewService(rh.BaseHandler.DB),
+		receipts:    services.NewReceiptJobs(gs.AnalyzeReceipt),
 	}
 }
 
@@ -66,49 +69,106 @@ func parseGroceriesExpenseForm(c *gin.Context) *models.GroceriesExpense {
 	}
 }
 
+// receiptError tells the user why a receipt couldn't be read, in Gemini's
+// own words where it gave some: what the model said instead of a receipt,
+// or the API's error message. Failures with nothing useful to say (network,
+// unreadable response) get the general message.
+func receiptError(err error) error {
+	var (
+		apiErr   *gemini.APIError
+		replyErr *gemini.ReplyError
+	)
+	gateway := func(key string, args ...any) error {
+		return &HTTPError{Status: http.StatusBadGateway, MessageKey: key, Args: args, Err: err}
+	}
+	switch {
+	case errors.Is(err, gemini.ErrNotConfigured):
+		return &HTTPError{Status: http.StatusServiceUnavailable, MessageKey: "error.ai_not_configured", Err: err}
+	case errors.As(err, &apiErr) && apiErr.Unavailable():
+		return &HTTPError{Status: http.StatusServiceUnavailable, MessageKey: "error.ai_unavailable_said", Args: []any{apiErr.Message}, Err: err}
+	case errors.As(err, &apiErr):
+		return gateway("error.ai_error", apiErr.Message)
+	case errors.As(err, &replyErr) && replyErr.Reply != "":
+		return gateway("error.receipt_ai_said", replyErr.Reply)
+	case errors.As(err, &replyErr) && replyErr.FinishReason == "MAX_TOKENS":
+		return gateway("error.receipt_too_long")
+	case errors.As(err, &replyErr) && replyErr.FinishReason != "":
+		return gateway("error.receipt_ai_refused", replyErr.FinishReason)
+	}
+	return gateway("error.receipt_not_analyzed")
+}
+
+// UploadReceipt starts reading the receipt in the background and shows a
+// panel that checks back until it's done (Gemini can take minutes).
 func (h *GroceriesHandler) UploadReceipt(c *gin.Context) error {
-	lang := currentLang(c)
 	file, err := c.FormFile("receipt")
 	if err != nil {
 		return badRequest("error.receipt_missing", err)
 	}
-
 	src, err := file.Open()
 	if err != nil {
 		return badRequest("error.receipt_unreadable", fmt.Errorf("failed to open file: %w", err))
 	}
 	defer src.Close()
-
 	buf := new(bytes.Buffer)
 	if _, err := buf.ReadFrom(src); err != nil {
 		return badRequest("error.receipt_unreadable", fmt.Errorf("failed to read file: %w", err))
 	}
 
-	analysis, err := h.GeminiS.AnalyzeReceipt(c.Request.Context(), buf.Bytes())
-	if err != nil {
-		// Check for service unavailable or specific error indicating AI is down
-		if err.Error() == "gemini api error: Service Unavailable" { // Adjust string based on actual API error output
-			return &HTTPError{Status: http.StatusServiceUnavailable, MessageKey: "error.ai_unavailable", Err: err}
-		}
-		return &HTTPError{Status: http.StatusBadGateway, MessageKey: "error.receipt_not_analyzed", Err: err}
-	}
+	id := h.receipts.Start(currentUserID(c), buf.Bytes())
+	job, _ := h.receipts.Get(id, currentUserID(c))
+	return h.renderReceiptJob(c, job)
+}
 
+// GetReceiptJob is what the reading panel checks: still reading, the review
+// form once done, or why it failed.
+func (h *GroceriesHandler) GetReceiptJob(c *gin.Context) error {
+	job, ok := h.receipts.Get(c.Param("id"), currentUserID(c))
+	if !ok {
+		c.HTML(http.StatusOK, "groceries-receipt-job", gin.H{"State": "expired", "Lang": currentLang(c)})
+		return nil
+	}
+	return h.renderReceiptJob(c, job)
+}
+
+// renderReceiptJob shows a job's state; a finished job's result (or error)
+// is shown once and then forgotten.
+func (h *GroceriesHandler) renderReceiptJob(c *gin.Context, job services.ReceiptJob) error {
+	lang := currentLang(c)
+	switch job.Status {
+	case services.JobReading:
+		c.HTML(http.StatusOK, "groceries-receipt-job", gin.H{"State": "reading", "ID": job.ID, "Lang": lang})
+		return nil
+	case services.JobFailed:
+		h.receipts.Forget(job.ID, job.UserID)
+		message := utilities.T(lang, "error.receipt_not_analyzed")
+		var httpErr *HTTPError
+		if errors.As(receiptError(job.Err), &httpErr) {
+			message = httpErr.message(lang)
+		}
+		c.HTML(http.StatusOK, "groceries-receipt-job", gin.H{"State": "failed", "Message": message, "Lang": lang})
+		return nil
+	}
+	h.receipts.Forget(job.ID, job.UserID)
+	return h.renderReceiptReview(c, job.Result)
+}
+
+// renderReceiptReview shows what was read, to check before saving.
+func (h *GroceriesHandler) renderReceiptReview(c *gin.Context, analysis *models.ReceiptAnalysis) error {
 	categories, err := h.BaseHandler.DB.GetAllCategories()
 	if err != nil {
 		return err
 	}
-
 	total := 0.0
 	for _, item := range analysis.Items {
 		total += item.TotalPrice - item.TotalDiscount
 	}
-
 	c.HTML(http.StatusOK, "groceries-receipt-edit-form", gin.H{
 		"Store":      analysis.Store,
 		"Items":      analysis.Items,
 		"Total":      total,
 		"Categories": categories,
-		"Lang":       lang,
+		"Lang":       currentLang(c),
 	})
 	return nil
 }
@@ -182,7 +242,15 @@ func (h *GroceriesHandler) GetGroceriesHome(c *gin.Context) error {
 	return nil
 }
 
+// GetGroceriesForm opens the receipt upload panel. If a receipt is still
+// being read, or finished while the panel was closed, that is shown instead
+// (?new=1 starts a fresh upload).
 func (h *GroceriesHandler) GetGroceriesForm(c *gin.Context) error {
+	if c.Query("new") == "" {
+		if job, ok := h.receipts.Latest(currentUserID(c)); ok {
+			return h.renderReceiptJob(c, job)
+		}
+	}
 	c.HTML(http.StatusOK, utilities.Templates.Components.GroceriesReceiptForm, gin.H{
 		"Lang": currentLang(c),
 	})
