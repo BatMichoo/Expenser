@@ -1292,7 +1292,7 @@ func TestSvgBarsRenders(t *testing.T) {
 	html := render(t, "svg-bars", map[string]any{"Chart": b, "Lang": "en", "Unit": ""})
 	doc := parseHTML(t, html)
 
-	assert.Contains(t, html, `viewBox="0 0 640 260"`)
+	assert.Contains(t, html, `viewBox="0 0 960 320"`)
 	assert.Equal(t, 3, doc.Find("rect.fill-cat-1, rect.fill-cat-2").Length())
 	assert.Equal(t, 2, doc.Find("g.hit").Length())
 	first := doc.Find("g.hit").First().Find("title").Text()

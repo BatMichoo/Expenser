@@ -196,6 +196,10 @@ func BuildMonthTrend(rows, prevRows []models.MonthTypeTotal, months []YearMonth,
 		}
 		slot[t.id] = len(series)
 		c := chart.TypeColor(t.id)
+		if groceries {
+			// ~55 categories collide mod 8; give the shown ones distinct slots.
+			c = len(series) + 1
+		}
 		series = append(series, chart.Series{Name: t.name, Color: c, Values: make([]float64, len(months))})
 		legend = append(legend, models.LegendItem{Name: t.name, Color: c})
 	}
@@ -227,7 +231,13 @@ func BuildMonthTrend(rows, prevRows []models.MonthTypeTotal, months []YearMonth,
 		}
 	}
 	m.Empty = m.Total <= 0
-	m.Median = Median(monthTotals)
+	// Typical month counts from the first month with data; months before it
+	// (before the user started tracking) would only drag the median to zero.
+	first := 0
+	for first < len(monthTotals) && monthTotals[first] <= 0 {
+		first++
+	}
+	m.Median = Median(monthTotals[first:])
 	if len(months) > 0 {
 		m.Chart.SetAverage(m.Total / float64(len(months)))
 	}

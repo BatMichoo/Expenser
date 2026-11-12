@@ -41,6 +41,16 @@ func TestParse(t *testing.T) {
 		{"Мляко 1/2л", 1, "", 0, false},
 		{"Ябълки 0,5-1 кг", 1, "", 0, false},
 		{"Шунка 250-300г", 1, "", 0, false},
+		{"Фъст.сарн.б.ф.200г", 1, Kg, 0.2, true},
+		{"KLC.кекс.600г", 1, Kg, 0.6, true},
+		{"K.Домати400гр", 1, Kg, 0.4, true},
+		{"KLC.дом.по.бос.690г", 1, Kg, 0.69, true},
+		{"Pomsticks к.пръч.85г", 1, Kg, 0.085, true},
+		// A size glued to a letter is accepted: "Vit2g" reads as 2 g.
+		{"Vit2g", 1, Kg, 0.002, true},
+		// A leading dot is not a boundary, and a decimal dot stays in the number.
+		{"Мляко .5л", 1, "", 0, false},
+		{"Мляко 1.5л", 1, Liter, 1.5, true},
 	}
 	for _, c := range cases {
 		t.Run(c.product, func(t *testing.T) {

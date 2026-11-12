@@ -28,11 +28,14 @@ type Size struct {
 	Per  float64
 }
 
-// Go's \b is ASCII-only, so token boundaries are spelled out explicitly.
+// Go's \b is ASCII-only, so token boundaries are spelled out explicitly. The
+// left boundary is the start, any non-digit non-dot character (letters too:
+// "Домати400гр"), or an abbreviation dot after a letter ("б.ф.200г"). A dot
+// after a digit or at the start (".5л") is not a boundary.
 const (
 	numPat   = `(\d+(?:\.\d+)?)`
 	unitPat  = `(кг|kg|мл|ml|бр|pcs|pc|гр|г|g|л|l)`
-	leftPat  = `(?:^|[^\p{L}\d.])`
+	leftPat  = `(?:^|[^\d.]|\p{L}\.)`
 	rightPat = `\.?(?:$|[^\p{L}])`
 )
 

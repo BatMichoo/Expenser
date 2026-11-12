@@ -13,7 +13,7 @@ import (
 type Frame struct{ W, H, Left, Right, Top, Bottom float64 }
 
 // DefaultFrame is the frame used by all charts.
-var DefaultFrame = Frame{W: 640, H: 260, Left: 48, Right: 8, Top: 12, Bottom: 28}
+var DefaultFrame = Frame{W: 960, H: 320, Left: 56, Right: 8, Top: 16, Bottom: 32}
 
 func (f Frame) PlotW() float64    { return f.W - f.Left - f.Right }
 func (f Frame) PlotH() float64    { return f.H - f.Top - f.Bottom }

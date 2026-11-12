@@ -36,10 +36,15 @@ func TestNiceRange(t *testing.T) {
 }
 
 func TestFrame(t *testing.T) {
-	f := DefaultFrame
+	f := Frame{W: 640, H: 260, Left: 48, Right: 8, Top: 12, Bottom: 28}
 	assert.InDelta(t, 584, f.PlotW(), 1e-9)
 	assert.InDelta(t, 220, f.PlotH(), 1e-9)
 	assert.InDelta(t, 232, f.Baseline(), 1e-9)
+}
+
+func TestDefaultFrameIsWide(t *testing.T) {
+	assert.InDelta(t, 960, DefaultFrame.W, 1e-9)
+	assert.InDelta(t, 320, DefaultFrame.H, 1e-9)
 }
 
 func TestStacked(t *testing.T) {
@@ -155,7 +160,7 @@ func TestPolylinePoints(t *testing.T) {
 }
 
 func TestPriceBand(t *testing.T) {
-	p := Price(DefaultFrame, []string{"a", "b", "c", "d"},
+	p := Price(Frame{W: 640, H: 260, Left: 48, Right: 8, Top: 12, Bottom: 28}, []string{"a", "b", "c", "d"},
 		[]*float64{fp(1.5), nil, nil, nil},
 		[]*float64{fp(1), nil, fp(1), nil},
 		[]*float64{fp(2), fp(2), fp(2), nil},

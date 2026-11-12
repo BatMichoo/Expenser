@@ -331,3 +331,40 @@ func TestPageMonthLegendHasAverage(t *testing.T) {
 		t.Errorf("empty legend %+v", empty.Month.Legend)
 	}
 }
+
+func TestMonthTrendMedianSkipsLeadingEmptyMonths(t *testing.T) {
+	initI18n(t)
+	months, _ := PeriodMonths("12", time.Date(2026, 12, 15, 0, 0, 0, 0, time.UTC))
+	require.Len(t, months, 12)
+	key := func(m YearMonth) string { return time.Date(m.Year, m.Month, 1, 0, 0, 0, 0, time.UTC).Format("2006-01") }
+	rows := []models.MonthTypeTotal{
+		row(key(months[8]), 1, "Rent", 10),
+		row(key(months[10]), 1, "Rent", 30),
+		row(key(months[11]), 1, "Rent", 20),
+	}
+	m := BuildMonthTrend(rows, nil, months, 0, false, "en")
+	require.InDelta(t, 15, m.Median, 1e-9) // [10,0,30,20]
+
+	none := BuildMonthTrend(nil, nil, months, 0, false, "en")
+	require.Equal(t, 0.0, none.Median)
+}
+
+func TestBuildMonthTrendGroceriesDistinctColours(t *testing.T) {
+	initI18n(t)
+	var rows []models.MonthTypeTotal
+	// IDs 1, 9, 17, 25, 33, 41 all collide mod 8.
+	for i, id := range []int{1, 9, 17, 25, 33, 41, 49} {
+		rows = append(rows, row("2026-01", id, string(rune('A'+i)), float64(100-i)))
+	}
+	m := BuildMonthTrend(rows, nil, months3(), 0, true, "en")
+	require.Len(t, m.Legend, 7)
+	for i, l := range m.Legend[:6] {
+		require.Equal(t, i+1, l.Color, "legend %d", i)
+	}
+	require.Equal(t, 0, m.Legend[6].Color)
+	var got []int
+	for _, r := range m.Chart.Columns[0].Rects {
+		got = append(got, r.Color)
+	}
+	require.ElementsMatch(t, []int{1, 2, 3, 4, 5, 6, 0}, got)
+}
