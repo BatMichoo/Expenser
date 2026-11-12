@@ -187,6 +187,11 @@ func TestSetAndSkipGrocerySize(t *testing.T) {
 	require.NoError(t, f.db.SkipGrocerySize(ctx, f.a, id2))
 	assert.Equal(t, "skipped", readUnitRow(t, f.db, id2).status)
 
+	// A known row is not flipped to skipped.
+	assert.ErrorIs(t, f.db.SkipGrocerySize(ctx, f.a, id), sql.ErrNoRows)
+	assert.Equal(t, "known", readUnitRow(t, f.db, id).status)
+	assert.Equal(t, 1.5, readUnitRow(t, f.db, id).size.Float64)
+
 	// Another user's row, and an Other row, are untouchable.
 	assert.ErrorIs(t, f.db.SetGrocerySize(ctx, f.b, id, "l", 2), sql.ErrNoRows)
 	assert.ErrorIs(t, f.db.SkipGrocerySize(ctx, f.b, id), sql.ErrNoRows)

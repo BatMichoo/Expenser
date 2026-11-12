@@ -182,12 +182,13 @@ func (db *DB) SetGrocerySize(ctx context.Context, userID uuid.UUID, id int, unit
 		unit, size)
 }
 
-// SkipGrocerySize marks one of the user's tracked purchases as not worth
-// sizing.
+// SkipGrocerySize marks one of the user's still-unsized purchases as not worth
+// sizing. A row that already has a size (or was skipped) is left alone and
+// yields sql.ErrNoRows, so a stale or racing request cannot wipe a real size.
 func (db *DB) SkipGrocerySize(ctx context.Context, userID uuid.UUID, id int) error {
 	return db.updateSizeStatus(ctx, userID, id, `
 		UPDATE groceries_expenses SET size_status = 'skipped'
-		WHERE id = $1 AND user_id = $2 AND category_id <> (SELECT id FROM grocery_categories WHERE name = 'Other')`)
+		WHERE id = $1 AND user_id = $2 AND size_status = 'unknown' AND category_id <> (SELECT id FROM grocery_categories WHERE name = 'Other')`)
 }
 
 func (db *DB) updateSizeStatus(ctx context.Context, userID uuid.UUID, id int, query string, extra ...any) error {
