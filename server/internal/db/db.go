@@ -3,15 +3,15 @@ package database
 import (
 	"database/sql"
 	"expenser/internal/config"
-	_ "expenser/internal/db/migrations" // registers Go migrations with goose
+	"expenser/internal/db/migrations" // also registers the Go migrations with goose
+	"expenser/internal/db/seeds"
 	"expenser/internal/models"
 	"fmt"
 	"log"
-	"path/filepath"
 	"time"
 
 	_ "github.com/lib/pq" // Import the PostgreSQL driver
-	"github.com/pressly/goose"
+	"github.com/pressly/goose/v3"
 )
 
 type DB struct {
@@ -26,18 +26,13 @@ func InitDatabase(cfg *config.Config) (*DB, error) {
 		return nil, fmt.Errorf("connect error: %w", err)
 	}
 
-	dbDir := filepath.Join("internal", "db")
-	if cfg.Mode == "" {
-		dbDir = filepath.Join(config.GetProjectRootDir(), dbDir)
-	}
-
-	if err := goose.Up(db.conn, filepath.Join(dbDir, "migrations")); err != nil {
+	if err := migrate(db.conn); err != nil {
 		log.Fatalf("Failed to apply migrations: %v.", err)
 	}
 	fmt.Println("Migrations applied successfully.")
 
 	if cfg.SeedDevData {
-		if err := seedDevData(db, filepath.Join(dbDir, "seeds")); err != nil {
+		if err := seedDevData(db); err != nil {
 			log.Fatalf("Failed to seed dev data: %v.", err)
 		}
 		fmt.Println("Dev seed data applied successfully.")
@@ -54,14 +49,25 @@ func InitDatabase(cfg *config.Config) (*DB, error) {
 	return db, nil
 }
 
+// migrate applies the schema migrations built into the binary. Branches
+// merge in any order, so a migration can arrive after a newer one has run;
+// it is applied then rather than refused (goose v2 skipped it silently).
+func migrate(conn *sql.DB) error {
+	goose.SetBaseFS(migrations.SQL)
+	defer goose.SetBaseFS(nil)
+	return goose.Up(conn, ".", goose.WithAllowMissing())
+}
+
 // seedDevData applies the dev-only seed files. They are tracked in their own
 // version table so they never mix with the schema migrations.
-func seedDevData(db *DB, seedsDir string) error {
+func seedDevData(db *DB) error {
 	defaultTable := goose.TableName()
 	goose.SetTableName("goose_seed_version")
 	defer goose.SetTableName(defaultTable)
+	goose.SetBaseFS(seeds.FS)
+	defer goose.SetBaseFS(nil)
 
-	return goose.Up(db.conn, seedsDir)
+	return goose.Up(db.conn, ".")
 }
 
 // connect establishes a connection to the PostgreSQL database.

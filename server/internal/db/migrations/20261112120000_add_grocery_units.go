@@ -7,7 +7,7 @@ import (
 
 	"expenser/internal/groceryunits"
 
-	"github.com/pressly/goose"
+	"github.com/pressly/goose/v3"
 )
 
 func init() {
@@ -17,7 +17,7 @@ func init() {
 // UpGroceryUnits adds the unit columns and fills them for existing rows.
 //
 // It must stay idempotent: seedDevData runs goose.Up on the seeds directory,
-// and goose v2 also collects every registered Go migration there, so on dev
+// and goose also collects every registered Go migration there, so on dev
 // databases with seeding on this function runs a second time. Hence
 // ADD COLUMN IF NOT EXISTS, and a backfill that only touches rows still
 // marked 'unknown'. Exported for tests.

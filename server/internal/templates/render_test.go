@@ -8,7 +8,6 @@ import (
 	"expenser/internal/utilities"
 	"html/template"
 	"net/url"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -33,7 +32,7 @@ func loadTemplates(t *testing.T) *template.Template {
 		if parseErr = utilities.InitI18n(); parseErr != nil {
 			return
 		}
-		parsed, parseErr = utilities.ParseTemplates(filepath.Join(".", "**", "*.html"))
+		parsed, parseErr = utilities.ParseTemplates(FS, Patterns...)
 	})
 	require.NoError(t, parseErr)
 	return parsed

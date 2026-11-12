@@ -41,7 +41,6 @@ type Config struct {
 	LanDomain   string
 	DB          DB
 	JWT         JWT
-	Mode        string
 	ReceiptAI   ReceiptAI
 	SeedDevData bool
 	// ReminderCheckInterval is how often the recurring payment reminder
@@ -105,8 +104,6 @@ type DB struct {
 
 // LoadConfig loads the configuration from environment variables.
 func LoadConfig() (*Config, error) {
-	mode := os.Getenv("MODE")
-
 	envPath := filepath.Join(GetProjectRootDir(), ".env.dev")
 	if err := godotenv.Load(envPath); err != nil {
 		log.Printf("No .env.development file found at %s, using environment variables\n", envPath)
@@ -164,7 +161,6 @@ func LoadConfig() (*Config, error) {
 			SecretKey:       jwtSecret,
 			TokenExpiration: jwtExpiration,
 		},
-		Mode:        mode,
 		DevMode:     parseDevMode(os.Getenv("DEV_MODE")),
 		AppURL:      strings.TrimRight(strings.TrimSpace(os.Getenv("APP_URL")), "/"),
 		ReceiptAI:   ReceiptAI{APIKey: os.Getenv("GEMINI_API_KEY"), Model: ReceiptAIModel, Fallbacks: ReceiptAIFallbacks},
