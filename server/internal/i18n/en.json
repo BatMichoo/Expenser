@@ -384,6 +384,7 @@
   "settings.new_password_hint": "At least 6 characters.",
   "settings.confirm_password": "Repeat new password",
   "settings.password_changed": "Password changed",
+  "settings.password_changed_elsewhere": "You were logged out on your other devices.",
   "auth.wrong_current_password": "The current password is wrong.",
   "auth.password_too_long": "That password is too long. Use at most 72 characters (fewer with Cyrillic or emoji).",
   "auth.password_unchanged": "The new password is the same as the current one.",

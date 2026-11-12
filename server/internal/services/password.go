@@ -21,7 +21,7 @@ type PasswordStore interface {
 }
 
 // ChangePassword replaces a user's password after checking the new one and
-// the current one. Existing logins stay valid until their token expires.
+// the current one. Logins on other devices end (see UpdateUserPassword).
 func ChangePassword(ctx context.Context, store PasswordStore, userID uuid.UUID, current, next, confirm string) error {
 	if err := models.ValidateNewPassword(current, next, confirm); err != nil {
 		return err
