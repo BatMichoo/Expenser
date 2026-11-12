@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // the image has no zoneinfo; APP_TIMEZONE needs it
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,6 +37,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Couldn't load configuration: %v", err)
 	}
+	// Dates and times typed in forms or read off receipts are wall-clock
+	// times in the household's zone, and "today" for reminders is its day.
+	time.Local = cfg.Location
+	log.Printf("Time zone: %s.", cfg.Location)
 
 	t := template.Must(utilities.ParseTemplates(templates.FS, templates.Patterns...))
 	router.SetHTMLTemplate(t) // Tell Gin to use this template set
