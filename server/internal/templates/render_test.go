@@ -2,6 +2,7 @@ package templates
 
 import (
 	"bytes"
+	"expenser/internal/chart"
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
@@ -1279,4 +1280,68 @@ func TestReceiptJobPanel(t *testing.T) {
 	gone := parseHTML(t, render(t, "groceries-receipt-job", map[string]any{"State": "expired", "Lang": "en"}))
 	assert.Contains(t, gone.Text(), "no longer available")
 	assert.Equal(t, 0, gone.Find("[hx-trigger]").Length())
+}
+
+func TestSvgBarsRenders(t *testing.T) {
+	b := chart.Stacked(chart.DefaultFrame, []string{"Jan", "Feb"}, []chart.Series{
+		{Name: "Food", Color: 1, Values: []float64{100, 0}},
+		{Name: "Fuel", Color: 2, Values: []float64{50, 80}},
+	})
+	b.Columns[1].Current = true
+	b.SetAverage(90)
+	html := render(t, "svg-bars", map[string]any{"Chart": b, "Lang": "en", "Unit": ""})
+	doc := parseHTML(t, html)
+
+	assert.Contains(t, html, `viewBox="0 0 640 260"`)
+	assert.Equal(t, 3, doc.Find("rect.fill-cat-1, rect.fill-cat-2").Length())
+	assert.Equal(t, 2, doc.Find("g.hit").Length())
+	first := doc.Find("g.hit").First().Find("title").Text()
+	assert.Contains(t, first, "Food")
+	assert.Contains(t, first, "100.00")
+	assert.Equal(t, 2, doc.Find("text.col-label").Length())
+	assert.Equal(t, 1, doc.Find("text.col-label.current").Length())
+	assert.Equal(t, len(b.Ticks), doc.Find("text.tick").Length())
+	assert.Equal(t, 1, doc.Find("line.avg-line").Length())
+	assert.Equal(t, 0, doc.Find(".trend-empty").Length())
+}
+
+func TestSvgBarsNoNaN(t *testing.T) {
+	b := chart.Stacked(chart.DefaultFrame, []string{"Jan"}, nil)
+	html := render(t, "svg-bars", map[string]any{"Chart": b, "Lang": "en", "Unit": ""})
+	assert.NotContains(t, html, "NaN")
+	assert.Contains(t, parseHTML(t, html).Find(".trend-empty").Text(), "Nothing to show")
+}
+
+func TestSvgPriceRenders(t *testing.T) {
+	f := func(v float64) *float64 { return &v }
+	p := chart.Price(chart.DefaultFrame, []string{"Jan", "Feb", "Mar"},
+		[]*float64{f(2), f(3), f(2.5)}, []*float64{f(1.5), f(2), f(2)},
+		[]*float64{f(2.5), f(3.5), f(3)}, []*float64{f(2), nil, nil}, []float64{4, 0, 6})
+	html := render(t, "svg-price", map[string]any{"Chart": p, "Lang": "en", "Unit": "kg"})
+	doc := parseHTML(t, html)
+
+	assert.Equal(t, 1, doc.Find("polyline.price-line").Length())
+	assert.Equal(t, 1, doc.Find("polygon.price-band").Length())
+	assert.Equal(t, 2, doc.Find("rect.qty-bar.fill-cat-3").Length())
+	assert.Equal(t, 1, doc.Find("circle.low-marker").Length())
+	assert.NotEmpty(t, doc.Find("circle.low-marker").Parent().Find("title").Text())
+	assert.Contains(t, doc.Find("g.hit").First().Find("title").Text(), "/ kg")
+	assert.NotContains(t, html, "NaN")
+}
+
+func TestSvgPriceEmpty(t *testing.T) {
+	p := chart.Price(chart.DefaultFrame, []string{"Jan"}, nil, nil, nil, nil, nil)
+	html := render(t, "svg-price", map[string]any{"Chart": p, "Lang": "en", "Unit": "kg"})
+	assert.Equal(t, 1, parseHTML(t, html).Find(".trend-empty").Length())
+	assert.NotContains(t, html, "NaN")
+}
+
+func TestTrendLegend(t *testing.T) {
+	html := render(t, "trend-legend", map[string]any{"Lang": "en", "Items": []models.LegendItem{
+		{Name: "Food", Color: 1}, {Name: "Average", Dashed: true},
+	}})
+	doc := parseHTML(t, html)
+	assert.Equal(t, 2, doc.Find("li").Length())
+	assert.Equal(t, 1, doc.Find(".legend-swatch.cat-1").Length())
+	assert.Equal(t, 1, doc.Find(".legend-swatch.dashed").Length())
 }

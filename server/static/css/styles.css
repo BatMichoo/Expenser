@@ -4244,3 +4244,124 @@ tr:hover .row-actions,
   color: var(--text-muted);
   line-height: 1.5;
 }
+
+/* Trends */
+.cat-0 { --cat: var(--cat-0); }
+
+.trend-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.trend-svg text {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.trend-svg .grid {
+  stroke: var(--text-muted);
+  stroke-opacity: 0.2;
+  stroke-width: 1;
+}
+
+.trend-svg .col-label.current {
+  fill: var(--text);
+  font-weight: 600;
+}
+
+.trend-svg .avg-line {
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.trend-svg .hit {
+  outline: none;
+}
+
+.trend-svg .hit:hover rect,
+.trend-svg .hit:focus rect {
+  opacity: 0.8;
+}
+
+.trend-svg .value-label {
+  visibility: hidden;
+  fill: var(--text);
+  font-weight: 600;
+}
+
+.trend-svg .hit:hover .value-label,
+.trend-svg .hit:focus .value-label {
+  visibility: visible;
+}
+
+.trend-svg .price-band {
+  fill: var(--cat-3);
+  fill-opacity: 0.15;
+}
+
+.trend-svg .price-line {
+  fill: none;
+  stroke: var(--cat-1);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.trend-svg .price-dot {
+  fill: var(--cat-1);
+}
+
+.trend-svg .hit:hover .price-dot,
+.trend-svg .hit:focus .price-dot {
+  stroke: var(--text);
+  stroke-width: 2;
+}
+
+.trend-svg .qty-bar {
+  fill-opacity: 0.35;
+}
+
+.trend-svg .low-marker {
+  fill: var(--cat-4);
+  stroke: var(--bg-light);
+  stroke-width: 2;
+}
+
+.trend-empty {
+  margin: 0;
+  padding: 2rem 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.trend-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend-swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  background: var(--cat, var(--text-muted));
+}
+
+.legend-swatch.dashed {
+  height: 0;
+  border-radius: 0;
+  background: none;
+  border-top: 2px dashed var(--text-muted);
+}
