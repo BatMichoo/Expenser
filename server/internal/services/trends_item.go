@@ -5,6 +5,7 @@ import (
 	"expenser/internal/chart"
 	"expenser/internal/models"
 	"github.com/google/uuid"
+	"math"
 	"sort"
 	"strconv"
 	"time"
@@ -128,6 +129,14 @@ func priorYearKey(key string) string {
 	return t.AddDate(-1, 0, 0).Format("2006-01")
 }
 
+// periodName is a period key as a standalone name: "Nov 2026" or "2026".
+func periodName(key, lang string) string {
+	if len(key) == 4 {
+		return key
+	}
+	return shortMonth(lang, monthOf(key)) + " " + key[:4]
+}
+
 func periodLabels(periods []string, lang string) []string {
 	labels := make([]string, len(periods))
 	multiYear := len(periods) > 0 && len(periods[0]) > 4 && periods[0][:4] != periods[len(periods)-1][:4]
@@ -202,6 +211,7 @@ func BuildItemTrend(lines []models.GroceryLine, all []models.GroceryLine, item m
 			avg[i], lo[i], hi[i], shelf[i] = &a, &l, &h, &sh
 			qty[i] = s.Qty
 			t.PriceNow, t.HasPriceNow = s.Avg, true
+			t.PriceNowPeriod = periodName(k, lang)
 			if prior, ok := stats[priorYearKey(k)]; ok {
 				t.PriceChangePct, t.HasPriceChange = ChangePercent(s.Avg, prior.Avg)
 			} else {
@@ -241,6 +251,10 @@ func BuildItemTrend(lines []models.GroceryLine, all []models.GroceryLine, item m
 			}
 		}
 		t.Cheapest = &c
+		// The cheapest buy is the chart's low point; name its store there too.
+		if low := t.Chart.Low; low != nil && c.Store != "" && math.Abs(low.Value-c.PerUnit) < 1e-9 {
+			low.Label += " · " + c.Store
+		}
 	}
 	sort.SliceStable(discounted, func(i, j int) bool { return discounted[i].DiscountPerUnit > discounted[j].DiscountPerUnit })
 	if len(discounted) > maxDiscountLines {
@@ -265,24 +279,27 @@ func containsStr(s []string, v string) bool {
 // earlier. Rows with a change come first (largest rise first), then the rest by
 // name.
 func BuildItemRows(all []models.GroceryLine, now time.Time) []models.ItemRow {
-	today := models.DateOnly(now)
+	// Purchase dates carry a time of day, so every window ends at the start
+	// of tomorrow (exclusive) to include all of today.
+	tomorrow := models.DateOnly(now).AddDate(0, 0, 1)
 	var recent []models.GroceryLine
 	for _, l := range all {
-		if !l.Date.Before(today.AddDate(-2, 0, 0)) && !l.Date.After(today) {
+		if !l.Date.Before(tomorrow.AddDate(-2, 0, 0)) && l.Date.Before(tomorrow) {
 			recent = append(recent, l)
 		}
 	}
 	all = recent
-	nowFrom, yearFrom := today.AddDate(0, 0, -90), today.AddDate(-1, 0, -90)
-	yearTo, boughtFrom := today.AddDate(-1, 0, 0), today.AddDate(-1, 0, 0)
+	nowFrom, yearFrom := tomorrow.AddDate(0, 0, -90), tomorrow.AddDate(-1, 0, -90)
+	yearTo, boughtFrom := tomorrow.AddDate(-1, 0, 0), tomorrow.AddDate(-1, 0, 0)
 	byCat := map[int][]models.GroceryLine{}
 	for _, l := range all {
 		byCat[l.CategoryID] = append(byCat[l.CategoryID], l)
 	}
-	window := func(lines []models.GroceryLine, unit string, after, upTo time.Time) (price, qty float64) {
+	// window sums lines dated from (inclusive) to before (exclusive).
+	window := func(lines []models.GroceryLine, unit string, from, before time.Time) (price, qty float64) {
 		var net float64
 		for _, l := range lines {
-			if usable(l, unit) && l.Date.After(after) && !l.Date.After(upTo) {
+			if usable(l, unit) && !l.Date.Before(from) && l.Date.Before(before) {
 				net += netPrice(l)
 				qty += BaseQty(l)
 			}
@@ -299,9 +316,9 @@ func BuildItemRows(all []models.GroceryLine, now time.Time) []models.ItemRow {
 			continue
 		}
 		r := models.ItemRow{ItemID: id, Item: lines[0].Category, Unit: unit}
-		r.Now, _ = window(lines, unit, nowFrom, today)
+		r.Now, _ = window(lines, unit, nowFrom, tomorrow)
 		r.YearAgo, _ = window(lines, unit, yearFrom, yearTo)
-		_, r.Bought12 = window(lines, unit, boughtFrom, today)
+		_, r.Bought12 = window(lines, unit, boughtFrom, tomorrow)
 		if r.Now == 0 && r.YearAgo == 0 && r.Bought12 == 0 {
 			continue
 		}

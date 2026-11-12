@@ -368,3 +368,18 @@ func TestBuildMonthTrendGroceriesDistinctColours(t *testing.T) {
 	}
 	require.ElementsMatch(t, []int{1, 2, 3, 4, 5, 6, 0}, got)
 }
+
+// Filtering groceries to the Other category shows it under its own name, not
+// as "Everything else".
+func TestBuildMonthTrendGroceriesOtherFilter(t *testing.T) {
+	initI18n(t)
+	rows := []models.MonthTypeTotal{row("2026-01", 99, "Other", 50), row("2026-01", 1, "Meat", 20)}
+	m := BuildMonthTrend(rows, nil, months3(), 99, true, "en")
+	if len(m.Legend) != 1 || m.Legend[0].Name != "Other" || m.Legend[0].Color != 0 {
+		t.Fatalf("legend %+v", m.Legend)
+	}
+	all := BuildMonthTrend(rows, nil, months3(), 0, true, "en")
+	if all.Legend[len(all.Legend)-1].Name != "Everything else" {
+		t.Errorf("unfiltered legend %+v", all.Legend)
+	}
+}

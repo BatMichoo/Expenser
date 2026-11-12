@@ -38,10 +38,11 @@
   {{ end }}
   {{ range $c.Qty }}<rect class="qty-bar fill-cat-3" x="{{ printf "%.1f" .X }}" y="{{ printf "%.1f" .Y }}" width="{{ printf "%.1f" .W }}" height="{{ printf "%.1f" .H }}"><title>{{ .Name }}: {{ printf "%.2f" .Value }}</title></rect>
   {{ end }}
-  {{ if $c.Band }}<polygon class="price-band" points="{{ $c.Band }}"/>{{ end }}
+  {{ range $c.Band }}<polygon class="price-band" points="{{ . }}"/>
+  {{ end }}
   {{ range $c.Avg }}
   <polyline class="price-line" points="{{ .Points }}"/>
-  {{ range . }}<g class="hit" tabindex="0"><circle class="hit-area" cx="{{ printf "%.1f" .X }}" cy="{{ printf "%.1f" .Y }}" r="12"/><circle class="price-dot" cx="{{ printf "%.1f" .X }}" cy="{{ printf "%.1f" .Y }}" r="3.5"/><title>{{ .Label }}: {{ printf "%.2f" .Value }} / {{ $unit }}{{ if .Shelf }} (shelf: {{ printf "%.2f" .Shelf }}){{ end }}</title></g>
+  {{ range . }}<g class="hit" tabindex="0"><circle class="hit-area" cx="{{ printf "%.1f" .X }}" cy="{{ printf "%.1f" .Y }}" r="12"/><circle class="price-dot" cx="{{ printf "%.1f" .X }}" cy="{{ printf "%.1f" .Y }}" r="3.5"/><title>{{ .Label }}: {{ printf "%.2f" .Value }} / {{ $unit }}{{ if .Shelf }} ({{ T $lang "trends.shelf" }}: {{ printf "%.2f" .Shelf }}){{ end }}</title></g>
   {{ end }}
   {{ end }}
   {{ with $c.Low }}<circle class="low-marker" cx="{{ printf "%.1f" .X }}" cy="{{ printf "%.1f" .Y }}" r="5"><title>{{ .Label }}: {{ printf "%.2f" .Value }} / {{ $unit }}</title></circle>{{ end }}

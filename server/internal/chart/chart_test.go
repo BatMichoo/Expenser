@@ -165,8 +165,16 @@ func TestPriceBand(t *testing.T) {
 		[]*float64{fp(1), nil, fp(1), nil},
 		[]*float64{fp(2), fp(2), fp(2), nil},
 		nil, nil)
-	// hi left to right, then lo right to left; b (no lo) and d (none) skipped.
-	assert.Equal(t, "121.0,12.0 413.0,12.0 413.0,232.0 121.0,232.0", p.Band)
+	// Per contiguous run: hi left to right, then lo right to left. b (no lo)
+	// and d (none) break the band, so a and c are separate segments.
+	assert.Equal(t, []string{"121.0,12.0 121.0,232.0", "413.0,12.0 413.0,232.0"}, p.Band)
+
+	run := Price(Frame{W: 640, H: 260, Left: 48, Right: 8, Top: 12, Bottom: 28}, []string{"a", "b", "c", "d"},
+		[]*float64{fp(1.5), fp(1.5), nil, fp(1.5)},
+		[]*float64{fp(1), fp(1), nil, fp(1)},
+		[]*float64{fp(2), fp(2), nil, fp(2)},
+		nil, nil)
+	assert.Equal(t, []string{"121.0,12.0 267.0,12.0 267.0,232.0 121.0,232.0", "559.0,12.0 559.0,232.0"}, run.Band)
 }
 
 func TestPriceNonFinite(t *testing.T) {

@@ -1751,3 +1751,40 @@ func TestUnsizedBadge(t *testing.T) {
 	p.Unsized = 0
 	assert.Equal(t, 0, parseHTML(t, render(t, "trends", p)).Find("#unsized-count").Length())
 }
+
+func TestTrendItemRowWithoutNowShowsDash(t *testing.T) {
+	p := trendsItemPage()
+	p.Item.Items[1].Now = 0
+	doc := parseHTML(t, render(t, "trend-item", p))
+	now := doc.Find("table.item-all tbody tr").Last().Find("td").Eq(1)
+	assert.Equal(t, "—", strings.TrimSpace(now.Text()))
+}
+
+func TestSvgPriceBandSegments(t *testing.T) {
+	f := func(v float64) *float64 { return &v }
+	p := chart.Price(chart.DefaultFrame, []string{"Jan", "Feb", "Mar", "Apr"},
+		[]*float64{f(2), f(3), nil, f(2.5)}, []*float64{f(1.5), f(2), nil, f(2)},
+		[]*float64{f(2.5), f(3.5), nil, f(3)}, nil, nil)
+	doc := parseHTML(t, render(t, "svg-price", map[string]any{"Chart": p, "Lang": "en", "Unit": "kg"}))
+	assert.Equal(t, 2, doc.Find("polygon.price-band").Length(), "no band across the empty month")
+	pts, _ := doc.Find("polygon.price-band").First().Attr("points")
+	assert.Equal(t, p.Band[0], pts)
+}
+
+func TestSvgPriceShelfTranslated(t *testing.T) {
+	f := func(v float64) *float64 { return &v }
+	p := chart.Price(chart.DefaultFrame, []string{"Jan"}, []*float64{f(2)}, []*float64{f(1.5)},
+		[]*float64{f(2.5)}, []*float64{f(2.4)}, []float64{1})
+	bg := render(t, "svg-price", map[string]any{"Chart": p, "Lang": "bg", "Unit": "кг"})
+	assert.NotContains(t, bg, "shelf:")
+	assert.Contains(t, parseHTML(t, bg).Find("g.hit title").Text(), "редовна цена: 2.40")
+	en := render(t, "svg-price", map[string]any{"Chart": p, "Lang": "en", "Unit": "kg"})
+	assert.Contains(t, parseHTML(t, en).Find("g.hit title").Text(), "(shelf: 2.40)")
+}
+
+func TestTrendItemPriceNowNamesPeriod(t *testing.T) {
+	p := trendsItemPage()
+	p.Item.PriceNowPeriod = "Oct 2026"
+	doc := parseHTML(t, render(t, "trend-item", p))
+	assert.Contains(t, doc.Find(".kpi-total .kpi-sub").Text(), "Oct 2026")
+}

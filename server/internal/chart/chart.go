@@ -192,7 +192,7 @@ type PriceChart struct {
 	Ticks  []Tick
 	Labels []Column // only Label and X are set
 	Avg    []Polyline
-	Band   string // polygon points: hi left to right, then lo right to left
+	Band   []string // one polygon per run of periods with lo and hi: hi left to right, then lo right to left
 	Qty    []Rect
 	QtyMax float64
 	Low    *Point
@@ -248,7 +248,18 @@ func Price(f Frame, labels []string, avg, lo, hi, shelf []*float64, qty []float6
 
 	var cur Polyline
 	var hiPts, loPts []string
-	var hiRev []string
+	// endBand closes the current band run, so empty periods are not bridged.
+	endBand := func() {
+		if len(hiPts) == 0 {
+			return
+		}
+		pts := hiPts
+		for i := len(loPts) - 1; i >= 0; i-- {
+			pts = append(pts, loPts[i])
+		}
+		p.Band = append(p.Band, strings.Join(pts, " "))
+		hiPts, loPts = nil, nil
+	}
 	for i, l := range labels {
 		x, _ := slotGeom(f, len(labels), i)
 		p.Labels = append(p.Labels, Column{Label: l, X: x})
@@ -268,6 +279,8 @@ func Price(f Frame, labels []string, avg, lo, hi, shelf []*float64, qty []float6
 		if lv != nil && hv != nil {
 			hiPts = append(hiPts, fmt.Sprintf("%.1f,%.1f", x, y(*hv)))
 			loPts = append(loPts, fmt.Sprintf("%.1f,%.1f", x, y(*lv)))
+		} else {
+			endBand()
 		}
 		if lv != nil && (p.Low == nil || *lv < p.Low.Value) {
 			p.Low = &Point{X: x, Y: y(*lv), Value: *lv, Label: l}
@@ -280,10 +293,7 @@ func Price(f Frame, labels []string, avg, lo, hi, shelf []*float64, qty []float6
 	if len(cur) > 0 {
 		p.Avg = append(p.Avg, cur)
 	}
-	for i := len(loPts) - 1; i >= 0; i-- {
-		hiRev = append(hiRev, loPts[i])
-	}
-	p.Band = strings.Join(append(hiPts, hiRev...), " ")
+	endBand()
 
 	if p.QtyMax > 0 {
 		maxH := qtyShare * f.PlotH()

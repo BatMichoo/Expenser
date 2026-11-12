@@ -270,3 +270,41 @@ func TestBuildItemRowsIgnoresOldLines(t *testing.T) {
 	require.Equal(t, "kg", rows[0].Unit)
 	require.InDelta(t, 6.0, rows[0].Now, 1e-9)
 }
+
+// Purchases carry a time of day; one bought today must count in the 90-day
+// and 12-month windows ending today.
+func TestBuildItemRowsCountsToday(t *testing.T) {
+	now := time.Date(2026, 11, 12, 18, 0, 0, 0, time.UTC)
+	all := []models.GroceryLine{
+		gl(1, time.Date(2026, 11, 12, 15, 30, 0, 0, time.UTC), 1, 1, 4, 0, "kg"),
+		gl(1, models.Date(2026, 10, 1), 1, 1, 6, 0, "kg"),
+		// 90 days before today is outside the window, the day after is in.
+		gl(1, models.Date(2026, 8, 14), 1, 1, 100, 0, "kg"),
+		gl(1, models.Date(2026, 8, 15), 1, 1, 2, 0, "kg"),
+	}
+	rows := BuildItemRows(all, now)
+	require.Len(t, rows, 1)
+	require.InDelta(t, 4.0, rows[0].Now, 1e-9, "(4+6+2)/3")
+	require.InDelta(t, 4.0, rows[0].Bought12, 1e-9)
+}
+
+func TestBuildItemTrendLowMarkerNamesStore(t *testing.T) {
+	initI18n(t)
+	now := models.Date(2026, 11, 12)
+	cheap := gl(1, models.Date(2026, 10, 3), 1, 1, 1.5, 0, "kg")
+	cheap.Store = "Kaufland"
+	lines := []models.GroceryLine{gl(1, models.Date(2026, 10, 1), 1, 1, 3, 0, "kg"), cheap}
+	tr := BuildItemTrend(lines, lines, models.Category{ID: 1, Name: "Dairy"}, "kg", "month", []string{"2026-10", "2026-11"}, now, "en")
+	require.NotNil(t, tr.Chart.Low)
+	require.Equal(t, "Oct · Kaufland", tr.Chart.Low.Label)
+}
+
+func TestBuildItemTrendPriceNowPeriod(t *testing.T) {
+	initI18n(t)
+	now := models.Date(2026, 11, 12)
+	lines := []models.GroceryLine{gl(1, models.Date(2026, 10, 1), 1, 1, 3, 0, "kg")}
+	tr := BuildItemTrend(lines, lines, models.Category{ID: 1, Name: "Dairy"}, "kg", "month", []string{"2026-10", "2026-11"}, now, "en")
+	require.Equal(t, "Oct 2026", tr.PriceNowPeriod)
+	tr = BuildItemTrend(lines, lines, models.Category{ID: 1, Name: "Dairy"}, "kg", "year", []string{"2025", "2026"}, now, "en")
+	require.Equal(t, "2026", tr.PriceNowPeriod)
+}

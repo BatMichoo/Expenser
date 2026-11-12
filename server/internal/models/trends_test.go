@@ -18,3 +18,12 @@ func TestTrendsPageYearChoices(t *testing.T) {
 		t.Errorf("PeriodYears without year %v", got)
 	}
 }
+
+func TestItemRowHasNow(t *testing.T) {
+	if (ItemRow{YearAgo: 2}).HasNow() {
+		t.Error("no price in the last 90 days must not count as a price now")
+	}
+	if !(ItemRow{Now: 1.5}).HasNow() {
+		t.Error("a price now")
+	}
+}

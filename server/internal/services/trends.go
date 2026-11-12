@@ -205,6 +205,10 @@ func BuildMonthTrend(rows, prevRows []models.MonthTypeTotal, months []YearMonth,
 	}
 	if folded {
 		name := utilities.T(lang, "trends.everything_else")
+		if typeID != 0 {
+			// Filtered to one category: only Other can fold, so name it.
+			name = utilities.T(lang, "category."+otherCategory)
+		}
 		series = append(series, chart.Series{Name: name, Color: 0, Values: make([]float64, len(months))})
 		legend = append(legend, models.LegendItem{Name: name, Color: 0})
 		for id, s := range slot {

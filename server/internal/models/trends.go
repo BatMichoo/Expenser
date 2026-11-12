@@ -168,6 +168,7 @@ type ItemTrend struct {
 	By             string
 	PriceNow       float64
 	HasPriceNow    bool
+	PriceNowPeriod string // label of the period PriceNow is from, e.g. "Nov 2026" or "2026"
 	PriceChangePct float64
 	HasPriceChange bool
 	QtyNow         float64
@@ -184,6 +185,9 @@ type ItemTrend struct {
 
 // UnitKey is the i18n key of the unit's short label ("kg", "l", "pcs").
 func (t ItemTrend) UnitKey() string { return "trends.unit_" + t.Unit }
+
+// HasNow reports whether the item has a price in the last 90 days.
+func (r ItemRow) HasNow() bool { return r.Now > 0 }
 
 // UnitKey is the i18n key of the row's unit label.
 func (r ItemRow) UnitKey() string { return "trends.unit_" + r.Unit }

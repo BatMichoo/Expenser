@@ -135,6 +135,21 @@ func colorBreakdown(v *models.MonthView) {
 	}
 }
 
+// rankColorBreakdown colours the groceries breakdown like the trends grocery
+// chart: there are far more categories than colours, so the six largest
+// (largest first, Other excluded) get slots 1..6 and the rest, and Other,
+// get colour 0.
+func rankColorBreakdown(v *models.MonthView) {
+	slot := 0
+	for i := range v.Breakdown {
+		v.Breakdown[i].Color = 0
+		if v.Breakdown[i].Type != otherCategory && slot < topCategories {
+			slot++
+			v.Breakdown[i].Color = slot
+		}
+	}
+}
+
 // totalsWindow is the date range of monthly totals a view needs: the mini
 // chart and the usual months before ym, and January onwards for the year
 // so far.
@@ -303,7 +318,7 @@ func (s *MonthViewService) Groceries(userID uuid.UUID, ym YearMonth, filter Mont
 	for _, c := range categories {
 		v.Types = append(v.Types, models.TypeOption{ID: c.ID, Name: c.Name})
 	}
-	colorBreakdown(v)
+	rankColorBreakdown(v)
 	return v, nil
 }
 

@@ -190,6 +190,7 @@
     <span class="kpi-title">{{ T .Lang "trends.item_price_now" }}</span>
     <span class="kpi-value">{{ if $i.HasPriceNow }}{{ money $i.PriceNow }} / {{ $unit }}{{ else }}—{{ end }}</span>
     <span class="kpi-sub">
+      {{ if $i.PriceNowPeriod }}<span class="kpi-period">{{ $i.PriceNowPeriod }}</span> · {{ end }}
       {{ if $i.HasPriceChange }}
       <span class="kpi-change {{ if gt $i.PriceChangePct 0.0 }}up{{ else }}down{{ end }}">{{ printf "%+.0f%%" $i.PriceChangePct }}</span>
       {{ T .Lang "trends.item_vs_year" }}
@@ -242,7 +243,7 @@
       {{ range $i.Items }}{{ $u := T $.Lang .UnitKey }}{{ $url := print "/groceries/chart?tab=item&item=" .ItemID }}
       <tr>
         <td><a href="{{ $url }}" hx-get="{{ $url }}" hx-target="#section-content" hx-push-url="true">{{ T $.Lang (print $.TypePrefix .Item) }}</a></td>
-        <td class="num">{{ money .Now }} / {{ $u }}</td>
+        <td class="num">{{ if .HasNow }}{{ money .Now }} / {{ $u }}{{ else }}—{{ end }}</td>
         <td class="num">{{ if gt .YearAgo 0.0 }}{{ money .YearAgo }} / {{ $u }}{{ else }}—{{ end }}</td>
         <td class="num">{{ if .HasChange }}<span class="kpi-change {{ if gt .ChangePct 0.0 }}up{{ else }}down{{ end }}">{{ printf "%+.0f%%" .ChangePct }}</span>{{ else }}—{{ end }}</td>
         <td class="num">{{ if eq .Unit "pc" }}{{ printf "%.0f" .Bought12 }}{{ else }}{{ printf "%.1f" .Bought12 }}{{ end }} {{ $u }}</td>
