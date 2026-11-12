@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 
 	"expenser/internal/models"
@@ -29,11 +30,11 @@ func expenseTableFor(s models.Section) (expenseTable, error) {
 }
 
 // GetSectionTypes lists the expense types of the house or car section.
-func (db *DB) GetSectionTypes(s models.Section) ([]models.TypeOption, error) {
+func (db *DB) GetSectionTypes(ctx context.Context, s models.Section) ([]models.TypeOption, error) {
 	var opts []models.TypeOption
 	switch s {
 	case models.SectionHouse:
-		types, err := db.GetHouseUtilityTypes()
+		types, err := db.GetHouseUtilityTypes(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +42,7 @@ func (db *DB) GetSectionTypes(s models.Section) ([]models.TypeOption, error) {
 			opts = append(opts, models.TypeOption{ID: t.ID, Name: t.Name})
 		}
 	case models.SectionCar:
-		types, err := db.GetCarExpenseTypes()
+		types, err := db.GetCarExpenseTypes(ctx)
 		if err != nil {
 			return nil, err
 		}

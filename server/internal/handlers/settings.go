@@ -4,6 +4,7 @@ import (
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -67,7 +68,7 @@ func accountError(err error) error { return mapError(err, accountErrors) }
 // GetAccountForm opens the Account panel: name, reminder email and the
 // reminder defaults for new bills.
 func (h *SettingsHandler) GetAccountForm(c *gin.Context) error {
-	user, err := h.BaseHandler.DB.GetUserByID(currentUserID(c))
+	user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -112,7 +113,18 @@ func (h *SettingsHandler) ChangePassword(c *gin.Context) error {
 	if err != nil {
 		return passwordError(err)
 	}
-	renderSuccess(c, http.StatusOK, utilities.T(currentLang(c), "settings.password_changed"), "")
+	// The change logged out every login, this one included: issue a new one.
+	user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c))
+	if err != nil {
+		return fmt.Errorf("reload user after password change: %w", err)
+	}
+	token, err := h.BaseHandler.AS.GenerateToken(user)
+	if err != nil {
+		return fmt.Errorf("generate token: %w", err)
+	}
+	h.BaseHandler.AS.SetCookie(token, c)
+	lang := currentLang(c)
+	renderSuccess(c, http.StatusOK, utilities.T(lang, "settings.password_changed"), utilities.T(lang, "settings.password_changed_elsewhere"))
 	return nil
 }
 
@@ -132,7 +144,7 @@ func (h *SettingsHandler) SendTestEmail(c *gin.Context) error {
 		renderError(c, http.StatusServiceUnavailable, utilities.T(lang, "settings.test_failed"), utilities.T(lang, "settings.smtp_not_configured"))
 		return nil
 	}
-	user, err := h.BaseHandler.DB.GetUserByID(currentUserID(c))
+	user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}

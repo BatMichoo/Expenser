@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-
-	"github.com/pressly/goose"
 )
 
 var TestUserRegisterModel *models.User = &models.User{
@@ -72,7 +70,7 @@ func connectTestDB(cfg *config.Config) (*DB, error) {
 		return nil, fmt.Errorf("failed to connect to test DB: %w", err)
 	}
 
-	if err := goose.Up(testDBConn, "../../internal/db/migrations"); err != nil {
+	if err := migrate(testDBConn); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 	fmt.Println("Migrations applied successfully to test DB.")

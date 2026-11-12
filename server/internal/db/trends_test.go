@@ -18,7 +18,7 @@ func utc(y int, m time.Month, d int) time.Time { return time.Date(y, m, d, 12, 0
 func trendUser(t *testing.T, tdb *DB, name string) uuid.UUID {
 	t.Helper()
 	u := &models.User{Username: name, PasswordHash: TestUserRegisterModel.PasswordHash}
-	require.NoError(t, tdb.CreateUser(u))
+	require.NoError(t, tdb.CreateUser(context.Background(), u))
 	return u.ID
 }
 

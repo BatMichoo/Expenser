@@ -5,6 +5,7 @@ import (
 	"expenser/internal/groceryunits"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"math"
 	"strconv"
 	"strings"
@@ -16,7 +17,7 @@ import (
 //   - include renders a template by name, so the layout can show whichever
 //     page a handler chose without a list of page names;
 //   - hasTemplate reports whether a template with that name exists.
-func ParseTemplates(glob string) (*template.Template, error) {
+func ParseTemplates(fsys fs.FS, patterns ...string) (*template.Template, error) {
 	var set *template.Template
 	pages := template.FuncMap{
 		"include": func(name string, data any) (template.HTML, error) {
@@ -29,7 +30,7 @@ func ParseTemplates(glob string) (*template.Template, error) {
 		},
 		"hasTemplate": func(name string) bool { return name != "" && set.Lookup(name) != nil },
 	}
-	set, err := template.New("").Funcs(TemplateFuncs()).Funcs(pages).ParseGlob(glob)
+	set, err := template.New("").Funcs(TemplateFuncs()).Funcs(pages).ParseFS(fsys, patterns...)
 	return set, err
 }
 
@@ -79,11 +80,9 @@ func TemplateFuncs() template.FuncMap {
 		"sizeValue": func(v float64) string {
 			return strconv.FormatFloat(groceryunits.Round4(v), 'f', -1, 64)
 		},
-		"abs": math.Abs,
-		"sub": func(a, b float64) float64 { return a - b },
-		"money": func(v float64) string {
-			return fmt.Sprintf("%.2f %s", v, CurrencySymbol())
-		},
+		"abs":   math.Abs,
+		"sub":   func(a, b float64) float64 { return a - b },
+		"money": Money,
 		"rough": RoughAmount,
 		"contains": func(slice interface{}, item string) bool {
 			s, ok := slice.([]string)

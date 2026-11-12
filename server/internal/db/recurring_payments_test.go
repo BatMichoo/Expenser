@@ -37,7 +37,7 @@ func setupRecurringTestDB(t *testing.T) (*DB, uuid.UUID) {
 	ResetTestDB(testDB)
 
 	user := &models.User{Username: "RecurringTester", PasswordHash: TestUserRegisterModel.PasswordHash}
-	require.NoError(t, testDB.CreateUser(user))
+	require.NoError(t, testDB.CreateUser(context.Background(), user))
 	return testDB, user.ID
 }
 
@@ -140,7 +140,7 @@ func TestRecurringPaymentsAreScopedToUser(t *testing.T) {
 	ctx := context.Background()
 
 	other := &models.User{Username: "OtherUser", PasswordHash: TestUserRegisterModel.PasswordHash}
-	require.NoError(t, testDB.CreateUser(other))
+	require.NoError(t, testDB.CreateUser(context.Background(), other))
 
 	p := newInternetPayment(userID, rpDate(2026, 12, 1))
 	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
@@ -339,7 +339,7 @@ func TestMarkRecurringPaymentPaidHouse(t *testing.T) {
 	assert.Equal(t, rpDate(2026, 1, 31), res.PaidDue)
 	assert.Equal(t, rpDate(2026, 2, 28), res.Payment.DueDate)
 
-	expense, err := testDB.GetHouseExpenseByID(res.ExpenseID, userID)
+	expense, err := testDB.GetHouseExpenseByID(context.Background(), res.ExpenseID, userID)
 	require.NoError(t, err)
 	assert.Equal(t, 32.5, expense.Amount)
 	assert.Equal(t, "Internet", expense.UtilityType)
@@ -379,7 +379,7 @@ func TestMarkRecurringPaymentPaidCar(t *testing.T) {
 	assert.Equal(t, rpDate(2027, 5, 20), res.Payment.DueDate)
 	assert.Equal(t, 400.0, *res.Payment.ExpectedAmount, "amount not remembered when flag is off")
 
-	expense, err := testDB.GetCarExpenseByID(res.ExpenseID, userID)
+	expense, err := testDB.GetCarExpenseByID(context.Background(), res.ExpenseID, userID)
 	require.NoError(t, err)
 	assert.Equal(t, 420.0, expense.Amount)
 	assert.Equal(t, "Insurance", expense.Type)
@@ -396,7 +396,7 @@ func TestMarkRecurringPaymentPaidZeroAmount(t *testing.T) {
 	res, err := testDB.MarkRecurringPaymentPaid(ctx, userID, p.ID, 0, rpDate(2026, 12, 1))
 	require.NoError(t, err, "a free month still records an expense")
 
-	expense, err := testDB.GetHouseExpenseByID(res.ExpenseID, userID)
+	expense, err := testDB.GetHouseExpenseByID(context.Background(), res.ExpenseID, userID)
 	require.NoError(t, err)
 	assert.Equal(t, 0.0, expense.Amount)
 }
@@ -419,7 +419,7 @@ func TestMarkRecurringPaymentPaidRollsBackOnFailure(t *testing.T) {
 	assert.Nil(t, got.LastPaidOn)
 	assert.Nil(t, got.ExpectedAmount)
 
-	expenses, err := testDB.GetHouseExpensesForMonth(time.December, 2026, userID)
+	expenses, err := testDB.GetHouseExpensesForMonth(context.Background(), time.December, 2026, userID)
 	require.NoError(t, err)
 	assert.Empty(t, *expenses, "no expense left behind")
 }
@@ -448,7 +448,7 @@ func TestMarkRecurringPaymentPaidOtherUser(t *testing.T) {
 	ctx := context.Background()
 
 	other := &models.User{Username: "OtherUser", PasswordHash: TestUserRegisterModel.PasswordHash}
-	require.NoError(t, testDB.CreateUser(other))
+	require.NoError(t, testDB.CreateUser(context.Background(), other))
 
 	p := newInternetPayment(userID, rpDate(2026, 12, 1))
 	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
@@ -467,7 +467,7 @@ func TestGetUpcomingRecurringPayments(t *testing.T) {
 	ctx := context.Background()
 
 	other := &models.User{Username: "OtherUser", PasswordHash: TestUserRegisterModel.PasswordHash}
-	require.NoError(t, testDB.CreateUser(other))
+	require.NoError(t, testDB.CreateUser(context.Background(), other))
 
 	overdue := newInternetPayment(userID, rpDate(2026, 11, 1))
 	soon := newInternetPayment(userID, rpDate(2026, 11, 15))
@@ -490,7 +490,7 @@ func TestUserAccountSettings(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
 
-	u, err := testDB.GetUserByID(userID)
+	u, err := testDB.GetUserByID(context.Background(), userID)
 	require.NoError(t, err)
 	assert.Empty(t, u.Email, "not required")
 	assert.Empty(t, u.DisplayName, "not required")
@@ -499,7 +499,7 @@ func TestUserAccountSettings(t *testing.T) {
 	two, five := 2, 5
 	want := models.ReminderDefaults{Notify: models.NotifyNone, RemindDaysBefore: 7, RemindDaysAfter: 1, RepeatEveryDays: &two, MaxReminders: &five}
 	require.NoError(t, testDB.UpdateUserAccount(ctx, userID, "Miro", "me@example.com", want))
-	u, err = testDB.GetUserByID(userID)
+	u, err = testDB.GetUserByID(context.Background(), userID)
 	require.NoError(t, err)
 	assert.Equal(t, "Miro", u.DisplayName)
 	assert.Equal(t, "me@example.com", u.Email)
@@ -508,7 +508,7 @@ func TestUserAccountSettings(t *testing.T) {
 	off := models.DefaultReminderDefaults()
 	off.RepeatEveryDays = nil
 	require.NoError(t, testDB.UpdateUserAccount(ctx, userID, "", "", off))
-	u, err = testDB.GetUserByID(userID)
+	u, err = testDB.GetUserByID(context.Background(), userID)
 	require.NoError(t, err)
 	assert.Empty(t, u.DisplayName, "cleared")
 	assert.Empty(t, u.Email, "cleared")
@@ -523,7 +523,7 @@ func TestUserAccountSettings(t *testing.T) {
 func TestUpdateUserPassword(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	require.NoError(t, testDB.UpdateUserPassword(context.Background(), userID, "new-hash"))
-	u, err := testDB.GetUserByID(userID)
+	u, err := testDB.GetUserByID(context.Background(), userID)
 	require.NoError(t, err)
 	assert.Equal(t, "new-hash", u.PasswordHash)
 

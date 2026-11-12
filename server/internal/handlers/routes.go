@@ -16,6 +16,7 @@ import (
 func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mailer services.Mailer, links *services.ReminderLinkBuilder) {
 	// Public routes (no authentication required)
 	as := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration, cfg.LanDomain)
+	as.CheckTokenVersions(db)
 
 	router.Use(middleware.SameOrigin())
 	router.Use(middleware.LoadClaims(as))

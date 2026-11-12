@@ -22,10 +22,8 @@ COPY --from=builder /app/bin/web-app .
 
 RUN chmod +x web-app
 
-COPY internal/i18n/ internal/i18n/
-COPY internal/templates/ internal/templates/
-COPY internal/db/ internal/db/
-COPY static/ static/
+# Templates, static files, translations and migrations are built into the
+# binary (go:embed), so nothing else is copied.
 
 # Run as an unprivileged user: the app only reads its files, and pdftotext
 # parses untrusted PDFs.

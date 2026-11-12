@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"testing"
 
 	"expenser/internal/models"
@@ -22,13 +23,13 @@ func TestExpenseTableFor(t *testing.T) {
 
 func TestGetSectionTypes(t *testing.T) {
 	db, _ := setupMonthTestDB(t)
-	house, err := db.GetSectionTypes(models.SectionHouse)
+	house, err := db.GetSectionTypes(context.Background(), models.SectionHouse)
 	require.NoError(t, err)
-	car, err := db.GetSectionTypes(models.SectionCar)
+	car, err := db.GetSectionTypes(context.Background(), models.SectionCar)
 	require.NoError(t, err)
 	assert.NotEmpty(t, house)
 	assert.NotEmpty(t, car)
 	assert.Contains(t, house, models.TypeOption{ID: 4, Name: "Internet"})
-	_, err = db.GetSectionTypes(models.SectionGroceries)
+	_, err = db.GetSectionTypes(context.Background(), models.SectionGroceries)
 	assert.ErrorIs(t, err, models.ErrInvalidCategory)
 }

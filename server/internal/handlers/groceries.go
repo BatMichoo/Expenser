@@ -263,7 +263,7 @@ const receiptTimeInput = "2006-01-02T15:04"
 
 // renderReceiptReview shows what was read, to check before saving.
 func (h *GroceriesHandler) renderReceiptReview(c *gin.Context, analysis *models.ReceiptAnalysis) error {
-	categories, err := h.BaseHandler.DB.GetAllCategories()
+	categories, err := h.BaseHandler.DB.GetAllCategories(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -331,12 +331,12 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 			PurchaseDate:    purchasedAt,
 		}
 
-		if err := h.BaseHandler.DB.CreateGroceriesExpense(expense); err != nil {
+		if err := h.BaseHandler.DB.CreateGroceriesExpense(c.Request.Context(), expense); err != nil {
 			return fmt.Errorf("failed to save item %d: %w", i, err)
 		}
 
 		// Fetch the saved expense to get the CategoryName populated
-		dbExpense, err := h.BaseHandler.DB.GetGroceriesExpenseByID(expense.ID, currentUserID(c))
+		dbExpense, err := h.BaseHandler.DB.GetGroceriesExpenseByID(c.Request.Context(), expense.ID, currentUserID(c))
 		if err == nil {
 			expense = dbExpense
 		}
@@ -382,7 +382,7 @@ func (h *GroceriesHandler) GetGroceriesForm(c *gin.Context) error {
 }
 
 func (h *GroceriesHandler) GetCreateGroceriesForm(c *gin.Context) error {
-	categories, err := h.BaseHandler.DB.GetAllCategories()
+	categories, err := h.BaseHandler.DB.GetAllCategories(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -398,12 +398,12 @@ func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) error {
 	expense := parseGroceriesExpenseForm(c)
 	expense.UserID = currentUserID(c)
 
-	if err := h.BaseHandler.DB.CreateGroceriesExpense(expense); err != nil {
+	if err := h.BaseHandler.DB.CreateGroceriesExpense(c.Request.Context(), expense); err != nil {
 		return err
 	}
 
 	// Fetch the saved expense to get the CategoryName populated
-	saved, err := h.BaseHandler.DB.GetGroceriesExpenseByID(expense.ID, currentUserID(c))
+	saved, err := h.BaseHandler.DB.GetGroceriesExpenseByID(c.Request.Context(), expense.ID, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -417,12 +417,12 @@ func (h *GroceriesHandler) GetEditGroceriesForm(c *gin.Context) error {
 		return err
 	}
 
-	expense, err := h.BaseHandler.DB.GetGroceriesExpenseByID(id, currentUserID(c))
+	expense, err := h.BaseHandler.DB.GetGroceriesExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
 
-	categories, err := h.BaseHandler.DB.GetAllCategories()
+	categories, err := h.BaseHandler.DB.GetAllCategories(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -444,12 +444,12 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) error {
 	expense := parseGroceriesExpenseForm(c)
 	expense.ID = id
 
-	if err := h.BaseHandler.DB.EditGroceriesExpense(expense, currentUserID(c)); err != nil {
+	if err := h.BaseHandler.DB.EditGroceriesExpense(c.Request.Context(), expense, currentUserID(c)); err != nil {
 		return err
 	}
 
 	// Fetch updated expense to render the row
-	updated, err := h.BaseHandler.DB.GetGroceriesExpenseByID(id, currentUserID(c))
+	updated, err := h.BaseHandler.DB.GetGroceriesExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -463,7 +463,7 @@ func (h *GroceriesHandler) DeleteGroceriesExpense(c *gin.Context) error {
 		return err
 	}
 
-	deleted, err := h.BaseHandler.DB.DeleteGroceriesExpense(id, currentUserID(c))
+	deleted, err := h.BaseHandler.DB.DeleteGroceriesExpense(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -490,5 +490,5 @@ func (h *GroceriesHandler) GetCurrentMonth(c *gin.Context) error {
 func (h *GroceriesHandler) monthView(c *gin.Context) (*models.MonthView, error) {
 	now := time.Now()
 	ym := services.ParseYearMonth(c.Query("month"), now)
-	return h.months.Groceries(currentUserID(c), ym, monthFilter(c), currentLang(c), now)
+	return h.months.Groceries(c.Request.Context(), currentUserID(c), ym, monthFilter(c), currentLang(c), now)
 }

@@ -1,6 +1,8 @@
 package services
 
 import (
+	"context"
+	"errors"
 	"expenser/internal/models"
 	"fmt"
 	"time"
@@ -14,15 +16,27 @@ import (
 type JWTClaims struct {
 	UserID            uuid.UUID
 	Username          string
-	Email             string
 	PreferredLanguage string
+	// TokenVersion is the user's token version when the token was issued;
+	// tokens from before a password change carry an older one.
+	TokenVersion int `json:",omitempty"`
 	jwt.RegisteredClaims
 }
+
+// TokenVersions looks up a user's current token version.
+type TokenVersions interface {
+	TokenVersion(ctx context.Context, userID uuid.UUID) (int, error)
+}
+
+// ErrLoginRevoked means the token was issued before the user's password
+// changed.
+var ErrLoginRevoked = errors.New("login was revoked")
 
 type AuthService struct {
 	secretKey       []byte
 	tokenExpiration time.Duration
 	Domain          string
+	versions        TokenVersions // nil: versions aren't checked (tests)
 }
 
 type Token struct {
@@ -34,6 +48,10 @@ type Token struct {
 
 const authCookieName = "auth_token"
 const claimsContextKey = "user_claims"
+
+// tokenContextKey caches the validated token for the rest of the request,
+// so the version is looked up once even though two middlewares validate.
+const tokenContextKey = "auth_token_validated"
 
 func SetClaims(c *gin.Context, claims *JWTClaims) {
 	c.Set(claimsContextKey, claims)
@@ -51,6 +69,12 @@ func NewAuthService(secretKey string, tokenExp time.Duration, lanDomain string) 
 		tokenExpiration: tokenExp,
 		Domain:          lanDomain,
 	}
+}
+
+// CheckTokenVersions makes ValidateToken refuse tokens whose version is not
+// the user's current one (and tokens of users that no longer exist).
+func (as *AuthService) CheckTokenVersions(v TokenVersions) {
+	as.versions = v
 }
 
 func (as *AuthService) SetCookie(t *Token, c *gin.Context) {
@@ -83,6 +107,7 @@ func (as *AuthService) GenerateToken(user *models.User) (*Token, error) {
 		UserID:            user.ID,
 		Username:          user.Username,
 		PreferredLanguage: user.PreferredLanguage,
+		TokenVersion:      user.TokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expAt),
 			IssuedAt:  jwt.NewNumericDate(timeNow),
@@ -123,11 +148,15 @@ func (as *AuthService) Refresh(t *Token) (*Token, error) {
 		ID:                t.Claims.UserID,
 		Username:          t.Claims.Username,
 		PreferredLanguage: t.Claims.PreferredLanguage,
+		TokenVersion:      t.Claims.TokenVersion,
 	})
 }
 
 // ValidateToken validates and parses a JWT token
 func (as *AuthService) ValidateToken(c *gin.Context) (*Token, error) {
+	if cached, ok := c.Get(tokenContextKey); ok {
+		return cached.(*Token), nil
+	}
 	tokenString, _ := c.Cookie(authCookieName)
 	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -145,12 +174,24 @@ func (as *AuthService) ValidateToken(c *gin.Context) (*Token, error) {
 		return nil, fmt.Errorf("could not get claims from token")
 	}
 
+	if as.versions != nil {
+		current, err := as.versions.TokenVersion(c.Request.Context(), claims.UserID)
+		if err != nil {
+			return nil, fmt.Errorf("check token version: %w", err)
+		}
+		if current != claims.TokenVersion {
+			return nil, ErrLoginRevoked
+		}
+	}
+
 	expAt, _ := token.Claims.GetExpirationTime()
 
-	return &Token{
+	t := &Token{
 		Value:     token.Raw,
 		Claims:    claims,
 		Duration:  as.tokenExpiration,
 		ExpiresAt: time.Unix(expAt.Unix(), 0),
-	}, nil
+	}
+	c.Set(tokenContextKey, t)
+	return t, nil
 }

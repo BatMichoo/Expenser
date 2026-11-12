@@ -384,6 +384,7 @@
   "settings.new_password_hint": "Поне 6 знака.",
   "settings.confirm_password": "Повторете новата парола",
   "settings.password_changed": "Паролата е сменена",
+  "settings.password_changed_elsewhere": "Излязохте от профила си на другите устройства.",
   "auth.wrong_current_password": "Текущата парола е грешна.",
   "auth.password_too_long": "Паролата е твърде дълга. Използвайте до 72 знака (по-малко с кирилица или емоджи).",
   "auth.password_unchanged": "Новата парола е същата като текущата.",

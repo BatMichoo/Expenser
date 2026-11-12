@@ -1,17 +1,18 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"expenser/internal/config"
-	_ "expenser/internal/db/migrations" // registers Go migrations with goose
+	"expenser/internal/db/migrations" // also registers the Go migrations with goose
+	"expenser/internal/db/seeds"
 	"expenser/internal/models"
 	"fmt"
 	"log"
-	"path/filepath"
 	"time"
 
 	_ "github.com/lib/pq" // Import the PostgreSQL driver
-	"github.com/pressly/goose"
+	"github.com/pressly/goose/v3"
 )
 
 type DB struct {
@@ -26,24 +27,19 @@ func InitDatabase(cfg *config.Config) (*DB, error) {
 		return nil, fmt.Errorf("connect error: %w", err)
 	}
 
-	dbDir := filepath.Join("internal", "db")
-	if cfg.Mode == "" {
-		dbDir = filepath.Join(config.GetProjectRootDir(), dbDir)
-	}
-
-	if err := goose.Up(db.conn, filepath.Join(dbDir, "migrations")); err != nil {
+	if err := migrate(db.conn); err != nil {
 		log.Fatalf("Failed to apply migrations: %v.", err)
 	}
 	fmt.Println("Migrations applied successfully.")
 
 	if cfg.SeedDevData {
-		if err := seedDevData(db, filepath.Join(dbDir, "seeds")); err != nil {
+		if err := seedDevData(db); err != nil {
 			log.Fatalf("Failed to seed dev data: %v.", err)
 		}
 		fmt.Println("Dev seed data applied successfully.")
 	}
 
-	if err := db.Ping(); err != nil {
+	if err := db.Ping(context.Background()); err != nil {
 		if db.Close() != nil {
 			return nil, fmt.Errorf("error: %s", err.Error())
 		}
@@ -54,14 +50,25 @@ func InitDatabase(cfg *config.Config) (*DB, error) {
 	return db, nil
 }
 
+// migrate applies the schema migrations built into the binary. Branches
+// merge in any order, so a migration can arrive after a newer one has run;
+// it is applied then rather than refused (goose v2 skipped it silently).
+func migrate(conn *sql.DB) error {
+	goose.SetBaseFS(migrations.SQL)
+	defer goose.SetBaseFS(nil)
+	return goose.Up(conn, ".", goose.WithAllowMissing())
+}
+
 // seedDevData applies the dev-only seed files. They are tracked in their own
 // version table so they never mix with the schema migrations.
-func seedDevData(db *DB, seedsDir string) error {
+func seedDevData(db *DB) error {
 	defaultTable := goose.TableName()
 	goose.SetTableName("goose_seed_version")
 	defer goose.SetTableName(defaultTable)
+	goose.SetBaseFS(seeds.FS)
+	defer goose.SetBaseFS(nil)
 
-	return goose.Up(db.conn, seedsDir)
+	return goose.Up(db.conn, ".")
 }
 
 // connect establishes a connection to the PostgreSQL database.
@@ -71,12 +78,20 @@ func connect(dbConnString string) (*DB, error) {
 		return nil, err
 	}
 
+	// A household app needs few connections; capping them keeps a burst of
+	// requests from exhausting Postgres, and recycling them picks up
+	// server-side changes (and drops connections a restart left broken).
+	conn.SetMaxOpenConns(10)
+	conn.SetMaxIdleConns(5)
+	conn.SetConnMaxLifetime(30 * time.Minute)
+	conn.SetConnMaxIdleTime(5 * time.Minute)
+
 	db := &DB{conn: conn}
 	return db, nil
 }
 
-func (db *DB) Ping() error {
-	return db.conn.Ping()
+func (db *DB) Ping(ctx context.Context) error {
+	return db.conn.PingContext(ctx)
 }
 
 func (db *DB) Close() error {
@@ -85,8 +100,8 @@ func (db *DB) Close() error {
 
 // monthlyTotals runs a query returning (key, sum) rows — a YYYY-MM month or
 // a type name — and collects them into a map.
-func (db *DB) monthlyTotals(query string, args ...any) (map[string]float64, error) {
-	rows, err := db.conn.Query(query, args...)
+func (db *DB) monthlyTotals(ctx context.Context, query string, args ...any) (map[string]float64, error) {
+	rows, err := db.conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query monthly totals: %w", err)
 	}
@@ -106,8 +121,8 @@ func (db *DB) monthlyTotals(query string, args ...any) (map[string]float64, erro
 
 // spendHistory runs a query returning (type, YYYY-MM-DD, sum) rows and
 // collects them as SpendEntry values dated midnight UTC.
-func (db *DB) spendHistory(query string, args ...any) ([]models.SpendEntry, error) {
-	rows, err := db.conn.Query(query, args...)
+func (db *DB) spendHistory(ctx context.Context, query string, args ...any) ([]models.SpendEntry, error) {
+	rows, err := db.conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query spend history: %w", err)
 	}

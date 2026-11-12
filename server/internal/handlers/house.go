@@ -53,7 +53,7 @@ func (h *HouseHandler) parseHouseExpenseForm(c *gin.Context) (*models.HouseExpen
 // for a new home expense.
 // This handler serves the UI component for expense creation.
 func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) error {
-	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes()
+	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) error {
 	}
 	newExpense.CreatedBy = userID
 
-	if err := h.BaseHandler.DB.CreateHouseExpense(newExpense); err != nil {
+	if err := h.BaseHandler.DB.CreateHouseExpense(c.Request.Context(), newExpense); err != nil {
 		return err
 	}
 
@@ -206,7 +206,7 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) error {
 		return err
 	}
 
-	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id, currentUserID(c))
+	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) error {
 		return notFound("error.expense_not_found")
 	}
 
-	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes()
+	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -247,7 +247,7 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) error {
 	}
 	editExpense.ID = id
 
-	if err := h.BaseHandler.DB.EditHouseExpense(editExpense, currentUserID(c)); err != nil {
+	if err := h.BaseHandler.DB.EditHouseExpense(c.Request.Context(), editExpense, currentUserID(c)); err != nil {
 		return err
 	}
 
@@ -273,7 +273,7 @@ func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) error {
 		return err
 	}
 
-	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(id, currentUserID(c))
+	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -307,7 +307,7 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) error {
 		return err
 	}
 
-	deleted, err := h.BaseHandler.DB.DeleteHouseExpense(id, currentUserID(c))
+	deleted, err := h.BaseHandler.DB.DeleteHouseExpense(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -333,5 +333,5 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) error {
 func (h *HouseHandler) monthView(c *gin.Context) (*models.MonthView, error) {
 	now := time.Now()
 	ym := services.ParseYearMonth(c.Query("month"), now)
-	return h.months.House(currentUserID(c), ym, monthFilter(c), currentLang(c), now)
+	return h.months.House(c.Request.Context(), currentUserID(c), ym, monthFilter(c), currentLang(c), now)
 }

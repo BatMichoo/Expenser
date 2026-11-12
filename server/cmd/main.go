@@ -7,15 +7,17 @@ import (
 	database "expenser/internal/db"
 	"expenser/internal/handlers"
 	"expenser/internal/services"
+	"expenser/internal/templates"
 	"expenser/internal/utilities"
+	"expenser/static"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
+	_ "time/tzdata" // the image has no zoneinfo; APP_TIMEZONE needs it
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,15 +37,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Couldn't load configuration: %v", err)
 	}
+	// Dates and times typed in forms or read off receipts are wall-clock
+	// times in the household's zone, and "today" for reminders is its day.
+	time.Local = cfg.Location
+	log.Printf("Time zone: %s.", cfg.Location)
 
-	var tPath string
-	if cfg.Mode == "" {
-		tPath = filepath.Join(config.GetProjectRootDir(), "internal/templates/**/*.html")
-	} else {
-		tPath = "internal/templates/**/*.html"
-	}
-
-	t := template.Must(utilities.ParseTemplates(tPath))
+	t := template.Must(utilities.ParseTemplates(templates.FS, templates.Patterns...))
 	router.SetHTMLTemplate(t) // Tell Gin to use this template set
 
 	db, err := database.InitDatabase(cfg)
@@ -55,17 +54,15 @@ func main() {
 		log.Fatalf("Couldn't initialize i18n: %v", err)
 	}
 
-	var sPath string
-	if cfg.Mode == "" {
-		sPath = filepath.Join(config.GetProjectRootDir(), "static")
-	} else {
-		sPath = "../static"
-	}
-
-	router.Static("/static", sPath)
+	// Asset URLs carry a version that changes on every deploy (see the asset
+	// template function), so browsers may keep them for a while.
+	assets := router.Group("/static", func(c *gin.Context) {
+		c.Header("Cache-Control", "public, max-age=86400")
+	})
+	assets.StaticFS("/", http.FS(static.FS))
 	// Browsers ask for /favicon.ico on pages without an icon link; without
 	// this the 404 pops up as an error on the next page.
-	router.StaticFile("/favicon.ico", filepath.Join(sPath, "favicon.png"))
+	router.StaticFileFS("/favicon.ico", "favicon.png", http.FS(static.FS))
 
 	mailer := smtpMailer(cfg)
 	if cfg.DevMode {

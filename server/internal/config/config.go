@@ -41,7 +41,6 @@ type Config struct {
 	LanDomain   string
 	DB          DB
 	JWT         JWT
-	Mode        string
 	ReceiptAI   ReceiptAI
 	SeedDevData bool
 	// ReminderCheckInterval is how often the recurring payment reminder
@@ -52,6 +51,10 @@ type Config struct {
 	// AppURL is where the app is reached, e.g. https://expenser.home.lan.
 	// Reminder emails link to it; empty means no links.
 	AppURL string
+	// Location is the household's time zone (APP_TIMEZONE, default
+	// Europe/Sofia). It decides which day and month a purchase falls in,
+	// for the app and the database session alike.
+	Location *time.Location
 	// DevMode turns on developer-only helpers such as the "Send test email"
 	// button. Off unless DEV_MODE=true.
 	DevMode bool
@@ -105,8 +108,6 @@ type DB struct {
 
 // LoadConfig loads the configuration from environment variables.
 func LoadConfig() (*Config, error) {
-	mode := os.Getenv("MODE")
-
 	envPath := filepath.Join(GetProjectRootDir(), ".env.dev")
 	if err := godotenv.Load(envPath); err != nil {
 		log.Printf("No .env.development file found at %s, using environment variables\n", envPath)
@@ -146,9 +147,14 @@ func LoadConfig() (*Config, error) {
 
 	reminderCheckInterval := parseReminderCheckInterval(os.Getenv("REMINDER_CHECK_INTERVAL"))
 
+	loc, err := loadLocation(os.Getenv("APP_TIMEZONE"))
+	if err != nil {
+		return nil, err
+	}
+
 	dbSSLMode := os.Getenv("DB_SSLMODE")
-	dbConnString := connString(dbUser, dbPass, dbHost, dbPort, dbName, dbSSLMode)
-	testDBConnString := connString(dbUser, dbPass, dbHost, dbPort, testDBName, dbSSLMode)
+	dbConnString := connString(dbUser, dbPass, dbHost, dbPort, dbName, dbSSLMode, loc.String())
+	testDBConnString := connString(dbUser, dbPass, dbHost, dbPort, testDBName, dbSSLMode, loc.String())
 
 	DB := DB{
 		DBConnString:     dbConnString,
@@ -164,8 +170,8 @@ func LoadConfig() (*Config, error) {
 			SecretKey:       jwtSecret,
 			TokenExpiration: jwtExpiration,
 		},
-		Mode:        mode,
 		DevMode:     parseDevMode(os.Getenv("DEV_MODE")),
+		Location:    loc,
 		AppURL:      strings.TrimRight(strings.TrimSpace(os.Getenv("APP_URL")), "/"),
 		ReceiptAI:   ReceiptAI{APIKey: os.Getenv("GEMINI_API_KEY"), Model: ReceiptAIModel, Fallbacks: ReceiptAIFallbacks},
 		SeedDevData: seedDevData,
@@ -175,10 +181,28 @@ func LoadConfig() (*Config, error) {
 	}, nil
 }
 
+// DefaultTimezone is the time zone when APP_TIMEZONE is not set.
+const DefaultTimezone = "Europe/Sofia"
+
+// loadLocation reads APP_TIMEZONE; an unknown zone is an error rather than
+// a silent fallback, since it would move purchases between days.
+func loadLocation(name string) (*time.Location, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = DefaultTimezone
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		return nil, fmt.Errorf("APP_TIMEZONE %q: %w", name, err)
+	}
+	return loc, nil
+}
+
 // connString builds a postgres URL. The user and password are escaped, so a
 // password with characters such as @ or / still works. sslmode defaults to
-// disable: the database is only reached over the Docker network.
-func connString(user, pass, host, port, name, sslmode string) string {
+// disable: the database is only reached over the Docker network. timezone
+// is the session time zone, used by EXTRACT and to_char on timestamps.
+func connString(user, pass, host, port, name, sslmode, timezone string) string {
 	if sslmode == "" {
 		sslmode = "disable"
 	}
@@ -187,7 +211,7 @@ func connString(user, pass, host, port, name, sslmode string) string {
 		User:     url.UserPassword(user, pass),
 		Host:     host + ":" + port,
 		Path:     "/" + name,
-		RawQuery: url.Values{"sslmode": {sslmode}}.Encode(),
+		RawQuery: url.Values{"sslmode": {sslmode}, "timezone": {timezone}}.Encode(),
 	}
 	return u.String()
 }

@@ -16,17 +16,17 @@ var ErrWrongPassword = errors.New("the current password is wrong")
 
 // PasswordStore is what changing a password needs from the database.
 type PasswordStore interface {
-	GetUserByID(id uuid.UUID) (*models.User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
 	UpdateUserPassword(ctx context.Context, id uuid.UUID, hash string) error
 }
 
 // ChangePassword replaces a user's password after checking the new one and
-// the current one. Existing logins stay valid until their token expires.
+// the current one. Logins on other devices end (see UpdateUserPassword).
 func ChangePassword(ctx context.Context, store PasswordStore, userID uuid.UUID, current, next, confirm string) error {
 	if err := models.ValidateNewPassword(current, next, confirm); err != nil {
 		return err
 	}
-	user, err := store.GetUserByID(userID)
+	user, err := store.GetUserByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("change password: %w", err)
 	}
