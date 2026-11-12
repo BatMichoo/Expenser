@@ -97,28 +97,32 @@ func receiptItemSize(item models.ReceiptItem) (string, float64) {
 	return string(size.Unit), size.Per
 }
 
-// sizeGuess is what the size fields show for a product: the posted values
-// when a unit is already chosen, else the size read from the name.
-func sizeGuess(product, quantity, unit, unitSize string) (string, float64) {
-	if unit != "" {
-		return parseSizeFields(unit, unitSize)
+// sizeGuess is what the size fields show for a product. A size the user
+// chose (a unit set and not marked as guessed) is kept as posted; otherwise
+// the size is read from the name again, and cleared when none can be read, so
+// a stale guess never lingers. guessed tells whether the result is a guess.
+func sizeGuess(product, quantity, unit, unitSize, wasGuessed string) (string, float64, bool) {
+	if unit != "" && wasGuessed != "1" {
+		u, size := parseSizeFields(unit, unitSize)
+		return u, size, false
 	}
 	q, _ := strconv.ParseFloat(quantity, 64)
 	if size, ok := groceryunits.Parse(product, q); ok {
-		return string(size.Unit), size.Per
+		return string(size.Unit), size.Per, true
 	}
-	return "", 0
+	return "", 0, false
 }
 
-// GetSizeGuess re-renders the size fields as the product is typed.
+// GetSizeGuess re-renders the size fields as the product or quantity changes.
 func (h *GroceriesHandler) GetSizeGuess(c *gin.Context) error {
-	unit, size := sizeGuess(c.Query("product"), c.Query("quantity"), c.Query("unit"), c.Query("unit_size"))
+	unit, size, guessed := sizeGuess(c.Query("product"), c.Query("quantity"), c.Query("unit"), c.Query("unit_size"), c.Query("size_guessed"))
 	c.HTML(http.StatusOK, "size-fields", gin.H{
-		"Prefix": c.Query("prefix"),
-		"ID":     sizeFieldsID(c.Query("id")),
-		"Unit":   unit,
-		"Size":   size,
-		"Lang":   currentLang(c),
+		"Prefix":  c.Query("prefix"),
+		"ID":      sizeFieldsID(c.Query("id")),
+		"Unit":    unit,
+		"Size":    size,
+		"Guessed": guessed,
+		"Lang":    currentLang(c),
 	})
 	return nil
 }

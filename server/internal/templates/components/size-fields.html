@@ -1,6 +1,8 @@
 {{/* Unit and pack size of a grocery line. Prefix is "" or "items[3].". */}}
 {{ define "size-fields" }}
-<div class="size-fields qty-unit" id="{{ .ID }}">
+<div class="size-fields qty-unit" id="{{ .ID }}"
+  onchange="this.querySelector('[name$=size_guessed]').value=''">
+  <input type="hidden" name="{{ .Prefix }}size_guessed" value="{{ if .Guessed }}1{{ end }}" />
   <div>
     <label for="{{ .ID }}-unit">{{ T .Lang "trends.unit" }}</label>
     <select id="{{ .ID }}-unit" name="{{ .Prefix }}unit">

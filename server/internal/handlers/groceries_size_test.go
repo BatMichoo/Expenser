@@ -54,15 +54,33 @@ func TestParseGroceriesFormUnits(t *testing.T) {
 }
 
 func TestSizeGuess(t *testing.T) {
-	unit, size := sizeGuess("Мляко 1л", "1", "", "")
+	unit, size, guessed := sizeGuess("Мляко 1л", "1", "", "", "")
 	assert.Equal(t, "l", unit)
 	assert.Equal(t, 1.0, size)
+	assert.True(t, guessed)
 
-	unit, size = sizeGuess("Мляко 1л", "1", "pc", "6")
-	assert.Equal(t, "pc", unit, "posted values are kept")
+	unit, size, guessed = sizeGuess("Мляко 500мл", "1", "l", "1", "1")
+	assert.Equal(t, "l", unit)
+	assert.Equal(t, 0.5, size, "an earlier guess is replaced by the new one")
+	assert.True(t, guessed)
+
+	unit, size, guessed = sizeGuess("Нещо", "1", "l", "1", "1")
+	assert.Equal(t, "", unit, "a stale guess is cleared")
+	assert.Equal(t, 0.0, size)
+	assert.False(t, guessed)
+
+	unit, size, guessed = sizeGuess("Мляко 1л", "1", "pc", "6", "")
+	assert.Equal(t, "pc", unit, "a size the user chose is kept")
 	assert.Equal(t, 6.0, size)
+	assert.False(t, guessed)
 
-	unit, size = sizeGuess("Нещо", "1", "", "")
+	unit, size, _ = sizeGuess("Нещо", "1", "", "", "")
 	assert.Equal(t, "", unit)
 	assert.Equal(t, 0.0, size)
+}
+
+func TestParseFormIgnoresSizeGuessed(t *testing.T) {
+	e := parseGroceriesExpenseForm(formContext(url.Values{"product": {"Milk"}, "unit": {"l"}, "unit_size": {"1"}, "size_guessed": {"1"}}))
+	assert.Equal(t, "l", e.Unit)
+	assert.Equal(t, 1.0, e.UnitSize)
 }
