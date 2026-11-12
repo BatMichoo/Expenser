@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -62,8 +63,8 @@ var backfillErrors = []errorCase{
 func backfillError(err error) error { return mapError(err, backfillErrors) }
 
 // typeName checks the type belongs to the section and returns its name.
-func (h *BackfillHandler) typeName(section models.Section, typeID int) (string, error) {
-	types, err := h.db.GetSectionTypes(section)
+func (h *BackfillHandler) typeName(ctx context.Context, section models.Section, typeID int) (string, error) {
+	types, err := h.db.GetSectionTypes(ctx, section)
 	if err != nil {
 		return "", err
 	}
@@ -83,7 +84,7 @@ func (h *BackfillHandler) request(c *gin.Context, section models.Section) (servi
 	if err != nil {
 		return req, "", err
 	}
-	name, err := h.typeName(section, req.Expense.TypeID)
+	name, err := h.typeName(c.Request.Context(), section, req.Expense.TypeID)
 	return req, name, err
 }
 

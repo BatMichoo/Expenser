@@ -21,8 +21,8 @@ type TrendsStore interface {
 	GetGroceryLines(ctx context.Context, userID uuid.UUID, categoryID int, from, to time.Time) ([]models.GroceryLine, error)
 	CountUnsizedGroceries(ctx context.Context, userID uuid.UUID) (int, error)
 	GetTrackedCategories(ctx context.Context) ([]models.Category, error)
-	GetSectionTypes(s models.Section) ([]models.TypeOption, error)
-	GetAllCategories() ([]models.Category, error)
+	GetSectionTypes(ctx context.Context, s models.Section) ([]models.TypeOption, error)
+	GetAllCategories(ctx context.Context) ([]models.Category, error)
 }
 
 type TrendsService struct{ store TrendsStore }
@@ -336,7 +336,7 @@ func (s *TrendsService) Page(ctx context.Context, userID uuid.UUID, sec models.S
 
 	if groceries {
 		p.TypePrefix = "category."
-		cats, err := s.store.GetAllCategories()
+		cats, err := s.store.GetAllCategories(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -347,7 +347,7 @@ func (s *TrendsService) Page(ctx context.Context, userID uuid.UUID, sec models.S
 			return nil, err
 		}
 	} else {
-		types, err := s.store.GetSectionTypes(sec)
+		types, err := s.store.GetSectionTypes(ctx, sec)
 		if err != nil {
 			return nil, err
 		}

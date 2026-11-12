@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 	"time"
@@ -21,7 +22,7 @@ func setupUnitsTestDB(t *testing.T) (*DB, *models.User) {
 	t.Cleanup(func() { tdb.Close() })
 	ResetTestDB(tdb)
 	u := *TestUserRegisterModel
-	require.NoError(t, tdb.CreateUser(&u))
+	require.NoError(t, tdb.CreateUser(context.Background(), &u))
 	return tdb, &u
 }
 
@@ -149,38 +150,38 @@ func TestCreateGroceriesSizeStatus(t *testing.T) {
 		}
 	}
 	readBack := func(e *models.GroceriesExpense) *models.GroceriesExpense {
-		got, err := tdb.GetGroceriesExpenseByID(e.ID, u.ID)
+		got, err := tdb.GetGroceriesExpenseByID(context.Background(), e.ID, u.ID)
 		require.NoError(t, err)
 		return got
 	}
 
 	known := newExpense("Milk", "l", 1)
-	require.NoError(t, tdb.CreateGroceriesExpense(known))
+	require.NoError(t, tdb.CreateGroceriesExpense(context.Background(), known))
 	got := readBack(known)
 	assert.Equal(t, "l", got.Unit)
 	assert.Equal(t, 1.0, got.UnitSize)
 	assert.Equal(t, models.SizeKnown, got.SizeStatus)
 
 	plain := newExpense("Milk", "", 0)
-	require.NoError(t, tdb.CreateGroceriesExpense(plain))
+	require.NoError(t, tdb.CreateGroceriesExpense(context.Background(), plain))
 	got = readBack(plain)
 	assert.Equal(t, "", got.Unit)
 	assert.Equal(t, 0.0, got.UnitSize)
 	assert.Equal(t, models.SizeUnknown, got.SizeStatus)
 
 	other := newExpense("Other", "", 0)
-	require.NoError(t, tdb.CreateGroceriesExpense(other))
+	require.NoError(t, tdb.CreateGroceriesExpense(context.Background(), other))
 	assert.Equal(t, models.SizeNotTracked, readBack(other).SizeStatus)
 
 	plain.Unit, plain.UnitSize = "kg", 0.5
-	require.NoError(t, tdb.EditGroceriesExpense(plain, u.ID))
+	require.NoError(t, tdb.EditGroceriesExpense(context.Background(), plain, u.ID))
 	got = readBack(plain)
 	assert.Equal(t, "kg", got.Unit)
 	assert.Equal(t, 0.5, got.UnitSize)
 	assert.Equal(t, models.SizeKnown, got.SizeStatus)
 
 	// list read path scans the new columns too
-	list, err := tdb.GetGroceriesExpensesForMonth(time.Now().Month(), time.Now().Year(), u.ID)
+	list, err := tdb.GetGroceriesExpensesForMonth(context.Background(), time.Now().Month(), time.Now().Year(), u.ID)
 	require.NoError(t, err)
 	statuses := map[string]int{}
 	for _, e := range *list {
@@ -218,17 +219,17 @@ func TestCreateEditUnstorableSizeIsUnknown(t *testing.T) {
 	}
 	for _, size := range []float64{0, -1, 0.00001, 1e7} {
 		e.Unit, e.UnitSize = "kg", size
-		require.NoError(t, tdb.CreateGroceriesExpense(e), "size %v", size)
-		got, err := tdb.GetGroceriesExpenseByID(e.ID, u.ID)
+		require.NoError(t, tdb.CreateGroceriesExpense(context.Background(), e), "size %v", size)
+		got, err := tdb.GetGroceriesExpenseByID(context.Background(), e.ID, u.ID)
 		require.NoError(t, err)
 		assert.Equal(t, "", got.Unit)
 		assert.Equal(t, models.SizeUnknown, got.SizeStatus)
 	}
 	e.Unit, e.UnitSize = "l", 1
-	require.NoError(t, tdb.EditGroceriesExpense(e, u.ID))
+	require.NoError(t, tdb.EditGroceriesExpense(context.Background(), e, u.ID))
 	e.Unit, e.UnitSize = "l", 0
-	require.NoError(t, tdb.EditGroceriesExpense(e, u.ID))
-	got, err := tdb.GetGroceriesExpenseByID(e.ID, u.ID)
+	require.NoError(t, tdb.EditGroceriesExpense(context.Background(), e, u.ID))
+	got, err := tdb.GetGroceriesExpenseByID(context.Background(), e.ID, u.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "", got.Unit)
 	assert.Equal(t, models.SizeUnknown, got.SizeStatus)

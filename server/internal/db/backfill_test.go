@@ -19,9 +19,9 @@ func TestExpenseMonthsOfType(t *testing.T) {
 		typeID int
 		at     time.Time
 	}{{4, day(2026, 1, 20)}, {4, day(2026, 1, 25)}, {4, day(2026, 3, 2)}, {5, day(2026, 2, 20)}, {4, day(2025, 12, 20)}} {
-		require.NoError(t, db.CreateHouseExpense(&models.HouseExpense{UtilityTypeID: e.typeID, Amount: 15, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+		require.NoError(t, db.CreateHouseExpense(context.Background(), &models.HouseExpense{UtilityTypeID: e.typeID, Amount: 15, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
 	}
-	require.NoError(t, db.CreateCarExpense(&models.CarExpense{ExpenseTypeID: 4, Amount: 9, Date: day(2026, 2, 3), Metadata: []byte("{}"), CreatedBy: userID}))
+	require.NoError(t, db.CreateCarExpense(context.Background(), &models.CarExpense{ExpenseTypeID: 4, Amount: 9, Date: day(2026, 2, 3), Metadata: []byte("{}"), CreatedBy: userID}))
 
 	from, to := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local), time.Date(2026, 4, 1, 0, 0, 0, 0, time.Local)
 	got, err := db.ExpenseMonthsOfType(ctx, userID, models.SectionHouse, 4, from, to)
@@ -40,7 +40,7 @@ func TestCreateBackfillExpenses(t *testing.T) {
 	e := models.BackfillExpense{UserID: userID, Section: models.SectionHouse, TypeID: 4, Amount: 15, Discount: 1, Notes: "fiber"}
 	require.NoError(t, db.CreateBackfillExpenses(ctx, e, dates))
 
-	jan, err := db.GetHouseExpensesForMonth(time.January, 2026, userID)
+	jan, err := db.GetHouseExpensesForMonth(context.Background(), time.January, 2026, userID)
 	require.NoError(t, err)
 	require.Len(t, *jan, 1)
 	got := (*jan)[0]
@@ -53,14 +53,14 @@ func TestCreateBackfillExpenses(t *testing.T) {
 
 	carE := models.BackfillExpense{UserID: userID, Section: models.SectionCar, TypeID: 3, Amount: 50}
 	require.NoError(t, db.CreateBackfillExpenses(ctx, carE, []time.Time{day(2026, 5, 1)}))
-	may, err := db.GetCarExpensesForMonth(time.May, 2026, userID)
+	may, err := db.GetCarExpensesForMonth(context.Background(), time.May, 2026, userID)
 	require.NoError(t, err)
 	require.Len(t, *may, 1)
 	assert.Equal(t, 3, (*may)[0].ExpenseTypeID, "the month view's type filter needs the type id")
 
 	bad := models.BackfillExpense{UserID: userID, Section: models.SectionHouse, TypeID: 999, Amount: 1}
 	assert.Error(t, db.CreateBackfillExpenses(ctx, bad, []time.Time{day(2026, 6, 1), day(2026, 7, 1)}))
-	jun, err := db.GetHouseExpensesForMonth(time.June, 2026, userID)
+	jun, err := db.GetHouseExpensesForMonth(context.Background(), time.June, 2026, userID)
 	require.NoError(t, err)
 	assert.Empty(t, *jun, "all or nothing")
 }

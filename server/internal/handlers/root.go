@@ -56,7 +56,7 @@ func (h *RootHandler) GetRoot(c *gin.Context) error {
 
 // home builds the logged-in home page's cards.
 func (h *RootHandler) home(c *gin.Context) (*models.HomeView, error) {
-	user, err := h.DB.GetUserByID(currentUserID(c))
+	user, err := h.DB.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return nil, err
 	}
@@ -98,11 +98,11 @@ func (h *RootHandler) ChangeLanguage(c *gin.Context) error {
 
 	if claims := services.ClaimsFromContext(c); claims != nil {
 		userID := claims.UserID
-		_ = h.DB.UpdateUserLanguage(userID, lang)
+		_ = h.DB.UpdateUserLanguage(c.Request.Context(), userID, lang)
 
 		// If logged in, we should also regenerate the token to include the new language preference
 		// to avoid stale claims in the middleware.
-		user, err := h.DB.GetUserByID(userID)
+		user, err := h.DB.GetUserByID(c.Request.Context(), userID)
 		if err == nil {
 			token, err := h.AS.GenerateToken(user)
 			if err == nil {

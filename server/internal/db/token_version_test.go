@@ -20,8 +20,8 @@ func TestPasswordChangeRaisesTokenVersion(t *testing.T) {
 	ResetTestDB(testDB)
 
 	user := &models.User{Username: "versioned", PasswordHash: "h"}
-	require.NoError(t, testDB.CreateUser(user))
 	ctx := context.Background()
+	require.NoError(t, testDB.CreateUser(ctx, user))
 
 	v, err := testDB.TokenVersion(ctx, user.ID)
 	require.NoError(t, err)
@@ -32,10 +32,10 @@ func TestPasswordChangeRaisesTokenVersion(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, v)
 
-	got, err := testDB.GetUserByID(user.ID)
+	got, err := testDB.GetUserByID(ctx, user.ID)
 	require.NoError(t, err)
 	assert.Equal(t, 1, got.TokenVersion)
-	got, err = testDB.GetUserByUsername("versioned")
+	got, err = testDB.GetUserByUsername(ctx, "versioned")
 	require.NoError(t, err)
 	assert.Equal(t, 1, got.TokenVersion)
 

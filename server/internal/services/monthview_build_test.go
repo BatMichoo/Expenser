@@ -36,59 +36,59 @@ func (f *fakeMonthStore) spendHistory(section string, from, to time.Time) ([]mod
 	f.historySection, f.historyFrom, f.historyTo = section, from, to
 	return f.history, nil
 }
-func (f *fakeMonthStore) GetHouseSpendHistory(_ uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
+func (f *fakeMonthStore) GetHouseSpendHistory(_ context.Context, _ uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
 	return f.spendHistory("house", from, to)
 }
-func (f *fakeMonthStore) GetCarSpendHistory(_ uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
+func (f *fakeMonthStore) GetCarSpendHistory(_ context.Context, _ uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
 	return f.spendHistory("car", from, to)
 }
-func (f *fakeMonthStore) GetGroceriesSpendHistory(_ uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
+func (f *fakeMonthStore) GetGroceriesSpendHistory(_ context.Context, _ uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
 	return f.spendHistory("groceries", from, to)
 }
 
-func (f *fakeMonthStore) GetHouseExpensesForMonth(m time.Month, y int, _ uuid.UUID) (*[]models.HouseExpense, error) {
+func (f *fakeMonthStore) GetHouseExpensesForMonth(_ context.Context, m time.Month, y int, _ uuid.UUID) (*[]models.HouseExpense, error) {
 	f.gotMonth, f.gotYear = m, y
 	rows := append([]models.HouseExpense(nil), f.house...)
 	return &rows, nil
 }
-func (f *fakeMonthStore) GetHouseMonthlyTotals(_ uuid.UUID, from, to time.Time) (map[string]float64, error) {
+func (f *fakeMonthStore) GetHouseMonthlyTotals(_ context.Context, _ uuid.UUID, from, to time.Time) (map[string]float64, error) {
 	f.gotFrom, f.gotTo = from, to
 	return f.totals, nil
 }
-func (f *fakeMonthStore) GetHouseUtilityTypes() (*[]models.HomeUtilityType, error) {
+func (f *fakeMonthStore) GetHouseUtilityTypes(_ context.Context) (*[]models.HomeUtilityType, error) {
 	return &[]models.HomeUtilityType{{ID: 2, Name: "Water"}, {ID: 3, Name: "Gas"}}, nil
 }
-func (f *fakeMonthStore) GetCarExpensesForMonth(time.Month, int, uuid.UUID) (*[]models.CarExpense, error) {
+func (f *fakeMonthStore) GetCarExpensesForMonth(context.Context, time.Month, int, uuid.UUID) (*[]models.CarExpense, error) {
 	return &[]models.CarExpense{}, nil
 }
-func (f *fakeMonthStore) GetCarMonthlyTotals(uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
+func (f *fakeMonthStore) GetCarMonthlyTotals(context.Context, uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
 	return f.totals, nil
 }
-func (f *fakeMonthStore) GetCarExpenseTypes() (*[]models.CarExpenseType, error) {
+func (f *fakeMonthStore) GetCarExpenseTypes(_ context.Context) (*[]models.CarExpenseType, error) {
 	return &[]models.CarExpenseType{}, nil
 }
-func (f *fakeMonthStore) GetGroceriesExpensesForMonth(time.Month, int, uuid.UUID) (*[]models.GroceriesExpense, error) {
+func (f *fakeMonthStore) GetGroceriesExpensesForMonth(context.Context, time.Month, int, uuid.UUID) (*[]models.GroceriesExpense, error) {
 	rows := append([]models.GroceriesExpense(nil), f.groceries...)
 	return &rows, nil
 }
-func (f *fakeMonthStore) GetGroceriesMonthlyTotals(uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
+func (f *fakeMonthStore) GetGroceriesMonthlyTotals(context.Context, uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
 	return f.totals, nil
 }
-func (f *fakeMonthStore) GetHouseTypeTotals(_ uuid.UUID, from, to time.Time) (map[string]float64, error) {
+func (f *fakeMonthStore) GetHouseTypeTotals(_ context.Context, _ uuid.UUID, from, to time.Time) (map[string]float64, error) {
 	f.typeFrom, f.typeTo = from, to
 	return f.typeTotals, nil
 }
-func (f *fakeMonthStore) GetCarTypeTotals(uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
+func (f *fakeMonthStore) GetCarTypeTotals(context.Context, uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
 	return f.typeTotals, nil
 }
-func (f *fakeMonthStore) GetGroceriesCategoryTotals(uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
+func (f *fakeMonthStore) GetGroceriesCategoryTotals(context.Context, uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
 	return f.typeTotals, nil
 }
 func (f *fakeMonthStore) GetUpcomingRecurringPayments(_ context.Context, _ uuid.UUID, until time.Time) ([]models.RecurringPayment, error) {
 	f.upcomingUntil = until
 	return f.bills, nil
 }
-func (f *fakeMonthStore) GetAllCategories() ([]models.Category, error) {
+func (f *fakeMonthStore) GetAllCategories(_ context.Context) ([]models.Category, error) {
 	return []models.Category{{ID: 1, Name: "Meat"}, {ID: 2, Name: "Dairy"}}, nil
 }
 
@@ -113,7 +113,7 @@ func TestHouseMonthView(t *testing.T) {
 	store := newMonthStore()
 	svc := NewMonthViewService(store)
 
-	v, err := svc.House(uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	v, err := svc.House(context.Background(), uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 
 	assert.Equal(t, time.November, store.gotMonth)
@@ -161,12 +161,12 @@ func TestMonthViewEstimatePerSection(t *testing.T) {
 	store := newMonthStore()
 	svc := NewMonthViewService(store)
 
-	car, err := svc.Car(uuid.New(), ym, MonthFilter{}, "en", now)
+	car, err := svc.Car(context.Background(), uuid.New(), ym, MonthFilter{}, "en", now)
 	require.NoError(t, err)
 	assert.Equal(t, "car", store.historySection)
 	assert.True(t, car.HasEstimate)
 
-	groceries, err := svc.Groceries(uuid.New(), ym, MonthFilter{}, "en", now)
+	groceries, err := svc.Groceries(context.Background(), uuid.New(), ym, MonthFilter{}, "en", now)
 	require.NoError(t, err)
 	assert.Equal(t, "groceries", store.historySection)
 	assert.True(t, groceries.HasEstimate)
@@ -175,7 +175,7 @@ func TestMonthViewEstimatePerSection(t *testing.T) {
 func TestPastMonthHasNoEstimate(t *testing.T) {
 	require.NoError(t, utilities.InitI18n())
 	store := newMonthStore()
-	v, err := NewMonthViewService(store).House(uuid.New(), YearMonth{2026, time.October}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	v, err := NewMonthViewService(store).House(context.Background(), uuid.New(), YearMonth{2026, time.October}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	assert.False(t, v.HasEstimate)
 	assert.True(t, store.historyFrom.IsZero(), "no history query for a past month")
@@ -186,18 +186,18 @@ func TestHouseMonthViewFilters(t *testing.T) {
 	now := time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC)
 	svc := NewMonthViewService(newMonthStore())
 
-	v, err := svc.House(uuid.New(), YearMonth{2026, time.November}, MonthFilter{TypeID: 3}, "en", now)
+	v, err := svc.House(context.Background(), uuid.New(), YearMonth{2026, time.November}, MonthFilter{TypeID: 3}, "en", now)
 	require.NoError(t, err)
 	assert.Len(t, v.House, 2, "type filter")
 	assert.InDelta(t, 120, v.Summary.Total, 0.001, "KPIs ignore filters")
 	assert.True(t, v.Filtered)
 
-	v, err = svc.House(uuid.New(), YearMonth{2026, time.November}, MonthFilter{Query: "METER"}, "en", now)
+	v, err = svc.House(context.Background(), uuid.New(), YearMonth{2026, time.November}, MonthFilter{Query: "METER"}, "en", now)
 	require.NoError(t, err)
 	require.Len(t, v.House, 1)
 	assert.Equal(t, 1, v.House[0].ID)
 
-	v, err = svc.House(uuid.New(), YearMonth{2026, time.November}, MonthFilter{Query: "вода"}, "bg", now)
+	v, err = svc.House(context.Background(), uuid.New(), YearMonth{2026, time.November}, MonthFilter{Query: "вода"}, "bg", now)
 	require.NoError(t, err)
 	require.Len(t, v.House, 1, "matches the Bulgarian type name")
 	assert.Equal(t, 2, v.House[0].ID)
@@ -211,7 +211,7 @@ func TestGroceriesMonthViewUsesNetAmounts(t *testing.T) {
 			{ID: 2, CategoryID: 2, CategoryName: "Dairy", Product: "Milk", TotalPrice: 3},
 		},
 	}
-	v, err := NewMonthViewService(store).Groceries(uuid.New(), YearMonth{2026, time.October}, MonthFilter{Query: "lidl"}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	v, err := NewMonthViewService(store).Groceries(context.Background(), uuid.New(), YearMonth{2026, time.October}, MonthFilter{Query: "lidl"}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	assert.InDelta(t, 11, v.Summary.Total, 0.001, "price minus discount")
 	assert.Equal(t, "Meat", v.Summary.TopType)
@@ -232,7 +232,7 @@ func TestHouseMonthViewUpcomingBills(t *testing.T) {
 	now := time.Date(2026, 11, 10, 15, 0, 0, 0, time.UTC)
 	svc := NewMonthViewService(store)
 
-	v, err := svc.House(uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", now)
+	v, err := svc.House(context.Background(), uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", now)
 	require.NoError(t, err)
 	assert.Equal(t, time.Date(2026, 12, 10, 0, 0, 0, 0, time.UTC), store.upcomingUntil, "next 30 days")
 	require.Len(t, v.UpcomingBills, 2, "house bills only")
@@ -241,7 +241,7 @@ func TestHouseMonthViewUpcomingBills(t *testing.T) {
 	assert.Equal(t, "Fiber", v.UpcomingBills[1].Payment.Name)
 	assert.Equal(t, 4, v.UpcomingBills[1].DaysLeft)
 
-	past, err := svc.House(uuid.New(), YearMonth{2026, time.October}, MonthFilter{}, "en", now)
+	past, err := svc.House(context.Background(), uuid.New(), YearMonth{2026, time.October}, MonthFilter{}, "en", now)
 	require.NoError(t, err)
 	assert.Empty(t, past.UpcomingBills, "only on the current month")
 }
@@ -253,7 +253,7 @@ func TestHouseMonthViewSubtractsDiscounts(t *testing.T) {
 		{ID: 1, UtilityTypeID: 3, UtilityType: "Gas", Amount: 85, DiscountAmount: 5},
 		{ID: 2, UtilityTypeID: 2, UtilityType: "Water", Amount: 20},
 	}
-	v, err := NewMonthViewService(store).House(uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	v, err := NewMonthViewService(store).House(context.Background(), uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	assert.InDelta(t, 100, v.Summary.Total, 0.001, "85 - 5 + 20")
 }
@@ -268,7 +268,7 @@ func TestGroceriesEstimateIgnoresCategories(t *testing.T) {
 			store.history = append(store.history, spend(cat, back, 20, 100))
 		}
 	}
-	v, err := NewMonthViewService(store).Groceries(uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	v, err := NewMonthViewService(store).Groceries(context.Background(), uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	require.True(t, v.HasEstimate)
 	assert.InDelta(t, 100, v.Estimate, 0.001)
@@ -286,7 +286,7 @@ func TestGroceriesBreakdownColoursByRank(t *testing.T) {
 			ID: i + 1, CategoryID: 10 + i, CategoryName: n, Product: n, TotalPrice: float64(100 - i*10)})
 	}
 	store.groceries = append(store.groceries, models.GroceriesExpense{ID: 99, CategoryID: 99, CategoryName: "Other", Product: "x", TotalPrice: 95})
-	v, err := NewMonthViewService(store).Groceries(uuid.New(), YearMonth{2026, time.October}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	v, err := NewMonthViewService(store).Groceries(context.Background(), uuid.New(), YearMonth{2026, time.October}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	got := map[string]int{}
 	for _, b := range v.Breakdown {
@@ -299,7 +299,7 @@ func TestHouseBreakdownKeepsTypeColours(t *testing.T) {
 	require.NoError(t, utilities.InitI18n())
 	store := newMonthStore()
 	store.house = []models.HouseExpense{{ID: 1, UtilityTypeID: 3, UtilityType: "Gas", Amount: 85}}
-	v, err := NewMonthViewService(store).House(uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	v, err := NewMonthViewService(store).House(context.Background(), uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	require.NotEmpty(t, v.Breakdown)
 	assert.Equal(t, 3, v.Breakdown[0].Color)

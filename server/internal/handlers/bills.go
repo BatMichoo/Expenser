@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"expenser/internal/models"
@@ -217,11 +218,11 @@ type billFormData struct {
 }
 
 // typesFor lists a bill category's types; anything but car means house.
-func (h *BillsHandler) typesFor(category string) ([]models.TypeOption, error) {
+func (h *BillsHandler) typesFor(ctx context.Context, category string) ([]models.TypeOption, error) {
 	if models.Section(category) == models.SectionCar {
-		return h.BaseHandler.DB.GetSectionTypes(models.SectionCar)
+		return h.BaseHandler.DB.GetSectionTypes(ctx, models.SectionCar)
 	}
-	return h.BaseHandler.DB.GetSectionTypes(models.SectionHouse)
+	return h.BaseHandler.DB.GetSectionTypes(ctx, models.SectionHouse)
 }
 
 func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEdit bool) (*billFormData, error) {
@@ -229,7 +230,7 @@ func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEd
 	if category == "" {
 		category = string(models.SectionHouse)
 	}
-	types, err := h.typesFor(category)
+	types, err := h.typesFor(c.Request.Context(), category)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +239,7 @@ func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEd
 		Bill: p, IsEdit: isEdit, Types: types, Category: category,
 		Options: map[string]bool{}, KnownOptions: knownPaymentOptions, Lang: currentLang(c),
 	}
-	if user, err := h.BaseHandler.DB.GetUserByID(currentUserID(c)); err == nil {
+	if user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c)); err == nil {
 		d.UserEmail = user.Email
 	}
 	if p.UtilityTypeID != nil {
@@ -287,7 +288,7 @@ func newBill(category string, defaults models.ReminderDefaults, now time.Time) *
 // GetNewBillForm renders the add form, pre-filled with the user's reminder
 // defaults (house by default).
 func (h *BillsHandler) GetNewBillForm(c *gin.Context) error {
-	user, err := h.BaseHandler.DB.GetUserByID(currentUserID(c))
+	user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -303,7 +304,7 @@ func (h *BillsHandler) GetNewBillForm(c *gin.Context) error {
 // GetBillTypes swaps the type chips when the House/Car switch changes.
 func (h *BillsHandler) GetBillTypes(c *gin.Context) error {
 	category := c.Query("category")
-	types, err := h.typesFor(category)
+	types, err := h.typesFor(c.Request.Context(), category)
 	if err != nil {
 		return err
 	}

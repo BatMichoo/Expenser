@@ -68,7 +68,7 @@ func accountError(err error) error { return mapError(err, accountErrors) }
 // GetAccountForm opens the Account panel: name, reminder email and the
 // reminder defaults for new bills.
 func (h *SettingsHandler) GetAccountForm(c *gin.Context) error {
-	user, err := h.BaseHandler.DB.GetUserByID(currentUserID(c))
+	user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (h *SettingsHandler) ChangePassword(c *gin.Context) error {
 		return passwordError(err)
 	}
 	// The change logged out every login, this one included: issue a new one.
-	user, err := h.BaseHandler.DB.GetUserByID(currentUserID(c))
+	user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return fmt.Errorf("reload user after password change: %w", err)
 	}
@@ -144,7 +144,7 @@ func (h *SettingsHandler) SendTestEmail(c *gin.Context) error {
 		renderError(c, http.StatusServiceUnavailable, utilities.T(lang, "settings.test_failed"), utilities.T(lang, "settings.smtp_not_configured"))
 		return nil
 	}
-	user, err := h.BaseHandler.DB.GetUserByID(currentUserID(c))
+	user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}
