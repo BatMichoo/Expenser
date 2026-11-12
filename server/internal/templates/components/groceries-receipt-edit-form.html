@@ -3,6 +3,7 @@
 <div class="sheet">
   {{ template "sheet-heading" (dict "Title" (or .Store (T .Lang "receipt.store_unknown")) "Lang" .Lang) }}
   <form class="new-expense-form receipt-review-form" hx-post="/groceries/confirm-batch" hx-target="#recent-expenses"
+    hx-disabled-elt="find button[type='submit']"
     hx-swap="afterbegin" hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
     <p class="receipt-summary">
       <strong>{{ printf (T .Lang "receipt.items") (len .Items) }} · {{ money .Total }}</strong>

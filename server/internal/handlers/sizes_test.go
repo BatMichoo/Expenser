@@ -17,6 +17,7 @@ import (
 	"expenser/internal/services/gemini"
 	"expenser/internal/utilities"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -113,10 +114,11 @@ func TestSaveSizeOK(t *testing.T) {
 	assert.Equal(t, 5, store.setID)
 	assert.Equal(t, "l", store.setUnit)
 	assert.Equal(t, 1.0, store.setSize)
-	assert.Equal(t, "sizes-changed", w.Header().Get("HX-Trigger"))
+	assert.Empty(t, w.Header().Get("HX-Trigger"), "nothing listens for an event")
 	assert.Contains(t, w.Body.String(), `id="unsized-count"`)
 	assert.Contains(t, w.Body.String(), `hx-swap-oob="true"`)
 	assert.Contains(t, w.Body.String(), "2")
+	assert.NotContains(t, w.Body.String(), `id="sizes-body"`, "rows left: the list stays")
 }
 
 func TestSkipSize(t *testing.T) {
@@ -125,11 +127,25 @@ func TestSkipSize(t *testing.T) {
 	w := sizesCall(t, store, user, "POST", "/groceries/sizes/7/skip", nil)
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, 7, store.skipped)
-	assert.Equal(t, "sizes-changed", w.Header().Get("HX-Trigger"))
-	assert.Contains(t, w.Body.String(), `id="unsized-count"`)
+	assert.Empty(t, w.Header().Get("HX-Trigger"))
 
 	w = sizesCall(t, store, uuid.New(), "POST", "/groceries/sizes/7/skip", nil)
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// After the last row is saved or skipped, the list body is swapped out of
+// band for the empty state, which drops the Suggest button.
+func TestLastRowDoneShowsEmptyState(t *testing.T) {
+	user := uuid.New()
+	store := &fakeSizesStore{owner: user}
+	w := sizesCall(t, store, user, "POST", "/groceries/sizes/7/skip", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(w.Body.String()))
+	require.NoError(t, err)
+	body := doc.Find(`#sizes-body[hx-swap-oob="true"]`)
+	require.Equal(t, 1, body.Length(), w.Body.String())
+	assert.Contains(t, body.Find(".sizes-empty").Text(), utilities.T("en", "sizes.all_sized"))
+	assert.Equal(t, 0, doc.Find(".sizes-suggest").Length())
 }
 
 func TestGetSizes(t *testing.T) {
@@ -184,6 +200,36 @@ func TestSuggestPrefillsWithoutSaving(t *testing.T) {
 	assert.Equal(t, 1, strings.Count(w.Body.String(), `class="size-suggested"`), w.Body.String())
 }
 
+// Rows the parser already sized keep that size and are not sent to the AI.
+func TestSuggestOnlyAsksRowsWithoutParserSize(t *testing.T) {
+	store := &fakeSizesStore{owner: uuid.New(), rows: []models.GroceriesExpense{
+		{ID: 1, Product: "Мляко 1л", Quantity: 1}, {ID: 2, Product: "Нещо", Quantity: 1}}}
+	ai := &fakeSuggester{out: []gemini.SizeSuggestion{{Unit: "kg", UnitSize: 0.5}}}
+	w := suggestCall(t, store, ai)
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, []string{"Нещо"}, ai.got)
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(w.Body.String()))
+	require.NoError(t, err)
+	parsed := doc.Find("#size-row-1")
+	v, _ := parsed.Find(`input[name="unit_size"]`).Attr("value")
+	assert.Equal(t, "1", v)
+	u, _ := parsed.Find(`select[name="unit"] option[selected]`).Attr("value")
+	assert.Equal(t, "l", u)
+	assert.Equal(t, 0, parsed.Find(".size-suggested").Length())
+	guessed := doc.Find("#size-row-2")
+	v, _ = guessed.Find(`input[name="unit_size"]`).Attr("value")
+	assert.Equal(t, "0.5", v)
+	assert.Equal(t, 1, guessed.Find(".size-suggested").Length())
+}
+
+func TestSuggestAllParsedSkipsAI(t *testing.T) {
+	ai := &fakeSuggester{}
+	store := &fakeSizesStore{owner: uuid.New(), rows: []models.GroceriesExpense{{ID: 1, Product: "Мляко 1л", Quantity: 1}}}
+	w := suggestCall(t, store, ai)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Nil(t, ai.got)
+}
+
 func TestSuggestErrorShown(t *testing.T) {
 	store := &fakeSizesStore{owner: uuid.New(), rows: []models.GroceriesExpense{{ID: 1, Product: "Мляко"}}}
 	w := suggestCall(t, store, &fakeSuggester{err: gemini.ErrNotConfigured})
@@ -193,7 +239,8 @@ func TestSuggestErrorShown(t *testing.T) {
 }
 
 func TestSuggestAsksAtMostLimitAndNotes(t *testing.T) {
-	var rows []models.GroceriesExpense
+	// Parser-sized rows do not count against the limit.
+	rows := []models.GroceriesExpense{{ID: 100, Product: "Мляко 1л", Quantity: 1}, {ID: 101, Product: "Вода 0,5л", Quantity: 1}}
 	for i := 1; i <= 45; i++ {
 		rows = append(rows, models.GroceriesExpense{ID: i, Product: fmt.Sprintf("P%d", i)})
 	}

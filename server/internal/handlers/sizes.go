@@ -90,8 +90,9 @@ func (h *SizesHandler) GetSizes(c *gin.Context) error {
 	return nil
 }
 
-// Suggest asks the AI for the size of every listed product and shows the
-// list with the guesses filled in. Nothing is saved: each row still needs
+// Suggest asks the AI for the size of each listed product the name does not
+// already give (up to suggestLimit) and shows the list with the guesses
+// filled in. Nothing is saved: each row still needs
 // its Save. A failed guess shows the list as it was, with the reason.
 func (h *SizesHandler) Suggest(c *gin.Context) error {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), suggestTimeout)
@@ -105,10 +106,22 @@ func (h *SizesHandler) Suggest(c *gin.Context) error {
 		h.render(c, rows, "", "")
 		return nil
 	}
-	asked := min(len(rows), suggestLimit)
+	// Only rows the parser could not size are asked about: a size read from
+	// the name is certain and the AI never overwrites it.
+	var need []int
+	for i, r := range rows {
+		if r.Unit == "" {
+			need = append(need, i)
+		}
+	}
+	if len(need) == 0 {
+		h.render(c, rows, "", "")
+		return nil
+	}
+	asked := min(len(need), suggestLimit)
 	names := make([]string, asked)
-	for i, e := range expenses[:asked] {
-		names[i] = e.Product
+	for i, ri := range need[:asked] {
+		names[i] = rows[ri].Expense.Product
 	}
 	suggestions, err := h.ai.SuggestSizes(ctx, names)
 	if err != nil {
@@ -122,12 +135,13 @@ func (h *SizesHandler) Suggest(c *gin.Context) error {
 		return nil
 	}
 	for i, s := range suggestions {
-		if i < len(rows) && s.Unit != "" {
-			rows[i].Unit, rows[i].Size, rows[i].Suggested = s.Unit, s.UnitSize, true
+		if i < asked && s.Unit != "" {
+			r := &rows[need[i]]
+			r.Unit, r.Size, r.Suggested = s.Unit, groceryunits.Round4(s.UnitSize), true
 		}
 	}
 	note := ""
-	if len(rows) > asked {
+	if len(need) > asked {
 		note = fmt.Sprintf(utilities.T(currentLang(c), "sizes.suggest_limited"), asked)
 	}
 	h.render(c, rows, "", note)
@@ -164,13 +178,17 @@ func (h *SizesHandler) SkipSize(c *gin.Context) error {
 }
 
 // rowDone answers a save or skip: the row's swap gets no content (so it is
-// removed) and the count is updated out of band.
+// removed) and the count is updated out of band. After the last row the
+// whole list body is swapped for the empty state instead.
 func (h *SizesHandler) rowDone(c *gin.Context) error {
 	n, err := h.store.CountUnsizedGroceries(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}
-	c.Header("HX-Trigger", "sizes-changed")
+	if n == 0 {
+		c.HTML(http.StatusOK, "sizes-body-oob", &models.SizesPage{Lang: currentLang(c)})
+		return nil
+	}
 	c.HTML(http.StatusOK, "unsized-count-oob", gin.H{"Count": n, "Lang": currentLang(c)})
 	return nil
 }

@@ -2,7 +2,6 @@ package utilities
 
 import (
 	"bytes"
-	"expenser/internal/chart"
 	"expenser/internal/groceryunits"
 	"fmt"
 	"html/template"
@@ -36,8 +35,6 @@ func ParseTemplates(glob string) (*template.Template, error) {
 // TemplateFuncs returns the functions available to every HTML template.
 func TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
-		// cat maps a list position to one of the 6 categorical colours
-		// (cat-1 … cat-6) used for per-type charts.
 		// deref reads an optional amount (callers check it is set).
 		"deref": func(v *float64) float64 {
 			if v == nil {
@@ -60,7 +57,6 @@ func TemplateFuncs() template.FuncMap {
 		"neg": func(v float64) float64 {
 			return -v
 		},
-		"typeColor": chart.TypeColor,
 		// pct is part as a percentage of whole, clamped to 0–100 for bars.
 		"pct": func(part, whole float64) float64 {
 			if whole <= 0 {
