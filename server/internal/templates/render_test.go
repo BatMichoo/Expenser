@@ -1345,3 +1345,28 @@ func TestTrendLegend(t *testing.T) {
 	assert.Equal(t, 1, doc.Find(".legend-swatch.cat-1").Length())
 	assert.Equal(t, 1, doc.Find(".legend-swatch.dashed").Length())
 }
+
+func TestSvgA11yAndHitTargets(t *testing.T) {
+	f := func(v float64) *float64 { return &v }
+	p := chart.Price(chart.DefaultFrame, []string{"Jan", "Feb", "Mar"},
+		[]*float64{f(2), f(3), f(2.5)}, []*float64{f(1.5), f(2), f(2)},
+		[]*float64{f(2.5), f(3.5), f(3)}, []*float64{f(1.8), nil, f(2.2)}, []float64{4, 0, 6})
+	doc := parseHTML(t, render(t, "svg-price", map[string]any{"Chart": p, "Lang": "en", "Unit": "kg"}))
+	assert.Equal(t, 0, doc.Find(`svg[role="img"]`).Length())
+	hits := doc.Find("g.hit")
+	require.Equal(t, 3, hits.Length())
+	hits.Each(func(_ int, g *goquery.Selection) {
+		v, _ := g.Attr("tabindex")
+		assert.Equal(t, "0", v)
+		assert.Equal(t, 1, g.Find("circle.hit-area").Length())
+	})
+	assert.Contains(t, hits.Eq(0).Find("title").Text(), "(shelf: 1.80)")
+	assert.NotContains(t, hits.Eq(1).Find("title").Text(), "shelf")
+	assert.Contains(t, hits.Eq(2).Find("title").Text(), "(shelf: 2.20)")
+
+	b := chart.Stacked(chart.DefaultFrame, []string{"Jan"}, []chart.Series{{Name: "Food", Color: 1, Values: []float64{5}}})
+	bd := parseHTML(t, render(t, "svg-bars", map[string]any{"Chart": b, "Lang": "en", "Unit": ""}))
+	assert.Equal(t, 0, bd.Find(`svg[role="img"]`).Length())
+	v, _ := bd.Find("g.hit").Attr("tabindex")
+	assert.Equal(t, "0", v)
+}

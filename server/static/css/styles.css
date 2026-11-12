@@ -4246,7 +4246,6 @@ tr:hover .row-actions,
 }
 
 /* Trends */
-.cat-0 { --cat: var(--cat-0); }
 
 .trend-svg {
   display: block;
@@ -4364,4 +4363,8 @@ tr:hover .row-actions,
   border-radius: 0;
   background: none;
   border-top: 2px dashed var(--text-muted);
+}
+
+.trend-svg .hit-area {
+  fill: transparent;
 }
