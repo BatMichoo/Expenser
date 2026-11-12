@@ -118,6 +118,17 @@ func TestPriceGaps(t *testing.T) {
 	assert.Equal(t, "c", p.Low.Label)
 	assert.Equal(t, 3, len(p.Labels))
 	assert.NotEmpty(t, p.Band)
+	// y grows downward: higher price means smaller Y.
+	assert.Less(t, p.Avg[1][0].Y, p.Avg[0][0].Y)
+	var tickY float64
+	found := false
+	for _, tk := range p.Ticks {
+		if math.Abs(tk.Value-1.2) < 1e-9 {
+			tickY, found = tk.Y, true
+		}
+	}
+	require.True(t, found, "1.2 should be a tick")
+	assert.InDelta(t, tickY, p.Avg[0][0].Y, 1e-9)
 	assert.InDelta(t, 6, p.QtyMax, 1e-9)
 	require.Len(t, p.Qty, 2)
 	assert.Equal(t, 3, p.Qty[0].Color)
@@ -141,4 +152,82 @@ func TestPriceSingleValue(t *testing.T) {
 func TestPolylinePoints(t *testing.T) {
 	p := Polyline{{X: 10, Y: 20.5}, {X: 30, Y: 40}}
 	assert.Equal(t, "10.0,20.5 30.0,40.0", p.Points())
+}
+
+func TestPriceBand(t *testing.T) {
+	p := Price(DefaultFrame, []string{"a", "b", "c", "d"},
+		[]*float64{fp(1.5), nil, nil, nil},
+		[]*float64{fp(1), nil, fp(1), nil},
+		[]*float64{fp(2), fp(2), fp(2), nil},
+		nil, nil)
+	// hi left to right, then lo right to left; b (no lo) and d (none) skipped.
+	assert.Equal(t, "121.0,12.0 413.0,12.0 413.0,232.0 121.0,232.0", p.Band)
+}
+
+func TestPriceNonFinite(t *testing.T) {
+	nan, inf := math.NaN(), math.Inf(1)
+	p := Price(DefaultFrame, []string{"a", "b", "c"},
+		[]*float64{&nan, fp(1), &inf},
+		[]*float64{&nan, nil, &inf},
+		[]*float64{&inf, nil, nil},
+		[]*float64{&nan, nil, nil},
+		[]float64{inf, nan, 2})
+	for _, tk := range p.Ticks {
+		noNaN(t, tk.Y, tk.Value)
+	}
+	for _, l := range p.Avg {
+		for _, pt := range l {
+			noNaN(t, pt.X, pt.Y, pt.Value, pt.Shelf)
+		}
+	}
+	for _, r := range p.Qty {
+		noNaN(t, r.X, r.Y, r.W, r.H)
+	}
+	noNaN(t, p.QtyMax)
+	allBad := Price(DefaultFrame, []string{"a"}, []*float64{&nan}, []*float64{&inf}, []*float64{&nan}, nil, nil)
+	assert.True(t, allBad.Empty)
+}
+
+func TestStackedInf(t *testing.T) {
+	inf := math.Inf(1)
+	for _, b := range []Bars{
+		Stacked(DefaultFrame, []string{"a", "b"}, []Series{{Values: []float64{inf, 5}}}),
+		Grouped(DefaultFrame, []string{"a", "b"}, []Series{{Values: []float64{inf, 5}}}),
+	} {
+		for _, tk := range b.Ticks {
+			noNaN(t, tk.Y, tk.Value)
+		}
+		for _, c := range b.Columns {
+			noNaN(t, c.X, c.Total)
+			for _, r := range c.Rects {
+				noNaN(t, r.X, r.Y, r.W, r.H, r.Value)
+			}
+		}
+	}
+}
+
+func TestGroupedGeometry(t *testing.T) {
+	f := DefaultFrame
+	b := Grouped(f, []string{"a", "b"}, []Series{
+		{Name: "A", Color: 1, Values: []float64{10, 5}},
+		{Name: "B", Color: 2, Values: []float64{30, 20}},
+	})
+	slot := f.PlotW() / 2
+	bw := slot * 0.8 / 2
+	top := b.Ticks[len(b.Ticks)-1].Value
+	for ci, c := range b.Columns {
+		slotL := f.Left + slot*float64(ci)
+		for ri, r := range c.Rects {
+			assert.InDelta(t, bw, r.W, 1e-9)
+			assert.InDelta(t, r.Value/top*f.PlotH(), r.H, 1e-9)
+			assert.GreaterOrEqual(t, r.X, slotL-1e-9)
+			assert.LessOrEqual(t, r.X+r.W, slotL+slot+1e-9)
+			assert.Equal(t, ri+1, r.Color)
+			assert.Equal(t, []string{"A", "B"}[ri], r.Name)
+		}
+	}
+	// exact: column 0 starts at slot left + 10% gap
+	assert.InDelta(t, f.Left+slot*0.1, b.Columns[0].Rects[0].X, 1e-9)
+	assert.InDelta(t, f.Left+slot*0.1+bw, b.Columns[0].Rects[1].X, 1e-9)
+	assert.InDelta(t, 10.0/30.0, b.Columns[0].Rects[0].H/b.Columns[0].Rects[1].H, 1e-9)
 }

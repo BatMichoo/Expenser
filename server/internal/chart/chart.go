@@ -5,6 +5,7 @@ package chart
 
 import (
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -61,7 +62,7 @@ type Bars struct {
 }
 
 func clamp(v float64) float64 {
-	if v < 0 || v != v {
+	if v < 0 || math.IsNaN(v) || math.IsInf(v, 0) {
 		return 0
 	}
 	return v
@@ -202,7 +203,7 @@ type PriceChart struct {
 // All slices are indexed by period; nil entries are gaps.
 func Price(f Frame, labels []string, avg, lo, hi, shelf []*float64, qty []float64) PriceChart {
 	at := func(s []*float64, i int) *float64 {
-		if i < len(s) {
+		if i < len(s) && s[i] != nil && !math.IsNaN(*s[i]) && !math.IsInf(*s[i], 0) {
 			return s[i]
 		}
 		return nil
