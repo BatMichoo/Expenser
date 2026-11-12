@@ -1,5 +1,7 @@
 {{ define "svg-bars" }}
-{{ $c := .Chart }}{{ $lang := .Lang }}{{ $f := $c.Frame }}
+{{/* Prefix (optional) translates series names: T Lang (Prefix + Name).
+     Colour-0 series are already translated and shown as they are. */}}
+{{ $c := .Chart }}{{ $lang := .Lang }}{{ $prefix := .Prefix }}{{ $f := $c.Frame }}
 {{ if $c.Empty }}
 <p class="trend-empty">{{ T $lang "trends.no_data" }}</p>
 {{ else }}
@@ -11,7 +13,7 @@
   {{ range $c.Columns }}
   <text class="col-label{{ if .Current }} current{{ end }}" x="{{ printf "%.1f" .X }}" y="{{ printf "%.1f" (sub $f.H 8.0) }}" text-anchor="middle">{{ .Label }}</text>
   <g class="hit" tabindex="0">
-    <title>{{ .Label }}{{ range .Rects }}&#10;{{ .Name }}: {{ money .Value }}{{ end }}&#10;{{ money .Total }}</title>
+    <title>{{ .Label }}{{ range .Rects }}&#10;{{ if and $prefix .Color }}{{ T $lang (print $prefix .Name) }}{{ else }}{{ .Name }}{{ end }}: {{ money .Value }}{{ end }}&#10;{{ money .Total }}</title>
     {{ range .Rects }}<rect class="fill-cat-{{ .Color }}" x="{{ printf "%.1f" .X }}" y="{{ printf "%.1f" .Y }}" width="{{ printf "%.1f" .W }}" height="{{ printf "%.1f" .H }}"/>
     {{ end }}
     <text class="value-label" x="{{ printf "%.1f" .X }}" y="{{ printf "%.1f" (sub $f.Top 2.0) }}" text-anchor="middle">{{ rough .Total }}</text>
@@ -47,9 +49,10 @@
 {{ end }}
 {{ end }}
 
+{{/* Items: []LegendItem. Prefix (optional) translates names like svg-bars. */}}
 {{ define "trend-legend" }}
 <ul class="trend-legend">
-  {{ range .Items }}<li><span class="legend-swatch cat-{{ .Color }}{{ if .Dashed }} dashed{{ end }}"></span>{{ .Name }}</li>
+  {{ range .Items }}<li><span class="legend-swatch cat-{{ .Color }}{{ if .Dashed }} dashed{{ end }}"></span>{{ if and $.Prefix .Color }}{{ T $.Lang (print $.Prefix .Name) }}{{ else }}{{ .Name }}{{ end }}</li>
   {{ end }}
 </ul>
 {{ end }}

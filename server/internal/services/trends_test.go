@@ -302,3 +302,32 @@ func TestYearTabUsesSoFarWindowForDiscounts(t *testing.T) {
 	require.Contains(t, st.totals, wantA)
 	require.Contains(t, st.totals, wantB)
 }
+
+type rowsTrendsStore struct{ fakeTrendsStore }
+
+func (rowsTrendsStore) GetMonthTypeTotals(_ context.Context, _ uuid.UUID, _ models.Section, from, _ time.Time) ([]models.MonthTypeTotal, error) {
+	if from.Year() < 2025 {
+		return nil, nil
+	}
+	return []models.MonthTypeTotal{{Month: "2026-10", TypeID: 1, Type: "Rent", Amount: 120}}, nil
+}
+
+func TestPageMonthLegendHasAverage(t *testing.T) {
+	initI18n(t)
+	now := models.Date(2026, 11, 12)
+	p, err := NewTrendsService(rowsTrendsStore{}).Page(context.Background(), uuid.New(), models.SectionHouse, models.TrendQuery{}, "en", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := p.Month.Legend
+	if len(l) != 2 || l[0].Name != "Rent" || !l[1].Dashed || l[1].Color != 0 || l[1].Name != "Monthly average" {
+		t.Errorf("legend %+v", l)
+	}
+	empty, err := NewTrendsService(fakeTrendsStore{}).Page(context.Background(), uuid.New(), models.SectionHouse, models.TrendQuery{}, "en", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(empty.Month.Legend) != 0 {
+		t.Errorf("empty legend %+v", empty.Month.Legend)
+	}
+}

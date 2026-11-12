@@ -116,8 +116,8 @@
 {{ define "mini-chart" }}
 <section class="side-panel mini-chart" id="mini-chart">
   {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "kpi.last_months") "Meta" (money .BarsTotal)) }}
-  <a class="mini-chart-bars" href="#" hx-get="/{{ .Section }}/chart" hx-target="#section-content"
-    title='{{ T .Lang "kpi.open_chart" }}' aria-label='{{ T .Lang "kpi.open_chart" }}'>
+  <a class="mini-chart-bars" href="/{{ .Section }}/chart" hx-get="/{{ .Section }}/chart" hx-target="#section-content"
+    hx-push-url="true" title='{{ T .Lang "kpi.open_chart" }}' aria-label='{{ T .Lang "kpi.open_chart" }}'>
     {{ range .Bars }}
     <span class="mini-bar{{ if .Current }} current{{ end }}" style="height: {{ printf "%.0f" .Height }}%"
       title="{{ T $.Lang (print "month." .MonthNum) }}: {{ money .Total }}"><span class="mini-bar-value">{{ rough .Total }}</span></span>

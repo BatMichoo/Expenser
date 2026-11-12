@@ -18,7 +18,7 @@ Expenser is a **monolithic web application** following a traditional MVC-like st
 | **Language**                 | Go (1.20+)                                                       |
 | **Web Framework**            | [Gin](https://gin-gonic.com/)                                    |
 | **Templates**                | `html/template` (Standard Library)                               |
-| - **Frontend Interactivity** | [HTMX](https://htmx.org/) + [Chart.js](https://www.chartjs.org/) |
+| **Frontend Interactivity**   | [HTMX](https://htmx.org/)                                        |
 | **Database**                 | PostgreSQL                                                       |
 | **Database Driver**          | `lib/pq`                                                         |
 | **Migrations**               | [Goose](https://github.com/pressly/goose)                        |
@@ -42,7 +42,7 @@ server/
 │   ├── templates/      # SSR HTML templates (Components, Pages, Responses)
 │   └── utilities/      # Helper functions (Time formats, template funcs)
 ├── static/             # Static assets (CSS, JS, HTMX)
-│   └── js/             # Client-side logic for Charts and HTMX
+│   └── js/             # Small client-side helpers for HTMX
 nginx/                  # Nginx configuration and SSL setup
 ```
 
@@ -60,10 +60,11 @@ nginx/                  # Nginx configuration and SSL setup
 
 ### Charting
 
-The application uses **Chart.js** for data visualization.
+Charts are **server-rendered inline SVG**; there is no chart library and no chart JavaScript.
 
-- Data is typically fetched via HTMX or provided in the initial template.
-- Client-side scripts in `static/js/` (e.g., `car-chart.js`, `house-chart.js`) initialize and update charts.
+- `internal/chart` turns numbers into SVG geometry (bars, lines, bands, axis ticks); `internal/services/trends*.go` builds the view models.
+- Templates in `internal/templates/components/trend-charts.html` and `trends.html` draw the `<svg>`; colours come from CSS variables, exact values from `<title>` tooltips.
+- Each section's `/<section>/chart` page is a normal HTMX view: tabs and filters fetch a new HTML fragment.
 
 ### Database Layer (Repository Pattern)
 
@@ -126,5 +127,5 @@ Managed in `internal/config/config.go`. It reads from environment variables, whi
 
 - **JSON Over HTMX**: Don't return JSON and use client-side JS to render it. The server should return HTML.
 - **Full Page Refresh for Actions**: Avoid using standard `<a>` tags or `<form>` submits for actions that only update a part of the page. Use `hx-get`, `hx-post`, etc.
-- **Excessive Custom JS**: Only use custom JavaScript (in `static/js/`) for things HTMX can't do, like initializing third-party libraries (Chart.js) or complex client-side animations.
+- **Excessive Custom JS**: Only use custom JavaScript (in `static/js/`) for things HTMX can't do, like complex client-side animations.
 - **Global Selectors**: Avoid using `hx-target="body"`. Be specific with IDs to prevent unexpected UI flashes.

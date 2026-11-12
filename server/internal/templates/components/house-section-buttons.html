@@ -4,6 +4,7 @@
     <button
       type="button"
       hx-get="/house/current"
+      hx-push-url="/house"
       hx-vals='js:{month: new URLSearchParams(window.location.search).get("month") || ""}'
       hx-target="#section-content"
       class="tracker-nav-button section-button active"
@@ -16,6 +17,7 @@
       type="button"
       hx-get="/house/chart"
       hx-target="#section-content"
+      hx-push-url="true"
       class="tracker-nav-button section-button"
     >
       {{ T .Lang "common.chart" }}

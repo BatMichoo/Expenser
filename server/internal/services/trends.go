@@ -386,6 +386,9 @@ func (s *TrendsService) Page(ctx context.Context, userID uuid.UUID, sec models.S
 			return nil, err
 		}
 		m := BuildMonthTrend(rows, prevRows, months, q.TypeID, groceries, lang)
+		if !m.Empty && m.Chart.HasAvg {
+			m.Legend = append(m.Legend, models.LegendItem{Name: utilities.T(lang, "trends.monthly_average"), Dashed: true})
+		}
 		for i, ym := range months {
 			if ym.Year == now.Year() && ym.Month == now.Month() {
 				m.Chart.Columns[i].Current = true

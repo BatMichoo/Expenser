@@ -199,14 +199,6 @@
 
 
   /* Other Elements */
-  #year {
-    max-width: 6em;
-  }
-
-  #search-form {
-    gap: 1em;
-  }
-
   /* #section-list li { */
   /*   width: 50%; */
   /* } */
@@ -550,6 +542,26 @@
 
   .kpi {
     padding: 0.6em 0.8em;
+  }
+
+  .trends-toolbar {
+    margin: 0 0.75em 0.75em;
+  }
+
+  .trend-tabs {
+    display: flex;
+    width: 100%;
+  }
+
+  .trend-tab {
+    flex: 1;
+    text-align: center;
+    padding: 0.55em 0.4em;
+  }
+
+  .trend-card,
+  .year-totals-card {
+    margin: 0 0.75em 0.75em;
   }
 
   .kpi-value {

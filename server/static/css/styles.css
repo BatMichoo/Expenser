@@ -740,39 +740,6 @@ th {
   font-size: 1.2em;
 }
 
-#chart-section {
-  margin-top: 2em;
-}
-
-canvas {
-  max-width: 95vw;
-  max-height: 65vh;
-  min-width: 80vw;
-  min-height: 65vh;
-  margin: 2em 0em;
-}
-
-#search-form {
-  padding: 1em;
-  display: flex;
-  gap: 3em;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-#search-form div {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-#search-form label {
-  font-size: 1.125em;
-  font-weight: 700;
-}
-
-#search-form input,
 select {
   font-size: 1.125em;
   box-shadow: var(--shadow);
@@ -782,12 +749,6 @@ select {
   border-radius: 0.25em;
   background-color: var(--bg-light);
   color: var(--text-muted);
-}
-
-.chart-search {
-  font-size: 1.1em;
-  padding: 0.34em 2em;
-  align-self: flex-end;
 }
 
 .btn-primary {
@@ -4367,4 +4328,93 @@ tr:hover .row-actions,
 
 .trend-svg .hit-area {
   fill: transparent;
+}
+
+/* Trends page: tabs, filters, tiles and cards */
+.trends-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.trend-tabs {
+  display: inline-flex;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  border-radius: 0.6rem;
+  background-color: var(--bg-dark);
+}
+
+.trend-tab {
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.trend-tab:hover {
+  color: var(--text);
+}
+
+.trend-tab.active {
+  color: var(--text);
+  background-color: var(--bg-light);
+  box-shadow: var(--shadow);
+}
+
+.trend-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.trend-vs {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.kpi-tiles.kpi-tiles-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.kpi-typical {
+  border-left-color: var(--success);
+}
+
+.kpi-top {
+  border-left-color: oklch(0.6 0.22 317);
+}
+
+.trend-card,
+.year-totals-card {
+  margin-bottom: 1rem;
+}
+
+.year-totals {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.year-totals li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--bg-dark);
+  color: var(--text-muted);
+}
+
+.year-totals li:last-child {
+  border-bottom: 0;
+}
+
+.year-totals li.picked {
+  color: var(--text);
+  font-weight: 600;
 }

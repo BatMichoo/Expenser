@@ -3,6 +3,9 @@ package models
 import (
 	"errors"
 	"expenser/internal/chart"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -104,4 +107,33 @@ type YearTrend struct {
 type YearTotal struct {
 	Year  int
 	Total float64
+}
+
+// YearChoices are the years offered in the Year vs year pickers: every year
+// with data plus the two picked years, newest first.
+func (p *TrendsPage) YearChoices() []int {
+	return mergeYears(p.Years, p.Query.YearA, p.Query.YearB)
+}
+
+// PeriodYears are the calendar years offered as Month to month periods:
+// every year with data plus the picked "y<YYYY>" period, newest first.
+func (p *TrendsPage) PeriodYears() []int {
+	var extra []int
+	if y, err := strconv.Atoi(strings.TrimPrefix(p.Query.Period, "y")); err == nil && strings.HasPrefix(p.Query.Period, "y") {
+		extra = append(extra, y)
+	}
+	return mergeYears(p.Years, extra...)
+}
+
+func mergeYears(years []int, extra ...int) []int {
+	seen := map[int]bool{}
+	var out []int
+	for _, y := range append(append([]int(nil), years...), extra...) {
+		if y > 0 && !seen[y] {
+			seen[y] = true
+			out = append(out, y)
+		}
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(out)))
+	return out
 }
