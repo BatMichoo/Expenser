@@ -72,6 +72,8 @@ type TrendsPage struct {
 	Unsized    int // groceries only
 	Month      *MonthTrend
 	Year       *YearTrend
+	Items      []Category // item tab: tracked categories for the picker
+	Item       *ItemTrend
 }
 
 // MonthTrend is the month-to-month tab: stacked spend per month.
@@ -136,4 +138,46 @@ func mergeYears(years []int, extra ...int) []int {
 	}
 	sort.Sort(sort.Reverse(sort.IntSlice(out)))
 	return out
+}
+
+// PriceLine is one purchase with its price per kg, l or piece.
+type PriceLine struct {
+	Date            time.Time
+	Store, Product  string
+	PerUnit         float64
+	DiscountPerUnit float64
+}
+
+// ItemRow is one row of the all-items price-change table.
+type ItemRow struct {
+	ItemID       int
+	Item, Unit   string
+	Now, YearAgo float64
+	ChangePct    float64
+	HasChange    bool
+	Bought12     float64
+}
+
+// ItemTrend is the item detail tab: true price per unit of one grocery
+// category. Prices only come from lines with a known size in the chosen unit.
+type ItemTrend struct {
+	ItemID         int
+	Item           string
+	Unit           string
+	Units          []string
+	By             string
+	PriceNow       float64
+	HasPriceNow    bool
+	PriceChangePct float64
+	HasPriceChange bool
+	QtyNow         float64
+	QtyUsual       float64
+	HasQtyUsual    bool
+	Cheapest       *PriceLine
+	Discounts      []PriceLine // top 5 by discount per unit
+	TotalSaved     float64
+	Excluded       int
+	Chart          chart.PriceChart
+	Items          []ItemRow
+	Empty          bool
 }

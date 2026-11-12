@@ -395,6 +395,15 @@ func (s *TrendsService) Page(ctx context.Context, userID uuid.UUID, sec models.S
 			}
 		}
 		p.Month = &m
+	case "item":
+		if !groceries {
+			q.Tab = "month"
+			p.Query = q
+			return s.Page(ctx, userID, sec, q, lang, now)
+		}
+		if err := s.itemTrend(ctx, userID, p, months, lang, now); err != nil {
+			return nil, err
+		}
 	case "year":
 		y, err := s.yearTrend(ctx, userID, sec, q, yearTotals, lang, now)
 		if err != nil {

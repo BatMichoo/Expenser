@@ -524,5 +524,11 @@
   "trends.saved_vs": "%s през %d",
   "trends.year_chart": "По месеци",
   "trends.year_totals": "Общо по години",
-  "trends.empty_years": "Все още няма разходи за %d или %d."
+  "trends.empty_years": "Все още няма разходи за %d или %d.",
+  "trends.per_kg": "за кг",
+  "trends.per_l": "за литър",
+  "trends.per_pc": "за брой",
+  "trends.unit_kg": "кг",
+  "trends.unit_l": "л",
+  "trends.unit_pc": "бр."
 }

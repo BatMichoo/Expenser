@@ -524,5 +524,11 @@
   "trends.saved_vs": "%s in %d",
   "trends.year_chart": "Month by month",
   "trends.year_totals": "Totals per year",
-  "trends.empty_years": "No expenses in %d or %d yet."
+  "trends.empty_years": "No expenses in %d or %d yet.",
+  "trends.per_kg": "per kg",
+  "trends.per_l": "per litre",
+  "trends.per_pc": "per piece",
+  "trends.unit_kg": "kg",
+  "trends.unit_l": "l",
+  "trends.unit_pc": "pcs"
 }
