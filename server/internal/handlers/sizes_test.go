@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 
 	"expenser/internal/models"
 	"expenser/internal/services"
+	"expenser/internal/services/gemini"
 	"expenser/internal/utilities"
 
 	"github.com/gin-gonic/gin"
@@ -66,7 +68,7 @@ func sizesCall(t *testing.T, store *fakeSizesStore, user uuid.UUID, method, path
 		c.Set("lang", "en")
 		services.SetClaims(c, &services.JWTClaims{UserID: user})
 	})
-	h := NewSizesHandler(store)
+	h := NewSizesHandler(store, nil)
 	r.GET("/groceries/sizes", wrap(h.GetSizes))
 	r.POST("/groceries/sizes/:id", wrap(h.SaveSize))
 	r.POST("/groceries/sizes/:id/skip", wrap(h.SkipSize))
@@ -136,4 +138,55 @@ func TestGetSizes(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "Мляко")
 	assert.Contains(t, w.Body.String(), `hx-post="/groceries/sizes/3"`)
+}
+
+type fakeSuggester struct {
+	got []string
+	out []gemini.SizeSuggestion
+	err error
+}
+
+func (f *fakeSuggester) SuggestSizes(_ context.Context, names []string) ([]gemini.SizeSuggestion, error) {
+	f.got = names
+	return f.out, f.err
+}
+
+func suggestCall(t *testing.T, store *fakeSizesStore, ai Suggester) *httptest.ResponseRecorder {
+	t.Helper()
+	require.NoError(t, utilities.InitI18n())
+	tmpl, err := utilities.ParseTemplates("../templates/*/*.html")
+	require.NoError(t, err)
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.SetHTMLTemplate(tmpl)
+	r.Use(func(c *gin.Context) {
+		c.Set("lang", "en")
+		services.SetClaims(c, &services.JWTClaims{UserID: store.owner})
+	})
+	h := NewSizesHandler(store, ai)
+	r.POST("/groceries/sizes/suggest", wrap(h.Suggest))
+	req := httptest.NewRequest(http.MethodPost, "/groceries/sizes/suggest", nil)
+	req.Header.Set("HX-Request", "true")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func TestSuggestPrefillsWithoutSaving(t *testing.T) {
+	store := &fakeSizesStore{owner: uuid.New(), rows: []models.GroceriesExpense{{ID: 1, Product: "Мляко"}, {ID: 2, Product: "Нещо"}}}
+	ai := &fakeSuggester{out: []gemini.SizeSuggestion{{Unit: "l", UnitSize: 1}, {}}}
+	w := suggestCall(t, store, ai)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, []string{"Мляко", "Нещо"}, ai.got)
+	assert.Zero(t, store.setID, "nothing saved")
+	assert.Zero(t, store.skipped)
+	assert.Equal(t, 1, strings.Count(w.Body.String(), `class="size-suggested"`), w.Body.String())
+}
+
+func TestSuggestErrorShown(t *testing.T) {
+	store := &fakeSizesStore{owner: uuid.New(), rows: []models.GroceriesExpense{{ID: 1, Product: "Мляко"}}}
+	w := suggestCall(t, store, &fakeSuggester{err: gemini.ErrNotConfigured})
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), html.EscapeString(utilities.T("en", "error.ai_not_configured")))
+	assert.Contains(t, w.Body.String(), "Мляко", "list still shown")
 }

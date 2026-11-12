@@ -1,7 +1,9 @@
 package gemini
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -251,3 +253,54 @@ func TestReceiptPromptAsksForUnits(t *testing.T) {
 	assert.Contains(t, Prompts.GroceriesReceipt, `"unit"`)
 	assert.Contains(t, Prompts.GroceriesReceipt, `"unit_size"`)
 }
+
+func TestSuggestSizes(t *testing.T) {
+	var body []byte
+	gs, _ := fakeGemini(t, 200, reply("```json\n[{\"unit\":\"l\",\"unit_size\":1},{\"unit\":\"kg\",\"unit_size\":0.4}]\n```", "STOP"))
+	gs.client = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		body, _ = io.ReadAll(r.Body)
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		return http.DefaultTransport.RoundTrip(r)
+	})}
+	got, err := gs.SuggestSizes(context.Background(), []string{"Прясно мляко 1л", "Кисело мляко 400г"})
+	require.NoError(t, err)
+	assert.Equal(t, []SizeSuggestion{{Unit: "l", UnitSize: 1}, {Unit: "kg", UnitSize: 0.4}}, got)
+
+	var req struct {
+		Contents []struct {
+			Parts []map[string]any `json:"parts"`
+		} `json:"contents"`
+	}
+	require.NoError(t, json.Unmarshal(body, &req))
+	for _, c := range req.Contents {
+		for _, p := range c.Parts {
+			assert.Contains(t, p, "text")
+			assert.NotContains(t, p, "inline_data")
+			assert.NotContains(t, p, "inlineData")
+		}
+	}
+	assert.Contains(t, string(body), "Кисело мляко 400г")
+}
+
+func TestSuggestSizesInvalidEntry(t *testing.T) {
+	gs, _ := fakeGemini(t, 200, reply(`[{"unit":"box","unit_size":2},{"unit":"kg","unit_size":-1},{"unit":"pc","unit_size":10}]`, "STOP"))
+	got, err := gs.SuggestSizes(context.Background(), []string{"a", "b", "c"})
+	require.NoError(t, err)
+	assert.Equal(t, []SizeSuggestion{{}, {}, {Unit: "pc", UnitSize: 10}}, got)
+}
+
+func TestSuggestSizesLengthMismatch(t *testing.T) {
+	gs, _ := fakeGemini(t, 200, reply(`[{"unit":"l","unit_size":1}]`, "STOP"))
+	_, err := gs.SuggestSizes(context.Background(), []string{"a", "b"})
+	var replyErr *ReplyError
+	require.ErrorAs(t, err, &replyErr)
+}
+
+func TestSuggestSizesNotConfigured(t *testing.T) {
+	_, err := NewGeminiService("", "m").SuggestSizes(context.Background(), []string{"a"})
+	assert.ErrorIs(t, err, ErrNotConfigured)
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }

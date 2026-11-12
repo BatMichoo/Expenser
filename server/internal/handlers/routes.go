@@ -61,8 +61,9 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 		protectedHouse.DELETE("/expenses/:id", wrap(houseHandler.DeleteHouseExp))
 	}
 
-	groceriesHandler := NewGroceriesHandler(rootHandler, gemini.NewGeminiService(cfg.ReceiptAI.APIKey, cfg.ReceiptAI.Models()...))
-	sizesHandler := NewSizesHandler(db)
+	receiptAI := gemini.NewGeminiService(cfg.ReceiptAI.APIKey, cfg.ReceiptAI.Models()...)
+	groceriesHandler := NewGroceriesHandler(rootHandler, receiptAI)
+	sizesHandler := NewSizesHandler(db, receiptAI)
 	protectedGroceries := router.Group("/groceries")
 	{
 		protectedGroceries.Use(am.AuthMiddleware())
@@ -74,6 +75,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 		protectedGroceries.GET("/chart", wrap(chartHandler.Show(models.SectionGroceries)))
 		protectedGroceries.POST("", wrap(groceriesHandler.PostCreateGroceriesExpense))
 		protectedGroceries.GET("/sizes", wrap(sizesHandler.GetSizes))
+		protectedGroceries.POST("/sizes/suggest", wrap(sizesHandler.Suggest))
 		protectedGroceries.POST("/sizes/:id", wrap(sizesHandler.SaveSize))
 		protectedGroceries.POST("/sizes/:id/skip", wrap(sizesHandler.SkipSize))
 		protectedGroceries.GET("/size-guess", wrap(groceriesHandler.GetSizeGuess))
