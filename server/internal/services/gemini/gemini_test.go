@@ -237,3 +237,17 @@ func TestStopsWhenTheJobRunsOutOfTime(t *testing.T) {
 	var apiErr *APIError
 	require.ErrorAs(t, err, &apiErr, "reports the last overload, not a bare 'context canceled'")
 }
+
+func TestAnalyzeReceiptReadsUnits(t *testing.T) {
+	gs, _ := fakeGemini(t, 200, reply(`{"store":"Kaufland","items":[{"name":"Banani","quantity":0.995,"total_price":2.4,"unit":"kg","unit_size":1}]}`, "STOP"))
+	a, err := gs.AnalyzeReceipt(context.Background(), jpeg)
+	require.NoError(t, err)
+	require.Len(t, a.Items, 1)
+	assert.Equal(t, "kg", a.Items[0].Unit)
+	assert.Equal(t, 1.0, a.Items[0].UnitSize)
+}
+
+func TestReceiptPromptAsksForUnits(t *testing.T) {
+	assert.Contains(t, Prompts.GroceriesReceipt, `"unit"`)
+	assert.Contains(t, Prompts.GroceriesReceipt, `"unit_size"`)
+}

@@ -163,3 +163,31 @@ func TestGroceriesCRUD(t *testing.T) {
 		})
 	}
 }
+
+func TestEditGroceriesKeepsSize(t *testing.T) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	testDB := InitTestDB(cfg)
+	defer testDB.Close()
+	ResetTestDB(testDB)
+	testDB.CreateUser(TestUserRegisterModel)
+	categories, err := testDB.GetAllCategories()
+	assert.NoError(t, err)
+
+	e := &models.GroceriesExpense{
+		UserID: TestUserRegisterModel.ID, CategoryID: categories[0].ID, Product: "Milk", Quantity: 2,
+		UnitPrice: 1.5, TotalPrice: 3, Unit: "l", UnitSize: 1, PurchaseDate: time.Now(),
+	}
+	assert.NoError(t, testDB.CreateGroceriesExpense(e))
+
+	// The edit form posts the current size back, so editing keeps it.
+	e.Product = "Fresh milk"
+	assert.NoError(t, testDB.EditGroceriesExpense(e, TestUserRegisterModel.ID))
+	got, err := testDB.GetGroceriesExpenseByID(e.ID, TestUserRegisterModel.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, "l", got.Unit)
+	assert.Equal(t, 1.0, got.UnitSize)
+	assert.Equal(t, "known", got.SizeStatus)
+}

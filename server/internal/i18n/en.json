@@ -15,6 +15,7 @@
   "groceries.upload_receipt": "Upload Receipt",
   "groceries.product": "Product",
   "groceries.quantity": "Quantity",
+  "groceries.unit_size": "Size per unit",
   "groceries.unit_price": "Unit Price",
   "groceries.discount_per_unit": "Discount/Unit",
   "groceries.total_price": "Total Price",

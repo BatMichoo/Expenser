@@ -23,6 +23,8 @@ var Prompts = &GeminiPrompts{
 	"Water", "Juice", "Soda", "Coffee", "Tea", "Beer", "Wine", "Other".
 	If an item does not clearly fit into the specific food items listed, assign "Other". Do not use any other category names.
 
+	Units: for each item give "unit" and "unit_size", which say what ONE counted quantity of the item is. "unit" is "kg" (weight), "l" (volume) or "pc" (pieces). A weight line like "9,955 KG" means the item is sold by weight: unit "kg", unit_size 1. For packaged goods take the pack size from the product name: "1л" is unit "l", unit_size 1; "400г" is unit "kg", unit_size 0.4; "500мл" is unit "l", unit_size 0.5; "10бр" is unit "pc", unit_size 10. If the unit or size is unknown, give unit "" and unit_size 0. Do not guess.
+
 	Items: list every item once, in the order printed on the receipt. A quantity line is part of its item, not an item of its own.
 
 	Discounts: a discount printed directly with an item belongs in that item's "total_discount" (and "discount_per_unit"). A discount printed separately, usually after the subtotal with the items it applies to (e.g. "XTRA отстъпка -3,73" followed by "Позиции:19,15"), goes in "discounts" with its amount and "positions": the 1-based numbers of those items in the printed order (here [19, 15]); do NOT also put it on the items, it is applied to them later. Give amounts as positive numbers.
@@ -43,7 +45,9 @@ var Prompts = &GeminiPrompts{
 		  "discount_per_unit": number,
 	      "total_price": number,
 		  "total_discount": number,
-	      "category": "string"
+	      "category": "string",
+	      "unit": "kg" | "l" | "pc" | "",
+	      "unit_size": number
 	    }
 	  ],
 	  "discounts": [

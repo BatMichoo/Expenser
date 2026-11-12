@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"errors"
+	"expenser/internal/groceryunits"
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/services/gemini"
@@ -58,7 +59,11 @@ func parseGroceriesExpenseForm(c *gin.Context) *models.GroceriesExpense {
 	totalPrice, _ := strconv.ParseFloat(c.PostForm("total_price"), 64)
 	totalDiscount, _ := strconv.ParseFloat(c.PostForm("total_discount"), 64)
 
+	unit, unitSize := parseSizeFields(c.PostForm("unit"), c.PostForm("unit_size"))
+
 	return &models.GroceriesExpense{
+		Unit:            unit,
+		UnitSize:        unitSize,
 		CategoryID:      categoryID,
 		Product:         c.PostForm("product"),
 		Quantity:        quantity,
@@ -69,6 +74,66 @@ func parseGroceriesExpenseForm(c *gin.Context) *models.GroceriesExpense {
 		SupermarketName: c.PostForm("supermarket_name"),
 		PurchaseDate:    time.Now(),
 	}
+}
+
+// parseSizeFields reads the unit and size inputs. Only known units are
+// accepted; without one the size is dropped too.
+func parseSizeFields(unit, size string) (string, float64) {
+	unit = strings.TrimSpace(unit)
+	if !groceryunits.Unit(unit).Valid() {
+		return "", 0
+	}
+	per, _ := strconv.ParseFloat(strings.TrimSpace(size), 64)
+	return unit, per
+}
+
+// receiptItemSize is the unit and size to prefill for a receipt item: the
+// one the name and the reader agree on, or nothing.
+func receiptItemSize(item models.ReceiptItem) (string, float64) {
+	size, ok := groceryunits.Resolve(item.Name, item.Quantity, item.Unit, item.UnitSize)
+	if !ok {
+		return "", 0
+	}
+	return string(size.Unit), size.Per
+}
+
+// sizeGuess is what the size fields show for a product: the posted values
+// when a unit is already chosen, else the size read from the name.
+func sizeGuess(product, quantity, unit, unitSize string) (string, float64) {
+	if unit != "" {
+		return parseSizeFields(unit, unitSize)
+	}
+	q, _ := strconv.ParseFloat(quantity, 64)
+	if size, ok := groceryunits.Parse(product, q); ok {
+		return string(size.Unit), size.Per
+	}
+	return "", 0
+}
+
+// GetSizeGuess re-renders the size fields as the product is typed.
+func (h *GroceriesHandler) GetSizeGuess(c *gin.Context) error {
+	unit, size := sizeGuess(c.Query("product"), c.Query("quantity"), c.Query("unit"), c.Query("unit_size"))
+	c.HTML(http.StatusOK, "size-fields", gin.H{
+		"Prefix": c.Query("prefix"),
+		"ID":     sizeFieldsID(c.Query("id")),
+		"Unit":   unit,
+		"Size":   size,
+		"Lang":   currentLang(c),
+	})
+	return nil
+}
+
+// sizeFieldsID keeps the wrapper id to the plain ids the forms use.
+func sizeFieldsID(id string) string {
+	if id == "size-fields" || strings.HasPrefix(id, "size-fields-") {
+		for _, r := range strings.TrimPrefix(id, "size-fields-") {
+			if r < '0' || r > '9' {
+				return "size-fields"
+			}
+		}
+		return id
+	}
+	return "size-fields"
 }
 
 // receiptError tells the user why a receipt couldn't be read, in Gemini's
@@ -180,10 +245,15 @@ func (h *GroceriesHandler) renderReceiptReview(c *gin.Context, analysis *models.
 	}
 	subtotal, discount := analysis.Sums()
 	purchasedAt, _ := analysis.PurchaseTime(time.Now())
+	items := make([]models.ReceiptItem, len(analysis.Items))
+	for i, item := range analysis.Items {
+		item.Unit, item.UnitSize = receiptItemSize(item)
+		items[i] = item
+	}
 	c.HTML(http.StatusOK, "groceries-receipt-edit-form", gin.H{
 		"PurchasedAt": purchasedAt,
 		"Store":       analysis.Store,
-		"Items":       analysis.Items,
+		"Items":       items,
 		"Subtotal":    subtotal,
 		"Discount":    discount,
 		"Total":       subtotal - discount,
@@ -220,6 +290,7 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 		totalPrice, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].total_price", i)), 64)
 		totalDiscount, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].total_discount", i)), 64)
 		supermarketName := c.PostForm(fmt.Sprintf("items[%d].supermarket_name", i))
+		unit, unitSize := parseSizeFields(c.PostForm(fmt.Sprintf("items[%d].unit", i)), c.PostForm(fmt.Sprintf("items[%d].unit_size", i)))
 
 		expense := &models.GroceriesExpense{
 			UserID:          userID,
@@ -231,6 +302,8 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 			TotalPrice:      totalPrice,
 			TotalDiscount:   totalDiscount,
 			SupermarketName: supermarketName,
+			Unit:            unit,
+			UnitSize:        unitSize,
 			PurchaseDate:    purchasedAt,
 		}
 

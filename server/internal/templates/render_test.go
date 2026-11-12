@@ -1619,3 +1619,48 @@ func TestTrendItemBought12AndWrappers(t *testing.T) {
 	assert.Equal(t, 1, doc.Find(".trend-table-wrap > table.item-discounts").Length())
 	assert.Equal(t, 1, doc.Find(".trend-table-wrap > table.item-all").Length())
 }
+
+func TestSizeFieldsPartial(t *testing.T) {
+	doc := parseHTML(t, render(t, "size-fields", map[string]any{"Prefix": "items[3].", "ID": "size-fields-3", "Unit": "l", "Size": 1.0, "Lang": "en"}))
+	assert.Equal(t, 1, doc.Find("#size-fields-3").Length())
+	sel, _ := doc.Find(`select[name="items[3].unit"] option[selected]`).Attr("value")
+	assert.Equal(t, "l", sel)
+	assert.Equal(t, 4, doc.Find(`select[name="items[3].unit"] option`).Length(), "empty, kg, l, pc")
+	size, _ := doc.Find(`input[name="items[3].unit_size"]`).Attr("value")
+	assert.Equal(t, "1", size)
+
+	blank := parseHTML(t, render(t, "size-fields", map[string]any{"Prefix": "", "ID": "size-fields", "Unit": "", "Size": 0.0, "Lang": "en"}))
+	v, has := blank.Find(`input[name="unit_size"]`).Attr("value")
+	assert.True(t, !has || v == "", "no zero shown")
+}
+
+func TestGroceryFormsHaveSizeFields(t *testing.T) {
+	doc := parseHTML(t, render(t, "create-groceries-form", map[string]any{"Categories": groceryCategories(), "Lang": "en"}))
+	assert.Equal(t, 1, doc.Find("#size-fields").Length())
+	trig, _ := doc.Find("#product").Attr("hx-trigger")
+	assert.Contains(t, trig, "keyup changed delay:400ms")
+	get, _ := doc.Find("#product").Attr("hx-get")
+	assert.Equal(t, "/groceries/size-guess", get)
+	target, _ := doc.Find("#product").Attr("hx-target")
+	assert.Equal(t, "#size-fields", target)
+
+	g := &models.GroceriesExpense{ID: 9, CategoryID: 2, Product: "Milk", Quantity: 2, Unit: "l", UnitSize: 1.5}
+	edit := parseHTML(t, render(t, "edit-groceries-form", map[string]any{"Expense": g, "Categories": groceryCategories(), "Lang": "en"}))
+	sel, _ := edit.Find(`#size-fields select[name="unit"] option[selected]`).Attr("value")
+	assert.Equal(t, "l", sel, "edit posts the current unit back")
+	size, _ := edit.Find(`#size-fields input[name="unit_size"]`).Attr("value")
+	assert.Equal(t, "1.5", size)
+}
+
+func TestReceiptReviewHasSizeFields(t *testing.T) {
+	items := []models.ReceiptItem{{Name: "Milk 1l", Quantity: 1, TotalPrice: 2, Unit: "l", UnitSize: 1}, {Name: "Other", Quantity: 1, TotalPrice: 1}}
+	doc := parseHTML(t, render(t, "groceries-receipt-edit-form", map[string]any{
+		"Items": items, "Categories": []models.Category{{ID: 9, Name: "Other"}}, "Subtotal": 3.0, "Total": 3.0, "Lang": "en",
+	}))
+	sel, _ := doc.Find(`select[name="items[0].unit"] option[selected]`).Attr("value")
+	assert.Equal(t, "l", sel)
+	size, _ := doc.Find(`input[name="items[0].unit_size"]`).Attr("value")
+	assert.Equal(t, "1", size)
+	assert.Equal(t, 1, doc.Find("#size-fields-1").Length())
+	assert.Equal(t, 0, doc.Find(`select[name="items[1].unit"] option[selected]`).Length())
+}

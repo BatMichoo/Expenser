@@ -15,6 +15,7 @@
   "groceries.upload_receipt": "Качване на касова бележка",
   "groceries.product": "Продукт",
   "groceries.quantity": "Количество",
+  "groceries.unit_size": "Размер на опаковка",
   "groceries.unit_price": "Единична цена",
   "groceries.discount_per_unit": "Отстъпка/бр.",
   "groceries.total_price": "Обща цена",

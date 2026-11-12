@@ -14,6 +14,10 @@ type ReceiptItem struct {
 	TotalPrice      float64 `json:"total_price"`
 	TotalDiscount   float64 `json:"total_discount"`
 	Category        string  `json:"category"`
+	// Unit and UnitSize say what one counted quantity is: "kg", "l" or
+	// "pc" and how many of it ("" and 0 when unknown).
+	Unit     string  `json:"unit"`
+	UnitSize float64 `json:"unit_size"`
 }
 
 // Discount is a discount printed apart from its items (e.g. Kaufland's

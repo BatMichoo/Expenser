@@ -72,6 +72,7 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 		protectedGroceries.GET("/current", wrap(groceriesHandler.GetCurrentMonth))
 		protectedGroceries.GET("/chart", wrap(chartHandler.Show(models.SectionGroceries)))
 		protectedGroceries.POST("", wrap(groceriesHandler.PostCreateGroceriesExpense))
+		protectedGroceries.GET("/size-guess", wrap(groceriesHandler.GetSizeGuess))
 		protectedGroceries.GET("/form", wrap(groceriesHandler.GetGroceriesForm))
 		protectedGroceries.GET("/create", wrap(groceriesHandler.GetCreateGroceriesForm))
 		protectedGroceries.GET("/edit/:id", wrap(groceriesHandler.GetEditGroceriesForm))

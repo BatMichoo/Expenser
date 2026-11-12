@@ -1,0 +1,19 @@
+{{/* Unit and pack size of a grocery line. Prefix is "" or "items[3].". */}}
+{{ define "size-fields" }}
+<div class="size-fields qty-unit" id="{{ .ID }}">
+  <div>
+    <label for="{{ .ID }}-unit">{{ T .Lang "trends.unit" }}</label>
+    <select id="{{ .ID }}-unit" name="{{ .Prefix }}unit">
+      <option value=""></option>
+      <option value="kg" {{ if eq .Unit "kg" }}selected{{ end }}>{{ T .Lang "trends.unit_kg" }}</option>
+      <option value="l" {{ if eq .Unit "l" }}selected{{ end }}>{{ T .Lang "trends.unit_l" }}</option>
+      <option value="pc" {{ if eq .Unit "pc" }}selected{{ end }}>{{ T .Lang "trends.unit_pc" }}</option>
+    </select>
+  </div>
+  <div>
+    <label for="{{ .ID }}-size">{{ T .Lang "groceries.unit_size" }}</label>
+    <input type="number" id="{{ .ID }}-size" name="{{ .Prefix }}unit_size" step="0.001" min="0" inputmode="decimal"
+      {{ if .Size }}value="{{ .Size }}"{{ end }} />
+  </div>
+</div>
+{{ end }}

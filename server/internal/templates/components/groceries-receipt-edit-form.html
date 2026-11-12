@@ -62,6 +62,9 @@
           <span>{{ T $.Lang "groceries.total_discount" }}</span>
           <input type="number" name="items[{{ $i }}].total_discount" value="{{ $item.TotalDiscount }}" step="0.01" inputmode="decimal" />
         </label>
+        <div class="span-2">
+          {{ template "size-fields" (dict "Prefix" (printf "items[%d]." $i) "ID" (printf "size-fields-%d" $i) "Unit" $item.Unit "Size" $item.UnitSize "Lang" $.Lang) }}
+        </div>
         <input type="hidden" name="items[{{ $i }}].discount_per_unit" value="{{ $item.DiscountPerUnit }}" />
       </div>
     </fieldset>

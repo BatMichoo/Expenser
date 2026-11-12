@@ -5,7 +5,9 @@
     hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
     <div>
       <label for="product">{{ T .Lang "groceries.product" }}</label>
-      <input type="text" id="product" name="product" value="{{ .Expense.Product }}" required />
+      <input type="text" id="product" name="product" value="{{ .Expense.Product }}" required
+        hx-get="/groceries/size-guess" hx-trigger="keyup changed delay:400ms" hx-target="#size-fields" hx-swap="outerHTML"
+        hx-include="#quantity, #size-fields" hx-vals='{"id": "size-fields"}' />
     </div>
     <div class="amount-field">
       <label for="total_price">{{ T .Lang "groceries.total_price" }}</label>
@@ -21,6 +23,7 @@
         <input type="number" id="unit_price" name="unit_price" step="0.01" inputmode="decimal" value="{{ printf "%.2f" .Expense.UnitPrice }}" required />
       </div>
     </div>
+    {{ template "size-fields" (dict "Prefix" "" "ID" "size-fields" "Unit" .Expense.Unit "Size" .Expense.UnitSize "Lang" .Lang) }}
     <div>
       <label for="category_id">{{ T .Lang "groceries.category" }}</label>
       <select id="category_id" name="category_id" required>
