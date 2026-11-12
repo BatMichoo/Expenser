@@ -559,5 +559,16 @@
   "trends.item_col_store": "Store",
   "trends.item_col_product": "Product",
   "trends.item_col_price": "Price",
-  "trends.item_col_discount": "Discount"
+  "trends.item_col_discount": "Discount",
+  "error.invalid_size": "Choose a unit and enter a size greater than zero.",
+  "sizes.title": "Needs a size",
+  "sizes.hint": "These purchases have no pack size, so they are left out of the item price charts. Enter the unit and size of one pack, or skip a purchase.",
+  "sizes.back": "Back to item prices",
+  "sizes.count": "Purchases needing a size: %d",
+  "sizes.none_left": "Nothing left to size",
+  "sizes.all_sized": "All your purchases have a size.",
+  "sizes.save": "Save",
+  "sizes.skip": "Skip",
+  "sizes.suggest": "Suggest sizes with AI",
+  "sizes.suggested": "Suggested"
 }

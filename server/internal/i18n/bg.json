@@ -559,5 +559,16 @@
   "trends.item_col_store": "Магазин",
   "trends.item_col_product": "Продукт",
   "trends.item_col_price": "Цена",
-  "trends.item_col_discount": "Отстъпка"
+  "trends.item_col_discount": "Отстъпка",
+  "error.invalid_size": "Изберете мерна единица и въведете размер, по-голям от нула.",
+  "sizes.title": "Чакат размер",
+  "sizes.hint": "Тези покупки нямат размер на опаковката и затова не влизат в графиките с цени на продукти. Въведете мярка и размер на една опаковка или пропуснете покупката.",
+  "sizes.back": "Обратно към цените на продуктите",
+  "sizes.count": "Покупки без размер: %d",
+  "sizes.none_left": "Няма какво да се добави",
+  "sizes.all_sized": "Всички ваши покупки имат размер.",
+  "sizes.save": "Запази",
+  "sizes.skip": "Пропусни",
+  "sizes.suggest": "Предложи размери с ИИ",
+  "sizes.suggested": "Предложение"
 }

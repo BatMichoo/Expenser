@@ -2,6 +2,7 @@
      Tabs and filters reload it with the same URL that a full page load uses. */}}
 {{ define "trends" }}
 <div id="trends" class="trends">
+  {{ if and (eq .Section "groceries") .Unsized }}{{ template "unsized-badge" . }}{{ end }}
   <div class="trends-toolbar">
     {{ template "trends-tabs" . }}
     {{ template "trends-filters" . }}

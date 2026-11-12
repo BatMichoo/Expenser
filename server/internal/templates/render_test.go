@@ -1675,3 +1675,68 @@ func TestReceiptReviewHasSizeFields(t *testing.T) {
 	assert.Equal(t, "", g1)
 	assert.Equal(t, 0, doc.Find(`select[name="items[1].unit"] option[selected]`).Length())
 }
+
+func sizesPage() models.SizesPage {
+	return models.SizesPage{
+		Section: "groceries", Lang: "en", Count: 2,
+		Rows: []models.SizeRow{
+			{Expense: models.GroceriesExpense{ID: 4, Product: "Sirene", CategoryName: "Dairy", Quantity: 2, UnitPrice: 3.5, TotalPrice: 7,
+				SupermarketName: "Lidl", PurchaseDate: time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)}},
+			{Expense: models.GroceriesExpense{ID: 9, Product: "Mleko", CategoryName: "Dairy", Quantity: 1, UnitPrice: 2, TotalPrice: 2,
+				PurchaseDate: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC)}, Unit: "l", Size: 1, Suggested: true},
+		},
+	}
+}
+
+func TestGrocerySizesList(t *testing.T) {
+	doc := parseHTML(t, render(t, "grocery-sizes", sizesPage()))
+	rows := doc.Find("li.size-row")
+	require.Equal(t, 2, rows.Length())
+	first := rows.First()
+	assert.Contains(t, first.Text(), "Sirene")
+	assert.Contains(t, first.Text(), "Dairy")
+	assert.Contains(t, first.Text(), "2 × 3.50")
+	assert.Contains(t, first.Text(), "Lidl")
+	assert.Contains(t, first.Text(), "03.11")
+	assert.Equal(t, 1, first.Find("#size-fields-4").Length())
+	form := first.Find("form")
+	post, _ := form.Attr("hx-post")
+	assert.Equal(t, "/groceries/sizes/4", post)
+	skip, _ := first.Find("button[hx-post]").Attr("hx-post")
+	assert.Equal(t, "/groceries/sizes/4/skip", skip)
+	assert.Equal(t, 1, first.Find(`button[type="submit"]`).Length())
+	suggest, _ := doc.Find(`button[hx-post="/groceries/sizes/suggest"]`).Attr("hx-target")
+	assert.Equal(t, "#section-content", suggest)
+	assert.Equal(t, 1, doc.Find("#unsized-count").Length())
+}
+
+func TestGrocerySizesEmpty(t *testing.T) {
+	p := sizesPage()
+	p.Rows, p.Count = nil, 0
+	doc := parseHTML(t, render(t, "grocery-sizes", p))
+	assert.Equal(t, 0, doc.Find("li.size-row").Length())
+	assert.Contains(t, doc.Text(), "All your purchases have a size")
+	assert.Equal(t, 0, doc.Find(`button[hx-post="/groceries/sizes/suggest"]`).Length())
+}
+
+func TestSizeRowSuggestedMarker(t *testing.T) {
+	doc := parseHTML(t, render(t, "grocery-sizes", sizesPage()))
+	rows := doc.Find("li.size-row")
+	assert.Equal(t, 0, rows.First().Find(".size-suggested").Length())
+	assert.Equal(t, 1, rows.Last().Find(".size-suggested").Length())
+	assert.Equal(t, "1", rows.Last().Find(`input[name="size_guessed"]`).AttrOr("value", ""))
+}
+
+func TestUnsizedBadge(t *testing.T) {
+	p := trendsItemPage()
+	p.Section = "groceries"
+	p.Unsized = 4
+	doc := parseHTML(t, render(t, "trends", p))
+	badge := doc.Find("#unsized-count")
+	require.Equal(t, 1, badge.Length())
+	assert.Contains(t, badge.Text(), "4")
+	assert.Equal(t, "/groceries/sizes", badge.AttrOr("hx-get", ""))
+	assert.Equal(t, "true", badge.AttrOr("hx-push-url", ""))
+	p.Unsized = 0
+	assert.Equal(t, 0, parseHTML(t, render(t, "trends", p)).Find("#unsized-count").Length())
+}

@@ -4479,3 +4479,94 @@ tr:hover .row-actions,
   font-weight: 500;
   white-space: nowrap;
 }
+
+/* Needs-a-size list */
+.unsized-badge {
+  display: inline-block;
+  margin: 0 0 1rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: var(--bg-light);
+  color: var(--text);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.sizes-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.sizes-hint,
+.sizes-count,
+.sizes-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.sizes-error {
+  color: var(--error, #c0392b);
+}
+
+.size-rows {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.size-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--bg-light);
+}
+
+.size-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.size-meta {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.size-suggested {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.size-row-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.size-row-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .size-row,
+  .size-row-form {
+    width: 100%;
+  }
+  .size-row-actions button {
+    flex: 1;
+  }
+}

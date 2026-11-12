@@ -187,3 +187,22 @@ func (t ItemTrend) UnitKey() string { return "trends.unit_" + t.Unit }
 
 // UnitKey is the i18n key of the row's unit label.
 func (r ItemRow) UnitKey() string { return "trends.unit_" + r.Unit }
+
+// SizeRow is one purchase on the "needs a size" list, with the size to
+// prefill its fields with. Suggested marks a size that was guessed rather
+// than typed.
+type SizeRow struct {
+	Expense   GroceriesExpense
+	Unit      string
+	Size      float64
+	Suggested bool
+}
+
+// SizesPage is the "needs a size" review list.
+type SizesPage struct {
+	Section      string // always "groceries"; picks the section buttons
+	Rows         []SizeRow
+	Count        int
+	Lang         string
+	SuggestError string
+}

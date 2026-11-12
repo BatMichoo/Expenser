@@ -1,0 +1,55 @@
+{{/* The "needs a size" review list (models.SizesPage). */}}
+{{ define "grocery-sizes-page" }}{{ include (print .Section "-section-buttons") . }}
+<div id="section-content">{{ template "grocery-sizes" . }}</div>
+{{ end }}
+
+{{ define "grocery-sizes" }}
+<div id="grocery-sizes" class="grocery-sizes">
+  <div class="sizes-head">
+    <div>
+      <h2>{{ T .Lang "sizes.title" }}</h2>
+      <p class="sizes-hint">{{ T .Lang "sizes.hint" }}</p>
+    </div>
+    <a class="sizes-back" href="/groceries/chart?tab=item" hx-get="/groceries/chart?tab=item" hx-target="#section-content"
+      hx-push-url="true">{{ T .Lang "sizes.back" }}</a>
+  </div>
+  {{ if .SuggestError }}<p class="sizes-error" role="alert">{{ .SuggestError }}</p>{{ end }}
+  {{ if .Rows }}
+  <p class="sizes-count">{{ template "unsized-count" . }}</p>
+  <button type="button" class="btn-secondary sizes-suggest" hx-post="/groceries/sizes/suggest" hx-target="#section-content"
+    hx-disabled-elt="this">{{ T .Lang "sizes.suggest" }}</button>
+  <ul class="size-rows">
+    {{ range .Rows }}{{ template "grocery-size-row" (dict "Row" . "Lang" $.Lang) }}{{ end }}
+  </ul>
+  {{ else }}
+  <p class="sizes-empty">{{ T .Lang "sizes.all_sized" }}</p>
+  {{ end }}
+</div>
+{{ end }}
+
+{{ define "grocery-size-row" }}{{ $e := .Row.Expense }}
+<li class="size-row" id="size-row-{{ $e.ID }}">
+  <div class="size-row-info">
+    <strong class="size-product">{{ $e.Product }}</strong>
+    <span class="size-meta">{{ T $.Lang (print "category." $e.CategoryName) }} · {{ $e.Quantity }} × {{ printf "%.2f" $e.UnitPrice }} · {{ money $e.TotalPrice }}{{ if $e.SupermarketName }} · {{ $e.SupermarketName }}{{ end }} · {{ $e.PurchaseDate.Format "02.01" }}</span>
+    {{ if .Row.Suggested }}<span class="size-suggested">{{ T $.Lang "sizes.suggested" }}</span>{{ end }}
+  </div>
+  <form class="size-row-form" hx-post="/groceries/sizes/{{ $e.ID }}" hx-target="closest li" hx-swap="outerHTML">
+    {{ template "size-fields" (dict "Prefix" "" "ID" (print "size-fields-" $e.ID) "Unit" .Row.Unit "Size" .Row.Size "Lang" $.Lang "Guessed" .Row.Suggested) }}
+    <div class="size-row-actions">
+      <button type="submit" class="btn-primary">{{ T $.Lang "sizes.save" }}</button>
+      <button type="button" class="btn-secondary" hx-post="/groceries/sizes/{{ $e.ID }}/skip">{{ T $.Lang "sizes.skip" }}</button>
+    </div>
+  </form>
+</li>
+{{ end }}
+
+{{/* The count text. unsized-count-oob swaps it in place after a save or skip. */}}
+{{ define "unsized-count" }}<span id="unsized-count">{{ if .Count }}{{ printf (T .Lang "sizes.count") .Count }}{{ else }}{{ T .Lang "sizes.none_left" }}{{ end }}</span>{{ end }}
+{{ define "unsized-count-oob" }}<span id="unsized-count" hx-swap-oob="true">{{ if .Count }}{{ printf (T .Lang "sizes.count") .Count }}{{ else }}{{ T .Lang "sizes.none_left" }}{{ end }}</span>{{ end }}
+
+{{/* Link on the groceries charts page to the list. */}}
+{{ define "unsized-badge" }}
+<a id="unsized-count" class="unsized-badge" href="/groceries/sizes" hx-get="/groceries/sizes" hx-target="#section-content"
+  hx-push-url="true">{{ printf (T .Lang "sizes.count") .Unsized }}</a>
+{{ end }}
