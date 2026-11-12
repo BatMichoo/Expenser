@@ -1,7 +1,7 @@
 #!/bin/sh
 # Polls GitHub for new commits on the deploy branch. When a new commit has
-# passed every CI check, fast-forwards the local checkout and rebuilds the
-# docker compose stack. If the app does not come up healthy afterwards, rolls
+# passed every CI check, backs up the database, fast-forwards the local
+# checkout and rebuilds the docker compose stack. If the app does not come up healthy afterwards, rolls
 # back to the previous commit and never retries the bad one. Never deploys
 # commits with failing or pending CI, and never touches a checkout that has
 # diverged from the remote branch.
@@ -14,6 +14,8 @@ SERVICES="${AUTODEPLOY_SERVICES:-db web nginx}"
 HEALTH_PATH="${AUTODEPLOY_HEALTH_PATH:-/login}"
 HEALTH_TIMEOUT="${AUTODEPLOY_HEALTH_TIMEOUT:-120}"
 DRY_RUN="${AUTODEPLOY_DRY_RUN:-0}"
+BACKUP_DIR="${AUTODEPLOY_BACKUP_DIR:-backups}"
+BACKUP_KEEP="${AUTODEPLOY_BACKUP_KEEP:-14}"
 ONCE="${AUTODEPLOY_ONCE:-0}"
 
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') autodeploy: $*"; }
@@ -40,6 +42,35 @@ ci_status() {
 		  elif any($r[]; .status != "completed") then "pending"
 		  elif all($r[]; .conclusion == "success" or .conclusion == "skipped" or .conclusion == "neutral") then "success"
 		  else "failure" end'
+}
+
+# Dumps the database before a deploy: the new version may run migrations,
+# and rolling back the app does not undo them. Keeps the newest BACKUP_KEEP
+# dumps. Succeeds without a dump when the db container is not running
+# (first deploy). $1 is the commit being deployed, used in the file name.
+backup() {
+	if [ -z "$(docker compose ps -q --status running db 2>/dev/null)" ]; then
+		log "db is not running; no backup before this deploy"
+		return 0
+	fi
+	mkdir -p "$BACKUP_DIR"
+	file="$BACKUP_DIR/expenser-$(date '+%Y%m%d-%H%M%S')-$(echo "$1" | cut -c1-7).sql"
+	if ! docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' >"$file.tmp"; then
+		log "pg_dump failed"
+		rm -f "$file.tmp"
+		return 1
+	fi
+	# A dump cut short (disk full, db stopped) lacks pg_dump's closing line.
+	if ! tail -n 10 "$file.tmp" | grep -q 'PostgreSQL database dump complete'; then
+		log "backup is incomplete"
+		rm -f "$file.tmp"
+		return 1
+	fi
+	mv "$file.tmp" "$file"
+	gzip -f "$file"
+	log "backed up the database to ${file}.gz"
+	# shellcheck disable=SC2012 # names are ours, no odd characters
+	ls -1t "$BACKUP_DIR"/expenser-*.sql.gz | tail -n +$((BACKUP_KEEP + 1)) | xargs -r rm -f
 }
 
 # Rebuilds the stack for the checked-out commit. $1 is the commit that was
@@ -75,13 +106,18 @@ deploy() {
 	old="$1"
 	new="$2"
 
+	if [ "$DRY_RUN" != "1" ] && ! backup "$new"; then
+		log "no backup, not deploying ${new}; will retry"
+		return 2
+	fi
+
 	if ! git merge --ff-only --quiet "$new"; then
 		log "fast-forward to ${new} failed (local changes?); will retry"
 		return 2
 	fi
 
 	if [ "$DRY_RUN" = "1" ]; then
-		log "dry run: would rebuild: ${SERVICES}"
+		log "dry run: would back up the database and rebuild: ${SERVICES}"
 		return 0
 	fi
 
