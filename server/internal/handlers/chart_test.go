@@ -39,6 +39,8 @@ func TestParseTrendQuery(t *testing.T) {
 	assert.Equal(t, "12", parse(models.SectionHouse, "period=y+2025").Period)
 	assert.Equal(t, "12", parse(models.SectionHouse, "period=all").Period, "all is for the item tab")
 	assert.Equal(t, "all", parse(models.SectionGroceries, "tab=item&period=all").Period)
+	assert.Equal(t, "12", parse(models.SectionGroceries, "tab=item&period=y2024").Period, "item tab has no calendar-year period")
+	assert.Equal(t, "6", parse(models.SectionGroceries, "tab=item&period=6").Period)
 
 	assert.Equal(t, 2026, parse(models.SectionHouse, "a=0").YearA)
 	assert.Equal(t, 2026, parse(models.SectionHouse, "a=1999").YearA)

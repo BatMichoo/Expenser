@@ -70,7 +70,7 @@ func ParseTrendQuery(v url.Values, sec models.Section, now time.Time) models.Tre
 		q.Period = p
 	case p == "all" && q.Tab == "item":
 		q.Period = p
-	case strings.HasPrefix(p, "y"):
+	case strings.HasPrefix(p, "y") && q.Tab != "item": // item tab has no calendar-year period
 		digits := p[1:]
 		if y, err := strconv.Atoi(digits); err == nil && len(digits) == 4 && validYear(y) {
 			q.Period = p

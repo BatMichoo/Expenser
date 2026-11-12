@@ -110,6 +110,14 @@ func rangeStart(key string) time.Time {
 	return models.Date(t.Year(), t.Month(), 1)
 }
 
+// rangeEnd is the first day after the period key (exclusive bound).
+func rangeEnd(key string) time.Time {
+	if len(key) == 4 {
+		return rangeStart(key).AddDate(1, 0, 0)
+	}
+	return rangeStart(key).AddDate(0, 1, 0)
+}
+
 // priorYearKey is the key of the same period one year earlier.
 func priorYearKey(key string) string {
 	if len(key) == 4 {
@@ -147,9 +155,10 @@ func BuildItemTrend(lines []models.GroceryLine, all []models.GroceryLine, item m
 		return t
 	}
 	start := rangeStart(periods[0])
+	end := rangeEnd(periods[len(periods)-1])
 	var inRange []models.GroceryLine
 	for _, l := range lines {
-		if !l.Date.Before(start) {
+		if !l.Date.Before(start) && l.Date.Before(end) {
 			inRange = append(inRange, l)
 			t.TotalSaved += l.TotalDiscount
 		}
@@ -257,6 +266,13 @@ func containsStr(s []string, v string) bool {
 // name.
 func BuildItemRows(all []models.GroceryLine, now time.Time) []models.ItemRow {
 	today := models.DateOnly(now)
+	var recent []models.GroceryLine
+	for _, l := range all {
+		if !l.Date.Before(today.AddDate(-2, 0, 0)) && !l.Date.After(today) {
+			recent = append(recent, l)
+		}
+	}
+	all = recent
 	nowFrom, yearFrom := today.AddDate(0, 0, -90), today.AddDate(-1, 0, -90)
 	yearTo, boughtFrom := today.AddDate(-1, 0, 0), today.AddDate(-1, 0, 0)
 	byCat := map[int][]models.GroceryLine{}
@@ -325,8 +341,16 @@ func (s *TrendsService) itemTrend(ctx context.Context, userID uuid.UUID, p *mode
 		from = models.Date(2000, 1, 1)
 	} else {
 		from = earliest(from, months[0].Start().AddDate(-1, 0, 0))
+		if q.By == "year" {
+			// whole calendar years are charted, so the prior year must be whole too
+			from = earliest(from, models.Date(months[0].Year-1, 1, 1))
+		}
 	}
-	all, err := s.store.GetGroceryLines(ctx, userID, 0, from, cur.End())
+	to := cur.End()
+	if months != nil && months[len(months)-1].End().After(to) {
+		to = months[len(months)-1].End()
+	}
+	all, err := s.store.GetGroceryLines(ctx, userID, 0, from, to)
 	if err != nil {
 		return err
 	}
@@ -347,7 +371,7 @@ func (s *TrendsService) itemTrend(ctx context.Context, userID uuid.UUID, p *mode
 
 	var periods []string
 	if q.By == "year" {
-		for y := rangeFrom.Year(); y <= now.Year(); y++ {
+		for y := rangeFrom.Year(); y <= months[len(months)-1].Year; y++ {
 			periods = append(periods, strconv.Itoa(y))
 		}
 		rangeFrom = models.Date(rangeFrom.Year(), 1, 1)
@@ -367,7 +391,7 @@ func (s *TrendsService) itemTrend(ctx context.Context, userID uuid.UUID, p *mode
 	if item.ID == 0 && len(cats) > 0 {
 		known := map[int]int{}
 		for _, l := range all {
-			if l.SizeStatus == models.SizeKnown && !l.Date.Before(rangeFrom) {
+			if l.SizeStatus == models.SizeKnown && !l.Date.Before(rangeFrom) && l.Date.Before(rangeEnd(periods[len(periods)-1])) {
 				known[l.CategoryID]++
 			}
 		}

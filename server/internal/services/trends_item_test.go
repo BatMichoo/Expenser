@@ -174,3 +174,87 @@ func TestPageItemDefaults(t *testing.T) {
 	require.Equal(t, 1, p.Item.ItemID)
 	require.Equal(t, "kg", p.Query.Unit)
 }
+
+func TestBuildItemTrendDiscountsTop5(t *testing.T) {
+	initI18n(t)
+	d := models.Date(2026, 11, 2)
+	var lines []models.GroceryLine
+	for _, disc := range []float64{3, 1, 6, 2, 5, 4, 0} {
+		lines = append(lines, gl(1, d, 1, 1, 10, disc, "kg")) // per unit discount = disc
+	}
+	it := BuildItemTrend(lines, nil, models.Category{ID: 1, Name: "Dairy"}, "kg", "month", []string{"2026-11"}, models.Date(2026, 11, 12), "en")
+	require.Len(t, it.Discounts, 5)
+	for i, want := range []float64{6, 5, 4, 3, 2} {
+		require.InDelta(t, want, it.Discounts[i].DiscountPerUnit, 1e-9)
+	}
+}
+
+func TestBuildItemTrendRangeBounds(t *testing.T) {
+	initI18n(t)
+	d := models.Date
+	lines := []models.GroceryLine{
+		gl(1, d(2026, 11, 2), 1, 1, 4, 0, "kg"),
+		unknown(gl(1, d(2026, 9, 30), 1, 1, 9, 7, "kg")), // before range
+		unknown(gl(1, d(2026, 12, 1), 1, 1, 9, 11, "l")), // after range
+		gl(1, d(2026, 9, 29), 1, 1, 9, 0, "pc"),          // before range, would add a unit
+	}
+	it := BuildItemTrend(lines, nil, models.Category{ID: 1, Name: "Dairy"}, "kg", "month", []string{"2026-10", "2026-11"}, d(2026, 11, 12), "en")
+	require.Equal(t, 0, it.Excluded)
+	require.InDelta(t, 0.0, it.TotalSaved, 1e-9)
+	require.Equal(t, []string{"kg"}, it.Units)
+}
+
+func TestBuildItemTrendUnitSwitch(t *testing.T) {
+	initI18n(t)
+	d := models.Date(2026, 11, 2)
+	lines := []models.GroceryLine{
+		gl(1, d, 1, 1, 4, 0, "kg"), gl(1, d, 1, 1, 6, 0, "kg"), // kg main, avg 5
+		gl(1, d, 2, 0.5, 3, 0, "l"), // 1 l for 3
+	}
+	run := func(unit string) models.ItemTrend {
+		return BuildItemTrend(lines, nil, models.Category{ID: 1, Name: "Dairy"}, unit, "month", []string{"2026-11"}, models.Date(2026, 11, 12), "en")
+	}
+	l := run("l")
+	require.Equal(t, "l", l.Unit)
+	require.InDelta(t, 3.0, l.PriceNow, 1e-9)
+	require.Equal(t, 2, l.Excluded)
+	require.InDelta(t, 1.0, l.QtyNow, 1e-9)
+	for _, u := range []string{"", "pc", "bogus"} {
+		k := run(u)
+		require.Equal(t, "kg", k.Unit, u)
+		require.InDelta(t, 5.0, k.PriceNow, 1e-9)
+		require.Equal(t, 1, k.Excluded)
+	}
+}
+
+func TestPageItemByYear(t *testing.T) {
+	initI18n(t)
+	d := models.Date
+	st := itemStore{lines: []models.GroceryLine{
+		gl(1, d(2025, 1, 10), 1, 1, 2, 0, "kg"), // in January, before the 12-month window start
+		gl(1, d(2025, 12, 20), 1, 1, 4, 0, "kg"),
+		gl(1, d(2026, 10, 5), 1, 1, 6, 0, "kg"),
+		gl(1, d(2024, 6, 1), 1, 1, 1, 0, "kg"), // two years back: not charted
+	}}
+	p, err := NewTrendsService(st).Page(context.Background(), uuid.New(), models.SectionGroceries,
+		models.TrendQuery{Tab: "item", Period: "12", ItemID: 1, By: "year"}, "en", d(2026, 11, 12))
+	require.NoError(t, err)
+	// 2025 (whole year) average = (2+4)/2 = 3; 2026 = 6; change = +100%.
+	require.InDelta(t, 6.0, p.Item.PriceNow, 1e-9)
+	require.True(t, p.Item.HasPriceChange)
+	require.InDelta(t, 100.0, p.Item.PriceChangePct, 1e-9)
+	require.Len(t, p.Item.Chart.Labels, 2)
+}
+
+func TestBuildItemRowsIgnoresOldLines(t *testing.T) {
+	now := models.Date(2026, 11, 12)
+	d := models.Date
+	all := []models.GroceryLine{
+		gl(1, d(2026, 10, 1), 1, 1, 6, 0, "kg"),
+		gl(1, d(2023, 1, 1), 1, 1, 1, 0, "pc"), gl(1, d(2023, 2, 1), 1, 1, 1, 0, "pc"), gl(1, d(2023, 3, 1), 1, 1, 1, 0, "pc"),
+	}
+	rows := BuildItemRows(all, now)
+	require.Len(t, rows, 1)
+	require.Equal(t, "kg", rows[0].Unit)
+	require.InDelta(t, 6.0, rows[0].Now, 1e-9)
+}
