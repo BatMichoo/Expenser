@@ -3,9 +3,11 @@ package utilities
 import (
 	"bytes"
 	"expenser/internal/chart"
+	"expenser/internal/groceryunits"
 	"fmt"
 	"html/template"
 	"math"
+	"strconv"
 	"strings"
 )
 
@@ -65,6 +67,11 @@ func TemplateFuncs() template.FuncMap {
 				return 0
 			}
 			return math.Max(0, math.Min(100, part/whole*100))
+		},
+		// sizeValue prints a pack size for a number input: rounded to the
+		// column's 4 decimals, without float noise or trailing zeros.
+		"sizeValue": func(v float64) string {
+			return strconv.FormatFloat(groceryunits.Round4(v), 'f', -1, 64)
 		},
 		"abs": math.Abs,
 		"sub": func(a, b float64) float64 { return a - b },

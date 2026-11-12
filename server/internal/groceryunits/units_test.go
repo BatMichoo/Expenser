@@ -51,6 +51,21 @@ func TestParse(t *testing.T) {
 		// A leading dot is not a boundary, and a decimal dot stays in the number.
 		{"Мляко .5л", 1, "", 0, false},
 		{"Мляко 1.5л", 1, Liter, 1.5, true},
+		// Repeated sizes are ambiguous even when equal (two packs? one?).
+		{"Кафе 500г+500г", 1, "", 0, false},
+		{"Мляко 1л 1л", 1, "", 0, false},
+		// A weighed (fractional) quantity with a pack size other than exactly
+		// 1 kg or 1 l cannot be priced per unit.
+		{"Кашкавал 400г", 0.855, "", 0, false},
+		{"Мляко 2л", 1.5, "", 0, false},
+		{"Банани 1кг", 0.855, Kg, 1, true},
+		{"Мляко 1л", 1.5, Liter, 1, true},
+		// A four-digit year before "г" is not a size.
+		{"Вино 2019г.", 1, "", 0, false},
+		{"Вино 2019г", 1, "", 0, false},
+		{"Вино 2019г 0,75л", 1, Liter, 0.75, true},
+		{"Брашно 1900гр", 1, Kg, 1.9, true},
+		{"Ориз 2500г", 1, Kg, 2.5, true},
 	}
 	for _, c := range cases {
 		t.Run(c.product, func(t *testing.T) {
@@ -62,6 +77,24 @@ func TestParse(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Sizes are rounded to 4 decimals, like the NUMERIC(10,4) column, so a
+// multipack never carries float noise into forms or the database.
+func TestParseRoundsToFourDecimals(t *testing.T) {
+	got, ok := Parse("Сок 3x0,2л", 1)
+	assert.True(t, ok)
+	assert.Equal(t, Liter, got.Unit)
+	assert.Equal(t, 0.6, got.Per)
+
+	got, ok = Parse("Дъвки 25x1,75г", 1)
+	assert.True(t, ok)
+	assert.Equal(t, Kg, got.Unit)
+	assert.Equal(t, 0.0438, got.Per)
+
+	got, ok = Resolve("White bread", 1, "kg", 0.33333)
+	assert.True(t, ok)
+	assert.Equal(t, 0.3333, got.Per)
 }
 
 func TestParseZeroQuantity(t *testing.T) {

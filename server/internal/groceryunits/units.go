@@ -50,25 +50,50 @@ var (
 	trailMulRe = regexp.MustCompile(unitPat + `\.?\s*[xх*]\s*\d`)
 )
 
-// normalise converts a parsed amount and unit token to a base unit.
+// Round4 rounds a pack size to 4 decimals, the precision of the unit_size
+// NUMERIC(10,4) column.
+func Round4(v float64) float64 {
+	return math.Round(v*1e4) / 1e4
+}
+
+// normalise converts a parsed amount and unit token to a base unit, rounded
+// to 4 decimals. Grams and millilitres are rounded before dividing by 1000 so
+// a half step (43.75 g) rounds up as written instead of by float noise.
 func normalise(amount float64, token string) Size {
 	switch token {
 	case "кг", "kg":
-		return Size{Kg, amount}
+		return Size{Kg, Round4(amount)}
 	case "г", "гр", "g":
-		return Size{Kg, amount / 1000}
+		return Size{Kg, math.Round(amount*10) / 1e4}
 	case "мл", "ml":
-		return Size{Liter, amount / 1000}
+		return Size{Liter, math.Round(amount*10) / 1e4}
 	case "л", "l":
-		return Size{Liter, amount}
+		return Size{Liter, Round4(amount)}
 	default:
-		return Size{Piece, amount}
+		return Size{Piece, Round4(amount)}
 	}
 }
 
+// yearRe matches a four-digit number; with the unit "г" and a dot, space or
+// end after it, a number in 1900..2100 is a year ("Вино 2019г."), not grams.
+var yearRe = regexp.MustCompile(`^\d{4}$`)
+
+func isYear(number, token, after string) bool {
+	if token != "г" || !yearRe.MatchString(number) {
+		return false
+	}
+	if after != "" && after[0] != '.' && after[0] != ' ' && after[0] != '\t' {
+		return false
+	}
+	y, err := strconv.Atoi(number)
+	return err == nil && y >= 1900 && y <= 2100
+}
+
 // Parse reads the pack size from a product name. It returns false unless the
-// size is certain. A name without a size but with a fractional quantity is
-// treated as sold by weight (one kg per counted unit).
+// size is certain: exactly one size in the name (a repeated size, equal or
+// not, is ambiguous), and for a fractional (weighed) quantity only a size of
+// exactly 1 kg or 1 l. A name without a size but with a fractional quantity
+// is treated as sold by weight (one kg per counted unit).
 func Parse(product string, quantity float64) (Size, bool) {
 	s := commaRe.ReplaceAllString(strings.ToLower(product), "$1.$2")
 
@@ -89,9 +114,7 @@ func Parse(product string, quantity float64) (Size, bool) {
 		if err1 != nil || err2 != nil {
 			return Size{}, false
 		}
-		sz := normalise(v, s[m[6]:m[7]])
-		sz.Per *= n
-		found = append(found, sz)
+		found = append(found, normalise(n*v, s[m[6]:m[7]]))
 		s = s[:m[0]] + " " + s[m[1]:]
 	}
 
@@ -106,30 +129,41 @@ func Parse(product string, quantity float64) (Size, bool) {
 		if m == nil {
 			break
 		}
-		v, err := strconv.ParseFloat(s[pos+m[2]:pos+m[3]], 64)
+		number, token := s[pos+m[2]:pos+m[3]], s[pos+m[4]:pos+m[5]]
+		end := pos + m[5]
+		pos = end
+		if isYear(number, token, s[end:]) {
+			continue
+		}
+		v, err := strconv.ParseFloat(number, 64)
 		if err != nil {
 			return Size{}, false
 		}
-		found = append(found, normalise(v, s[pos+m[4]:pos+m[5]]))
-		pos += m[5]
+		found = append(found, normalise(v, token))
 	}
 
 	if len(found) == 0 {
-		if quantity > 0 && math.Abs(quantity-math.Round(quantity)) > 1e-9 {
+		if quantity > 0 && fractional(quantity) {
 			return Size{Kg, 1}, true
 		}
 		return Size{}, false
 	}
-	first := found[0]
-	for _, f := range found[1:] {
-		if f.Unit != first.Unit || math.Abs(f.Per-first.Per) > 1e-9 {
-			return Size{}, false
-		}
-	}
-	if first.Per <= 0 {
+	if len(found) > 1 {
 		return Size{}, false
 	}
-	return first, true
+	size := found[0]
+	if size.Per <= 0 {
+		return Size{}, false
+	}
+	if fractional(quantity) && !(size.Per == 1 && (size.Unit == Kg || size.Unit == Liter)) {
+		return Size{}, false
+	}
+	return size, true
+}
+
+// fractional reports whether a quantity is not a whole number, i.e. weighed.
+func fractional(quantity float64) bool {
+	return math.Abs(quantity-math.Round(quantity)) > 1e-9
 }
 
 // Resolve reconciles the rule-based parse with an AI-suggested size. A rule
@@ -149,8 +183,8 @@ func Resolve(product string, quantity float64, aiUnit string, aiPer float64) (Si
 		}
 		return Size{}, false
 	}
-	if ai.Valid() && aiPer > 0 {
-		return Size{ai, aiPer}, true
+	if per := Round4(aiPer); ai.Valid() && per > 0 {
+		return Size{ai, per}, true
 	}
 	return Size{}, false
 }

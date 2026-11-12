@@ -1629,6 +1629,17 @@ func TestSizeFieldsPartial(t *testing.T) {
 	size, _ := doc.Find(`input[name="items[3].unit_size"]`).Attr("value")
 	assert.Equal(t, "1", size)
 
+	step, _ := doc.Find(`input[name="items[3].unit_size"]`).Attr("step")
+	assert.Equal(t, "any", step, "any step, so 4-decimal sizes like 0.0125 do not block submit")
+
+	per, packs := 0.2, 3.0
+	noisy := parseHTML(t, render(t, "size-fields", map[string]any{"Prefix": "", "ID": "size-fields", "Unit": "l", "Size": packs * per, "Lang": "en"}))
+	v, _ := noisy.Find(`input[name="unit_size"]`).Attr("value")
+	assert.Equal(t, "0.6", v)
+	fine := parseHTML(t, render(t, "size-fields", map[string]any{"Prefix": "", "ID": "size-fields", "Unit": "kg", "Size": 0.0125, "Lang": "en"}))
+	v, _ = fine.Find(`input[name="unit_size"]`).Attr("value")
+	assert.Equal(t, "0.0125", v)
+
 	blank := parseHTML(t, render(t, "size-fields", map[string]any{"Prefix": "", "ID": "size-fields", "Unit": "", "Size": 0.0, "Lang": "en"}))
 	v, has := blank.Find(`input[name="unit_size"]`).Attr("value")
 	assert.True(t, !has || v == "", "no zero shown")
