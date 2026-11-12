@@ -1537,3 +1537,74 @@ func TestNoChartJS(t *testing.T) {
 	assert.False(t, strings.Contains(strings.ToLower(html), lib), "no Chart.js script")
 	assert.Nil(t, loadTemplates(t).Lookup("exp-chart"), "old chart template removed")
 }
+
+func trendsItemPage() *models.TrendsPage {
+	f := func(v float64) *float64 { return &v }
+	pc := chart.Price(chart.DefaultFrame, []string{"Sep", "Oct"}, []*float64{f(2), f(2.5)}, []*float64{f(1.8), f(2.2)}, []*float64{f(2.2), f(2.8)}, nil, []float64{1, 2})
+	d := time.Date(2026, 10, 3, 0, 0, 0, 0, time.UTC)
+	var disc []models.PriceLine
+	for i := 0; i < 5; i++ {
+		disc = append(disc, models.PriceLine{Date: d, Store: "Lidl", Product: "Milk", PerUnit: 2, DiscountPerUnit: 0.5})
+	}
+	return &models.TrendsPage{
+		Section: "groceries", Lang: "en", TypePrefix: "category.",
+		Query: models.TrendQuery{Tab: "item", Period: "12", ItemID: 7, By: "month", Unit: "l"},
+		Items: []models.Category{{ID: 7, Name: "Milk"}, {ID: 8, Name: "Bread"}},
+		Item: &models.ItemTrend{
+			ItemID: 7, Item: "Milk", Unit: "l", Units: []string{"l"}, By: "month",
+			PriceNow: 2.5, HasPriceNow: true, PriceChangePct: 12, HasPriceChange: true,
+			QtyNow: 3, QtyUsual: 2, HasQtyUsual: true,
+			Cheapest:  &models.PriceLine{Date: d, Store: "Kaufland", Product: "Fresh", PerUnit: 1.9},
+			Discounts: disc, TotalSaved: 7.5, Chart: pc,
+			Items: []models.ItemRow{
+				{ItemID: 7, Item: "Milk", Unit: "l", Now: 2.5, YearAgo: 2.2, ChangePct: 13, HasChange: true, Bought12: 20},
+				{ItemID: 8, Item: "Bread", Unit: "pc", Now: 1.5, Bought12: 5},
+			},
+		},
+	}
+}
+
+func TestTrendItemTab(t *testing.T) {
+	p := trendsItemPage()
+	doc := parseHTML(t, render(t, "trends", p))
+	assert.Equal(t, 3, doc.Find(".kpi-tiles .kpi").Length())
+	assert.Equal(t, 1, doc.Find("svg.trend-svg").Length())
+	assert.Equal(t, 5, doc.Find("table.item-discounts tbody tr").Length())
+	rows := doc.Find("table.item-all tbody tr")
+	assert.Equal(t, 2, rows.Length())
+	link, _ := rows.First().Find("a").Attr("hx-get")
+	assert.Equal(t, "/groceries/chart?tab=item&item=7", link)
+	href, _ := rows.First().Find("a").Attr("href")
+	assert.Equal(t, "/groceries/chart?tab=item&item=7", href)
+	assert.NotContains(t, doc.Find("table.item-all").Text(), "Other")
+	assert.Contains(t, doc.Text(), "2.50")
+	assert.Equal(t, 0, doc.Find(".unit-switch").Length(), "one unit: no switch")
+	assert.Equal(t, 2, doc.Find(`select[name="item"] option`).Length())
+	assert.Equal(t, 0, doc.Find(".month-type").Length())
+
+	p.Item.Units = []string{"kg", "l"}
+	doc = parseHTML(t, render(t, "trends", p))
+	assert.Equal(t, 1, doc.Find(".unit-switch").Length())
+}
+
+func TestTrendItemExcludedNote(t *testing.T) {
+	p := trendsItemPage()
+	p.Item.Excluded = 3
+	doc := parseHTML(t, render(t, "trend-item", p))
+	note := doc.Find(".item-excluded")
+	require.Equal(t, 1, note.Length())
+	assert.Contains(t, note.Text(), "3")
+	link, _ := note.Find("a").Attr("hx-get")
+	assert.Equal(t, "/groceries/sizes", link)
+
+	p.Item.Excluded = 0
+	assert.Equal(t, 0, parseHTML(t, render(t, "trend-item", p)).Find(".item-excluded").Length())
+}
+
+func TestTrendItemEmpty(t *testing.T) {
+	p := trendsItemPage()
+	p.Item = &models.ItemTrend{ItemID: 7, Item: "Milk", Unit: "l", Empty: true}
+	doc := parseHTML(t, render(t, "trend-item", p))
+	assert.Contains(t, doc.Find(".trend-empty").Text(), "Milk")
+	assert.Equal(t, 0, doc.Find("svg").Length())
+}

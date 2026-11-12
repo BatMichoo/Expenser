@@ -181,3 +181,9 @@ type ItemTrend struct {
 	Items          []ItemRow
 	Empty          bool
 }
+
+// UnitKey is the i18n key of the unit's short label ("kg", "l", "pcs").
+func (t ItemTrend) UnitKey() string { return "trends.unit_" + t.Unit }
+
+// UnitKey is the i18n key of the row's unit label.
+func (r ItemRow) UnitKey() string { return "trends.unit_" + r.Unit }
