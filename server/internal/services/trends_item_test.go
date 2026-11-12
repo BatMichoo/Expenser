@@ -227,23 +227,35 @@ func TestBuildItemTrendUnitSwitch(t *testing.T) {
 	}
 }
 
+type recordingStore struct {
+	itemStore
+	from *time.Time
+}
+
+func (r recordingStore) GetGroceryLines(ctx context.Context, u uuid.UUID, cat int, from, to time.Time) ([]models.GroceryLine, error) {
+	*r.from = from
+	return r.itemStore.GetGroceryLines(ctx, u, cat, from, to)
+}
+
 func TestPageItemByYear(t *testing.T) {
 	initI18n(t)
 	d := models.Date
-	st := itemStore{lines: []models.GroceryLine{
-		gl(1, d(2025, 1, 10), 1, 1, 2, 0, "kg"), // in January, before the 12-month window start
-		gl(1, d(2025, 12, 20), 1, 1, 4, 0, "kg"),
-		gl(1, d(2026, 10, 5), 1, 1, 6, 0, "kg"),
-		gl(1, d(2024, 6, 1), 1, 1, 1, 0, "kg"), // two years back: not charted
-	}}
+	var from time.Time
+	st := recordingStore{from: &from, itemStore: itemStore{lines: []models.GroceryLine{
+		gl(1, d(2023, 3, 10), 1, 1, 2, 0, "kg"), // Jan-Oct 2023: before the old fetch window (2023-12-01)
+		gl(1, d(2023, 9, 20), 1, 1, 4, 0, "kg"),
+		gl(1, d(2024, 5, 5), 1, 1, 6, 0, "kg"),
+	}}}
 	p, err := NewTrendsService(st).Page(context.Background(), uuid.New(), models.SectionGroceries,
-		models.TrendQuery{Tab: "item", Period: "12", ItemID: 1, By: "year"}, "en", d(2026, 11, 12))
+		models.TrendQuery{Tab: "item", Period: "24", ItemID: 1, By: "year"}, "en", d(2026, 11, 12))
 	require.NoError(t, err)
-	// 2025 (whole year) average = (2+4)/2 = 3; 2026 = 6; change = +100%.
+	// Periods are 2024..2026; the prior year 2023 must be fetched whole.
+	require.True(t, from.Equal(d(2023, 1, 1)), "fetched from %v", from)
+	// Latest priced year is 2024 (6/kg); 2023 average = (2+4)/2 = 3; change = +100%.
 	require.InDelta(t, 6.0, p.Item.PriceNow, 1e-9)
 	require.True(t, p.Item.HasPriceChange)
 	require.InDelta(t, 100.0, p.Item.PriceChangePct, 1e-9)
-	require.Len(t, p.Item.Chart.Labels, 2)
+	require.Len(t, p.Item.Chart.Labels, 3)
 }
 
 func TestBuildItemRowsIgnoresOldLines(t *testing.T) {
