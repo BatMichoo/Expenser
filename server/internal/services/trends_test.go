@@ -8,7 +8,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+
+	"expenser/internal/utilities"
 )
+
+func initI18n(t *testing.T) {
+	t.Helper()
+	require.NoError(t, utilities.InitI18n())
+}
 
 func TestPeriodMonths(t *testing.T) {
 	now := models.Date(2026, 11, 12)
@@ -72,6 +80,7 @@ func months3() []YearMonth {
 }
 
 func TestBuildMonthTrend(t *testing.T) {
+	initI18n(t)
 	rows := []models.MonthTypeTotal{
 		row("2026-01", 1, "Rent", 100), row("2026-02", 1, "Rent", 100),
 		row("2026-03", 1, "Rent", 100), row("2026-03", 2, "Power", 50),
@@ -104,6 +113,7 @@ func TestBuildMonthTrend(t *testing.T) {
 }
 
 func TestBuildMonthTrendGroceries(t *testing.T) {
+	initI18n(t)
 	var rows []models.MonthTypeTotal
 	for i := 1; i <= 8; i++ {
 		rows = append(rows, row("2026-01", i, string(rune('A'+i)), float64(i*10)))
@@ -141,6 +151,7 @@ func TestBuildMonthTrendGroceries(t *testing.T) {
 }
 
 func TestMonthTrendEmpty(t *testing.T) {
+	initI18n(t)
 	m := BuildMonthTrend(nil, nil, months3(), 0, false, "en")
 	if !m.Empty || m.HasChange || math.IsNaN(m.ChangePct) || m.TopMonth != "" {
 		t.Errorf("%+v", m)
@@ -148,6 +159,7 @@ func TestMonthTrendEmpty(t *testing.T) {
 }
 
 func TestMonthTrendLabelsAcrossYears(t *testing.T) {
+	initI18n(t)
 	ms := []YearMonth{{2025, 12}, {2026, 1}}
 	m := BuildMonthTrend(nil, nil, ms, 0, false, "en")
 	if m.Chart.Columns[0].Label != "Dec '25" || m.Chart.Columns[1].Label != "Jan '26" {
@@ -156,6 +168,7 @@ func TestMonthTrendLabelsAcrossYears(t *testing.T) {
 }
 
 func TestBuildYearTrend(t *testing.T) {
+	initI18n(t)
 	rowsA := []models.MonthTypeTotal{row("2026-01", 1, "Rent", 100), row("2026-02", 2, "Power", 80)}
 	rowsB := []models.MonthTypeTotal{row("2025-01", 1, "Rent", 90), row("2025-02", 2, "Power", 20)}
 	y := BuildYearTrend(rowsA, rowsB, rowsA, rowsB,
@@ -219,6 +232,7 @@ func (fakeTrendsStore) GetAllCategories() ([]models.Category, error) {
 }
 
 func TestPageDefaults(t *testing.T) {
+	initI18n(t)
 	svc := NewTrendsService(fakeTrendsStore{})
 	now := models.Date(2026, 11, 12)
 	p, err := svc.Page(context.Background(), uuid.New(), models.SectionHouse, models.TrendQuery{}, "en", now)
@@ -245,4 +259,46 @@ func TestPageDefaults(t *testing.T) {
 	if g.TypePrefix != "category." || g.Unsized != 4 || g.Types[0].Name != "Dairy" {
 		t.Errorf("groceries %+v", g)
 	}
+}
+
+func TestSoFarWindowPastVsCurrent(t *testing.T) {
+	d := models.Date
+	fa, ta, fb, tb := SoFarWindow(2025, 2026, d(2026, 11, 12))
+	for name, c := range map[string][2]time.Time{
+		"fromA": {fa, d(2025, 1, 1)}, "toA": {ta, d(2025, 11, 13)},
+		"fromB": {fb, d(2026, 1, 1)}, "toB": {tb, d(2026, 11, 13)},
+	} {
+		if !c[0].Equal(c[1]) {
+			t.Errorf("%s = %v want %v", name, c[0], c[1])
+		}
+	}
+}
+
+type rangeStore struct {
+	fakeTrendsStore
+	totals, discounts [][2]time.Time
+}
+
+func (r *rangeStore) GetMonthTypeTotals(_ context.Context, _ uuid.UUID, _ models.Section, from, to time.Time) ([]models.MonthTypeTotal, error) {
+	r.totals = append(r.totals, [2]time.Time{from, to})
+	return nil, nil
+}
+func (r *rangeStore) GetGroceriesDiscountTotal(_ context.Context, _ uuid.UUID, from, to time.Time) (float64, error) {
+	r.discounts = append(r.discounts, [2]time.Time{from, to})
+	return 0, nil
+}
+
+func TestYearTabUsesSoFarWindowForDiscounts(t *testing.T) {
+	initI18n(t)
+	d := models.Date
+	st := &rangeStore{}
+	now := d(2026, 11, 12)
+	q := models.TrendQuery{Tab: "year", YearA: 2026, YearB: 2025}
+	_, err := NewTrendsService(st).Page(context.Background(), uuid.New(), models.SectionGroceries, q, "en", now)
+	require.NoError(t, err)
+	wantA := [2]time.Time{d(2026, 1, 1), d(2026, 11, 13)}
+	wantB := [2]time.Time{d(2025, 1, 1), d(2025, 11, 13)}
+	require.Equal(t, [][2]time.Time{wantA, wantB}, st.discounts)
+	require.Contains(t, st.totals, wantA)
+	require.Contains(t, st.totals, wantB)
 }

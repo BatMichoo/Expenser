@@ -72,22 +72,23 @@ func Median(v []float64) float64 {
 }
 
 // SoFarWindow returns the [from,to) ranges to compare year A with year B.
-// When A is the current year both windows run from 1 January to today's
-// date (clamped to the last day of that month in B, so 29 Feb compares with
-// 28 Feb); otherwise they are the full years.
+// When either year is the current one, both windows run from 1 January to
+// today's date (clamped to the last day of that month in a shorter year, so
+// 29 Feb compares with 28 Feb); otherwise they are the full years.
 func SoFarWindow(yearA, yearB int, now time.Time) (fromA, toA, fromB, toB time.Time) {
 	fromA, fromB = models.Date(yearA, 1, 1), models.Date(yearB, 1, 1)
-	if yearA != now.Year() {
+	if yearA != now.Year() && yearB != now.Year() {
 		return fromA, models.Date(yearA+1, 1, 1), fromB, models.Date(yearB+1, 1, 1)
 	}
 	today := models.DateOnly(now)
-	toA = today.AddDate(0, 0, 1)
-	day := today.Day()
-	if last := models.Date(yearB, today.Month()+1, 0).Day(); day > last {
-		day = last
+	cut := func(year int) time.Time {
+		day := today.Day()
+		if last := models.Date(year, today.Month()+1, 0).Day(); day > last {
+			day = last
+		}
+		return models.Date(year, today.Month(), day).AddDate(0, 0, 1)
 	}
-	toB = models.Date(yearB, today.Month(), day).AddDate(0, 0, 1)
-	return
+	return fromA, cut(yearA), fromB, cut(yearB)
 }
 
 func monthOf(key string) time.Month {
@@ -243,7 +244,7 @@ func BuildMonthTrend(rows, prevRows []models.MonthTypeTotal, months []YearMonth,
 
 // BuildYearTrend builds the year-vs-year tab. rowsA/rowsB are the full
 // years, windowA/windowB the comparable so-far windows (see SoFarWindow),
-// savedA/savedB the groceries discounts of the full years. Year B is drawn
+// savedA/savedB the groceries discounts over the same so-far windows. Year B is drawn
 // in colour 0 (grey, the older year) and year A in colour 1. YearTotals is
 // ordered newest year first.
 func BuildYearTrend(rowsA, rowsB []models.MonthTypeTotal, windowA, windowB []models.MonthTypeTotal, yearTotals map[int]float64, yearA, yearB int, savedA, savedB float64, typeID int, lang string) models.YearTrend {
@@ -415,26 +416,25 @@ func (s *TrendsService) yearTrend(ctx context.Context, userID uuid.UUID, sec mod
 		return nil, err
 	}
 	fromA, toA, fromB, toB := SoFarWindow(q.YearA, q.YearB, now)
-	winA, winB := rowsA, rowsB
-	if toA.Year() == q.YearA { // a partial window, not the full year
-		if winA, err = get(fromA, toA); err != nil {
-			return nil, err
-		}
-		if winB, err = get(fromB, toB); err != nil {
-			return nil, err
-		}
+	winA, err := get(fromA, toA)
+	if err != nil {
+		return nil, err
+	}
+	winB, err := get(fromB, toB)
+	if err != nil {
+		return nil, err
 	}
 	var savedA, savedB float64
 	if sec == models.SectionGroceries {
-		if savedA, err = s.store.GetGroceriesDiscountTotal(ctx, userID, fullA, models.Date(q.YearA+1, 1, 1)); err != nil {
+		if savedA, err = s.store.GetGroceriesDiscountTotal(ctx, userID, fromA, toA); err != nil {
 			return nil, err
 		}
-		if savedB, err = s.store.GetGroceriesDiscountTotal(ctx, userID, fullB, models.Date(q.YearB+1, 1, 1)); err != nil {
+		if savedB, err = s.store.GetGroceriesDiscountTotal(ctx, userID, fromB, toB); err != nil {
 			return nil, err
 		}
 	}
 	y := BuildYearTrend(rowsA, rowsB, winA, winB, yearTotals, q.YearA, q.YearB, savedA, savedB, q.TypeID, lang)
-	if toA.Year() == q.YearA {
+	if q.YearA == now.Year() || q.YearB == now.Year() {
 		y.SoFarLabel = shortMonth(lang, time.January) + "–" + shortMonth(lang, now.Month())
 	}
 	return &y, nil
