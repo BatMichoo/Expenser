@@ -518,7 +518,7 @@
   "trends.vs_year": "спрямо %d",
   "trends.no_year_comparison": "Няма разходи за %d за сравнение",
   "trends.riser": "Най-голям ръст",
-  "trends.riser_sub": "повече от %d",
+  "trends.riser_sub": "повече спрямо %d",
   "trends.no_riser": "Нищо не е нараснало",
   "trends.saved": "Спестено с отстъпки",
   "trends.saved_vs": "%s през %d",

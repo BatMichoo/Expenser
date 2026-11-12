@@ -34,7 +34,7 @@
   hx-target="#section-content" hx-push-url="true">
   <input type="hidden" name="tab" value="{{ .Query.Tab }}" />
   {{ if eq .Query.Tab "month" }}
-  <select name="period" class="month-type" aria-label='{{ T .Lang "trends.period" }}'>
+  <select name="period" class="trend-select" aria-label='{{ T .Lang "trends.period" }}'>
     <option value="6" {{ if eq .Query.Period "6" }}selected{{ end }}>{{ T .Lang "trends.last_6" }}</option>
     <option value="12" {{ if eq .Query.Period "12" }}selected{{ end }}>{{ T .Lang "trends.last_12" }}</option>
     <option value="24" {{ if eq .Query.Period "24" }}selected{{ end }}>{{ T .Lang "trends.last_24" }}</option>
@@ -44,16 +44,16 @@
   </select>
   {{ end }}
   {{ if eq .Query.Tab "year" }}
-  <select name="a" class="month-type" aria-label='{{ T .Lang "trends.year_a" }}'>
+  <select name="a" class="trend-select" aria-label='{{ T .Lang "trends.year_a" }}'>
     {{ range .YearChoices }}<option value="{{ . }}" {{ if eq . $.Query.YearA }}selected{{ end }}>{{ . }}</option>{{ end }}
   </select>
   <span class="trend-vs">{{ T .Lang "trends.vs" }}</span>
-  <select name="b" class="month-type" aria-label='{{ T .Lang "trends.year_b" }}'>
+  <select name="b" class="trend-select" aria-label='{{ T .Lang "trends.year_b" }}'>
     {{ range .YearChoices }}<option value="{{ . }}" {{ if eq . $.Query.YearB }}selected{{ end }}>{{ . }}</option>{{ end }}
   </select>
   {{ end }}
   {{ if ne .Query.Tab "item" }}
-  <select name="type" class="month-type" aria-label='{{ T .Lang "toolbar.all_types" }}'>
+  <select name="type" class="trend-select" aria-label='{{ T .Lang "toolbar.all_types" }}'>
     <option value="0">{{ T .Lang "toolbar.all_types" }}</option>
     {{ range .Types }}
     <option value="{{ .ID }}" {{ if eq .ID $.Query.TypeID }}selected{{ end }}>{{ T $.Lang (print $.TypePrefix .Name) }}</option>

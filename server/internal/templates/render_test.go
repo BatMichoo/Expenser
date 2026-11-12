@@ -1420,6 +1420,10 @@ func TestTrendsMonthTab(t *testing.T) {
 	assert.Equal(t, "12", sel)
 	assert.Equal(t, 1, form.Find(`select[name="period"] option[value="y2024"]`).Length(), "calendar years with data")
 	assert.Equal(t, 2, form.Find(`select[name="type"] option`).Length())
+	form.Find("select").Each(func(_ int, sel *goquery.Selection) {
+		assert.False(t, sel.HasClass("month-type"), "month-type is hidden on phones")
+		assert.True(t, sel.HasClass("trend-select"))
+	})
 
 	tiles := doc.Find(".kpi")
 	assert.Equal(t, 3, tiles.Length())
@@ -1480,6 +1484,8 @@ func TestTrendsYearTab(t *testing.T) {
 	b, _ := form.Find(`select[name="b"] option[selected]`).Attr("value")
 	assert.Equal(t, []string{"2026", "2025"}, []string{a, b})
 	assert.Equal(t, 0, form.Find(`select[name="period"]`).Length())
+	assert.Equal(t, 3, form.Find("select.trend-select").Length(), "a, b, type")
+	assert.Equal(t, 0, form.Find("select.month-type").Length())
 
 	tiles := doc.Find(".kpi")
 	assert.Equal(t, 2, tiles.Length(), "house: so far and riser")

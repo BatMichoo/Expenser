@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"expenser/internal/models"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,4 +64,19 @@ func TestParseTrendQuery(t *testing.T) {
 	for _, u := range []string{"kg", "l", "pc"} {
 		assert.Equal(t, u, parse(models.SectionGroceries, "unit="+u).Unit)
 	}
+}
+
+func TestIsHTMXHistoryRestore(t *testing.T) {
+	ctx := func(headers map[string]string) *gin.Context {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest(http.MethodGet, "/house/chart", nil)
+		for k, v := range headers {
+			c.Request.Header.Set(k, v)
+		}
+		return c
+	}
+	assert.True(t, isHTMX(ctx(map[string]string{"HX-Request": "true"})))
+	assert.False(t, isHTMX(ctx(map[string]string{"HX-Request": "true", "HX-History-Restore-Request": "true"})),
+		"history restore after a cache miss needs the full page")
+	assert.False(t, isHTMX(ctx(nil)))
 }

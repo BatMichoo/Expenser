@@ -559,6 +559,17 @@
     padding: 0.55em 0.4em;
   }
 
+  .trend-filters {
+    width: 100%;
+  }
+
+  .trend-select {
+    flex: 1 1 8em;
+    min-width: 0;
+    height: 2.75em;
+    font-size: 16px;
+  }
+
   .trend-card,
   .year-totals-card {
     margin: 0 0.75em 0.75em;
