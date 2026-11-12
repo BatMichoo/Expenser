@@ -116,7 +116,7 @@ func (db *DB) CreateCarExpense(input *models.CarExpense) error {
 
 func (db *DB) GetCarExpensesForMonth(month time.Month, year int, userId uuid.UUID) (*[]models.CarExpense, error) {
 	query := `
-		SELECT ce.id, ct.name, ce.amount, ce.discount_amount, ce.expense_date, ce.notes, ce.metadata, ce.created_at
+		SELECT ce.id, ce.car_expense_type_id, ct.name, ce.amount, ce.discount_amount, ce.expense_date, ce.notes, ce.metadata, ce.created_at
 			FROM car_expenses ce
 		JOIN
 			car_expense_types ct ON ce.car_expense_type_id = ct.id
@@ -145,6 +145,7 @@ func (db *DB) GetCarExpensesForMonth(month time.Month, year int, userId uuid.UUI
 
 		var exp models.CarExpense
 		err = rows.Scan(&exp.ID,
+			&exp.ExpenseTypeID,
 			&exp.Type,
 			&exp.Amount,
 			&exp.DiscountAmount,

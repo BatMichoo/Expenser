@@ -114,7 +114,7 @@ func (db *DB) CreateHouseExpense(input *models.HouseExpense) error {
 
 func (db *DB) GetHouseExpensesForMonth(month time.Month, year int, userId uuid.UUID) (*[]models.HouseExpense, error) {
 	query := `
-		SELECT he.id, ut.name, he.amount, he.discount_amount, he.expense_date, he.notes, he.metadata, he.created_at, he.created_by
+		SELECT he.id, he.utility_type_id, ut.name, he.amount, he.discount_amount, he.expense_date, he.notes, he.metadata, he.created_at, he.created_by
 			FROM home_expenses he
 		JOIN
 			utility_types ut ON he.utility_type_id = ut.id
@@ -143,6 +143,7 @@ func (db *DB) GetHouseExpensesForMonth(month time.Month, year int, userId uuid.U
 
 		var exp models.HouseExpense
 		err = rows.Scan(&exp.ID,
+			&exp.UtilityTypeID,
 			&exp.UtilityType,
 			&exp.Amount,
 			&exp.DiscountAmount,
