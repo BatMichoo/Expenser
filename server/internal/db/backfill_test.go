@@ -45,6 +45,7 @@ func TestCreateBackfillExpenses(t *testing.T) {
 	require.Len(t, *jan, 1)
 	got := (*jan)[0]
 	assert.Equal(t, "Internet", got.UtilityType)
+	assert.Equal(t, 4, got.UtilityTypeID, "the month view's type filter needs the type id")
 	assert.Equal(t, 15.0, got.Amount)
 	assert.Equal(t, 1.0, got.DiscountAmount)
 	assert.Equal(t, "fiber", got.Notes)
@@ -54,7 +55,8 @@ func TestCreateBackfillExpenses(t *testing.T) {
 	require.NoError(t, db.CreateBackfillExpenses(ctx, carE, []time.Time{day(2026, 5, 1)}))
 	may, err := db.GetCarExpensesForMonth(time.May, 2026, userID)
 	require.NoError(t, err)
-	assert.Len(t, *may, 1)
+	require.Len(t, *may, 1)
+	assert.Equal(t, 3, (*may)[0].ExpenseTypeID, "the month view's type filter needs the type id")
 
 	bad := models.BackfillExpense{UserID: userID, Section: models.SectionHouse, TypeID: 999, Amount: 1}
 	assert.Error(t, db.CreateBackfillExpenses(ctx, bad, []time.Time{day(2026, 6, 1), day(2026, 7, 1)}))
