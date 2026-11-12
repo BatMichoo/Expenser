@@ -19,7 +19,7 @@ type DB struct {
 }
 
 func InitDatabase(cfg *config.Config) (*DB, error) {
-	log.Printf("Connecting to %s.", cfg.DB.DBConnString)
+	log.Printf("Connecting to %s.", config.RedactConnString(cfg.DB.DBConnString))
 
 	db, err := connect(cfg.DB.DBConnString)
 	if err != nil {

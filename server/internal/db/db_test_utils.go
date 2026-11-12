@@ -17,7 +17,7 @@ var TestUserRegisterModel *models.User = &models.User{
 }
 
 func InitTestDB(cfg *config.Config) *DB {
-	fmt.Printf("Connecting to test DB: %s\n", cfg.DB.TestDBConnString)
+	fmt.Printf("Connecting to test DB: %s\n", config.RedactConnString(cfg.DB.TestDBConnString))
 
 	testDB, err := connectTestDB(cfg)
 	if err != nil {

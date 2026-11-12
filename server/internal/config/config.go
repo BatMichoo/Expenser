@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -145,14 +146,9 @@ func LoadConfig() (*Config, error) {
 
 	reminderCheckInterval := parseReminderCheckInterval(os.Getenv("REMINDER_CHECK_INTERVAL"))
 
-	dbConnTemplate := "postgres://%s:%s@%s:%s/%s?sslmode=disable"
-
-	// Construct the database connection string.
-	dbConnString := fmt.Sprintf(dbConnTemplate,
-		dbUser, dbPass, dbHost, dbPort, dbName)
-
-	testDBConnString := fmt.Sprintf(dbConnTemplate,
-		dbUser, dbPass, dbHost, dbPort, testDBName)
+	dbSSLMode := os.Getenv("DB_SSLMODE")
+	dbConnString := connString(dbUser, dbPass, dbHost, dbPort, dbName, dbSSLMode)
+	testDBConnString := connString(dbUser, dbPass, dbHost, dbPort, testDBName, dbSSLMode)
 
 	DB := DB{
 		DBConnString:     dbConnString,
@@ -177,6 +173,33 @@ func LoadConfig() (*Config, error) {
 		ReminderCheckInterval: reminderCheckInterval,
 		SMTP:                  loadSMTP(os.Getenv),
 	}, nil
+}
+
+// connString builds a postgres URL. The user and password are escaped, so a
+// password with characters such as @ or / still works. sslmode defaults to
+// disable: the database is only reached over the Docker network.
+func connString(user, pass, host, port, name, sslmode string) string {
+	if sslmode == "" {
+		sslmode = "disable"
+	}
+	u := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(user, pass),
+		Host:     host + ":" + port,
+		Path:     "/" + name,
+		RawQuery: url.Values{"sslmode": {sslmode}}.Encode(),
+	}
+	return u.String()
+}
+
+// RedactConnString is the connection string with the password hidden, safe
+// to write to the log.
+func RedactConnString(conn string) string {
+	u, err := url.Parse(conn)
+	if err != nil {
+		return "(unparsable connection string)"
+	}
+	return u.Redacted()
 }
 
 const (

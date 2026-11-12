@@ -79,3 +79,19 @@ func TestReceiptAIConfig(t *testing.T) {
 	assert.Equal(t, ReceiptAI{APIKey: "key-from-env", Model: ReceiptAIModel, Fallbacks: ReceiptAIFallbacks}, cfg.ReceiptAI, "the models come from code, not the environment")
 	assert.Equal(t, append([]string{ReceiptAIModel}, ReceiptAIFallbacks...), cfg.ReceiptAI.Models(), "main model first")
 }
+
+func TestConnString(t *testing.T) {
+	got := connString("app", "p@ss/w:rd", "db", "5432", "expenser", "")
+	assert.Equal(t, "postgres://app:p%40ss%2Fw%3Ard@db:5432/expenser?sslmode=disable", got)
+
+	got = connString("app", "secret", "db", "5432", "expenser", "require")
+	assert.Equal(t, "postgres://app:secret@db:5432/expenser?sslmode=require", got)
+}
+
+func TestRedactConnStringHidesPassword(t *testing.T) {
+	conn := connString("app", "hunter2", "db", "5432", "expenser", "")
+	red := RedactConnString(conn)
+	assert.NotContains(t, red, "hunter2")
+	assert.Contains(t, red, "app:")
+	assert.Contains(t, red, "db:5432/expenser")
+}
