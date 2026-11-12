@@ -121,7 +121,7 @@ func (db *DB) GetHouseExpensesForMonth(month time.Month, year int, userId uuid.U
 		WHERE
 			EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2 AND created_by = $3
 		ORDER BY
-			he.expense_date DESC;
+			he.expense_date DESC, he.id DESC;
 	`
 
 	var expenses []models.HouseExpense

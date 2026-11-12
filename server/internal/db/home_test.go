@@ -348,19 +348,20 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 					}
 				}
 			},
+			// Same date: the one added last comes first.
 			expected: []models.HouseExpense{
-				{
-					Amount:      350.00,
-					ExpenseDate: expenseDate.Add(time.Duration(30 * 24 * time.Hour)),
-					UtilityType: "Water",
-					Notes:       "Test 12345",
-					Metadata:    []byte("{}"),
-				},
 				{
 					Amount:      450.00,
 					ExpenseDate: expenseDate.Add(time.Duration(30 * 24 * time.Hour)),
 					UtilityType: "TV",
 					Notes:       "Test 123456",
+					Metadata:    []byte("{}"),
+				},
+				{
+					Amount:      350.00,
+					ExpenseDate: expenseDate.Add(time.Duration(30 * 24 * time.Hour)),
+					UtilityType: "Water",
+					Notes:       "Test 12345",
 					Metadata:    []byte("{}"),
 				},
 			},
