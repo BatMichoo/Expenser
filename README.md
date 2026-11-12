@@ -88,4 +88,42 @@ This starts a `deployer` container that checks GitHub every 30 minutes. When `ma
 
 Rollback does not undo database migrations, so a migration that the previous version cannot work with still needs a manual fix.
 
+## Before merging the grocery-units migration
+
+Merging to `main` is a deploy: the deployer pulls `main`, rebuilds, and the app runs pending migrations on startup. The grocery-units migration (`server/internal/db/migrations/20261112120000_add_grocery_units.go`) adds `unit`, `unit_size` and `size_status` to `groceries_expenses` and fills them for existing rows from the product names. A rollback of the app does not undo that, so take a backup first.
+
+1. Pause the deployer so it cannot pick up `main` while you are not watching:
+
+   ```sh
+   make autodeploy-stop
+   ```
+
+2. Back up the database on the server, from the repo root (the `db` container already has the user and database name in `POSTGRES_USER` / `POSTGRES_DB`, taken from `DB_USER` / `DB_NAME` in `.env`):
+
+   ```sh
+   docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup-$(date +%Y%m%d).sql
+   ```
+
+   Check the file is not empty (`ls -lh backup-*.sql`, `tail -n 3 backup-*.sql` should end with `PostgreSQL database dump complete`) and copy it off the server.
+
+3. Merge, then deploy by hand and watch it (or turn the deployer back on with `make autodeploy` and follow `make autodeploy-logs`):
+
+   ```sh
+   git pull --ff-only && docker compose up -d --build db web nginx
+   docker compose logs -f web
+   ```
+
+4. Check a few grocery receipts and Trends → Item, then re-enable the deployer with `make autodeploy` if you deployed by hand.
+
+To restore the backup (this replaces everything in the database): stop the app, recreate the database, load the dump, and start an app version from before the migration.
+
+```sh
+docker compose stop web
+docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' < backup-YYYYMMDD.sql
+git checkout <commit before the merge> && docker compose up -d --build web
+```
+
+The dump includes the `goose_db_version` table, so the restored database is back at the version before the migration.
+
 The deployer has access to the Docker socket, which is equivalent to root on the host. It only ever runs code that is on `main` and has passed CI.
