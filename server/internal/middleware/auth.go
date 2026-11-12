@@ -84,7 +84,6 @@ func (am *AuthMiddleware) AuthMiddleware() gin.HandlerFunc {
 		// Store user information in context
 		c.Set("user_id", token.Claims.UserID)
 		c.Set("username", token.Claims.Username)
-		c.Set("email", token.Claims.Email)
 		services.SetClaims(c, token.Claims)
 
 		c.Next()

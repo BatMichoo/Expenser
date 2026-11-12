@@ -53,7 +53,7 @@ func (db *DB) CreateUser(user *models.User) error {
 // GetUserByID retrieves a user by their ID, with their account settings.
 func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
 	query := `
-		SELECT id, username, password_hash, preferred_language, COALESCE(email, ''),
+		SELECT id, username, password_hash, preferred_language, token_version, COALESCE(email, ''),
 			COALESCE(display_name, ''), default_notify, default_remind_days_before,
 			default_remind_days_after, default_repeat_every_days, default_max_reminders,
 			created_at, updated_at
@@ -68,6 +68,7 @@ func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
 		&user.Username,
 		&user.PasswordHash,
 		&user.PreferredLanguage,
+		&user.TokenVersion,
 		&user.Email,
 		&user.DisplayName,
 		&d.Notify,
@@ -94,7 +95,7 @@ func (db *DB) GetUserByID(id uuid.UUID) (*models.User, error) {
 // GetUserByUsername retrieves a user by their username
 func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 	query := `
-		SELECT id, username, password_hash, preferred_language, created_at, updated_at
+		SELECT id, username, password_hash, preferred_language, token_version, created_at, updated_at
 		FROM users
 		WHERE username = $1`
 
@@ -104,6 +105,7 @@ func (db *DB) GetUserByUsername(username string) (*models.User, error) {
 		&user.Username,
 		&user.PasswordHash,
 		&user.PreferredLanguage,
+		&user.TokenVersion,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -261,10 +263,19 @@ func (db *DB) UpdateUserAccount(ctx context.Context, id uuid.UUID, displayName, 
 	return nil
 }
 
-// UpdateUserPassword stores a new password hash.
+// TokenVersion is the user's login version: tokens issued for an older one
+// are no longer accepted.
+func (db *DB) TokenVersion(ctx context.Context, id uuid.UUID) (int, error) {
+	var v int
+	err := db.conn.QueryRowContext(ctx, `SELECT token_version FROM users WHERE id = $1`, id).Scan(&v)
+	return v, err
+}
+
+// UpdateUserPassword stores a new password hash and raises the token
+// version, so logins issued before stop working.
 func (db *DB) UpdateUserPassword(ctx context.Context, id uuid.UUID, hash string) error {
 	res, err := db.conn.ExecContext(ctx,
-		`UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, hash, id)
+		`UPDATE users SET password_hash = $1, token_version = token_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, hash, id)
 	if err != nil {
 		return fmt.Errorf("failed to update password: %w", err)
 	}

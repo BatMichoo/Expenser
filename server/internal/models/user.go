@@ -16,7 +16,10 @@ type User struct {
 	Username          string `form:"username" binding:"required,min=3,max=50"`
 	PasswordHash      string
 	PreferredLanguage string
-	Email             string // optional preferred email for reminders
+	// TokenVersion goes up when the password changes, which logs out every
+	// login issued before.
+	TokenVersion int
+	Email        string // optional preferred email for reminders
 	// DisplayName is the optional name emails greet the user with; empty
 	// means the username.
 	DisplayName string
