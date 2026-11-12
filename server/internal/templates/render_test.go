@@ -1608,3 +1608,14 @@ func TestTrendItemEmpty(t *testing.T) {
 	assert.Contains(t, doc.Find(".trend-empty").Text(), "Milk")
 	assert.Equal(t, 0, doc.Find("svg").Length())
 }
+
+func TestTrendItemBought12AndWrappers(t *testing.T) {
+	doc := parseHTML(t, render(t, "trend-item", trendsItemPage()))
+	assert.Contains(t, doc.Find("table.item-all thead").Text(), "Bought, 12 mo")
+	rows := doc.Find("table.item-all tbody tr")
+	assert.Contains(t, rows.First().Text(), "20.0 l")
+	assert.Contains(t, rows.Last().Text(), "5 pcs")
+	assert.Equal(t, 5, doc.Find("table.item-discounts thead th").Length())
+	assert.Equal(t, 1, doc.Find(".trend-table-wrap > table.item-discounts").Length())
+	assert.Equal(t, 1, doc.Find(".trend-table-wrap > table.item-all").Length())
+}

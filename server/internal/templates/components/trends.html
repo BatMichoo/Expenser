@@ -217,7 +217,9 @@
 {{ if $i.Discounts }}
 <section class="side-panel trend-card">
   {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "trends.item_discounts") "Meta" (printf (T .Lang "trends.item_saved") (money $i.TotalSaved))) }}
+  <div class="trend-table-wrap">
   <table class="item-table item-discounts">
+    <thead><tr><th>{{ T .Lang "trends.item_col_date" }}</th><th>{{ T .Lang "trends.item_col_store" }}</th><th>{{ T .Lang "trends.item_col_product" }}</th><th class="num">{{ T .Lang "trends.item_col_price" }}</th><th class="num">{{ T .Lang "trends.item_col_discount" }}</th></tr></thead>
     <tbody>
       {{ range $i.Discounts }}
       <tr><td>{{ .Date.Format "02.01.2006" }}</td><td>{{ .Store }}</td><td>{{ .Product }}</td>
@@ -225,14 +227,16 @@
       {{ end }}
     </tbody>
   </table>
+  </div>
 </section>
 {{ end }}
 {{ end }}
 {{ if $i.Items }}
 <section class="side-panel trend-card">
   {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "trends.item_all")) }}
+  <div class="trend-table-wrap">
   <table class="item-table item-all">
-    <thead><tr><th>{{ T .Lang "trends.item_col_item" }}</th><th class="num">{{ T .Lang "trends.item_col_now" }}</th><th class="num">{{ T .Lang "trends.item_col_year_ago" }}</th><th class="num">{{ T .Lang "trends.item_col_change" }}</th></tr></thead>
+    <thead><tr><th>{{ T .Lang "trends.item_col_item" }}</th><th class="num">{{ T .Lang "trends.item_col_now" }}</th><th class="num">{{ T .Lang "trends.item_col_year_ago" }}</th><th class="num">{{ T .Lang "trends.item_col_change" }}</th><th class="num">{{ T .Lang "trends.item_col_bought" }}</th></tr></thead>
     <tbody>
       {{ range $i.Items }}{{ $u := T $.Lang .UnitKey }}{{ $url := print "/groceries/chart?tab=item&item=" .ItemID }}
       <tr>
@@ -240,10 +244,12 @@
         <td class="num">{{ money .Now }} / {{ $u }}</td>
         <td class="num">{{ if gt .YearAgo 0.0 }}{{ money .YearAgo }} / {{ $u }}{{ else }}—{{ end }}</td>
         <td class="num">{{ if .HasChange }}<span class="kpi-change {{ if gt .ChangePct 0.0 }}up{{ else }}down{{ end }}">{{ printf "%+.0f%%" .ChangePct }}</span>{{ else }}—{{ end }}</td>
+        <td class="num">{{ if eq .Unit "pc" }}{{ printf "%.0f" .Bought12 }}{{ else }}{{ printf "%.1f" .Bought12 }}{{ end }} {{ $u }}</td>
       </tr>
       {{ end }}
     </tbody>
   </table>
+  </div>
 </section>
 {{ end }}
 {{ end }}

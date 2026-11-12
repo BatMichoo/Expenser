@@ -552,5 +552,11 @@
   "trends.item_col_item": "Item",
   "trends.item_col_now": "Now",
   "trends.item_col_year_ago": "A year ago",
-  "trends.item_col_change": "Change"
+  "trends.item_col_change": "Change",
+  "trends.item_col_bought": "Bought, 12 mo",
+  "trends.item_col_date": "Date",
+  "trends.item_col_store": "Store",
+  "trends.item_col_product": "Product",
+  "trends.item_col_price": "Price",
+  "trends.item_col_discount": "Discount"
 }

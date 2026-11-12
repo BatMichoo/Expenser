@@ -4468,3 +4468,14 @@ tr:hover .row-actions,
     font-size: 0.8rem;
   }
 }
+
+.trend-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.item-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}

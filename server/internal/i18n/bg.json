@@ -552,5 +552,11 @@
   "trends.item_col_item": "Продукт",
   "trends.item_col_now": "Сега",
   "trends.item_col_year_ago": "Преди година",
-  "trends.item_col_change": "Промяна"
+  "trends.item_col_change": "Промяна",
+  "trends.item_col_bought": "Купено, 12 мес.",
+  "trends.item_col_date": "Дата",
+  "trends.item_col_store": "Магазин",
+  "trends.item_col_product": "Продукт",
+  "trends.item_col_price": "Цена",
+  "trends.item_col_discount": "Отстъпка"
 }
