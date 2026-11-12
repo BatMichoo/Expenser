@@ -496,5 +496,6 @@
   "receipt.expired": "This upload is no longer available.",
   "receipt.add_by_hand": "Add by hand",
   "receipt.try_again": "Try again",
-  "trends.no_data": "Nothing to show for this period yet."
+  "trends.no_data": "Nothing to show for this period yet.",
+  "trends.everything_else": "Everything else"
 }

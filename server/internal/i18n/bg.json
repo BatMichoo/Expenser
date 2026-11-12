@@ -496,5 +496,6 @@
   "receipt.expired": "Това качване вече не е налично.",
   "receipt.add_by_hand": "Добави ръчно",
   "receipt.try_again": "Опитай пак",
-  "trends.no_data": "Все още няма данни за този период."
+  "trends.no_data": "Все още няма данни за този период.",
+  "trends.everything_else": "Всичко останало"
 }

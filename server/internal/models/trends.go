@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"expenser/internal/chart"
 	"time"
 )
 
@@ -39,3 +40,68 @@ type GroceryLine struct {
 
 // ErrInvalidSize is returned when a unit and size cannot be stored.
 var ErrInvalidSize = errors.New("the unit or size is not valid")
+
+// TrendQuery is the parsed query string of a section's charts page.
+type TrendQuery struct {
+	Tab    string // "month" | "year" | "item"
+	Period string // "6" | "12" | "24" | "y<YYYY>" | "all" (item only)
+	TypeID int
+	YearA  int
+	YearB  int
+	ItemID int
+	By     string // "month" | "year"
+	Unit   string
+}
+
+// TrendsPage is the view model of one section's charts page. Only the field
+// of the active tab (Month or Year) is set.
+type TrendsPage struct {
+	Section string
+	Query   TrendQuery
+	Lang    string
+	// TypePrefix is the translation key prefix for series names: "type." for
+	// house and car, "category." for groceries. Legend entries and series
+	// with Color 0 are already translated ("Everything else") and must not
+	// be prefixed.
+	TypePrefix string
+	Types      []TypeOption
+	Years      []int
+	Unsized    int // groceries only
+	Month      *MonthTrend
+	Year       *YearTrend
+}
+
+// MonthTrend is the month-to-month tab: stacked spend per month.
+type MonthTrend struct {
+	Total, PrevTotal, ChangePct float64
+	HasChange                   bool
+	Median                      float64
+	TopMonth                    string // column label
+	TopMonthAmount              float64
+	TopMonthType                string // raw type name
+	Chart                       chart.Bars
+	Legend                      []LegendItem
+	Empty                       bool
+}
+
+// YearTrend is the year-vs-year tab: one grouped bar pair per month.
+type YearTrend struct {
+	YearA, YearB             int
+	SoFarA, SoFarB, SoFarPct float64
+	HasSoFar                 bool
+	SoFarLabel               string
+	Riser                    string // raw type name
+	RiserAmount              float64
+	HasRiser                 bool
+	SavedA, SavedB           float64
+	Chart                    chart.Bars
+	Legend                   []LegendItem
+	YearTotals               []YearTotal // newest year first
+	Empty                    bool
+}
+
+// YearTotal is the net spend of one calendar year.
+type YearTotal struct {
+	Year  int
+	Total float64
+}
