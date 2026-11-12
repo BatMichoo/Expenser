@@ -2,18 +2,20 @@ package main
 
 import (
 	"context"
+	"errors"
 	"expenser/internal/config"
 	database "expenser/internal/db"
 	"expenser/internal/handlers"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
-	"fmt"
 	"html/template"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -84,9 +86,14 @@ func main() {
 		port = "8080"
 	}
 
+	srv := &http.Server{
+		Addr:              ":" + port,
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 	go func() {
 		log.Printf("Server starting on port %s", port)
-		if err := router.Run(":" + port); err != nil {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("Server failed to start: %v", err)
 		}
 	}()
@@ -94,10 +101,24 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	fmt.Println("Shutting down server...")
+	log.Println("Shutting down server...")
+
+	// Let requests in flight finish (a deploy restarts the container), within
+	// Docker's 10 second stop timeout.
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("Server shutdown: %v", err)
+	}
 	stopScheduler()
 	<-schedulerDone
+	if err := db.Close(); err != nil {
+		log.Printf("Closing database: %v", err)
+	}
 }
+
+// shutdownTimeout is how long requests in flight get to finish on shutdown.
+const shutdownTimeout = 8 * time.Second
 
 // smtpMailer is the mail sender, or nil when SMTP isn't configured.
 func smtpMailer(cfg *config.Config) services.Mailer {
