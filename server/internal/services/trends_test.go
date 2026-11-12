@@ -224,10 +224,10 @@ func (fakeTrendsStore) CountUnsizedGroceries(context.Context, uuid.UUID) (int, e
 func (fakeTrendsStore) GetTrackedCategories(context.Context) ([]models.Category, error) {
 	return nil, nil
 }
-func (fakeTrendsStore) GetSectionTypes(models.Section) ([]models.TypeOption, error) {
+func (fakeTrendsStore) GetSectionTypes(context.Context, models.Section) ([]models.TypeOption, error) {
 	return []models.TypeOption{{ID: 1, Name: "Rent"}}, nil
 }
-func (fakeTrendsStore) GetAllCategories() ([]models.Category, error) {
+func (fakeTrendsStore) GetAllCategories(context.Context) ([]models.Category, error) {
 	return []models.Category{{ID: 1, Name: "Dairy"}}, nil
 }
 

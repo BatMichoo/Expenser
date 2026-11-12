@@ -16,34 +16,34 @@ import (
 // MonthStore is the data access the month views need. *database.DB
 // implements it.
 type MonthStore interface {
-	GetHouseExpensesForMonth(month time.Month, year int, userID uuid.UUID) (*[]models.HouseExpense, error)
-	GetHouseMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetHouseUtilityTypes() (*[]models.HomeUtilityType, error)
-	GetCarExpensesForMonth(month time.Month, year int, userID uuid.UUID) (*[]models.CarExpense, error)
-	GetCarMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetCarExpenseTypes() (*[]models.CarExpenseType, error)
-	GetGroceriesExpensesForMonth(month time.Month, year int, userID uuid.UUID) (*[]models.GroceriesExpense, error)
-	GetGroceriesMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetAllCategories() ([]models.Category, error)
+	GetHouseExpensesForMonth(ctx context.Context, month time.Month, year int, userID uuid.UUID) (*[]models.HouseExpense, error)
+	GetHouseMonthlyTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetHouseUtilityTypes(ctx context.Context) (*[]models.HomeUtilityType, error)
+	GetCarExpensesForMonth(ctx context.Context, month time.Month, year int, userID uuid.UUID) (*[]models.CarExpense, error)
+	GetCarMonthlyTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetCarExpenseTypes(ctx context.Context) (*[]models.CarExpenseType, error)
+	GetGroceriesExpensesForMonth(ctx context.Context, month time.Month, year int, userID uuid.UUID) (*[]models.GroceriesExpense, error)
+	GetGroceriesMonthlyTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetAllCategories(ctx context.Context) ([]models.Category, error)
 	GetUpcomingRecurringPayments(ctx context.Context, userID uuid.UUID, until time.Time) ([]models.RecurringPayment, error)
-	GetHouseTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetCarTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetGroceriesCategoryTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetHouseSpendHistory(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error)
-	GetCarSpendHistory(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error)
-	GetGroceriesSpendHistory(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error)
+	GetHouseTypeTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetCarTypeTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetGroceriesCategoryTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetHouseSpendHistory(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error)
+	GetCarSpendHistory(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error)
+	GetGroceriesSpendHistory(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error)
 }
 
 // spendHistoryFunc is one section's per-type daily spending query.
-type spendHistoryFunc func(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error)
+type spendHistoryFunc func(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error)
 
 // groceriesAsOneType drops the category from groceries history. Shopping
 // is steady as a whole but each category comes and goes, so per category
 // the estimate would take most of them for one-offs (and backtests showed
 // the section as one type predicts as well or better).
 func groceriesAsOneType(history spendHistoryFunc) spendHistoryFunc {
-	return func(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
-		entries, err := history(userID, from, to)
+	return func(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
+		entries, err := history(ctx, userID, from, to)
 		for i := range entries {
 			entries[i].Type = ""
 		}
@@ -52,12 +52,12 @@ func groceriesAsOneType(history spendHistoryFunc) spendHistoryFunc {
 }
 
 // addEstimate fills in the month-end estimate when v is the current month.
-func addEstimate(v *models.MonthView, history spendHistoryFunc, userID uuid.UUID, ym YearMonth, now time.Time) error {
+func addEstimate(ctx context.Context, v *models.MonthView, history spendHistoryFunc, userID uuid.UUID, ym YearMonth, now time.Time) error {
 	if !v.IsCurrent {
 		return nil
 	}
 	from, to := EstimateHistoryWindow(ym)
-	entries, err := history(userID, from, to)
+	entries, err := history(ctx, userID, from, to)
 	if err != nil {
 		return fmt.Errorf("%s spend history: %w", v.Section, err)
 	}
@@ -175,17 +175,17 @@ func usualWindow(ym YearMonth) (time.Time, time.Time) {
 }
 
 // House builds the house page for one month.
-func (s *MonthViewService) House(userID uuid.UUID, ym YearMonth, filter MonthFilter, lang string, now time.Time) (*models.MonthView, error) {
-	rows, err := s.store.GetHouseExpensesForMonth(ym.Month, ym.Year, userID)
+func (s *MonthViewService) House(ctx context.Context, userID uuid.UUID, ym YearMonth, filter MonthFilter, lang string, now time.Time) (*models.MonthView, error) {
+	rows, err := s.store.GetHouseExpensesForMonth(ctx, ym.Month, ym.Year, userID)
 	if err != nil {
 		return nil, fmt.Errorf("house expenses for %s: %w", ym, err)
 	}
 	from, to := totalsWindow(ym)
-	totals, err := s.store.GetHouseMonthlyTotals(userID, from, to)
+	totals, err := s.store.GetHouseMonthlyTotals(ctx, userID, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("house totals: %w", err)
 	}
-	types, err := s.store.GetHouseUtilityTypes()
+	types, err := s.store.GetHouseUtilityTypes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("house types: %w", err)
 	}
@@ -203,16 +203,16 @@ func (s *MonthViewService) House(userID uuid.UUID, ym YearMonth, filter MonthFil
 	}
 
 	uFrom, uTo := usualWindow(ym)
-	typeTotals, err := s.store.GetHouseTypeTotals(userID, uFrom, uTo)
+	typeTotals, err := s.store.GetHouseTypeTotals(ctx, userID, uFrom, uTo)
 	if err != nil {
 		return nil, fmt.Errorf("house type totals: %w", err)
 	}
 
 	v := s.base("house", ym, filter, items, totals, typeTotals, lang, now)
-	if err := addEstimate(v, s.store.GetHouseSpendHistory, userID, ym, now); err != nil {
+	if err := addEstimate(ctx, v, s.store.GetHouseSpendHistory, userID, ym, now); err != nil {
 		return nil, err
 	}
-	if v.UpcomingBills, err = s.upcomingBills(userID, models.SectionHouse, v.IsCurrent, now); err != nil {
+	if v.UpcomingBills, err = s.upcomingBills(ctx, userID, models.SectionHouse, v.IsCurrent, now); err != nil {
 		return nil, err
 	}
 	v.House = shown
@@ -225,17 +225,17 @@ func (s *MonthViewService) House(userID uuid.UUID, ym YearMonth, filter MonthFil
 }
 
 // Car builds the car page for one month.
-func (s *MonthViewService) Car(userID uuid.UUID, ym YearMonth, filter MonthFilter, lang string, now time.Time) (*models.MonthView, error) {
-	rows, err := s.store.GetCarExpensesForMonth(ym.Month, ym.Year, userID)
+func (s *MonthViewService) Car(ctx context.Context, userID uuid.UUID, ym YearMonth, filter MonthFilter, lang string, now time.Time) (*models.MonthView, error) {
+	rows, err := s.store.GetCarExpensesForMonth(ctx, ym.Month, ym.Year, userID)
 	if err != nil {
 		return nil, fmt.Errorf("car expenses for %s: %w", ym, err)
 	}
 	from, to := totalsWindow(ym)
-	totals, err := s.store.GetCarMonthlyTotals(userID, from, to)
+	totals, err := s.store.GetCarMonthlyTotals(ctx, userID, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("car totals: %w", err)
 	}
-	types, err := s.store.GetCarExpenseTypes()
+	types, err := s.store.GetCarExpenseTypes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("car types: %w", err)
 	}
@@ -253,16 +253,16 @@ func (s *MonthViewService) Car(userID uuid.UUID, ym YearMonth, filter MonthFilte
 	}
 
 	uFrom, uTo := usualWindow(ym)
-	typeTotals, err := s.store.GetCarTypeTotals(userID, uFrom, uTo)
+	typeTotals, err := s.store.GetCarTypeTotals(ctx, userID, uFrom, uTo)
 	if err != nil {
 		return nil, fmt.Errorf("car type totals: %w", err)
 	}
 
 	v := s.base("car", ym, filter, items, totals, typeTotals, lang, now)
-	if err := addEstimate(v, s.store.GetCarSpendHistory, userID, ym, now); err != nil {
+	if err := addEstimate(ctx, v, s.store.GetCarSpendHistory, userID, ym, now); err != nil {
 		return nil, err
 	}
-	if v.UpcomingBills, err = s.upcomingBills(userID, models.SectionCar, v.IsCurrent, now); err != nil {
+	if v.UpcomingBills, err = s.upcomingBills(ctx, userID, models.SectionCar, v.IsCurrent, now); err != nil {
 		return nil, err
 	}
 	v.Car = shown
@@ -276,17 +276,17 @@ func (s *MonthViewService) Car(userID uuid.UUID, ym YearMonth, filter MonthFilte
 
 // Groceries builds the groceries page for one month. Amounts are net of
 // discounts, like the monthly totals.
-func (s *MonthViewService) Groceries(userID uuid.UUID, ym YearMonth, filter MonthFilter, lang string, now time.Time) (*models.MonthView, error) {
-	rows, err := s.store.GetGroceriesExpensesForMonth(ym.Month, ym.Year, userID)
+func (s *MonthViewService) Groceries(ctx context.Context, userID uuid.UUID, ym YearMonth, filter MonthFilter, lang string, now time.Time) (*models.MonthView, error) {
+	rows, err := s.store.GetGroceriesExpensesForMonth(ctx, ym.Month, ym.Year, userID)
 	if err != nil {
 		return nil, fmt.Errorf("groceries for %s: %w", ym, err)
 	}
 	from, to := totalsWindow(ym)
-	totals, err := s.store.GetGroceriesMonthlyTotals(userID, from, to)
+	totals, err := s.store.GetGroceriesMonthlyTotals(ctx, userID, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("groceries totals: %w", err)
 	}
-	categories, err := s.store.GetAllCategories()
+	categories, err := s.store.GetAllCategories(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("groceries categories: %w", err)
 	}
@@ -304,13 +304,13 @@ func (s *MonthViewService) Groceries(userID uuid.UUID, ym YearMonth, filter Mont
 	}
 
 	uFrom, uTo := usualWindow(ym)
-	typeTotals, err := s.store.GetGroceriesCategoryTotals(userID, uFrom, uTo)
+	typeTotals, err := s.store.GetGroceriesCategoryTotals(ctx, userID, uFrom, uTo)
 	if err != nil {
 		return nil, fmt.Errorf("groceries type totals: %w", err)
 	}
 
 	v := s.base("groceries", ym, filter, items, totals, typeTotals, lang, now)
-	if err := addEstimate(v, groceriesAsOneType(s.store.GetGroceriesSpendHistory), userID, ym, now); err != nil {
+	if err := addEstimate(ctx, v, groceriesAsOneType(s.store.GetGroceriesSpendHistory), userID, ym, now); err != nil {
 		return nil, err
 	}
 	v.Groceries = shown
@@ -328,12 +328,12 @@ const upcomingBillDays = 30
 // upcomingBills returns the user's unpaid bills of one category due in the
 // next 30 days (overdue included), soonest first. Only the current month
 // shows them: they are about today, not the month being browsed.
-func (s *MonthViewService) upcomingBills(userID uuid.UUID, category models.Section, isCurrent bool, now time.Time) ([]models.UpcomingPayment, error) {
+func (s *MonthViewService) upcomingBills(ctx context.Context, userID uuid.UUID, category models.Section, isCurrent bool, now time.Time) ([]models.UpcomingPayment, error) {
 	if !isCurrent {
 		return nil, nil
 	}
 	today := models.DateOnly(now)
-	payments, err := s.store.GetUpcomingRecurringPayments(context.Background(), userID, today.AddDate(0, 0, upcomingBillDays))
+	payments, err := s.store.GetUpcomingRecurringPayments(ctx, userID, today.AddDate(0, 0, upcomingBillDays))
 	if err != nil {
 		return nil, fmt.Errorf("upcoming bills: %w", err)
 	}

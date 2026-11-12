@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"expenser/internal/config"
 	"expenser/internal/models"
 	"testing"
@@ -19,7 +20,7 @@ func setupMonthTestDB(t *testing.T) (*DB, uuid.UUID) {
 	t.Cleanup(func() { testDB.Close() })
 	ResetTestDB(testDB)
 	user := &models.User{Username: "MonthTester", PasswordHash: TestUserRegisterModel.PasswordHash}
-	require.NoError(t, testDB.CreateUser(user))
+	require.NoError(t, testDB.CreateUser(context.Background(), user))
 	return testDB, user.ID
 }
 
@@ -29,10 +30,10 @@ func day(y int, m time.Month, d int) time.Time {
 
 func addGrocery(t *testing.T, db *DB, userID uuid.UUID, product string, total, discount float64, at time.Time) {
 	t.Helper()
-	categories, err := db.GetAllCategories()
+	categories, err := db.GetAllCategories(context.Background())
 	require.NoError(t, err)
 	require.NotEmpty(t, categories)
-	require.NoError(t, db.CreateGroceriesExpense(&models.GroceriesExpense{
+	require.NoError(t, db.CreateGroceriesExpense(context.Background(), &models.GroceriesExpense{
 		UserID: userID, CategoryID: categories[0].ID, Product: product, Quantity: 1,
 		UnitPrice: total, TotalPrice: total, TotalDiscount: discount, PurchaseDate: at,
 	}))
@@ -45,7 +46,7 @@ func TestGetGroceriesExpensesForMonth(t *testing.T) {
 	addGrocery(t, db, userID, "Old milk", 2, 0, day(2025, 11, 3)) // same month, other year
 	addGrocery(t, db, userID, "October", 2, 0, day(2026, 10, 31))
 
-	got, err := db.GetGroceriesExpensesForMonth(time.November, 2026, userID)
+	got, err := db.GetGroceriesExpensesForMonth(context.Background(), time.November, 2026, userID)
 	require.NoError(t, err)
 	require.Len(t, *got, 2)
 	assert.Equal(t, "Bread", (*got)[0].Product, "newest first")
@@ -60,22 +61,22 @@ func TestMonthlyTotals(t *testing.T) {
 		amount float64
 		at     time.Time
 	}{{10, day(2026, 9, 5)}, {15, day(2026, 9, 25)}, {40, day(2026, 11, 1)}, {99, day(2026, 6, 1)}} {
-		require.NoError(t, db.CreateHouseExpense(&models.HouseExpense{UtilityTypeID: 2, Amount: e.amount, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
-		require.NoError(t, db.CreateCarExpense(&models.CarExpense{ExpenseTypeID: 1, Amount: e.amount, Date: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+		require.NoError(t, db.CreateHouseExpense(context.Background(), &models.HouseExpense{UtilityTypeID: 2, Amount: e.amount, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+		require.NoError(t, db.CreateCarExpense(context.Background(), &models.CarExpense{ExpenseTypeID: 1, Amount: e.amount, Date: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
 	}
 	addGrocery(t, db, userID, "Milk", 10, 2, day(2026, 9, 5))
 
 	from, to := day(2026, 7, 1), time.Date(2026, 12, 1, 0, 0, 0, 0, time.Local)
 
-	house, err := db.GetHouseMonthlyTotals(userID, from, to)
+	house, err := db.GetHouseMonthlyTotals(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	assert.Equal(t, map[string]float64{"2026-09": 25, "2026-11": 40}, house, "June is outside the range")
 
-	car, err := db.GetCarMonthlyTotals(userID, from, to)
+	car, err := db.GetCarMonthlyTotals(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	assert.Equal(t, map[string]float64{"2026-09": 25, "2026-11": 40}, car)
 
-	groceries, err := db.GetGroceriesMonthlyTotals(userID, from, to)
+	groceries, err := db.GetGroceriesMonthlyTotals(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	assert.Equal(t, map[string]float64{"2026-09": 8}, groceries, "net of discount, like the monthly total")
 }
@@ -87,22 +88,22 @@ func TestTypeTotals(t *testing.T) {
 		amount float64
 		at     time.Time
 	}{{2, 10, day(2026, 9, 5)}, {2, 15, day(2026, 10, 5)}, {3, 40, day(2026, 10, 9)}, {3, 99, day(2026, 11, 1)}} {
-		require.NoError(t, db.CreateHouseExpense(&models.HouseExpense{UtilityTypeID: e.typeID, Amount: e.amount, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
-		require.NoError(t, db.CreateCarExpense(&models.CarExpense{ExpenseTypeID: e.typeID, Amount: e.amount, Date: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+		require.NoError(t, db.CreateHouseExpense(context.Background(), &models.HouseExpense{UtilityTypeID: e.typeID, Amount: e.amount, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+		require.NoError(t, db.CreateCarExpense(context.Background(), &models.CarExpense{ExpenseTypeID: e.typeID, Amount: e.amount, Date: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
 	}
 	addGrocery(t, db, userID, "Milk", 10, 2, day(2026, 10, 5))
 
 	from, to := day(2026, 5, 1), time.Date(2026, 11, 1, 0, 0, 0, 0, time.Local)
 
-	house, err := db.GetHouseTypeTotals(userID, from, to)
+	house, err := db.GetHouseTypeTotals(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	assert.Equal(t, map[string]float64{"Water": 25, "Gas": 40}, house, "November is outside the range")
 
-	car, err := db.GetCarTypeTotals(userID, from, to)
+	car, err := db.GetCarTypeTotals(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	assert.Len(t, car, 2)
 
-	groceries, err := db.GetGroceriesCategoryTotals(userID, from, to)
+	groceries, err := db.GetGroceriesCategoryTotals(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	require.Len(t, groceries, 1)
 	for _, v := range groceries {
@@ -117,14 +118,14 @@ func TestSpendHistory(t *testing.T) {
 		amount float64
 		at     time.Time
 	}{{2, 10, day(2026, 9, 5)}, {2, 15, day(2026, 9, 5)}, {3, 40, day(2026, 10, 9)}, {3, 99, day(2026, 12, 1)}} {
-		require.NoError(t, db.CreateHouseExpense(&models.HouseExpense{UtilityTypeID: e.typeID, Amount: e.amount, DiscountAmount: 1, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
-		require.NoError(t, db.CreateCarExpense(&models.CarExpense{ExpenseTypeID: e.typeID, Amount: e.amount, Date: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+		require.NoError(t, db.CreateHouseExpense(context.Background(), &models.HouseExpense{UtilityTypeID: e.typeID, Amount: e.amount, DiscountAmount: 1, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+		require.NoError(t, db.CreateCarExpense(context.Background(), &models.CarExpense{ExpenseTypeID: e.typeID, Amount: e.amount, Date: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
 	}
 	addGrocery(t, db, userID, "Milk", 10, 2, day(2026, 10, 5))
 
 	from, to := day(2026, 5, 1), time.Date(2026, 11, 1, 0, 0, 0, 0, time.Local)
 
-	house, err := db.GetHouseSpendHistory(userID, from, to)
+	house, err := db.GetHouseSpendHistory(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	require.Len(t, house, 2, "one row per type and day; December is outside the range")
 	byType := map[string]models.SpendEntry{}
@@ -136,11 +137,11 @@ func TestSpendHistory(t *testing.T) {
 	assert.Equal(t, time.September, byType["Water"].Date.Month())
 	assert.InDelta(t, 39, byType["Gas"].Amount, 0.001)
 
-	car, err := db.GetCarSpendHistory(userID, from, to)
+	car, err := db.GetCarSpendHistory(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	assert.Len(t, car, 2)
 
-	groceries, err := db.GetGroceriesSpendHistory(userID, from, to)
+	groceries, err := db.GetGroceriesSpendHistory(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	require.Len(t, groceries, 1)
 	assert.InDelta(t, 8, groceries[0].Amount, 0.001, "net of discount")

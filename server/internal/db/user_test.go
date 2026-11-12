@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"expenser/internal/config"
 	"expenser/internal/models"
 	"log"
@@ -38,7 +39,7 @@ func TestGetUserByID(t *testing.T) {
 					Username:     "findbyid",
 					PasswordHash: "hash123",
 				}
-				err := testDB.CreateUser(user)
+				err := testDB.CreateUser(context.Background(), user)
 				assert.NoError(t, err)
 				return user.ID // Return the ID of the created user
 			},
@@ -71,7 +72,7 @@ func TestGetUserByID(t *testing.T) {
 			// For "Existing User", setup creates and returns the ID.
 			// We need to pass the ID obtained from setup to GetUserByID.
 
-			got, err := testDB.GetUserByID(userID)
+			got, err := testDB.GetUserByID(context.Background(), userID)
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "user not found")
@@ -113,7 +114,7 @@ func TestGetUserByUsername(t *testing.T) {
 					Username:     "userbyname",
 					PasswordHash: "hash456",
 				}
-				err := testDB.CreateUser(user)
+				err := testDB.CreateUser(context.Background(), user)
 				assert.NoError(t, err)
 				return user.Username
 			},
@@ -142,7 +143,7 @@ func TestGetUserByUsername(t *testing.T) {
 			username := tt.setup(t)
 			targetUsername := username
 
-			got, err := testDB.GetUserByUsername(targetUsername)
+			got, err := testDB.GetUserByUsername(context.Background(), targetUsername)
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "user not found")
@@ -184,7 +185,7 @@ func TestUpdateUser(t *testing.T) {
 					Username:     "olduser",
 					PasswordHash: "oldhash",
 				}
-				err := testDB.CreateUser(user)
+				err := testDB.CreateUser(context.Background(), user)
 				assert.NoError(t, err)
 				return user // Return the created user with its ID
 			},
@@ -229,11 +230,11 @@ func TestUpdateUser(t *testing.T) {
 			// Snapshot the user as stored before the update. UpdateUser sets
 			// UpdatedAt on the struct with nanosecond precision, while Postgres
 			// rounds to microseconds, so only DB values compare reliably.
-			originalUser, _ := testDB.GetUserByID(userToUpdate.ID)
+			originalUser, _ := testDB.GetUserByID(context.Background(), userToUpdate.ID)
 
 			tt.updates(userToUpdate) // Apply the updates to the user model
 
-			err := testDB.UpdateUser(userToUpdate)
+			err := testDB.UpdateUser(context.Background(), userToUpdate)
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "user not found") // Or specific DB error message
@@ -243,7 +244,7 @@ func TestUpdateUser(t *testing.T) {
 			require.NotNil(t, originalUser)
 
 			// Retrieve the user from DB to verify changes
-			gotUser, err := testDB.GetUserByID(userToUpdate.ID)
+			gotUser, err := testDB.GetUserByID(context.Background(), userToUpdate.ID)
 			assert.NoError(t, err)
 			tt.validate(t, originalUser, gotUser) // Pass stored-before and fetched user
 		})
@@ -277,14 +278,14 @@ func TestDeleteUser(t *testing.T) {
 					Username:     "todelete",
 					PasswordHash: "deletehash",
 				}
-				err := testDB.CreateUser(user)
+				err := testDB.CreateUser(context.Background(), user)
 				assert.NoError(t, err)
 				return user.ID
 			},
 			wantErr: false,
 			validate: func(t *testing.T, deletedID uuid.UUID) {
 				// Verify user is no longer in the DB
-				_, err := testDB.GetUserByID(deletedID)
+				_, err := testDB.GetUserByID(context.Background(), deletedID)
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "user not found")
 			},
@@ -308,7 +309,7 @@ func TestDeleteUser(t *testing.T) {
 			userID := tt.setup(t)
 			targetID := userID
 
-			err := testDB.DeleteUser(targetID) // Assuming DeleteUser takes uuid.UUID, not int as in your original snippet
+			err := testDB.DeleteUser(context.Background(), targetID) // Assuming DeleteUser takes uuid.UUID, not int as in your original snippet
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "user not found")
@@ -349,9 +350,9 @@ func TestListUsers(t *testing.T) {
 				user1 := &models.User{Username: "listuser1", PasswordHash: "h1"}
 				user2 := &models.User{Username: "listuser2", PasswordHash: "h2"}
 				user3 := &models.User{Username: "listuser3", PasswordHash: "h3"}
-				testDB.CreateUser(user1)
-				testDB.CreateUser(user2)
-				testDB.CreateUser(user3)
+				testDB.CreateUser(context.Background(), user1)
+				testDB.CreateUser(context.Background(), user2)
+				testDB.CreateUser(context.Background(), user3)
 				return user1.ID // Return one ID for consistency, not directly used by ListUsers
 			},
 			limit:         2,
@@ -372,9 +373,9 @@ func TestListUsers(t *testing.T) {
 				user1 := &models.User{Username: "offuser1", PasswordHash: "h1"}
 				user2 := &models.User{Username: "offuser2", PasswordHash: "h2"}
 				user3 := &models.User{Username: "offuser3", PasswordHash: "h3"}
-				testDB.CreateUser(user1)
-				testDB.CreateUser(user2)
-				testDB.CreateUser(user3)
+				testDB.CreateUser(context.Background(), user1)
+				testDB.CreateUser(context.Background(), user2)
+				testDB.CreateUser(context.Background(), user3)
 				return user1.ID
 			},
 			limit:         2,
@@ -408,7 +409,7 @@ func TestListUsers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setup(t) // Perform setup, creating users as needed
 
-			got, err := testDB.ListUsers(tt.limit, tt.offset)
+			got, err := testDB.ListUsers(context.Background(), tt.limit, tt.offset)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
@@ -442,9 +443,9 @@ func TestGetUserCount(t *testing.T) {
 			name: "Count with multiple users",
 			setup: func(t *testing.T) {
 				ResetTestDB(testDB)
-				testDB.CreateUser(&models.User{Username: "c1", PasswordHash: "h"})
-				testDB.CreateUser(&models.User{Username: "c2", PasswordHash: "h"})
-				testDB.CreateUser(&models.User{Username: "c3", PasswordHash: "h"})
+				testDB.CreateUser(context.Background(), &models.User{Username: "c1", PasswordHash: "h"})
+				testDB.CreateUser(context.Background(), &models.User{Username: "c2", PasswordHash: "h"})
+				testDB.CreateUser(context.Background(), &models.User{Username: "c3", PasswordHash: "h"})
 			},
 			expectedCount: 3,
 			wantErr:       false,
@@ -463,7 +464,7 @@ func TestGetUserCount(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setup(t)
 
-			count, err := testDB.GetUserCount()
+			count, err := testDB.GetUserCount(context.Background())
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
@@ -497,7 +498,7 @@ func TestUserExists(t *testing.T) {
 			name: "User exists by username",
 			setup: func(t *testing.T) {
 				ResetTestDB(testDB)
-				testDB.CreateUser(&models.User{Username: "existuser", PasswordHash: "h"})
+				testDB.CreateUser(context.Background(), &models.User{Username: "existuser", PasswordHash: "h"})
 			},
 			username:       "existuser",
 			expectedExists: true,
@@ -518,7 +519,7 @@ func TestUserExists(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setup(t)
 
-			exists, err := testDB.UserExists(tt.username)
+			exists, err := testDB.UserExists(context.Background(), tt.username)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
@@ -536,7 +537,7 @@ func TestCreateUserTakenUsername(t *testing.T) {
 	defer testDB.Close()
 	ResetTestDB(testDB)
 
-	require.NoError(t, testDB.CreateUser(&models.User{Username: "twin", PasswordHash: "h"}))
-	err = testDB.CreateUser(&models.User{Username: "twin", PasswordHash: "h2"})
+	require.NoError(t, testDB.CreateUser(context.Background(), &models.User{Username: "twin", PasswordHash: "h"}))
+	err = testDB.CreateUser(context.Background(), &models.User{Username: "twin", PasswordHash: "h2"})
 	assert.ErrorIs(t, err, ErrUsernameTaken)
 }

@@ -15,9 +15,9 @@ import (
 
 func addGroceryAt(t *testing.T, db *DB, userID uuid.UUID, store string, total, discount float64, at time.Time) {
 	t.Helper()
-	categories, err := db.GetAllCategories()
+	categories, err := db.GetAllCategories(context.Background())
 	require.NoError(t, err)
-	require.NoError(t, db.CreateGroceriesExpense(&models.GroceriesExpense{
+	require.NoError(t, db.CreateGroceriesExpense(context.Background(), &models.GroceriesExpense{
 		UserID: userID, CategoryID: categories[0].ID, Product: "x", Quantity: 1,
 		UnitPrice: total, TotalPrice: total, TotalDiscount: discount, SupermarketName: store, PurchaseDate: at,
 	}))
@@ -31,7 +31,7 @@ func TestGroceriesStoreTotals(t *testing.T) {
 	addGroceryAt(t, db, userID, "  ", 3, 0, day(2026, 4, 3))
 	addGroceryAt(t, db, userID, "Lidl", 50, 0, day(2025, 4, 1)) // outside the range
 
-	got, err := db.GetGroceriesStoreTotals(userID, day(2026, 1, 1), day(2026, 12, 31))
+	got, err := db.GetGroceriesStoreTotals(context.Background(), userID, day(2026, 1, 1), day(2026, 12, 31))
 	require.NoError(t, err)
 	assert.Equal(t, map[string]float64{"Lidl": 14, "Billa": 7}, got, "net of discount; blank store names left out")
 }
@@ -44,9 +44,9 @@ func TestBillTypeTotal(t *testing.T) {
 		amount float64
 		at     time.Time
 	}{{2, 58, day(2025, 11, 10)}, {2, 2, day(2025, 11, 28)}, {3, 99, day(2025, 11, 10)}, {2, 70, day(2025, 12, 1)}} {
-		require.NoError(t, db.CreateHouseExpense(&models.HouseExpense{UtilityTypeID: e.typeID, Amount: e.amount, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+		require.NoError(t, db.CreateHouseExpense(context.Background(), &models.HouseExpense{UtilityTypeID: e.typeID, Amount: e.amount, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
 	}
-	require.NoError(t, db.CreateCarExpense(&models.CarExpense{ExpenseTypeID: 2, Amount: 300, Date: day(2025, 11, 5), Metadata: []byte("{}"), CreatedBy: userID}))
+	require.NoError(t, db.CreateCarExpense(context.Background(), &models.CarExpense{ExpenseTypeID: 2, Amount: 300, Date: day(2025, 11, 5), Metadata: []byte("{}"), CreatedBy: userID}))
 
 	nov := time.Date(2025, 11, 1, 0, 0, 0, 0, time.Local)
 	dec := time.Date(2025, 12, 1, 0, 0, 0, 0, time.Local)
@@ -70,21 +70,21 @@ func TestHouseAndCarTotalsSubtractDiscounts(t *testing.T) {
 	db, userID := setupMonthTestDB(t)
 	ctx := context.Background()
 	at := day(2026, 9, 5)
-	require.NoError(t, db.CreateHouseExpense(&models.HouseExpense{UtilityTypeID: 2, Amount: 100, DiscountAmount: 10, ExpenseDate: at, Metadata: []byte("{}"), CreatedBy: userID}))
-	require.NoError(t, db.CreateHouseExpense(&models.HouseExpense{UtilityTypeID: 2, Amount: 20, ExpenseDate: at, Metadata: []byte("{}"), CreatedBy: userID}))
-	require.NoError(t, db.CreateCarExpense(&models.CarExpense{ExpenseTypeID: 1, Amount: 50, DiscountAmount: 5, Date: at, Metadata: []byte("{}"), CreatedBy: userID}))
+	require.NoError(t, db.CreateHouseExpense(context.Background(), &models.HouseExpense{UtilityTypeID: 2, Amount: 100, DiscountAmount: 10, ExpenseDate: at, Metadata: []byte("{}"), CreatedBy: userID}))
+	require.NoError(t, db.CreateHouseExpense(context.Background(), &models.HouseExpense{UtilityTypeID: 2, Amount: 20, ExpenseDate: at, Metadata: []byte("{}"), CreatedBy: userID}))
+	require.NoError(t, db.CreateCarExpense(context.Background(), &models.CarExpense{ExpenseTypeID: 1, Amount: 50, DiscountAmount: 5, Date: at, Metadata: []byte("{}"), CreatedBy: userID}))
 	from, to := day(2026, 1, 1), day(2026, 12, 31)
 
-	house, err := db.GetHouseMonthlyTotals(userID, from, to)
+	house, err := db.GetHouseMonthlyTotals(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	assert.Equal(t, 110.0, house["2026-09"])
-	houseTypes, err := db.GetHouseTypeTotals(userID, from, to)
+	houseTypes, err := db.GetHouseTypeTotals(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	assert.Equal(t, 110.0, sumMap(houseTypes))
-	car, err := db.GetCarMonthlyTotals(userID, from, to)
+	car, err := db.GetCarMonthlyTotals(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	assert.Equal(t, 45.0, car["2026-09"])
-	carTypes, err := db.GetCarTypeTotals(userID, from, to)
+	carTypes, err := db.GetCarTypeTotals(context.Background(), userID, from, to)
 	require.NoError(t, err)
 	assert.Equal(t, 45.0, sumMap(carTypes))
 
@@ -97,22 +97,22 @@ func TestHouseAndCarTotalsSubtractDiscounts(t *testing.T) {
 
 	for name, get := range map[string]func() []float64{
 		"house year": func() []float64 {
-			r, err := db.GetHouseExpensesForYear(2026, userID)
+			r, err := db.GetHouseExpensesForYear(context.Background(), 2026, userID)
 			require.NoError(t, err)
 			return houseAmounts(*r)
 		},
 		"house type": func() []float64 {
-			r, err := db.GetHouseExpenseTypeForYear(2, 2026, userID)
+			r, err := db.GetHouseExpenseTypeForYear(context.Background(), 2, 2026, userID)
 			require.NoError(t, err)
 			return houseAmounts(*r)
 		},
 		"car year": func() []float64 {
-			r, err := db.GetCarExpensesForYear(2026, userID)
+			r, err := db.GetCarExpensesForYear(context.Background(), 2026, userID)
 			require.NoError(t, err)
 			return carAmounts(*r)
 		},
 		"car type": func() []float64 {
-			r, err := db.GetCarExpenseTypeForYear(1, 2026, userID)
+			r, err := db.GetCarExpenseTypeForYear(context.Background(), 1, 2026, userID)
 			require.NoError(t, err)
 			return carAmounts(*r)
 		},

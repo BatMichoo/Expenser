@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"expenser/internal/config"
 	"expenser/internal/db/migrations" // also registers the Go migrations with goose
@@ -38,7 +39,7 @@ func InitDatabase(cfg *config.Config) (*DB, error) {
 		fmt.Println("Dev seed data applied successfully.")
 	}
 
-	if err := db.Ping(); err != nil {
+	if err := db.Ping(context.Background()); err != nil {
 		if db.Close() != nil {
 			return nil, fmt.Errorf("error: %s", err.Error())
 		}
@@ -77,12 +78,20 @@ func connect(dbConnString string) (*DB, error) {
 		return nil, err
 	}
 
+	// A household app needs few connections; capping them keeps a burst of
+	// requests from exhausting Postgres, and recycling them picks up
+	// server-side changes (and drops connections a restart left broken).
+	conn.SetMaxOpenConns(10)
+	conn.SetMaxIdleConns(5)
+	conn.SetConnMaxLifetime(30 * time.Minute)
+	conn.SetConnMaxIdleTime(5 * time.Minute)
+
 	db := &DB{conn: conn}
 	return db, nil
 }
 
-func (db *DB) Ping() error {
-	return db.conn.Ping()
+func (db *DB) Ping(ctx context.Context) error {
+	return db.conn.PingContext(ctx)
 }
 
 func (db *DB) Close() error {
@@ -91,8 +100,8 @@ func (db *DB) Close() error {
 
 // monthlyTotals runs a query returning (key, sum) rows — a YYYY-MM month or
 // a type name — and collects them into a map.
-func (db *DB) monthlyTotals(query string, args ...any) (map[string]float64, error) {
-	rows, err := db.conn.Query(query, args...)
+func (db *DB) monthlyTotals(ctx context.Context, query string, args ...any) (map[string]float64, error) {
+	rows, err := db.conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query monthly totals: %w", err)
 	}
@@ -112,8 +121,8 @@ func (db *DB) monthlyTotals(query string, args ...any) (map[string]float64, erro
 
 // spendHistory runs a query returning (type, YYYY-MM-DD, sum) rows and
 // collects them as SpendEntry values dated midnight UTC.
-func (db *DB) spendHistory(query string, args ...any) ([]models.SpendEntry, error) {
-	rows, err := db.conn.Query(query, args...)
+func (db *DB) spendHistory(ctx context.Context, query string, args ...any) ([]models.SpendEntry, error) {
+	rows, err := db.conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query spend history: %w", err)
 	}

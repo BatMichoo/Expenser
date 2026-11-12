@@ -70,7 +70,7 @@ func (h *CarHandler) GetCurrentMonth(c *gin.Context) error {
 }
 
 func (h *CarHandler) GetCreateCarForm(c *gin.Context) error {
-	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes()
+	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -179,7 +179,7 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) error {
 	}
 	newExpense.CreatedBy = userID
 
-	if err := h.BaseHandler.DB.CreateCarExpense(newExpense); err != nil {
+	if err := h.BaseHandler.DB.CreateCarExpense(c.Request.Context(), newExpense); err != nil {
 		return err
 	}
 
@@ -205,7 +205,7 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) error {
 		return err
 	}
 
-	exp, err := h.BaseHandler.DB.GetCarExpenseByID(id, currentUserID(c))
+	exp, err := h.BaseHandler.DB.GetCarExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -213,7 +213,7 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) error {
 		return notFound("error.expense_not_found")
 	}
 
-	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes()
+	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -246,7 +246,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) error {
 	}
 	editExpense.ID = id
 
-	if err := h.BaseHandler.DB.EditCarExpense(editExpense, currentUserID(c)); err != nil {
+	if err := h.BaseHandler.DB.EditCarExpense(c.Request.Context(), editExpense, currentUserID(c)); err != nil {
 		return err
 	}
 
@@ -272,7 +272,7 @@ func (h *CarHandler) GetDeleteConfirm(c *gin.Context) error {
 		return err
 	}
 
-	exp, err := h.BaseHandler.DB.GetCarExpenseByID(id, currentUserID(c))
+	exp, err := h.BaseHandler.DB.GetCarExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -306,7 +306,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) error {
 		return err
 	}
 
-	deleted, err := h.BaseHandler.DB.DeleteCarExpense(id, currentUserID(c))
+	deleted, err := h.BaseHandler.DB.DeleteCarExpense(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -332,5 +332,5 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) error {
 func (h *CarHandler) monthView(c *gin.Context) (*models.MonthView, error) {
 	now := time.Now()
 	ym := services.ParseYearMonth(c.Query("month"), now)
-	return h.months.Car(currentUserID(c), ym, monthFilter(c), currentLang(c), now)
+	return h.months.Car(c.Request.Context(), currentUserID(c), ym, monthFilter(c), currentLang(c), now)
 }

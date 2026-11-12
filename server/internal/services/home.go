@@ -27,12 +27,12 @@ type BillTypeTotaler interface {
 // implements it.
 type HomeStore interface {
 	BillTypeTotaler
-	GetHouseMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetCarMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetGroceriesMonthlyTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetHouseTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetCarTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetGroceriesStoreTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetHouseMonthlyTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetCarMonthlyTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetGroceriesMonthlyTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetHouseTypeTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetCarTypeTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetGroceriesStoreTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
 	ListRecurringPayments(ctx context.Context, userID uuid.UUID) ([]models.RecurringPayment, error)
 }
 
@@ -148,16 +148,16 @@ func NewHomeService(store HomeStore) *HomeService {
 
 type sectionQueries struct {
 	name    string
-	monthly func(uuid.UUID, time.Time, time.Time) (map[string]float64, error)
-	top     func(uuid.UUID, time.Time, time.Time) (map[string]float64, error)
+	monthly func(context.Context, uuid.UUID, time.Time, time.Time) (map[string]float64, error)
+	top     func(context.Context, uuid.UUID, time.Time, time.Time) (map[string]float64, error)
 }
 
-func (s *HomeService) category(q sectionQueries, userID uuid.UUID, r ytdRange, now time.Time) (models.HomeCategory, error) {
-	this, err := q.monthly(userID, r.ThisFrom, r.ThisTo)
+func (s *HomeService) category(ctx context.Context, q sectionQueries, userID uuid.UUID, r ytdRange, now time.Time) (models.HomeCategory, error) {
+	this, err := q.monthly(ctx, userID, r.ThisFrom, r.ThisTo)
 	if err != nil {
 		return models.HomeCategory{}, fmt.Errorf("%s this year: %w", q.name, err)
 	}
-	last, err := q.monthly(userID, r.LastFrom, r.LastTo)
+	last, err := q.monthly(ctx, userID, r.LastFrom, r.LastTo)
 	if err != nil {
 		return models.HomeCategory{}, fmt.Errorf("%s last year: %w", q.name, err)
 	}
@@ -166,11 +166,11 @@ func (s *HomeService) category(q sectionQueries, userID uuid.UUID, r ytdRange, n
 	for i := 1; i < homeBars; i++ {
 		first = first.Prev()
 	}
-	monthly, err := q.monthly(userID, first.Start(), ym.End())
+	monthly, err := q.monthly(ctx, userID, first.Start(), ym.End())
 	if err != nil {
 		return models.HomeCategory{}, fmt.Errorf("%s months: %w", q.name, err)
 	}
-	top, err := q.top(userID, r.ThisFrom, r.ThisTo)
+	top, err := q.top(ctx, userID, r.ThisFrom, r.ThisTo)
 	if err != nil {
 		return models.HomeCategory{}, fmt.Errorf("%s top: %w", q.name, err)
 	}
@@ -190,7 +190,7 @@ func (s *HomeService) Build(ctx context.Context, userID uuid.UUID, name, lang st
 		{&v.Car, sectionQueries{"car", s.store.GetCarMonthlyTotals, s.store.GetCarTypeTotals}},
 		{&v.Groceries, sectionQueries{"groceries", s.store.GetGroceriesMonthlyTotals, s.store.GetGroceriesStoreTotals}},
 	} {
-		if *c.dst, err = s.category(c.q, userID, r, now); err != nil {
+		if *c.dst, err = s.category(ctx, c.q, userID, r, now); err != nil {
 			return nil, err
 		}
 	}

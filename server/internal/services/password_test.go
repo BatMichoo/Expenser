@@ -20,7 +20,7 @@ type fakePasswordStore struct {
 	saveErr error
 }
 
-func (f *fakePasswordStore) GetUserByID(id uuid.UUID) (*models.User, error) {
+func (f *fakePasswordStore) GetUserByID(_ context.Context, id uuid.UUID) (*models.User, error) {
 	if id != f.user.ID {
 		return nil, errors.New("user not found")
 	}
