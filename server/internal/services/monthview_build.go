@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"expenser/internal/chart"
 	"expenser/internal/models"
 	"expenser/internal/utilities"
 	"fmt"
@@ -122,6 +123,18 @@ func (s *MonthViewService) base(section string, ym YearMonth, filter MonthFilter
 	}
 }
 
+// colorBreakdown gives each breakdown entry its type's fixed colour, found
+// by name in v.Types. A type that is not listed keeps colour 0 (grey).
+func colorBreakdown(v *models.MonthView) {
+	ids := make(map[string]int, len(v.Types))
+	for _, t := range v.Types {
+		ids[t.Name] = t.ID
+	}
+	for i := range v.Breakdown {
+		v.Breakdown[i].Color = chart.TypeColor(ids[v.Breakdown[i].Type])
+	}
+}
+
 // totalsWindow is the date range of monthly totals a view needs: the mini
 // chart and the usual months before ym, and January onwards for the year
 // so far.
@@ -192,6 +205,7 @@ func (s *MonthViewService) House(userID uuid.UUID, ym YearMonth, filter MonthFil
 	for _, t := range *types {
 		v.Types = append(v.Types, models.TypeOption{ID: t.ID, Name: t.Name})
 	}
+	colorBreakdown(v)
 	return v, nil
 }
 
@@ -241,6 +255,7 @@ func (s *MonthViewService) Car(userID uuid.UUID, ym YearMonth, filter MonthFilte
 	for _, t := range *types {
 		v.Types = append(v.Types, models.TypeOption{ID: t.ID, Name: t.Name})
 	}
+	colorBreakdown(v)
 	return v, nil
 }
 
@@ -288,6 +303,7 @@ func (s *MonthViewService) Groceries(userID uuid.UUID, ym YearMonth, filter Mont
 	for _, c := range categories {
 		v.Types = append(v.Types, models.TypeOption{ID: c.ID, Name: c.Name})
 	}
+	colorBreakdown(v)
 	return v, nil
 }
 

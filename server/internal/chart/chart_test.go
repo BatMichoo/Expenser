@@ -231,3 +231,11 @@ func TestGroupedGeometry(t *testing.T) {
 	assert.InDelta(t, f.Left+slot*0.1+bw, b.Columns[0].Rects[1].X, 1e-9)
 	assert.InDelta(t, 10.0/30.0, b.Columns[0].Rects[0].H/b.Columns[0].Rects[1].H, 1e-9)
 }
+
+func TestTypeColor(t *testing.T) {
+	assert.Equal(t, 1, TypeColor(1))
+	assert.Equal(t, 8, TypeColor(8))
+	assert.Equal(t, 1, TypeColor(9))
+	assert.Equal(t, 0, TypeColor(0))
+	assert.Equal(t, 0, TypeColor(-4))
+}

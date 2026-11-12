@@ -1833,6 +1833,9 @@ tr:hover .row-actions,
   --cat-4: oklch(0.72 0.16 55);
   --cat-5: oklch(0.7 0.13 210);
   --cat-6: oklch(0.75 0.15 100);
+  --cat-7: oklch(0.66 0.17 20);
+  --cat-8: oklch(0.6 0.12 290);
+  --cat-0: oklch(0.72 0.02 264); /* unknown type */
 }
 
 .cat-1 { --cat: var(--cat-1); }
@@ -1841,6 +1844,20 @@ tr:hover .row-actions,
 .cat-4 { --cat: var(--cat-4); }
 .cat-5 { --cat: var(--cat-5); }
 .cat-6 { --cat: var(--cat-6); }
+.cat-7 { --cat: var(--cat-7); }
+.cat-8 { --cat: var(--cat-8); }
+.cat-0 { --cat: var(--cat-0); }
+
+/* The same colours for SVG chart marks. */
+.fill-cat-0 { fill: var(--cat-0); }
+.fill-cat-1 { fill: var(--cat-1); }
+.fill-cat-2 { fill: var(--cat-2); }
+.fill-cat-3 { fill: var(--cat-3); }
+.fill-cat-4 { fill: var(--cat-4); }
+.fill-cat-5 { fill: var(--cat-5); }
+.fill-cat-6 { fill: var(--cat-6); }
+.fill-cat-7 { fill: var(--cat-7); }
+.fill-cat-8 { fill: var(--cat-8); }
 
 .side-panel {
   padding: 1rem 1.1rem;

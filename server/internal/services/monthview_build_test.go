@@ -142,6 +142,8 @@ func TestHouseMonthView(t *testing.T) {
 	assert.Equal(t, "Gas", v.Breakdown[0].Type)
 	require.True(t, v.Breakdown[0].HasUsual)
 	assert.InDelta(t, 50, v.Breakdown[0].Usual, 0.001)
+	assert.Equal(t, 3, v.Breakdown[0].Color, "colour follows the type ID (Gas = 3), not its rank")
+	assert.Equal(t, 2, v.Breakdown[1].Color, "Water = 2")
 
 	assert.InDelta(t, 270, v.YearSoFar.Total, 0.001, "Jan 50 + Oct 100 + Nov 120")
 	from, to := EstimateHistoryWindow(YearMonth{2026, time.November})

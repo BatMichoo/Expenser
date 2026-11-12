@@ -441,9 +441,9 @@ func TestInsightPanels(t *testing.T) {
 	v := monthView("house")
 	v.Summary = models.MonthSummary{Total: 183.63}
 	v.Breakdown = []models.TypeShare{
-		{Type: "Gas", Amount: 85.01, Share: 46.3, Usual: 72, HasUsual: true, VsUsual: 18.1},
-		{Type: "Water", Amount: 19.19, Share: 10.4, Usual: 20, HasUsual: true, VsUsual: -4},
-		{Type: "TV", Amount: 9.99, Share: 5.4},
+		{Type: "Gas", Color: 3, Amount: 85.01, Share: 46.3, Usual: 72, HasUsual: true, VsUsual: 18.1},
+		{Type: "Water", Color: 2, Amount: 19.19, Share: 10.4, Usual: 20, HasUsual: true, VsUsual: -4},
+		{Type: "TV", Amount: 9.99, Share: 5.4}, // Color 0: unknown type
 	}
 	v.YearSoFar = models.YearSummary{Total: 1834.5, Months: 11, Average: 166.77, VsAverage: 10.1, HasComparison: true}
 	v.BarsTotal = 912.4
@@ -461,12 +461,13 @@ func TestInsightPanels(t *testing.T) {
 	require.Equal(t, 3, segments.Length(), "one segment per type")
 	style, _ := segments.Eq(0).Attr("style")
 	assert.Contains(t, style, "width: 46.3%")
-	assert.True(t, segments.Eq(0).HasClass("cat-1"))
+	assert.True(t, segments.Eq(0).HasClass("cat-3"))
 	assert.True(t, segments.Eq(1).HasClass("cat-2"))
+	assert.True(t, segments.Eq(2).HasClass("cat-0"))
 
 	items := bd.Find(".breakdown-item")
 	require.Equal(t, 3, items.Length())
-	assert.Equal(t, 1, items.Eq(0).Find(".cat-dot.cat-1").Length(), "dot matches its segment")
+	assert.Equal(t, 1, items.Eq(0).Find(".cat-dot.cat-3").Length(), "dot matches its segment")
 	assert.Contains(t, items.Eq(0).Text(), "85.01 €")
 	gas := items.Eq(0).Find(".pill")
 	assert.Contains(t, gas.Text(), "18%")

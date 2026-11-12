@@ -234,12 +234,12 @@
   {{ template "side-panel-head" (dict "Icon" "pie" "Title" (T .Lang "insights.where_it_went")) }}
   {{ if .Breakdown }}
   <div class="stacked-bar" aria-hidden="true">
-    {{ range $i, $s := .Breakdown }}<span class="cat-{{ cat $i }}" style="width: {{ printf "%.1f" $s.Share }}%"></span>{{ end }}
+    {{ range $s := .Breakdown }}<span class="cat-{{ $s.Color }}" style="width: {{ printf "%.1f" $s.Share }}%"></span>{{ end }}
   </div>
   <ul class="breakdown-list">
     {{ range $i, $s := .Breakdown }}
     <li class="breakdown-item">
-      <span class="cat-dot cat-{{ cat $i }}" aria-hidden="true"></span>
+      <span class="cat-dot cat-{{ $s.Color }}" aria-hidden="true"></span>
       <span class="breakdown-name">{{ T $.Lang (print $.TypePrefix $s.Type) }}</span>
       <span class="breakdown-share">{{ printf "%.0f" $s.Share }}%</span>
       <span class="breakdown-amount">{{ money $s.Amount }}</span>

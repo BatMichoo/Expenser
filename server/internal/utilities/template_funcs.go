@@ -2,6 +2,7 @@ package utilities
 
 import (
 	"bytes"
+	"expenser/internal/chart"
 	"fmt"
 	"html/template"
 	"math"
@@ -57,9 +58,7 @@ func TemplateFuncs() template.FuncMap {
 		"neg": func(v float64) float64 {
 			return -v
 		},
-		"cat": func(i int) int {
-			return i%6 + 1
-		},
+		"typeColor": chart.TypeColor,
 		// pct is part as a percentage of whole, clamped to 0–100 for bars.
 		"pct": func(part, whole float64) float64 {
 			if whole <= 0 {
