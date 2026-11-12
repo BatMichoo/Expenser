@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"expenser/internal/groceryunits"
 	"expenser/internal/models"
 	"fmt"
 	"time"
@@ -17,12 +18,18 @@ const sizeStatusSQL = `CASE
 			ELSE 'unknown'
 		END`
 
-func nullableUnit(unit string) sql.NullString {
-	return sql.NullString{String: unit, Valid: unit != ""}
+// nullableUnit returns the unit to store, or NULL when the size is not one
+// the unit_size column can hold.
+func nullableUnit(unit string, size float64) sql.NullString {
+	return sql.NullString{String: unit, Valid: storableSize(unit, size)}
 }
 
 func nullableUnitSize(unit string, size float64) sql.NullFloat64 {
-	return sql.NullFloat64{Float64: size, Valid: unit != ""}
+	return sql.NullFloat64{Float64: size, Valid: storableSize(unit, size)}
+}
+
+func storableSize(unit string, size float64) bool {
+	return groceryunits.Size{Unit: groceryunits.Unit(unit), Per: size}.Storable()
 }
 
 // scanUnit applies the nullable unit columns to e.
@@ -49,7 +56,7 @@ func (db *DB) CreateGroceriesExpense(input *models.GroceriesExpense) error {
 		input.TotalDiscount,
 		input.SupermarketName,
 		input.PurchaseDate,
-		nullableUnit(input.Unit),
+		nullableUnit(input.Unit, input.UnitSize),
 		nullableUnitSize(input.Unit, input.UnitSize),
 	).Scan(&input.ID, &input.CreatedAt, &input.SizeStatus)
 
@@ -154,7 +161,7 @@ func (db *DB) EditGroceriesExpense(input *models.GroceriesExpense, userID uuid.U
 			END
 		WHERE id = $10 AND user_id = $11;
 	`
-	res, err := db.conn.Exec(query, input.CategoryID, input.Product, input.Quantity, input.UnitPrice, input.DiscountPerUnit, input.TotalPrice, input.TotalDiscount, input.SupermarketName, input.PurchaseDate, input.ID, userID, nullableUnit(input.Unit), nullableUnitSize(input.Unit, input.UnitSize))
+	res, err := db.conn.Exec(query, input.CategoryID, input.Product, input.Quantity, input.UnitPrice, input.DiscountPerUnit, input.TotalPrice, input.TotalDiscount, input.SupermarketName, input.PurchaseDate, input.ID, userID, nullableUnit(input.Unit, input.UnitSize), nullableUnitSize(input.Unit, input.UnitSize))
 	if err != nil {
 		return fmt.Errorf("failed to update expense: %w", err)
 	}

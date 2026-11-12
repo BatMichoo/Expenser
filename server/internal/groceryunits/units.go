@@ -151,3 +151,15 @@ func Resolve(product string, quantity float64, aiUnit string, aiPer float64) (Si
 	}
 	return Size{}, false
 }
+
+// Bounds of a pack size that fits the unit_size NUMERIC(10,4) column and its
+// CHECK (unit_size > 0) without rounding to zero or overflowing.
+const (
+	MinPer = 0.0001
+	MaxPer = 999999.0
+)
+
+// Storable reports whether s has a valid unit and a size the database can hold.
+func (s Size) Storable() bool {
+	return s.Unit.Valid() && s.Per >= MinPer && s.Per <= MaxPer
+}

@@ -188,3 +188,48 @@ func TestCreateGroceriesSizeStatus(t *testing.T) {
 	}
 	assert.Equal(t, map[string]int{models.SizeKnown: 2, models.SizeNotTracked: 1}, statuses)
 }
+
+func TestBackfillSkipsUnstorableSizes(t *testing.T) {
+	tdb, u := setupUnitsTestDB(t)
+	tiny := insertLegacyRow(t, tdb, u, "Milk", "Odd thing 0.04g", 1, 1)
+	huge := insertLegacyRow(t, tdb, u, "Milk", "Odd thing 12345678000g", 1, 1)
+	milk := insertLegacyRow(t, tdb, u, "Milk", "Fresh milk 1L", 1, 1)
+
+	tx, err := tdb.conn.Begin()
+	require.NoError(t, err)
+	sized, err := migrations.BackfillGroceryUnits(tx)
+	require.NoError(t, err)
+	require.NoError(t, tx.Commit())
+
+	assert.Equal(t, 1, sized)
+	for _, id := range []int{tiny, huge} {
+		r := readUnitRow(t, tdb, id)
+		assert.Equal(t, "unknown", r.status)
+		assert.False(t, r.unit.Valid)
+	}
+	assert.Equal(t, "known", readUnitRow(t, tdb, milk).status)
+}
+
+func TestCreateEditUnstorableSizeIsUnknown(t *testing.T) {
+	tdb, u := setupUnitsTestDB(t)
+	e := &models.GroceriesExpense{
+		UserID: u.ID, CategoryID: categoryID(t, tdb, "Milk"), Product: "Thing", Quantity: 1,
+		UnitPrice: 2, TotalPrice: 2, PurchaseDate: time.Now(), Unit: "kg", UnitSize: 0,
+	}
+	for _, size := range []float64{0, -1, 0.00001, 1e7} {
+		e.Unit, e.UnitSize = "kg", size
+		require.NoError(t, tdb.CreateGroceriesExpense(e), "size %v", size)
+		got, err := tdb.GetGroceriesExpenseByID(e.ID, u.ID)
+		require.NoError(t, err)
+		assert.Equal(t, "", got.Unit)
+		assert.Equal(t, models.SizeUnknown, got.SizeStatus)
+	}
+	e.Unit, e.UnitSize = "l", 1
+	require.NoError(t, tdb.EditGroceriesExpense(e, u.ID))
+	e.Unit, e.UnitSize = "l", 0
+	require.NoError(t, tdb.EditGroceriesExpense(e, u.ID))
+	got, err := tdb.GetGroceriesExpenseByID(e.ID, u.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "", got.Unit)
+	assert.Equal(t, models.SizeUnknown, got.SizeStatus)
+}

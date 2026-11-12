@@ -50,7 +50,8 @@ func downGroceryUnits(tx *sql.Tx) error {
 
 // BackfillGroceryUnits marks Other rows not_tracked and fills unit, unit_size
 // and size_status for rows whose product name carries a pack size. It writes
-// only those columns and returns how many rows it sized.
+// only those columns, skips sizes the column cannot hold (they stay unknown),
+// and returns how many rows it sized.
 func BackfillGroceryUnits(tx *sql.Tx) (sized int, err error) {
 	if _, err := tx.Exec(`
 		UPDATE groceries_expenses SET size_status = 'not_tracked'
@@ -77,7 +78,7 @@ func BackfillGroceryUnits(tx *sql.Tx) (sized int, err error) {
 			rows.Close()
 			return 0, fmt.Errorf("scan grocery: %w", err)
 		}
-		if size, ok := groceryunits.Parse(product, quantity); ok {
+		if size, ok := groceryunits.Parse(product, quantity); ok && size.Storable() {
 			targets = append(targets, target{id, size.Unit, size.Per})
 		}
 	}
