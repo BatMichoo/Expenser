@@ -37,3 +37,20 @@ func TestSizeFieldsUseInputLook(t *testing.T) {
 func TestSizeProductLeftAligned(t *testing.T) {
 	assert.Contains(t, cssRule(t, "../../static/css/styles.css", ".size-product"), "text-align: left")
 }
+
+// On phones the 960x320 chart is drawn at least 600px wide (200px tall, text
+// 18 user units = about 11px) and the card scrolls sideways.
+func TestTrendSvgMobileMinWidth(t *testing.T) {
+	b, err := os.ReadFile("../../static/css/mobile.css")
+	require.NoError(t, err)
+	css := string(b)
+	m := regexp.MustCompile(`(?m)^\s*\.trend-svg \{([^}]*)\}`).FindStringSubmatch(css)
+	require.NotNil(t, m)
+	assert.Contains(t, m[1], "min-width: 600px")
+	m = regexp.MustCompile(`(?m)^\s*\.trend-svg text \{([^}]*)\}`).FindStringSubmatch(css)
+	require.NotNil(t, m)
+	assert.Contains(t, m[1], "font-size: 18px")
+	m = regexp.MustCompile(`(?m)^\s*\.trend-card \{([^}]*)\}`).FindStringSubmatch(css)
+	require.NotNil(t, m)
+	assert.Contains(t, m[1], "overflow-x: auto")
+}

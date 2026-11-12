@@ -8,6 +8,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ParseTemplates parses the app's templates with TemplateFuncs, plus two
@@ -31,6 +32,11 @@ func ParseTemplates(glob string) (*template.Template, error) {
 	set, err := template.New("").Funcs(TemplateFuncs()).Funcs(pages).ParseGlob(glob)
 	return set, err
 }
+
+// assetVersion changes on every start (so on every deploy) and is appended to
+// stylesheet and script URLs, so browsers do not keep using a cached copy of
+// an older version.
+var assetVersion = strconv.FormatInt(time.Now().Unix(), 36)
 
 // TemplateFuncs returns the functions available to every HTML template.
 func TemplateFuncs() template.FuncMap {
@@ -63,6 +69,10 @@ func TemplateFuncs() template.FuncMap {
 				return 0
 			}
 			return math.Max(0, math.Min(100, part/whole*100))
+		},
+		// asset is the URL of a static file with the current asset version.
+		"asset": func(path string) string {
+			return "/static/" + path + "?v=" + assetVersion
 		},
 		// sizeValue prints a pack size for a number input: rounded to the
 		// column's 4 decimals, without float noise or trailing zeros.

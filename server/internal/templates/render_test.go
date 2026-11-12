@@ -1234,6 +1234,16 @@ func TestRootLayoutRendersPagesByName(t *testing.T) {
 
 	unknown := page("no-such-page", nil)
 	assert.Equal(t, 1, unknown.Find("#tracker-content section.auth-split").Length(), "unknown names show the home page")
+
+	// Stylesheets and scripts carry a per-start version so a deploy is not
+	// hidden behind a cached copy.
+	for _, sel := range []string{`link[rel="stylesheet"]`, `script[src]`} {
+		login.Find(sel).Each(func(_ int, el *goquery.Selection) {
+			src := el.AttrOr("href", el.AttrOr("src", ""))
+			assert.Regexp(t, `^/static/.+\?v=[0-9a-z]+$`, src)
+		})
+	}
+	assert.Equal(t, 3, login.Find(`link[rel="stylesheet"]`).Length())
 }
 
 func TestEveryIconNameDraws(t *testing.T) {

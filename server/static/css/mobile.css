@@ -668,10 +668,10 @@
 }
 
 @media (max-width: 767px) {
-  /* The 960-unit viewBox is shown about 0.58x on a phone, so text is sized
-     in user units to land near 10-11px; the card scrolls sideways if needed. */
+  /* The 960x320 viewBox is drawn at least 600px wide on a phone (0.625x,
+     200px tall), so 18-unit text lands near 11px; the card scrolls sideways. */
   .trend-svg {
-    min-width: 560px;
+    min-width: 600px;
   }
 
   .trend-svg text {
