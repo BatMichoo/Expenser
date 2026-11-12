@@ -199,14 +199,6 @@
 
 
   /* Other Elements */
-  #year {
-    max-width: 6em;
-  }
-
-  #search-form {
-    gap: 1em;
-  }
-
   /* #section-list li { */
   /*   width: 50%; */
   /* } */
@@ -552,6 +544,37 @@
     padding: 0.6em 0.8em;
   }
 
+  .trends-toolbar {
+    margin: 0 0.75em 0.75em;
+  }
+
+  .trend-tabs {
+    display: flex;
+    width: 100%;
+  }
+
+  .trend-tab {
+    flex: 1;
+    text-align: center;
+    padding: 0.55em 0.4em;
+  }
+
+  .trend-filters {
+    width: 100%;
+  }
+
+  .trend-select {
+    flex: 1 1 8em;
+    min-width: 0;
+    height: 2.75em;
+    font-size: 16px;
+  }
+
+  .trend-card,
+  .year-totals-card {
+    margin: 0 0.75em 0.75em;
+  }
+
   .kpi-value {
     font-size: 1.25em;
   }
@@ -641,5 +664,25 @@
   .pay-btn,
   .skip-btn {
     height: 2.4em;
+  }
+}
+
+@media (max-width: 767px) {
+  /* The 960x320 viewBox is drawn at least 600px wide on a phone (0.625x,
+     200px tall), so 18-unit text lands near 11px; the card scrolls sideways. */
+  .trend-svg {
+    min-width: 600px;
+  }
+
+  .trend-svg text {
+    font-size: 18px;
+  }
+
+  .trend-card {
+    overflow-x: auto;
+  }
+
+  .trend-legend {
+    font-size: 0.75rem;
   }
 }

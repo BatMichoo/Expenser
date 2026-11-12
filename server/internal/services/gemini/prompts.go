@@ -3,6 +3,7 @@ package gemini
 // GeminiPrompts groups all prompt strings used when calling the Gemini API.
 // This provides a centralized and organized way to reference prompts.
 type GeminiPrompts struct {
+	SizeSuggestions  string // asks for the unit and pack size of products from their names alone.
 	GroceriesReceipt string // instructs Gemini how to extract structured data from a receipt (image or text).
 }
 
@@ -10,6 +11,12 @@ type GeminiPrompts struct {
 // organized prompt strings. It should be imported and used
 // globally for consistent prompt referencing.
 var Prompts = &GeminiPrompts{
+	SizeSuggestions: `You are given a JSON array of grocery product names as printed on Bulgarian or English receipts. For each product say what ONE counted quantity of it is: "unit" is "kg" (weight), "l" (volume) or "pc" (pieces), and "unit_size" is the amount in that unit.
+
+	Examples: "Прясно мляко 3% 1л" is {"unit": "l", "unit_size": 1}; "Кисело мляко 400г" is {"unit": "kg", "unit_size": 0.4}; "Яйца М 10бр" is {"unit": "pc", "unit_size": 10}. If the unit or size is unknown, give {"unit": "", "unit_size": 0}. Do not guess.
+
+	Output ONLY a JSON array with exactly one object per product, in the same order and of the same length as the input. No other text.`,
+
 	GroceriesReceipt: `Extract the data from this grocery receipt and output it as a structured JSON object. The receipt is given either as an image or as its extracted text (with the printed layout kept).
 
 	Quantity lines: some items have a line with the quantity and unit price (e.g. "2.000 x 1.78", "2 * 0,25" or "9,955 KG"). Receipt formats differ in where that line goes. In some (e.g. Lidl) it is printed just ABOVE its item and the item's total is on the item's own line; in others (e.g. Kaufland) it is printed just BELOW its item and carries the item's total. Work out which layout this receipt uses from the prices (quantity x unit price = line total) and pair each quantity line with the right item. Items without a quantity line have a quantity of 1 and a unit price equal to their line total. Decimal commas (4,48) are decimal points.
@@ -22,6 +29,8 @@ var Prompts = &GeminiPrompts{
 	"Chips", "Nuts", "Chocolate", "Candy", "Cookies", "Ice Cream",
 	"Water", "Juice", "Soda", "Coffee", "Tea", "Beer", "Wine", "Other".
 	If an item does not clearly fit into the specific food items listed, assign "Other". Do not use any other category names.
+
+	Units: for each item give "unit" and "unit_size", which say what ONE counted quantity of the item is. "unit" is "kg" (weight), "l" (volume) or "pc" (pieces). A weight line like "9,955 KG" means the item is sold by weight: unit "kg", unit_size 1. For packaged goods take the pack size from the product name: "1л" is unit "l", unit_size 1; "400г" is unit "kg", unit_size 0.4; "500мл" is unit "l", unit_size 0.5; "10бр" is unit "pc", unit_size 10. If the unit or size is unknown, give unit "" and unit_size 0. Do not guess.
 
 	Items: list every item once, in the order printed on the receipt. A quantity line is part of its item, not an item of its own.
 
@@ -43,7 +52,9 @@ var Prompts = &GeminiPrompts{
 		  "discount_per_unit": number,
 	      "total_price": number,
 		  "total_discount": number,
-	      "category": "string"
+	      "category": "string",
+	      "unit": "kg" | "l" | "pc" | "",
+	      "unit_size": number
 	    }
 	  ],
 	  "discounts": [

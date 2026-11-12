@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"errors"
+	"expenser/internal/groceryunits"
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/services/gemini"
@@ -58,7 +59,11 @@ func parseGroceriesExpenseForm(c *gin.Context) *models.GroceriesExpense {
 	totalPrice, _ := strconv.ParseFloat(c.PostForm("total_price"), 64)
 	totalDiscount, _ := strconv.ParseFloat(c.PostForm("total_discount"), 64)
 
+	unit, unitSize := parseSizeFields(c.PostForm("unit"), c.PostForm("unit_size"))
+
 	return &models.GroceriesExpense{
+		Unit:            unit,
+		UnitSize:        unitSize,
 		CategoryID:      categoryID,
 		Product:         c.PostForm("product"),
 		Quantity:        quantity,
@@ -71,11 +76,95 @@ func parseGroceriesExpenseForm(c *gin.Context) *models.GroceriesExpense {
 	}
 }
 
+// parseSizeFields reads the unit and size inputs. Only known units are
+// accepted; without one the size is dropped too.
+func parseSizeFields(unit, size string) (string, float64) {
+	unit = strings.TrimSpace(unit)
+	if !groceryunits.Unit(unit).Valid() {
+		return "", 0
+	}
+	per, _ := strconv.ParseFloat(strings.TrimSpace(size), 64)
+	return unit, per
+}
+
+// receiptItemSize is the unit and size to prefill for a receipt item: the
+// one the name and the reader agree on, or nothing.
+func receiptItemSize(item models.ReceiptItem) (string, float64) {
+	size, ok := groceryunits.Resolve(item.Name, item.Quantity, item.Unit, item.UnitSize)
+	if !ok {
+		return "", 0
+	}
+	return string(size.Unit), size.Per
+}
+
+// sizeGuess is what the size fields show for a product. A size the user
+// chose (a unit set and not marked as guessed) is kept as posted; otherwise
+// the size is read from the name again, and cleared when none can be read, so
+// a stale guess never lingers. guessed tells whether the result is a guess.
+func sizeGuess(product, quantity, unit, unitSize, wasGuessed string) (string, float64, bool) {
+	if unit != "" && wasGuessed != "1" {
+		u, size := parseSizeFields(unit, unitSize)
+		return u, size, false
+	}
+	q, _ := strconv.ParseFloat(quantity, 64)
+	if size, ok := groceryunits.Parse(product, q); ok {
+		return string(size.Unit), size.Per, true
+	}
+	return "", 0, false
+}
+
+// GetSizeGuess re-renders the size fields as the product or quantity changes.
+func (h *GroceriesHandler) GetSizeGuess(c *gin.Context) error {
+	unit, size, guessed := sizeGuess(c.Query("product"), c.Query("quantity"), c.Query("unit"), c.Query("unit_size"), c.Query("size_guessed"))
+	c.HTML(http.StatusOK, "size-fields", gin.H{
+		"Prefix":  c.Query("prefix"),
+		"ID":      sizeFieldsID(c.Query("id")),
+		"Unit":    unit,
+		"Size":    size,
+		"Guessed": guessed,
+		"Lang":    currentLang(c),
+	})
+	return nil
+}
+
+// sizeFieldsID keeps the wrapper id to the plain ids the forms use.
+func sizeFieldsID(id string) string {
+	if id == "size-fields" || strings.HasPrefix(id, "size-fields-") {
+		for _, r := range strings.TrimPrefix(id, "size-fields-") {
+			if r < '0' || r > '9' {
+				return "size-fields"
+			}
+		}
+		return id
+	}
+	return "size-fields"
+}
+
 // receiptError tells the user why a receipt couldn't be read, in Gemini's
 // own words where it gave some: what the model said instead of a receipt,
 // or the API's error message. Failures with nothing useful to say (network,
 // unreadable response) get the general message.
 func receiptError(err error) error {
+	return aiError(err, aiMessages{
+		said: "error.receipt_ai_said", tooLong: "error.receipt_too_long",
+		refused: "error.receipt_ai_refused", other: "error.receipt_not_analyzed",
+	})
+}
+
+// sizesError is receiptError for the size suggestions, in its own words.
+func sizesError(err error) error {
+	return aiError(err, aiMessages{
+		said: "error.sizes_ai_said", tooLong: "error.sizes_too_many",
+		refused: "error.sizes_ai_refused", other: "error.sizes_not_suggested",
+	})
+}
+
+// aiMessages are the message keys for what the model did instead of the job.
+type aiMessages struct{ said, tooLong, refused, other string }
+
+// aiError maps a Gemini failure to an HTTPError; the outage and
+// configuration cases are the same for every job, the rest use m.
+func aiError(err error, m aiMessages) error {
 	var (
 		apiErr   *gemini.APIError
 		replyErr *gemini.ReplyError
@@ -91,13 +180,13 @@ func receiptError(err error) error {
 	case errors.As(err, &apiErr):
 		return gateway("error.ai_error", apiErr.Message)
 	case errors.As(err, &replyErr) && replyErr.Reply != "":
-		return gateway("error.receipt_ai_said", replyErr.Reply)
+		return gateway(m.said, replyErr.Reply)
 	case errors.As(err, &replyErr) && replyErr.FinishReason == "MAX_TOKENS":
-		return gateway("error.receipt_too_long")
+		return gateway(m.tooLong)
 	case errors.As(err, &replyErr) && replyErr.FinishReason != "":
-		return gateway("error.receipt_ai_refused", replyErr.FinishReason)
+		return gateway(m.refused, replyErr.FinishReason)
 	}
-	return gateway("error.receipt_not_analyzed")
+	return gateway(m.other)
 }
 
 // UploadReceipt starts reading the receipt in the background and shows a
@@ -180,10 +269,15 @@ func (h *GroceriesHandler) renderReceiptReview(c *gin.Context, analysis *models.
 	}
 	subtotal, discount := analysis.Sums()
 	purchasedAt, _ := analysis.PurchaseTime(time.Now())
+	items := make([]models.ReceiptItem, len(analysis.Items))
+	for i, item := range analysis.Items {
+		item.Unit, item.UnitSize = receiptItemSize(item)
+		items[i] = item
+	}
 	c.HTML(http.StatusOK, "groceries-receipt-edit-form", gin.H{
 		"PurchasedAt": purchasedAt,
 		"Store":       analysis.Store,
-		"Items":       analysis.Items,
+		"Items":       items,
 		"Subtotal":    subtotal,
 		"Discount":    discount,
 		"Total":       subtotal - discount,
@@ -220,6 +314,7 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 		totalPrice, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].total_price", i)), 64)
 		totalDiscount, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].total_discount", i)), 64)
 		supermarketName := c.PostForm(fmt.Sprintf("items[%d].supermarket_name", i))
+		unit, unitSize := parseSizeFields(c.PostForm(fmt.Sprintf("items[%d].unit", i)), c.PostForm(fmt.Sprintf("items[%d].unit_size", i)))
 
 		expense := &models.GroceriesExpense{
 			UserID:          userID,
@@ -231,6 +326,8 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 			TotalPrice:      totalPrice,
 			TotalDiscount:   totalDiscount,
 			SupermarketName: supermarketName,
+			Unit:            unit,
+			UnitSize:        unitSize,
 			PurchaseDate:    purchasedAt,
 		}
 

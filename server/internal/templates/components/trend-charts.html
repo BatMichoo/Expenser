@@ -1,0 +1,59 @@
+{{ define "svg-bars" }}
+{{/* Prefix (optional) translates series names: T Lang (Prefix + Name).
+     Colour-0 series are already translated and shown as they are. */}}
+{{ $c := .Chart }}{{ $lang := .Lang }}{{ $prefix := .Prefix }}{{ $f := $c.Frame }}
+{{ if $c.Empty }}
+<p class="trend-empty">{{ T $lang "trends.no_data" }}</p>
+{{ else }}
+<svg viewBox="0 0 {{ printf "%.0f" $f.W }} {{ printf "%.0f" $f.H }}" class="trend-svg">
+  {{ range $c.Ticks }}
+  <line class="grid" x1="{{ printf "%.1f" $f.Left }}" x2="{{ printf "%.1f" (sub $f.W $f.Right) }}" y1="{{ printf "%.1f" .Y }}" y2="{{ printf "%.1f" .Y }}"/>
+  <text class="tick" x="{{ printf "%.1f" (sub $f.Left 6.0) }}" y="{{ printf "%.1f" .Y }}" text-anchor="end" dominant-baseline="middle">{{ if .Value }}{{ rough .Value }}{{ else }}0{{ end }}</text>
+  {{ end }}
+  {{ range $c.Columns }}
+  <text class="col-label{{ if .Current }} current{{ end }}" x="{{ printf "%.1f" .X }}" y="{{ printf "%.1f" (sub $f.H 8.0) }}" text-anchor="middle">{{ .Label }}</text>
+  <g class="hit" tabindex="0">
+    <title>{{ .Label }}{{ range .Rects }}&#10;{{ if and $prefix .Color }}{{ T $lang (print $prefix .Name) }}{{ else }}{{ .Name }}{{ end }}: {{ money .Value }}{{ end }}&#10;{{ money .Total }}</title>
+    {{ range .Rects }}<rect class="fill-cat-{{ .Color }}" x="{{ printf "%.1f" .X }}" y="{{ printf "%.1f" .Y }}" width="{{ printf "%.1f" .W }}" height="{{ printf "%.1f" .H }}"/>
+    {{ end }}
+    <text class="value-label" x="{{ printf "%.1f" .X }}" y="{{ printf "%.1f" (sub $f.Top 2.0) }}" text-anchor="middle">{{ rough .Total }}</text>
+  </g>
+  {{ end }}
+  {{ if $c.HasAvg }}<line class="avg-line" x1="{{ printf "%.1f" $f.Left }}" x2="{{ printf "%.1f" (sub $f.W $f.Right) }}" y1="{{ printf "%.1f" $c.AvgY }}" y2="{{ printf "%.1f" $c.AvgY }}"/>{{ end }}
+</svg>
+{{ end }}
+{{ end }}
+
+{{ define "svg-price" }}
+{{ $c := .Chart }}{{ $lang := .Lang }}{{ $unit := .Unit }}{{ $f := $c.Frame }}
+{{ if $c.Empty }}
+<p class="trend-empty">{{ T $lang "trends.no_data" }}</p>
+{{ else }}
+<svg viewBox="0 0 {{ printf "%.0f" $f.W }} {{ printf "%.0f" $f.H }}" class="trend-svg">
+  {{ range $c.Ticks }}
+  <line class="grid" x1="{{ printf "%.1f" $f.Left }}" x2="{{ printf "%.1f" (sub $f.W $f.Right) }}" y1="{{ printf "%.1f" .Y }}" y2="{{ printf "%.1f" .Y }}"/>
+  <text class="tick" x="{{ printf "%.1f" (sub $f.Left 6.0) }}" y="{{ printf "%.1f" .Y }}" text-anchor="end" dominant-baseline="middle">{{ printf "%.2f" .Value }}</text>
+  {{ end }}
+  {{ range $c.Labels }}<text class="col-label" x="{{ printf "%.1f" .X }}" y="{{ printf "%.1f" (sub $f.H 8.0) }}" text-anchor="middle">{{ .Label }}</text>
+  {{ end }}
+  {{ range $c.Qty }}<rect class="qty-bar fill-cat-3" x="{{ printf "%.1f" .X }}" y="{{ printf "%.1f" .Y }}" width="{{ printf "%.1f" .W }}" height="{{ printf "%.1f" .H }}"><title>{{ .Name }}: {{ printf "%.2f" .Value }}</title></rect>
+  {{ end }}
+  {{ range $c.Band }}<polygon class="price-band" points="{{ . }}"/>
+  {{ end }}
+  {{ range $c.Avg }}
+  <polyline class="price-line" points="{{ .Points }}"/>
+  {{ range . }}<g class="hit" tabindex="0"><circle class="hit-area" cx="{{ printf "%.1f" .X }}" cy="{{ printf "%.1f" .Y }}" r="12"/><circle class="price-dot" cx="{{ printf "%.1f" .X }}" cy="{{ printf "%.1f" .Y }}" r="3.5"/><title>{{ .Label }}: {{ printf "%.2f" .Value }} / {{ $unit }}{{ if .Shelf }} ({{ T $lang "trends.shelf" }}: {{ printf "%.2f" .Shelf }}){{ end }}</title></g>
+  {{ end }}
+  {{ end }}
+  {{ with $c.Low }}<circle class="low-marker" cx="{{ printf "%.1f" .X }}" cy="{{ printf "%.1f" .Y }}" r="5"><title>{{ .Label }}: {{ printf "%.2f" .Value }} / {{ $unit }}</title></circle>{{ end }}
+</svg>
+{{ end }}
+{{ end }}
+
+{{/* Items: []LegendItem. Prefix (optional) translates names like svg-bars. */}}
+{{ define "trend-legend" }}
+<ul class="trend-legend">
+  {{ range .Items }}<li><span class="legend-swatch cat-{{ .Color }}{{ if .Dashed }} dashed{{ end }}"></span>{{ if and $.Prefix .Color }}{{ T $.Lang (print $.Prefix .Name) }}{{ else }}{{ .Name }}{{ end }}</li>
+  {{ end }}
+</ul>
+{{ end }}

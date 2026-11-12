@@ -272,3 +272,10 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
     syncSectionButtons(event.detail.pathInfo.requestPath);
   }
 });
+
+// A full page load of /<section>/chart renders the list button as active;
+// fix the highlight from the address bar.
+syncSectionButtons(location.pathname);
+document.body.addEventListener("htmx:historyRestore", () =>
+  syncSectionButtons(location.pathname),
+);

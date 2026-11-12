@@ -9,6 +9,7 @@ type Pages struct {
 	Car       string
 	Groceries string
 	Bills     string
+	Trends    string // Trends is a section's charts page (section buttons + trends).
 }
 
 // HTMXComponents defines the names for reusable HTMX-specific UI components.
@@ -28,7 +29,7 @@ type HTMXComponents struct {
 	ModalSuccess         string
 	ModalError           string
 	ModalConfirm         string
-	Chart                string
+	Trends               string // Trends is the charts view of a section (tabs, tiles, chart).
 	HouseCurrent         string
 	CarCurrent           string
 	Dialog               string
@@ -66,6 +67,7 @@ var pages = &Pages{
 	Car:       "car-page",
 	Groceries: "groceries-page",
 	Bills:     "bills-page",
+	Trends:    "trends-page",
 }
 
 var components = &HTMXComponents{
@@ -81,7 +83,7 @@ var components = &HTMXComponents{
 	ModalSuccess:         "success-modal",
 	ModalError:           "error-modal",
 	ModalConfirm:         "confirm-modal",
-	Chart:                "exp-chart",
+	Trends:               "trends",
 	HouseCurrent:         "house-current",
 	CarCurrent:           "car-current",
 	Dialog:               "confirm-modal",

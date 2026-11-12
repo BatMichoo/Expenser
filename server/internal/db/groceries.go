@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"expenser/internal/groceryunits"
 	"expenser/internal/models"
 	"fmt"
 	"time"
@@ -9,11 +10,39 @@ import (
 	"github.com/google/uuid"
 )
 
+// sizeStatusSQL derives size_status from the category id in $2, the unit in
+// $11 and the unit size in $12 (in INSERT) -- EditGroceriesExpense repeats it with its own placeholders.
+const sizeStatusSQL = `CASE
+			WHEN $2 = (SELECT id FROM grocery_categories WHERE name = 'Other') THEN 'not_tracked'
+			WHEN $11::text IS NOT NULL AND $12::numeric > 0 THEN 'known'
+			ELSE 'unknown'
+		END`
+
+// nullableUnit returns the unit to store, or NULL when the size is not one
+// the unit_size column can hold.
+func nullableUnit(unit string, size float64) sql.NullString {
+	return sql.NullString{String: unit, Valid: storableSize(unit, size)}
+}
+
+func nullableUnitSize(unit string, size float64) sql.NullFloat64 {
+	return sql.NullFloat64{Float64: size, Valid: storableSize(unit, size)}
+}
+
+func storableSize(unit string, size float64) bool {
+	return groceryunits.Size{Unit: groceryunits.Unit(unit), Per: size}.Storable()
+}
+
+// scanUnit applies the nullable unit columns to e.
+func scanUnit(e *models.GroceriesExpense, unit sql.NullString, size sql.NullFloat64) {
+	e.Unit = unit.String
+	e.UnitSize = size.Float64
+}
+
 func (db *DB) CreateGroceriesExpense(input *models.GroceriesExpense) error {
 	query := `
-		INSERT INTO groceries_expenses (user_id, category_id, product, quantity, unit_price, discount_per_unit, total_price, total_discount, supermarket_name, purchase_date)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		RETURNING id, created_at;
+		INSERT INTO groceries_expenses (user_id, category_id, product, quantity, unit_price, discount_per_unit, total_price, total_discount, supermarket_name, purchase_date, unit, unit_size, size_status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::text, $12::numeric, ` + sizeStatusSQL + `)
+		RETURNING id, created_at, size_status;
 	`
 
 	err := db.conn.QueryRow(query,
@@ -27,7 +56,9 @@ func (db *DB) CreateGroceriesExpense(input *models.GroceriesExpense) error {
 		input.TotalDiscount,
 		input.SupermarketName,
 		input.PurchaseDate,
-	).Scan(&input.ID, &input.CreatedAt)
+		nullableUnit(input.Unit, input.UnitSize),
+		nullableUnitSize(input.Unit, input.UnitSize),
+	).Scan(&input.ID, &input.CreatedAt, &input.SizeStatus)
 
 	if err != nil {
 		return fmt.Errorf("failed to create groceries expense: %w", err)
@@ -37,7 +68,7 @@ func (db *DB) CreateGroceriesExpense(input *models.GroceriesExpense) error {
 }
 
 const groceriesSelect = `
-		SELECT e.id, e.user_id, e.category_id, c.name, e.product, e.quantity, e.unit_price, e.discount_per_unit, e.total_price, e.total_discount, e.supermarket_name, e.purchase_date, e.created_at
+		SELECT e.id, e.user_id, e.category_id, c.name, e.product, e.quantity, e.unit_price, e.discount_per_unit, e.total_price, e.total_discount, e.supermarket_name, e.purchase_date, e.created_at, e.unit, e.unit_size::float8, e.size_status
 		FROM groceries_expenses e
 		JOIN grocery_categories c ON e.category_id = c.id
 `
@@ -49,9 +80,12 @@ func scanGroceries(rows *sql.Rows) ([]models.GroceriesExpense, error) {
 	for rows.Next() {
 		var e models.GroceriesExpense
 		var unitPriceRaw, discountPerUnitRaw, totalPriceRaw, totalDiscountRaw []byte
-		if err := rows.Scan(&e.ID, &e.UserID, &e.CategoryID, &e.CategoryName, &e.Product, &e.Quantity, &unitPriceRaw, &discountPerUnitRaw, &totalPriceRaw, &totalDiscountRaw, &e.SupermarketName, &e.PurchaseDate, &e.CreatedAt); err != nil {
+		var unit sql.NullString
+		var unitSize sql.NullFloat64
+		if err := rows.Scan(&e.ID, &e.UserID, &e.CategoryID, &e.CategoryName, &e.Product, &e.Quantity, &unitPriceRaw, &discountPerUnitRaw, &totalPriceRaw, &totalDiscountRaw, &e.SupermarketName, &e.PurchaseDate, &e.CreatedAt, &unit, &unitSize, &e.SizeStatus); err != nil {
 			return nil, err
 		}
+		scanUnit(&e, unit, unitSize)
 		fmt.Sscanf(string(unitPriceRaw), "%f", &e.UnitPrice)
 		fmt.Sscanf(string(discountPerUnitRaw), "%f", &e.DiscountPerUnit)
 		fmt.Sscanf(string(totalPriceRaw), "%f", &e.TotalPrice)
@@ -92,17 +126,20 @@ func (db *DB) GetGroceriesMonthlyTotals(userID uuid.UUID, from, to time.Time) (m
 // error wrapping sql.ErrNoRows when no such expense belongs to the user.
 func (db *DB) GetGroceriesExpenseByID(id int, userID uuid.UUID) (*models.GroceriesExpense, error) {
 	query := `
-		SELECT e.id, e.user_id, e.category_id, c.name, e.product, e.quantity, e.unit_price, e.discount_per_unit, e.total_price, e.total_discount, e.supermarket_name, e.purchase_date, e.created_at
+		SELECT e.id, e.user_id, e.category_id, c.name, e.product, e.quantity, e.unit_price, e.discount_per_unit, e.total_price, e.total_discount, e.supermarket_name, e.purchase_date, e.created_at, e.unit, e.unit_size::float8, e.size_status
 		FROM groceries_expenses e
 		JOIN grocery_categories c ON e.category_id = c.id
 		WHERE e.id = $1 AND e.user_id = $2;
 	`
 	var e models.GroceriesExpense
 	var unitPriceRaw, discountPerUnitRaw, totalPriceRaw, totalDiscountRaw []byte
-	err := db.conn.QueryRow(query, id, userID).Scan(&e.ID, &e.UserID, &e.CategoryID, &e.CategoryName, &e.Product, &e.Quantity, &unitPriceRaw, &discountPerUnitRaw, &totalPriceRaw, &totalDiscountRaw, &e.SupermarketName, &e.PurchaseDate, &e.CreatedAt)
+	var unit sql.NullString
+	var unitSize sql.NullFloat64
+	err := db.conn.QueryRow(query, id, userID).Scan(&e.ID, &e.UserID, &e.CategoryID, &e.CategoryName, &e.Product, &e.Quantity, &unitPriceRaw, &discountPerUnitRaw, &totalPriceRaw, &totalDiscountRaw, &e.SupermarketName, &e.PurchaseDate, &e.CreatedAt, &unit, &unitSize, &e.SizeStatus)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get expense: %w", err)
 	}
+	scanUnit(&e, unit, unitSize)
 	fmt.Sscanf(string(unitPriceRaw), "%f", &e.UnitPrice)
 	fmt.Sscanf(string(discountPerUnitRaw), "%f", &e.DiscountPerUnit)
 	fmt.Sscanf(string(totalPriceRaw), "%f", &e.TotalPrice)
@@ -115,10 +152,16 @@ func (db *DB) GetGroceriesExpenseByID(id int, userID uuid.UUID) (*models.Groceri
 func (db *DB) EditGroceriesExpense(input *models.GroceriesExpense, userID uuid.UUID) error {
 	query := `
 		UPDATE groceries_expenses
-		SET category_id = $1, product = $2, quantity = $3, unit_price = $4, discount_per_unit = $5, total_price = $6, total_discount = $7, supermarket_name = $8, purchase_date = $9
+		SET category_id = $1, product = $2, quantity = $3, unit_price = $4, discount_per_unit = $5, total_price = $6, total_discount = $7, supermarket_name = $8, purchase_date = $9,
+			unit = $12::text, unit_size = $13::numeric,
+			size_status = CASE
+				WHEN $1 = (SELECT id FROM grocery_categories WHERE name = 'Other') THEN 'not_tracked'
+				WHEN $12::text IS NOT NULL AND $13::numeric > 0 THEN 'known'
+				ELSE 'unknown'
+			END
 		WHERE id = $10 AND user_id = $11;
 	`
-	res, err := db.conn.Exec(query, input.CategoryID, input.Product, input.Quantity, input.UnitPrice, input.DiscountPerUnit, input.TotalPrice, input.TotalDiscount, input.SupermarketName, input.PurchaseDate, input.ID, userID)
+	res, err := db.conn.Exec(query, input.CategoryID, input.Product, input.Quantity, input.UnitPrice, input.DiscountPerUnit, input.TotalPrice, input.TotalDiscount, input.SupermarketName, input.PurchaseDate, input.ID, userID, nullableUnit(input.Unit, input.UnitSize), nullableUnitSize(input.Unit, input.UnitSize))
 	if err != nil {
 		return fmt.Errorf("failed to update expense: %w", err)
 	}
@@ -142,62 +185,6 @@ func (db *DB) DeleteGroceriesExpense(id int, userID uuid.UUID) (bool, error) {
 	}
 	rowsAffected, _ := res.RowsAffected()
 	return rowsAffected > 0, nil
-}
-
-func (db *DB) GetGroceriesExpensesForYear(year int, userID uuid.UUID) (*[]models.GroceriesChartExpense, error) {
-	query := `
-		SELECT c.name, (e.total_price - e.total_discount) AS amount, e.total_discount, e.purchase_date
-		FROM groceries_expenses e
-		JOIN grocery_categories c ON e.category_id = c.id
-		WHERE e.user_id = $2 AND ($1 = 0 OR EXTRACT(YEAR FROM e.purchase_date) = $1)
-		ORDER BY e.purchase_date;
-	`
-	rows, err := db.conn.Query(query, year, userID)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching expenses: %v", err)
-	}
-	defer rows.Close()
-
-	var expenses []models.GroceriesChartExpense
-	for rows.Next() {
-		var e models.GroceriesChartExpense
-		var amountRaw, discountRaw []byte
-		if err := rows.Scan(&e.CategoryName, &amountRaw, &discountRaw, &e.PurchaseDate); err != nil {
-			return nil, err
-		}
-		fmt.Sscanf(string(amountRaw), "%f", &e.Amount)
-		fmt.Sscanf(string(discountRaw), "%f", &e.TotalDiscount)
-		expenses = append(expenses, e)
-	}
-	return &expenses, nil
-}
-
-func (db *DB) GetGroceriesExpenseCategoryForYear(categoryID, year int, userID uuid.UUID) (*[]models.GroceriesChartExpense, error) {
-	query := `
-		SELECT c.name, (e.total_price - e.total_discount) AS amount, e.total_discount, e.purchase_date
-		FROM groceries_expenses e
-		JOIN grocery_categories c ON e.category_id = c.id
-		WHERE e.category_id = $1 AND e.user_id = $3 AND ($2 = 0 OR EXTRACT(YEAR FROM e.purchase_date) = $2)
-		ORDER BY e.purchase_date;
-	`
-	rows, err := db.conn.Query(query, categoryID, year, userID)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching expenses: %v", err)
-	}
-	defer rows.Close()
-
-	var expenses []models.GroceriesChartExpense
-	for rows.Next() {
-		var e models.GroceriesChartExpense
-		var amountRaw, discountRaw []byte
-		if err := rows.Scan(&e.CategoryName, &amountRaw, &discountRaw, &e.PurchaseDate); err != nil {
-			return nil, err
-		}
-		fmt.Sscanf(string(amountRaw), "%f", &e.Amount)
-		fmt.Sscanf(string(discountRaw), "%f", &e.TotalDiscount)
-		expenses = append(expenses, e)
-	}
-	return &expenses, nil
 }
 
 func (db *DB) GetAllCategories() ([]models.Category, error) {

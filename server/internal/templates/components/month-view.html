@@ -116,8 +116,8 @@
 {{ define "mini-chart" }}
 <section class="side-panel mini-chart" id="mini-chart">
   {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "kpi.last_months") "Meta" (money .BarsTotal)) }}
-  <a class="mini-chart-bars" href="#" hx-get="/{{ .Section }}/chart" hx-target="#section-content"
-    title='{{ T .Lang "kpi.open_chart" }}' aria-label='{{ T .Lang "kpi.open_chart" }}'>
+  <a class="mini-chart-bars" href="/{{ .Section }}/chart" hx-get="/{{ .Section }}/chart" hx-target="#section-content"
+    hx-push-url="true" title='{{ T .Lang "kpi.open_chart" }}' aria-label='{{ T .Lang "kpi.open_chart" }}'>
     {{ range .Bars }}
     <span class="mini-bar{{ if .Current }} current{{ end }}" style="height: {{ printf "%.0f" .Height }}%"
       title="{{ T $.Lang (print "month." .MonthNum) }}: {{ money .Total }}"><span class="mini-bar-value">{{ rough .Total }}</span></span>
@@ -234,12 +234,12 @@
   {{ template "side-panel-head" (dict "Icon" "pie" "Title" (T .Lang "insights.where_it_went")) }}
   {{ if .Breakdown }}
   <div class="stacked-bar" aria-hidden="true">
-    {{ range $i, $s := .Breakdown }}<span class="cat-{{ cat $i }}" style="width: {{ printf "%.1f" $s.Share }}%"></span>{{ end }}
+    {{ range $s := .Breakdown }}<span class="cat-{{ $s.Color }}" style="width: {{ printf "%.1f" $s.Share }}%"></span>{{ end }}
   </div>
   <ul class="breakdown-list">
     {{ range $i, $s := .Breakdown }}
     <li class="breakdown-item">
-      <span class="cat-dot cat-{{ cat $i }}" aria-hidden="true"></span>
+      <span class="cat-dot cat-{{ $s.Color }}" aria-hidden="true"></span>
       <span class="breakdown-name">{{ T $.Lang (print $.TypePrefix $s.Type) }}</span>
       <span class="breakdown-share">{{ printf "%.0f" $s.Share }}%</span>
       <span class="breakdown-amount">{{ money $s.Amount }}</span>

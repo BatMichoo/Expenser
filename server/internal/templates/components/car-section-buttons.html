@@ -4,6 +4,7 @@
     <button
       type="button"
       hx-get="/car/current"
+      hx-push-url="/car"
       hx-vals='js:{month: new URLSearchParams(window.location.search).get("month") || ""}'
       hx-target="#section-content"
       class="tracker-nav-button section-button active"
@@ -16,6 +17,7 @@
       type="button"
       hx-get="/car/chart"
       hx-target="#section-content"
+      hx-push-url="true"
       class="tracker-nav-button section-button"
     >
       {{ T .Lang "common.chart" }}

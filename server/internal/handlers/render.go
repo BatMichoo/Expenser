@@ -30,8 +30,11 @@ func isLoggedIn(c *gin.Context) bool {
 	return services.ClaimsFromContext(c) != nil
 }
 
+// isHTMX reports whether the request wants a fragment. A history restore
+// after a cache miss (back button) also sends HX-Request but swaps the whole
+// body, so it gets the full page.
 func isHTMX(c *gin.Context) bool {
-	return c.GetHeader("HX-Request") == "true"
+	return c.GetHeader("HX-Request") == "true" && c.GetHeader("HX-History-Restore-Request") != "true"
 }
 
 // renderPage renders tmpl as a fragment for HTMX requests, or inside the root

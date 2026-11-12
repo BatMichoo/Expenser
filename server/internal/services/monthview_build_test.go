@@ -142,6 +142,8 @@ func TestHouseMonthView(t *testing.T) {
 	assert.Equal(t, "Gas", v.Breakdown[0].Type)
 	require.True(t, v.Breakdown[0].HasUsual)
 	assert.InDelta(t, 50, v.Breakdown[0].Usual, 0.001)
+	assert.Equal(t, 3, v.Breakdown[0].Color, "colour follows the type ID (Gas = 3), not its rank")
+	assert.Equal(t, 2, v.Breakdown[1].Color, "Water = 2")
 
 	assert.InDelta(t, 270, v.YearSoFar.Total, 0.001, "Jan 50 + Oct 100 + Nov 120")
 	from, to := EstimateHistoryWindow(YearMonth{2026, time.November})
@@ -270,4 +272,35 @@ func TestGroceriesEstimateIgnoresCategories(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, v.HasEstimate)
 	assert.InDelta(t, 100, v.Estimate, 0.001)
+}
+
+// Groceries have far more categories than colours, so like the trends chart
+// the six largest (not counting Other) get slots 1..6 by rank and the rest,
+// and Other, get colour 0.
+func TestGroceriesBreakdownColoursByRank(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	store := &fakeMonthStore{}
+	names := []string{"A", "B", "C", "D", "E", "F", "G", "H"}
+	for i, n := range names {
+		store.groceries = append(store.groceries, models.GroceriesExpense{
+			ID: i + 1, CategoryID: 10 + i, CategoryName: n, Product: n, TotalPrice: float64(100 - i*10)})
+	}
+	store.groceries = append(store.groceries, models.GroceriesExpense{ID: 99, CategoryID: 99, CategoryName: "Other", Product: "x", TotalPrice: 95})
+	v, err := NewMonthViewService(store).Groceries(uuid.New(), YearMonth{2026, time.October}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	require.NoError(t, err)
+	got := map[string]int{}
+	for _, b := range v.Breakdown {
+		got[b.Type] = b.Color
+	}
+	assert.Equal(t, map[string]int{"A": 1, "Other": 0, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6, "G": 0, "H": 0}, got)
+}
+
+func TestHouseBreakdownKeepsTypeColours(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	store := newMonthStore()
+	store.house = []models.HouseExpense{{ID: 1, UtilityTypeID: 3, UtilityType: "Gas", Amount: 85}}
+	v, err := NewMonthViewService(store).House(uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	require.NoError(t, err)
+	require.NotEmpty(t, v.Breakdown)
+	assert.Equal(t, 3, v.Breakdown[0].Color)
 }

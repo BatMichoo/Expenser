@@ -1,0 +1,258 @@
+{{/* A section's charts view (models.TrendsPage), swapped into #section-content.
+     Tabs and filters reload it with the same URL that a full page load uses. */}}
+{{ define "trends" }}
+<div id="trends" class="trends">
+  {{ if and (eq .Section "groceries") .Unsized }}{{ template "unsized-badge" . }}{{ end }}
+  <div class="trends-toolbar">
+    {{ template "trends-tabs" . }}
+    {{ template "trends-filters" . }}
+  </div>
+  {{ if eq .Query.Tab "year" }}{{ template "trend-year" . }}
+  {{ else if eq .Query.Tab "item" }}{{ template "trend-item" . }}
+  {{ else }}{{ template "trend-month" . }}{{ end }}
+</div>
+{{ end }}
+
+{{ define "trends-tabs" }}
+{{ $base := print "/" .Section "/chart?tab=" }}
+{{ $type := "" }}{{ if .Query.TypeID }}{{ $type = print "&type=" .Query.TypeID }}{{ end }}
+<nav class="trend-tabs" aria-label='{{ T .Lang "trends.tabs" }}'>
+  {{ template "trend-tab" (dict "URL" (print $base "month" $type) "Active" (eq .Query.Tab "month") "Label" (T .Lang "trends.tab_month")) }}
+  {{ template "trend-tab" (dict "URL" (print $base "year" $type) "Active" (eq .Query.Tab "year") "Label" (T .Lang "trends.tab_year")) }}
+  {{ if eq .Section "groceries" }}
+  {{ template "trend-tab" (dict "URL" (print $base "item") "Active" (eq .Query.Tab "item") "Label" (T .Lang "trends.tab_item")) }}
+  {{ end }}
+</nav>
+{{ end }}
+
+{{ define "trend-tab" }}
+<a class="trend-tab{{ if .Active }} active{{ end }}" href="{{ .URL }}" hx-get="{{ .URL }}" hx-target="#section-content"
+  hx-push-url="true" {{ if .Active }}aria-current="page"{{ end }}>{{ .Label }}</a>
+{{ end }}
+
+{{ define "trends-filters" }}
+<form id="trends-filters" class="trend-filters" hx-get="/{{ .Section }}/chart" hx-trigger="change"
+  hx-target="#section-content" hx-push-url="true">
+  <input type="hidden" name="tab" value="{{ .Query.Tab }}" />
+  {{ if eq .Query.Tab "month" }}
+  <select name="period" class="trend-select" aria-label='{{ T .Lang "trends.period" }}'>
+    <option value="6" {{ if eq .Query.Period "6" }}selected{{ end }}>{{ T .Lang "trends.last_6" }}</option>
+    <option value="12" {{ if eq .Query.Period "12" }}selected{{ end }}>{{ T .Lang "trends.last_12" }}</option>
+    <option value="24" {{ if eq .Query.Period "24" }}selected{{ end }}>{{ T .Lang "trends.last_24" }}</option>
+    {{ range .PeriodYears }}{{ $v := print "y" . }}
+    <option value="{{ $v }}" {{ if eq $.Query.Period $v }}selected{{ end }}>{{ . }}</option>
+    {{ end }}
+  </select>
+  {{ end }}
+  {{ if eq .Query.Tab "year" }}
+  <select name="a" class="trend-select" aria-label='{{ T .Lang "trends.year_a" }}'>
+    {{ range .YearChoices }}<option value="{{ . }}" {{ if eq . $.Query.YearA }}selected{{ end }}>{{ . }}</option>{{ end }}
+  </select>
+  <span class="trend-vs">{{ T .Lang "trends.vs" }}</span>
+  <select name="b" class="trend-select" aria-label='{{ T .Lang "trends.year_b" }}'>
+    {{ range .YearChoices }}<option value="{{ . }}" {{ if eq . $.Query.YearB }}selected{{ end }}>{{ . }}</option>{{ end }}
+  </select>
+  {{ end }}
+  {{ if eq .Query.Tab "item" }}
+  <select name="item" class="trend-select" aria-label='{{ T .Lang "trends.item_pick" }}'>
+    {{ range .Items }}
+    <option value="{{ .ID }}" {{ if eq .ID $.Query.ItemID }}selected{{ end }}>{{ T $.Lang (print "category." .Name) }}</option>
+    {{ end }}
+  </select>
+  <select name="period" class="trend-select" aria-label='{{ T .Lang "trends.period" }}'>
+    <option value="6" {{ if eq .Query.Period "6" }}selected{{ end }}>{{ T .Lang "trends.last_6" }}</option>
+    <option value="12" {{ if eq .Query.Period "12" }}selected{{ end }}>{{ T .Lang "trends.last_12" }}</option>
+    <option value="24" {{ if eq .Query.Period "24" }}selected{{ end }}>{{ T .Lang "trends.last_24" }}</option>
+    <option value="all" {{ if eq .Query.Period "all" }}selected{{ end }}>{{ T .Lang "trends.all_time" }}</option>
+  </select>
+  <select name="by" class="trend-select" aria-label='{{ T .Lang "trends.by" }}'>
+    <option value="month" {{ if ne .Query.By "year" }}selected{{ end }}>{{ T .Lang "trends.by_month" }}</option>
+    <option value="year" {{ if eq .Query.By "year" }}selected{{ end }}>{{ T .Lang "trends.by_year" }}</option>
+  </select>
+  {{ if and .Item (gt (len .Item.Units) 1) }}
+  <span class="unit-switch">
+    <select name="unit" class="trend-select" aria-label='{{ T .Lang "trends.unit" }}'>
+      {{ range .Item.Units }}<option value="{{ . }}" {{ if eq . $.Item.Unit }}selected{{ end }}>{{ T $.Lang (print "trends.per_" .) }}</option>{{ end }}
+    </select>
+  </span>
+  {{ end }}
+  {{ else }}
+  <select name="type" class="trend-select" aria-label='{{ T .Lang "toolbar.all_types" }}'>
+    <option value="0">{{ T .Lang "toolbar.all_types" }}</option>
+    {{ range .Types }}
+    <option value="{{ .ID }}" {{ if eq .ID $.Query.TypeID }}selected{{ end }}>{{ T $.Lang (print $.TypePrefix .Name) }}</option>
+    {{ end }}
+  </select>
+  {{ end }}
+</form>
+{{ end }}
+
+{{/* Month to month: tiles, then the stacked bars with the monthly average. */}}
+{{ define "trend-month" }}
+{{ $m := .Month }}
+{{ if $m.Empty }}
+<p class="trend-empty">{{ T .Lang "trends.empty_period" }}</p>
+{{ else }}
+<div class="kpi-tiles">
+  <div class="kpi kpi-total">
+    <span class="kpi-title">{{ T .Lang "trends.period_total" }}</span>
+    <span class="kpi-value">{{ money $m.Total }}</span>
+    <span class="kpi-sub">
+      {{ if $m.HasChange }}
+      <span class="kpi-change {{ if gt $m.ChangePct 0.0 }}up{{ else }}down{{ end }}">{{ printf "%+.0f%%" $m.ChangePct }}</span>
+      {{ T .Lang "trends.vs_prev_period" }}
+      {{ else }}{{ T .Lang "trends.no_prev_period" }}{{ end }}
+    </span>
+  </div>
+  <div class="kpi kpi-typical">
+    <span class="kpi-title">{{ T .Lang "trends.typical_month" }}</span>
+    <span class="kpi-value">{{ money $m.Median }}</span>
+    <span class="kpi-sub">{{ T .Lang "trends.typical_sub" }}</span>
+  </div>
+  <div class="kpi kpi-top">
+    <span class="kpi-title">{{ T .Lang "trends.top_month" }}</span>
+    <span class="kpi-value">{{ $m.TopMonth }}</span>
+    <span class="kpi-sub">{{ money $m.TopMonthAmount }}{{ if $m.TopMonthType }} · {{ T .Lang (print .TypePrefix $m.TopMonthType) }}{{ end }}</span>
+  </div>
+</div>
+<section class="side-panel trend-card">
+  {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "trends.month_chart")) }}
+  {{ template "svg-bars" (dict "Chart" $m.Chart "Lang" .Lang "Unit" "" "Prefix" .TypePrefix) }}
+  {{ template "trend-legend" (dict "Items" $m.Legend "Lang" .Lang "Prefix" .TypePrefix) }}
+</section>
+{{ end }}
+{{ end }}
+
+{{/* Year vs year: so-far tiles, grouped bars per month, totals per year. */}}
+{{ define "trend-year" }}
+{{ $y := .Year }}
+{{ if $y.Empty }}
+<p class="trend-empty">{{ printf (T .Lang "trends.empty_years") $y.YearA $y.YearB }}</p>
+{{ else }}
+<div class="kpi-tiles{{ if ne .Section "groceries" }} kpi-tiles-two{{ end }}">
+  <div class="kpi kpi-total">
+    <span class="kpi-title">{{ if $y.SoFarLabel }}{{ printf (T .Lang "trends.so_far") $y.YearA }} · {{ $y.SoFarLabel }}{{ else }}{{ printf (T .Lang "trends.year_total") $y.YearA }}{{ end }}</span>
+    <span class="kpi-value">{{ money $y.SoFarA }}</span>
+    <span class="kpi-sub">
+      {{ if $y.HasSoFar }}
+      <span class="kpi-change {{ if gt $y.SoFarPct 0.0 }}up{{ else }}down{{ end }}">{{ printf "%+.0f%%" $y.SoFarPct }}</span>
+      {{ printf (T .Lang "trends.vs_year") $y.YearB }} ({{ money $y.SoFarB }})
+      {{ else }}{{ printf (T .Lang "trends.no_year_comparison") $y.YearB }}{{ end }}
+    </span>
+  </div>
+  <div class="kpi kpi-top">
+    <span class="kpi-title">{{ T .Lang "trends.riser" }}</span>
+    <span class="kpi-value">{{ if $y.HasRiser }}{{ T .Lang (print .TypePrefix $y.Riser) }}{{ else }}—{{ end }}</span>
+    <span class="kpi-sub">{{ if $y.HasRiser }}+{{ money $y.RiserAmount }} {{ printf (T .Lang "trends.riser_sub") $y.YearB }}{{ else }}{{ T .Lang "trends.no_riser" }}{{ end }}</span>
+  </div>
+  {{ if eq .Section "groceries" }}
+  <div class="kpi kpi-typical">
+    <span class="kpi-title">{{ T .Lang "trends.saved" }}</span>
+    <span class="kpi-value">{{ money $y.SavedA }}</span>
+    <span class="kpi-sub">{{ printf (T .Lang "trends.saved_vs") (money $y.SavedB) $y.YearB }}</span>
+  </div>
+  {{ end }}
+</div>
+<section class="side-panel trend-card">
+  {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "trends.year_chart")) }}
+  {{ template "svg-bars" (dict "Chart" $y.Chart "Lang" .Lang "Unit" "") }}
+  {{ template "trend-legend" (dict "Items" $y.Legend "Lang" .Lang) }}
+</section>
+{{ end }}
+{{ if $y.YearTotals }}
+<section class="side-panel year-totals-card">
+  {{ template "side-panel-head" (dict "Icon" "calendar" "Title" (T .Lang "trends.year_totals") "Meta" (T .Lang "toolbar.all_types")) }}
+  <ul class="year-totals">
+    {{ range $y.YearTotals }}
+    <li{{ if or (eq .Year $y.YearA) (eq .Year $y.YearB) }} class="picked"{{ end }}><span>{{ .Year }}</span><span>{{ money .Total }}</span></li>
+    {{ end }}
+  </ul>
+</section>
+{{ end }}
+{{ end }}
+
+{{/* Item detail: price per unit of one grocery category. */}}
+{{ define "trend-item" }}
+{{ $i := .Item }}
+{{ if not $i }}
+<p class="trend-empty">{{ T .Lang "trends.no_data" }}</p>
+{{ else }}
+{{ $unit := T .Lang $i.UnitKey }}
+{{ if $i.Excluded }}
+<p class="item-excluded">{{ printf (T .Lang "trends.item_excluded") $i.Excluded }}
+  <a href="/groceries/sizes" hx-get="/groceries/sizes" hx-target="#section-content" hx-push-url="true">{{ T .Lang "trends.item_add_sizes" }}</a></p>
+{{ end }}
+{{ if $i.Empty }}
+<p class="trend-empty">{{ printf (T .Lang "trends.item_empty") (T .Lang (print .TypePrefix $i.Item)) }}</p>
+{{ else }}
+<div class="kpi-tiles">
+  <div class="kpi kpi-total">
+    <span class="kpi-title">{{ T .Lang "trends.item_price_now" }}</span>
+    <span class="kpi-value">{{ if $i.HasPriceNow }}{{ money $i.PriceNow }} / {{ $unit }}{{ else }}—{{ end }}</span>
+    <span class="kpi-sub">
+      {{ if $i.PriceNowPeriod }}<span class="kpi-period">{{ $i.PriceNowPeriod }}</span> · {{ end }}
+      {{ if $i.HasPriceChange }}
+      <span class="kpi-change {{ if gt $i.PriceChangePct 0.0 }}up{{ else }}down{{ end }}">{{ printf "%+.0f%%" $i.PriceChangePct }}</span>
+      {{ T .Lang "trends.item_vs_year" }}
+      {{ else }}—{{ end }}
+    </span>
+  </div>
+  <div class="kpi kpi-typical">
+    <span class="kpi-title">{{ T .Lang "trends.item_bought" }}</span>
+    <span class="kpi-value">{{ printf "%.1f" $i.QtyNow }} {{ $unit }}</span>
+    <span class="kpi-sub">{{ if $i.HasQtyUsual }}{{ printf (T .Lang "trends.item_usual") (printf "%.1f %s" $i.QtyUsual $unit) }}{{ else }}—{{ end }}</span>
+  </div>
+  <div class="kpi kpi-top">
+    <span class="kpi-title">{{ T .Lang "trends.item_cheapest" }}</span>
+    {{ with $i.Cheapest }}
+    <span class="kpi-value">{{ money .PerUnit }} / {{ $unit }}</span>
+    <span class="kpi-sub">{{ .Store }} · {{ .Date.Format "02.01.2006" }}</span>
+    {{ else }}
+    <span class="kpi-value">—</span><span class="kpi-sub">—</span>
+    {{ end }}
+  </div>
+</div>
+<section class="side-panel trend-card">
+  {{ template "side-panel-head" (dict "Icon" "chart" "Title" (printf (T .Lang "trends.item_chart") (T .Lang (print .TypePrefix $i.Item)))) }}
+  {{ template "svg-price" (dict "Chart" $i.Chart "Lang" .Lang "Unit" $unit) }}
+</section>
+{{ if $i.Discounts }}
+<section class="side-panel trend-card">
+  {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "trends.item_discounts") "Meta" (printf (T .Lang "trends.item_saved") (money $i.TotalSaved))) }}
+  <div class="trend-table-wrap">
+  <table class="item-table item-discounts">
+    <thead><tr><th>{{ T .Lang "trends.item_col_date" }}</th><th>{{ T .Lang "trends.item_col_store" }}</th><th>{{ T .Lang "trends.item_col_product" }}</th><th class="num">{{ T .Lang "trends.item_col_price" }}</th><th class="num">{{ T .Lang "trends.item_col_discount" }}</th></tr></thead>
+    <tbody>
+      {{ range $i.Discounts }}
+      <tr><td>{{ .Date.Format "02.01.2006" }}</td><td>{{ .Store }}</td><td>{{ .Product }}</td>
+        <td class="num">{{ money .PerUnit }} / {{ $unit }}</td><td class="num">−{{ money .DiscountPerUnit }}</td></tr>
+      {{ end }}
+    </tbody>
+  </table>
+  </div>
+</section>
+{{ end }}
+{{ end }}
+{{ if $i.Items }}
+<section class="side-panel trend-card">
+  {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "trends.item_all")) }}
+  <div class="trend-table-wrap">
+  <table class="item-table item-all">
+    <thead><tr><th>{{ T .Lang "trends.item_col_item" }}</th><th class="num">{{ T .Lang "trends.item_col_now" }}</th><th class="num">{{ T .Lang "trends.item_col_year_ago" }}</th><th class="num">{{ T .Lang "trends.item_col_change" }}</th><th class="num">{{ T .Lang "trends.item_col_bought" }}</th></tr></thead>
+    <tbody>
+      {{ range $i.Items }}{{ $u := T $.Lang .UnitKey }}{{ $url := print "/groceries/chart?tab=item&item=" .ItemID }}
+      <tr>
+        <td><a href="{{ $url }}" hx-get="{{ $url }}" hx-target="#section-content" hx-push-url="true">{{ T $.Lang (print $.TypePrefix .Item) }}</a></td>
+        <td class="num">{{ if .HasNow }}{{ money .Now }} / {{ $u }}{{ else }}—{{ end }}</td>
+        <td class="num">{{ if gt .YearAgo 0.0 }}{{ money .YearAgo }} / {{ $u }}{{ else }}—{{ end }}</td>
+        <td class="num">{{ if .HasChange }}<span class="kpi-change {{ if gt .ChangePct 0.0 }}up{{ else }}down{{ end }}">{{ printf "%+.0f%%" .ChangePct }}</span>{{ else }}—{{ end }}</td>
+        <td class="num">{{ if eq .Unit "pc" }}{{ printf "%.0f" .Bought12 }}{{ else }}{{ printf "%.1f" .Bought12 }}{{ end }} {{ $u }}</td>
+      </tr>
+      {{ end }}
+    </tbody>
+  </table>
+  </div>
+</section>
+{{ end }}
+{{ end }}
+{{ end }}

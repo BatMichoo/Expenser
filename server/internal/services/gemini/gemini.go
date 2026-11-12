@@ -144,22 +144,58 @@ func (gs *GeminiService) AnalyzeReceipt(ctx context.Context, receiptData []byte)
 		return nil, err
 	}
 
+	reply, finish, err := gs.generate(ctx, jsonBody)
+	if err != nil {
+		return nil, err
+	}
+	var analysis models.ReceiptAnalysis
+	if err := json.Unmarshal([]byte(reply), &analysis); err != nil {
+		return nil, badReply(reply, finish, err)
+	}
+
+	// Discounts printed apart from their items (Kaufland's "Позиции") are put
+	// on those items here, in exact cents, instead of trusting the model's
+	// arithmetic.
+	for _, d := range analysis.ApplyDiscounts() {
+		log.Printf("receipt discount not matched to items: %q %.2f positions %v", d.Description, d.Amount, d.Positions)
+	}
+	return &analysis, nil
+}
+
+// badReply is the error for a model answer that isn't the JSON asked for.
+func badReply(reply, finish string, err error) *ReplyError {
+	replyErr := &ReplyError{Err: err}
+	if finish != "" && finish != "STOP" {
+		replyErr.FinishReason = finish
+	}
+	// Words are worth showing ("the text is too small to read"); a
+	// broken or cut-off JSON object is not.
+	if trimmed := strings.TrimSpace(reply); trimmed != "" && !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
+		replyErr.Reply = shortReply(trimmed)
+	}
+	return replyErr
+}
+
+// generate sends the request body to every model in turn, again after each
+// wait while they are busy, and returns the first answer: its text with any
+// ```json fence removed, and why the model stopped.
+func (gs *GeminiService) generate(ctx context.Context, jsonBody []byte) (reply, finish string, err error) {
 	var lastErr error
 	for round := 0; ; round++ {
 		for _, model := range gs.models {
-			analysis, err := gs.attempt(ctx, model, jsonBody)
+			reply, finish, err := gs.attempt(ctx, model, jsonBody)
 			if err == nil {
-				log.Printf("receipt read by %s (round %d)", model, round+1)
-				return analysis, nil
+				log.Printf("gemini answered by %s (round %d)", model, round+1)
+				return reply, finish, nil
 			}
 			if !gs.retryable(ctx, err) {
-				return nil, err
+				return "", "", err
 			}
-			log.Printf("receipt: %s busy, trying the next: %v", model, err)
+			log.Printf("gemini: %s busy, trying the next: %v", model, err)
 			lastErr = err
 		}
 		if round >= len(gs.waits) || gs.sleep(ctx, gs.waits[round]) != nil {
-			return nil, lastErr
+			return "", "", lastErr
 		}
 	}
 }
@@ -175,12 +211,12 @@ func (gs *GeminiService) retryable(ctx context.Context, err error) bool {
 }
 
 // attempt asks one model once.
-func (gs *GeminiService) attempt(ctx context.Context, model string, jsonBody []byte) (*models.ReceiptAnalysis, error) {
+func (gs *GeminiService) attempt(ctx context.Context, model string, jsonBody []byte) (reply, finish string, err error) {
 	ctx, cancel := context.WithTimeout(ctx, gs.attemptTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf(gs.endpoint, model), bytes.NewReader(jsonBody))
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	// In a header, not the URL: a failed request's error message quotes the
@@ -189,31 +225,31 @@ func (gs *GeminiService) attempt(ctx context.Context, model string, jsonBody []b
 
 	resp, err := gs.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("gemini request: %w", err)
+		return "", "", fmt.Errorf("gemini request: %w", err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 10<<20))
 	if err != nil {
-		return nil, fmt.Errorf("gemini response: %w", err)
+		return "", "", fmt.Errorf("gemini response: %w", err)
 	}
 
 	var gr geminiResponse
 	decodeErr := json.Unmarshal(body, &gr)
 	if gr.Error != nil {
-		return nil, &APIError{Code: gr.Error.Code, Status: gr.Error.Status, Message: gr.Error.Message}
+		return "", "", &APIError{Code: gr.Error.Code, Status: gr.Error.Status, Message: gr.Error.Message}
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, &APIError{Code: resp.StatusCode, Message: http.StatusText(resp.StatusCode)}
+		return "", "", &APIError{Code: resp.StatusCode, Message: http.StatusText(resp.StatusCode)}
 	}
 	if decodeErr != nil {
-		return nil, fmt.Errorf("gemini response: %w", decodeErr)
+		return "", "", fmt.Errorf("gemini response: %w", decodeErr)
 	}
 	if len(gr.Candidates) == 0 {
 		reason := "NO_ANSWER"
 		if gr.PromptFeedback != nil && gr.PromptFeedback.BlockReason != "" {
 			reason = gr.PromptFeedback.BlockReason
 		}
-		return nil, &ReplyError{FinishReason: reason, Err: errors.New("no candidates")}
+		return "", "", &ReplyError{FinishReason: reason, Err: errors.New("no candidates")}
 	}
 
 	cand := gr.Candidates[0]
@@ -224,30 +260,9 @@ func (gs *GeminiService) attempt(ctx context.Context, model string, jsonBody []b
 	raw := text.String()
 	log.Printf("Raw Gemini response (%s): %s", model, raw)
 
-	reply := raw
+	reply = raw
 	if m := jsonFence.FindStringSubmatch(raw); len(m) > 1 {
 		reply = m[1]
 	}
-	var analysis models.ReceiptAnalysis
-	if err := json.Unmarshal([]byte(reply), &analysis); err != nil {
-		replyErr := &ReplyError{Err: err}
-		if cand.FinishReason != "" && cand.FinishReason != "STOP" {
-			replyErr.FinishReason = cand.FinishReason
-		}
-		// Words are worth showing ("the text is too small to read"); a
-		// broken or cut-off JSON object is not.
-		if trimmed := strings.TrimSpace(reply); trimmed != "" && !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
-			replyErr.Reply = shortReply(trimmed)
-		}
-		return nil, replyErr
-	}
-
-	// Discounts printed apart from their items (Kaufland's "Позиции") are put
-	// on those items here, in exact cents, instead of trusting the model's
-	// arithmetic.
-	for _, d := range analysis.ApplyDiscounts() {
-		log.Printf("receipt discount not matched to items: %q %.2f positions %v", d.Description, d.Amount, d.Positions)
-	}
-
-	return &analysis, nil
+	return reply, cand.FinishReason, nil
 }

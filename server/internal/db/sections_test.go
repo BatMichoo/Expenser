@@ -12,10 +12,10 @@ import (
 func TestExpenseTableFor(t *testing.T) {
 	house, err := expenseTableFor(models.SectionHouse)
 	require.NoError(t, err)
-	assert.Equal(t, expenseTable{Table: "home_expenses", TypeColumn: "utility_type_id"}, house)
+	assert.Equal(t, expenseTable{Table: "home_expenses", TypeColumn: "utility_type_id", TypeTable: "utility_types", DateColumn: "expense_date", OwnerColumn: "created_by"}, house)
 	car, err := expenseTableFor(models.SectionCar)
 	require.NoError(t, err)
-	assert.Equal(t, expenseTable{Table: "car_expenses", TypeColumn: "car_expense_type_id"}, car)
+	assert.Equal(t, expenseTable{Table: "car_expenses", TypeColumn: "car_expense_type_id", TypeTable: "car_expense_types", DateColumn: "expense_date", OwnerColumn: "created_by"}, car)
 	_, err = expenseTableFor(models.SectionGroceries)
 	assert.ErrorIs(t, err, models.ErrInvalidCategory, "groceries have no types of this kind")
 }

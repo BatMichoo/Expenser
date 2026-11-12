@@ -2,10 +2,13 @@ package utilities
 
 import (
 	"bytes"
+	"expenser/internal/groceryunits"
 	"fmt"
 	"html/template"
 	"math"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // ParseTemplates parses the app's templates with TemplateFuncs, plus two
@@ -30,11 +33,14 @@ func ParseTemplates(glob string) (*template.Template, error) {
 	return set, err
 }
 
+// assetVersion changes on every start (so on every deploy) and is appended to
+// stylesheet and script URLs, so browsers do not keep using a cached copy of
+// an older version.
+var assetVersion = strconv.FormatInt(time.Now().Unix(), 36)
+
 // TemplateFuncs returns the functions available to every HTML template.
 func TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
-		// cat maps a list position to one of the 6 categorical colours
-		// (cat-1 … cat-6) used for per-type charts.
 		// deref reads an optional amount (callers check it is set).
 		"deref": func(v *float64) float64 {
 			if v == nil {
@@ -57,9 +63,6 @@ func TemplateFuncs() template.FuncMap {
 		"neg": func(v float64) float64 {
 			return -v
 		},
-		"cat": func(i int) int {
-			return i%6 + 1
-		},
 		// pct is part as a percentage of whole, clamped to 0–100 for bars.
 		"pct": func(part, whole float64) float64 {
 			if whole <= 0 {
@@ -67,7 +70,17 @@ func TemplateFuncs() template.FuncMap {
 			}
 			return math.Max(0, math.Min(100, part/whole*100))
 		},
+		// asset is the URL of a static file with the current asset version.
+		"asset": func(path string) string {
+			return "/static/" + path + "?v=" + assetVersion
+		},
+		// sizeValue prints a pack size for a number input: rounded to the
+		// column's 4 decimals, without float noise or trailing zeros.
+		"sizeValue": func(v float64) string {
+			return strconv.FormatFloat(groceryunits.Round4(v), 'f', -1, 64)
+		},
 		"abs": math.Abs,
+		"sub": func(a, b float64) float64 { return a - b },
 		"money": func(v float64) string {
 			return fmt.Sprintf("%.2f %s", v, CurrencySymbol())
 		},

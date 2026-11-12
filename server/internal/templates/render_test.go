@@ -2,6 +2,7 @@ package templates
 
 import (
 	"bytes"
+	"expenser/internal/chart"
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
@@ -441,9 +442,9 @@ func TestInsightPanels(t *testing.T) {
 	v := monthView("house")
 	v.Summary = models.MonthSummary{Total: 183.63}
 	v.Breakdown = []models.TypeShare{
-		{Type: "Gas", Amount: 85.01, Share: 46.3, Usual: 72, HasUsual: true, VsUsual: 18.1},
-		{Type: "Water", Amount: 19.19, Share: 10.4, Usual: 20, HasUsual: true, VsUsual: -4},
-		{Type: "TV", Amount: 9.99, Share: 5.4},
+		{Type: "Gas", Color: 3, Amount: 85.01, Share: 46.3, Usual: 72, HasUsual: true, VsUsual: 18.1},
+		{Type: "Water", Color: 2, Amount: 19.19, Share: 10.4, Usual: 20, HasUsual: true, VsUsual: -4},
+		{Type: "TV", Amount: 9.99, Share: 5.4}, // Color 0: unknown type
 	}
 	v.YearSoFar = models.YearSummary{Total: 1834.5, Months: 11, Average: 166.77, VsAverage: 10.1, HasComparison: true}
 	v.BarsTotal = 912.4
@@ -461,12 +462,13 @@ func TestInsightPanels(t *testing.T) {
 	require.Equal(t, 3, segments.Length(), "one segment per type")
 	style, _ := segments.Eq(0).Attr("style")
 	assert.Contains(t, style, "width: 46.3%")
-	assert.True(t, segments.Eq(0).HasClass("cat-1"))
+	assert.True(t, segments.Eq(0).HasClass("cat-3"))
 	assert.True(t, segments.Eq(1).HasClass("cat-2"))
+	assert.True(t, segments.Eq(2).HasClass("cat-0"))
 
 	items := bd.Find(".breakdown-item")
 	require.Equal(t, 3, items.Length())
-	assert.Equal(t, 1, items.Eq(0).Find(".cat-dot.cat-1").Length(), "dot matches its segment")
+	assert.Equal(t, 1, items.Eq(0).Find(".cat-dot.cat-3").Length(), "dot matches its segment")
 	assert.Contains(t, items.Eq(0).Text(), "85.01 €")
 	gas := items.Eq(0).Find(".pill")
 	assert.Contains(t, gas.Text(), "18%")
@@ -1232,6 +1234,16 @@ func TestRootLayoutRendersPagesByName(t *testing.T) {
 
 	unknown := page("no-such-page", nil)
 	assert.Equal(t, 1, unknown.Find("#tracker-content section.auth-split").Length(), "unknown names show the home page")
+
+	// Stylesheets and scripts carry a per-start version so a deploy is not
+	// hidden behind a cached copy.
+	for _, sel := range []string{`link[rel="stylesheet"]`, `script[src]`} {
+		login.Find(sel).Each(func(_ int, el *goquery.Selection) {
+			src := el.AttrOr("href", el.AttrOr("src", ""))
+			assert.Regexp(t, `^/static/.+\?v=[0-9a-z]+$`, src)
+		})
+	}
+	assert.Equal(t, 3, login.Find(`link[rel="stylesheet"]`).Length())
 }
 
 func TestEveryIconNameDraws(t *testing.T) {
@@ -1278,4 +1290,518 @@ func TestReceiptJobPanel(t *testing.T) {
 	gone := parseHTML(t, render(t, "groceries-receipt-job", map[string]any{"State": "expired", "Lang": "en"}))
 	assert.Contains(t, gone.Text(), "no longer available")
 	assert.Equal(t, 0, gone.Find("[hx-trigger]").Length())
+}
+
+func TestSvgBarsRenders(t *testing.T) {
+	b := chart.Stacked(chart.DefaultFrame, []string{"Jan", "Feb"}, []chart.Series{
+		{Name: "Food", Color: 1, Values: []float64{100, 0}},
+		{Name: "Fuel", Color: 2, Values: []float64{50, 80}},
+	})
+	b.Columns[1].Current = true
+	b.SetAverage(90)
+	html := render(t, "svg-bars", map[string]any{"Chart": b, "Lang": "en", "Unit": ""})
+	doc := parseHTML(t, html)
+
+	assert.Contains(t, html, `viewBox="0 0 960 320"`)
+	assert.Equal(t, 3, doc.Find("rect.fill-cat-1, rect.fill-cat-2").Length())
+	assert.Equal(t, 2, doc.Find("g.hit").Length())
+	first := doc.Find("g.hit").First().Find("title").Text()
+	assert.Contains(t, first, "Food")
+	assert.Contains(t, first, "100.00")
+	assert.Equal(t, 2, doc.Find("text.col-label").Length())
+	assert.Equal(t, 1, doc.Find("text.col-label.current").Length())
+	assert.Equal(t, len(b.Ticks), doc.Find("text.tick").Length())
+	assert.Equal(t, 1, doc.Find("line.avg-line").Length())
+	assert.Equal(t, 0, doc.Find(".trend-empty").Length())
+}
+
+func TestSvgBarsNoNaN(t *testing.T) {
+	b := chart.Stacked(chart.DefaultFrame, []string{"Jan"}, nil)
+	html := render(t, "svg-bars", map[string]any{"Chart": b, "Lang": "en", "Unit": ""})
+	assert.NotContains(t, html, "NaN")
+	assert.Contains(t, parseHTML(t, html).Find(".trend-empty").Text(), "Nothing to show")
+}
+
+func TestSvgPriceRenders(t *testing.T) {
+	f := func(v float64) *float64 { return &v }
+	p := chart.Price(chart.DefaultFrame, []string{"Jan", "Feb", "Mar"},
+		[]*float64{f(2), f(3), f(2.5)}, []*float64{f(1.5), f(2), f(2)},
+		[]*float64{f(2.5), f(3.5), f(3)}, []*float64{f(2), nil, nil}, []float64{4, 0, 6})
+	html := render(t, "svg-price", map[string]any{"Chart": p, "Lang": "en", "Unit": "kg"})
+	doc := parseHTML(t, html)
+
+	assert.Equal(t, 1, doc.Find("polyline.price-line").Length())
+	assert.Equal(t, 1, doc.Find("polygon.price-band").Length())
+	assert.Equal(t, 2, doc.Find("rect.qty-bar.fill-cat-3").Length())
+	assert.Equal(t, 1, doc.Find("circle.low-marker").Length())
+	assert.NotEmpty(t, doc.Find("circle.low-marker").Parent().Find("title").Text())
+	assert.Contains(t, doc.Find("g.hit").First().Find("title").Text(), "/ kg")
+	assert.NotContains(t, html, "NaN")
+}
+
+func TestSvgPriceEmpty(t *testing.T) {
+	p := chart.Price(chart.DefaultFrame, []string{"Jan"}, nil, nil, nil, nil, nil)
+	html := render(t, "svg-price", map[string]any{"Chart": p, "Lang": "en", "Unit": "kg"})
+	assert.Equal(t, 1, parseHTML(t, html).Find(".trend-empty").Length())
+	assert.NotContains(t, html, "NaN")
+}
+
+func TestTrendLegend(t *testing.T) {
+	html := render(t, "trend-legend", map[string]any{"Lang": "en", "Items": []models.LegendItem{
+		{Name: "Food", Color: 1}, {Name: "Average", Dashed: true},
+	}})
+	doc := parseHTML(t, html)
+	assert.Equal(t, 2, doc.Find("li").Length())
+	assert.Equal(t, 1, doc.Find(".legend-swatch.cat-1").Length())
+	assert.Equal(t, 1, doc.Find(".legend-swatch.dashed").Length())
+}
+
+func TestSvgA11yAndHitTargets(t *testing.T) {
+	f := func(v float64) *float64 { return &v }
+	p := chart.Price(chart.DefaultFrame, []string{"Jan", "Feb", "Mar"},
+		[]*float64{f(2), f(3), f(2.5)}, []*float64{f(1.5), f(2), f(2)},
+		[]*float64{f(2.5), f(3.5), f(3)}, []*float64{f(1.8), nil, f(2.2)}, []float64{4, 0, 6})
+	doc := parseHTML(t, render(t, "svg-price", map[string]any{"Chart": p, "Lang": "en", "Unit": "kg"}))
+	assert.Equal(t, 0, doc.Find(`svg[role="img"]`).Length())
+	hits := doc.Find("g.hit")
+	require.Equal(t, 3, hits.Length())
+	hits.Each(func(_ int, g *goquery.Selection) {
+		v, _ := g.Attr("tabindex")
+		assert.Equal(t, "0", v)
+		assert.Equal(t, 1, g.Find("circle.hit-area").Length())
+	})
+	assert.Contains(t, hits.Eq(0).Find("title").Text(), "(shelf: 1.80)")
+	assert.NotContains(t, hits.Eq(1).Find("title").Text(), "shelf")
+	assert.Contains(t, hits.Eq(2).Find("title").Text(), "(shelf: 2.20)")
+
+	b := chart.Stacked(chart.DefaultFrame, []string{"Jan"}, []chart.Series{{Name: "Food", Color: 1, Values: []float64{5}}})
+	bd := parseHTML(t, render(t, "svg-bars", map[string]any{"Chart": b, "Lang": "en", "Unit": ""}))
+	assert.Equal(t, 0, bd.Find(`svg[role="img"]`).Length())
+	v, _ := bd.Find("g.hit").Attr("tabindex")
+	assert.Equal(t, "0", v)
+}
+
+func trendsMonthPage(section, prefix string) *models.TrendsPage {
+	b := chart.Stacked(chart.DefaultFrame, []string{"Oct", "Nov"}, []chart.Series{
+		{Name: "Gas", Color: 3, Values: []float64{40, 60}},
+		{Name: "Everything else", Color: 0, Values: []float64{10, 0}},
+	})
+	b.Columns[1].Current = true
+	b.SetAverage(55)
+	return &models.TrendsPage{
+		Section: section, Lang: "en", TypePrefix: prefix,
+		Query: models.TrendQuery{Tab: "month", Period: "12", YearA: 2026, YearB: 2025, By: "month"},
+		Types: []models.TypeOption{{ID: 3, Name: "Gas"}}, Years: []int{2026, 2024},
+		Month: &models.MonthTrend{
+			Total: 110, PrevTotal: 100, ChangePct: 10, HasChange: true, Median: 55,
+			TopMonth: "Nov", TopMonthAmount: 60, TopMonthType: "Gas", Chart: b,
+			Legend: []models.LegendItem{{Name: "Gas", Color: 3}, {Name: "Everything else", Color: 0}, {Name: "Monthly average", Dashed: true}},
+		},
+	}
+}
+
+func TestTrendsMonthTab(t *testing.T) {
+	doc := parseHTML(t, render(t, "trends", trendsMonthPage("groceries", "category.")))
+	tabs := doc.Find(".trend-tabs a")
+	require.Equal(t, 3, tabs.Length(), "groceries: month, year, item")
+	active := doc.Find(`.trend-tabs a[aria-current="page"]`)
+	require.Equal(t, 1, active.Length())
+	href, _ := active.Attr("hx-get")
+	assert.Equal(t, "/groceries/chart?tab=month", href)
+	for _, attr := range []string{"hx-target", "hx-push-url", "href"} {
+		v, ok := tabs.Eq(1).Attr(attr)
+		assert.True(t, ok, attr)
+		assert.NotEmpty(t, v, attr)
+	}
+	target, _ := tabs.Eq(1).Attr("hx-target")
+	assert.Equal(t, "#section-content", target)
+
+	form := doc.Find("form#trends-filters")
+	require.Equal(t, 1, form.Length())
+	hx, _ := form.Attr("hx-get")
+	assert.Equal(t, "/groceries/chart", hx)
+	trigger, _ := form.Attr("hx-trigger")
+	assert.Equal(t, "change", trigger)
+	push, _ := form.Attr("hx-push-url")
+	assert.Equal(t, "true", push)
+	tab, _ := form.Find(`input[name="tab"]`).Attr("value")
+	assert.Equal(t, "month", tab)
+	sel, _ := form.Find(`select[name="period"] option[selected]`).Attr("value")
+	assert.Equal(t, "12", sel)
+	assert.Equal(t, 1, form.Find(`select[name="period"] option[value="y2024"]`).Length(), "calendar years with data")
+	assert.Equal(t, 2, form.Find(`select[name="type"] option`).Length())
+	form.Find("select").Each(func(_ int, sel *goquery.Selection) {
+		assert.False(t, sel.HasClass("month-type"), "month-type is hidden on phones")
+		assert.True(t, sel.HasClass("trend-select"))
+	})
+
+	tiles := doc.Find(".kpi")
+	assert.Equal(t, 3, tiles.Length())
+	assert.Contains(t, tiles.Eq(0).Text(), "110.00")
+	assert.True(t, tiles.Eq(0).Find(".kpi-change").HasClass("up"))
+	assert.Contains(t, tiles.Eq(1).Text(), "55.00")
+	assert.Contains(t, tiles.Eq(2).Text(), "Nov")
+
+	assert.Equal(t, 1, doc.Find("svg.trend-svg").Length())
+	legend := doc.Find(".trend-legend li")
+	assert.Equal(t, 3, legend.Length())
+	assert.Equal(t, 1, doc.Find(".trend-legend .legend-swatch.dashed").Length(), "monthly average")
+
+	car := parseHTML(t, render(t, "trends", trendsMonthPage("car", "type.")))
+	assert.Equal(t, 2, car.Find(".trend-tabs a").Length(), "car: month, year")
+}
+
+func TestTrendNamesTranslated(t *testing.T) {
+	p := trendsMonthPage("house", "type.")
+	p.Lang = "bg"
+	doc := parseHTML(t, render(t, "trends", p))
+	gas := utilities.T("bg", "type.Gas")
+	require.NotEqual(t, "type.Gas", gas)
+	assert.Equal(t, gas, strings.TrimSpace(doc.Find(".trend-legend li").Eq(0).Text()))
+	assert.Equal(t, "Everything else", strings.TrimSpace(doc.Find(".trend-legend li").Eq(1).Text()), "colour 0 is already translated")
+	assert.Contains(t, doc.Find("g.hit title").First().Text(), gas)
+	assert.Contains(t, doc.Find(".kpi").Eq(2).Text(), gas, "top type")
+	assert.Contains(t, doc.Find(`select[name="type"]`).Text(), gas)
+}
+
+func trendsYearPage(section string) *models.TrendsPage {
+	b := chart.Grouped(chart.DefaultFrame, []string{"Jan", "Feb"}, []chart.Series{
+		{Name: "2025", Color: 0, Values: []float64{10, 20}},
+		{Name: "2026", Color: 1, Values: []float64{15, 25}},
+	})
+	return &models.TrendsPage{
+		Section: section, Lang: "en", TypePrefix: "type.",
+		Query: models.TrendQuery{Tab: "year", Period: "12", YearA: 2026, YearB: 2025, By: "month"},
+		Types: []models.TypeOption{{ID: 3, Name: "Gas"}}, Years: []int{2026, 2025, 2023},
+		Year: &models.YearTrend{
+			YearA: 2026, YearB: 2025, SoFarA: 40, SoFarB: 30, SoFarPct: 33.3, HasSoFar: true, SoFarLabel: "Jan–Nov",
+			Riser: "Gas", RiserAmount: 12, HasRiser: true, SavedA: 5, SavedB: 3, Chart: b,
+			Legend:     []models.LegendItem{{Name: "2025", Color: 0}, {Name: "2026", Color: 1}},
+			YearTotals: []models.YearTotal{{Year: 2026, Total: 40}, {Year: 2025, Total: 30}, {Year: 2023, Total: 7}},
+		},
+	}
+}
+
+func TestTrendsYearTab(t *testing.T) {
+	doc := parseHTML(t, render(t, "trends", trendsYearPage("house")))
+	active, _ := doc.Find(`.trend-tabs a[aria-current="page"]`).Attr("hx-get")
+	assert.Equal(t, "/house/chart?tab=year", active)
+
+	form := doc.Find("form#trends-filters")
+	tab, _ := form.Find(`input[name="tab"]`).Attr("value")
+	assert.Equal(t, "year", tab)
+	a, _ := form.Find(`select[name="a"] option[selected]`).Attr("value")
+	b, _ := form.Find(`select[name="b"] option[selected]`).Attr("value")
+	assert.Equal(t, []string{"2026", "2025"}, []string{a, b})
+	assert.Equal(t, 0, form.Find(`select[name="period"]`).Length())
+	assert.Equal(t, 3, form.Find("select.trend-select").Length(), "a, b, type")
+	assert.Equal(t, 0, form.Find("select.month-type").Length())
+
+	tiles := doc.Find(".kpi")
+	assert.Equal(t, 2, tiles.Length(), "house: so far and riser")
+	assert.Contains(t, tiles.Eq(0).Text(), "40.00")
+	assert.Contains(t, tiles.Eq(0).Text(), "Jan–Nov")
+	assert.Equal(t, "+33%", strings.TrimSpace(tiles.Eq(0).Find(".kpi-change").Text()))
+	assert.Contains(t, tiles.Eq(1).Text(), "Gas")
+	assert.Equal(t, 1, doc.Find("svg.trend-svg").Length())
+	assert.Equal(t, "2025", strings.TrimSpace(doc.Find(".trend-legend li").First().Text()), "years are not translated")
+
+	totals := doc.Find(".year-totals li")
+	assert.Equal(t, 3, totals.Length())
+	assert.Contains(t, totals.Eq(2).Text(), "2023")
+	assert.Contains(t, doc.Find(".year-totals-card").Text(), "All types", "list ignores the type filter")
+
+	g := parseHTML(t, render(t, "trends", trendsYearPage("groceries")))
+	assert.Equal(t, 3, g.Find(".kpi").Length(), "groceries add discounts saved")
+	assert.Contains(t, g.Find(".kpi").Eq(2).Text(), "5.00")
+}
+
+func TestTrendsEmptyState(t *testing.T) {
+	p := trendsMonthPage("house", "type.")
+	p.Month = &models.MonthTrend{Empty: true, Chart: chart.Stacked(chart.DefaultFrame, []string{"Nov"}, nil)}
+	html := render(t, "trend-month", p)
+	assert.NotContains(t, html, "<svg")
+	assert.Contains(t, parseHTML(t, html).Find(".trend-empty").Text(), "No expenses in this period")
+
+	y := trendsYearPage("car")
+	y.Year = &models.YearTrend{YearA: 2026, YearB: 2025, Empty: true}
+	html = render(t, "trend-year", y)
+	assert.NotContains(t, html, "<svg")
+	assert.Contains(t, parseHTML(t, html).Find(".trend-empty").Text(), "2025")
+}
+
+func TestTrendsPageHasSectionButtons(t *testing.T) {
+	doc := parseHTML(t, render(t, "trends-page", trendsMonthPage("car", "type.")))
+	assert.Equal(t, 1, doc.Find("#section-list").Length())
+	assert.Equal(t, 1, doc.Find("#section-content .trend-tabs").Length())
+	chartBtn := doc.Find(`#section-list button[hx-get="/car/chart"]`)
+	push, _ := chartBtn.Attr("hx-push-url")
+	assert.Equal(t, "true", push)
+	list, _ := doc.Find(`#section-list button[hx-get="/car/current"]`).Attr("hx-push-url")
+	assert.Equal(t, "/car", list)
+}
+
+func TestNoChartJS(t *testing.T) {
+	html := render(t, "root", &models.RootLayout{Lang: "en", HeaderOpts: &models.HeaderOptions{Lang: "en"}})
+	lib := strings.Join([]string{"chart", "js"}, ".") // spelled out so a grep for it finds no leftovers
+	assert.False(t, strings.Contains(strings.ToLower(html), lib), "no Chart.js script")
+	assert.Nil(t, loadTemplates(t).Lookup("exp-chart"), "old chart template removed")
+}
+
+func trendsItemPage() *models.TrendsPage {
+	f := func(v float64) *float64 { return &v }
+	pc := chart.Price(chart.DefaultFrame, []string{"Sep", "Oct"}, []*float64{f(2), f(2.5)}, []*float64{f(1.8), f(2.2)}, []*float64{f(2.2), f(2.8)}, nil, []float64{1, 2})
+	d := time.Date(2026, 10, 3, 0, 0, 0, 0, time.UTC)
+	var disc []models.PriceLine
+	for i := 0; i < 5; i++ {
+		disc = append(disc, models.PriceLine{Date: d, Store: "Lidl", Product: "Milk", PerUnit: 2, DiscountPerUnit: 0.5})
+	}
+	return &models.TrendsPage{
+		Section: "groceries", Lang: "en", TypePrefix: "category.",
+		Query: models.TrendQuery{Tab: "item", Period: "12", ItemID: 7, By: "month", Unit: "l"},
+		Items: []models.Category{{ID: 7, Name: "Milk"}, {ID: 8, Name: "Bread"}},
+		Item: &models.ItemTrend{
+			ItemID: 7, Item: "Milk", Unit: "l", Units: []string{"l"}, By: "month",
+			PriceNow: 2.5, HasPriceNow: true, PriceChangePct: 12, HasPriceChange: true,
+			QtyNow: 3, QtyUsual: 2, HasQtyUsual: true,
+			Cheapest:  &models.PriceLine{Date: d, Store: "Kaufland", Product: "Fresh", PerUnit: 1.9},
+			Discounts: disc, TotalSaved: 7.5, Chart: pc,
+			Items: []models.ItemRow{
+				{ItemID: 7, Item: "Milk", Unit: "l", Now: 2.5, YearAgo: 2.2, ChangePct: 13, HasChange: true, Bought12: 20},
+				{ItemID: 8, Item: "Bread", Unit: "pc", Now: 1.5, Bought12: 5},
+			},
+		},
+	}
+}
+
+func TestTrendItemTab(t *testing.T) {
+	p := trendsItemPage()
+	doc := parseHTML(t, render(t, "trends", p))
+	assert.Equal(t, 3, doc.Find(".kpi-tiles .kpi").Length())
+	assert.Equal(t, 1, doc.Find("svg.trend-svg").Length())
+	assert.Equal(t, 5, doc.Find("table.item-discounts tbody tr").Length())
+	rows := doc.Find("table.item-all tbody tr")
+	assert.Equal(t, 2, rows.Length())
+	link, _ := rows.First().Find("a").Attr("hx-get")
+	assert.Equal(t, "/groceries/chart?tab=item&item=7", link)
+	href, _ := rows.First().Find("a").Attr("href")
+	assert.Equal(t, "/groceries/chart?tab=item&item=7", href)
+	assert.NotContains(t, doc.Find("table.item-all").Text(), "Other")
+	assert.Contains(t, doc.Text(), "2.50")
+	assert.Equal(t, 0, doc.Find(".unit-switch").Length(), "one unit: no switch")
+	assert.Equal(t, 2, doc.Find(`select[name="item"] option`).Length())
+	assert.Equal(t, 0, doc.Find(".month-type").Length())
+
+	p.Item.Units = []string{"kg", "l"}
+	doc = parseHTML(t, render(t, "trends", p))
+	assert.Equal(t, 1, doc.Find(".unit-switch").Length())
+}
+
+func TestTrendItemExcludedNote(t *testing.T) {
+	p := trendsItemPage()
+	p.Item.Excluded = 3
+	doc := parseHTML(t, render(t, "trend-item", p))
+	note := doc.Find(".item-excluded")
+	require.Equal(t, 1, note.Length())
+	assert.Contains(t, note.Text(), "3")
+	link, _ := note.Find("a").Attr("hx-get")
+	assert.Equal(t, "/groceries/sizes", link)
+
+	p.Item.Excluded = 0
+	assert.Equal(t, 0, parseHTML(t, render(t, "trend-item", p)).Find(".item-excluded").Length())
+}
+
+func TestTrendItemEmpty(t *testing.T) {
+	p := trendsItemPage()
+	p.Item = &models.ItemTrend{ItemID: 7, Item: "Milk", Unit: "l", Empty: true}
+	doc := parseHTML(t, render(t, "trend-item", p))
+	assert.Contains(t, doc.Find(".trend-empty").Text(), "Milk")
+	assert.Equal(t, 0, doc.Find("svg").Length())
+}
+
+func TestTrendItemBought12AndWrappers(t *testing.T) {
+	doc := parseHTML(t, render(t, "trend-item", trendsItemPage()))
+	assert.Contains(t, doc.Find("table.item-all thead").Text(), "Bought, 12 mo")
+	rows := doc.Find("table.item-all tbody tr")
+	assert.Contains(t, rows.First().Text(), "20.0 l")
+	assert.Contains(t, rows.Last().Text(), "5 pcs")
+	assert.Equal(t, 5, doc.Find("table.item-discounts thead th").Length())
+	assert.Equal(t, 1, doc.Find(".trend-table-wrap > table.item-discounts").Length())
+	assert.Equal(t, 1, doc.Find(".trend-table-wrap > table.item-all").Length())
+}
+
+func TestSizeFieldsPartial(t *testing.T) {
+	doc := parseHTML(t, render(t, "size-fields", map[string]any{"Prefix": "items[3].", "ID": "size-fields-3", "Unit": "l", "Size": 1.0, "Lang": "en"}))
+	assert.Equal(t, 1, doc.Find("#size-fields-3").Length())
+	sel, _ := doc.Find(`select[name="items[3].unit"] option[selected]`).Attr("value")
+	assert.Equal(t, "l", sel)
+	assert.Equal(t, 4, doc.Find(`select[name="items[3].unit"] option`).Length(), "empty, kg, l, pc")
+	size, _ := doc.Find(`input[name="items[3].unit_size"]`).Attr("value")
+	assert.Equal(t, "1", size)
+
+	step, _ := doc.Find(`input[name="items[3].unit_size"]`).Attr("step")
+	assert.Equal(t, "any", step, "any step, so 4-decimal sizes like 0.0125 do not block submit")
+
+	per, packs := 0.2, 3.0
+	noisy := parseHTML(t, render(t, "size-fields", map[string]any{"Prefix": "", "ID": "size-fields", "Unit": "l", "Size": packs * per, "Lang": "en"}))
+	v, _ := noisy.Find(`input[name="unit_size"]`).Attr("value")
+	assert.Equal(t, "0.6", v)
+	fine := parseHTML(t, render(t, "size-fields", map[string]any{"Prefix": "", "ID": "size-fields", "Unit": "kg", "Size": 0.0125, "Lang": "en"}))
+	v, _ = fine.Find(`input[name="unit_size"]`).Attr("value")
+	assert.Equal(t, "0.0125", v)
+
+	blank := parseHTML(t, render(t, "size-fields", map[string]any{"Prefix": "", "ID": "size-fields", "Unit": "", "Size": 0.0, "Lang": "en"}))
+	v, has := blank.Find(`input[name="unit_size"]`).Attr("value")
+	assert.True(t, !has || v == "", "no zero shown")
+}
+
+func TestGroceryFormsHaveSizeFields(t *testing.T) {
+	doc := parseHTML(t, render(t, "create-groceries-form", map[string]any{"Categories": groceryCategories(), "Lang": "en"}))
+	assert.Equal(t, 1, doc.Find("#size-fields").Length())
+	trig, _ := doc.Find("#product").Attr("hx-trigger")
+	assert.Contains(t, trig, "input changed delay:400ms")
+	qget, _ := doc.Find("#quantity").Attr("hx-get")
+	assert.Equal(t, "/groceries/size-guess", qget, "quantity change re-guesses too")
+	qtarget, _ := doc.Find("#quantity").Attr("hx-target")
+	assert.Equal(t, "#size-fields", qtarget)
+	guessed, has := doc.Find(`#size-fields input[type="hidden"][name="size_guessed"]`).Attr("value")
+	assert.True(t, has)
+	assert.Equal(t, "", guessed)
+	get, _ := doc.Find("#product").Attr("hx-get")
+	assert.Equal(t, "/groceries/size-guess", get)
+	target, _ := doc.Find("#product").Attr("hx-target")
+	assert.Equal(t, "#size-fields", target)
+
+	g := &models.GroceriesExpense{ID: 9, CategoryID: 2, Product: "Milk", Quantity: 2, Unit: "l", UnitSize: 1.5}
+	edit := parseHTML(t, render(t, "edit-groceries-form", map[string]any{"Expense": g, "Categories": groceryCategories(), "Lang": "en"}))
+	sel, _ := edit.Find(`#size-fields select[name="unit"] option[selected]`).Attr("value")
+	assert.Equal(t, "l", sel, "edit posts the current unit back")
+	size, _ := edit.Find(`#size-fields input[name="unit_size"]`).Attr("value")
+	assert.Equal(t, "1.5", size)
+}
+
+func TestReceiptReviewHasSizeFields(t *testing.T) {
+	items := []models.ReceiptItem{{Name: "Milk 1l", Quantity: 1, TotalPrice: 2, Unit: "l", UnitSize: 1}, {Name: "Other", Quantity: 1, TotalPrice: 1}}
+	doc := parseHTML(t, render(t, "groceries-receipt-edit-form", map[string]any{
+		"Items": items, "Categories": []models.Category{{ID: 9, Name: "Other"}}, "Subtotal": 3.0, "Total": 3.0, "Lang": "en",
+	}))
+	sel, _ := doc.Find(`select[name="items[0].unit"] option[selected]`).Attr("value")
+	assert.Equal(t, "l", sel)
+	size, _ := doc.Find(`input[name="items[0].unit_size"]`).Attr("value")
+	assert.Equal(t, "1", size)
+	assert.Equal(t, 1, doc.Find("#size-fields-1").Length())
+	dis, _ := doc.Find("form.receipt-review-form").Attr("hx-disabled-elt")
+	assert.Equal(t, "find button[type='submit']", dis, "no double save of a receipt")
+	g0, _ := doc.Find(`input[name="items[0].size_guessed"]`).Attr("value")
+	assert.Equal(t, "1", g0, "prefill counts as a guess")
+	g1, _ := doc.Find(`input[name="items[1].size_guessed"]`).Attr("value")
+	assert.Equal(t, "", g1)
+	assert.Equal(t, 0, doc.Find(`select[name="items[1].unit"] option[selected]`).Length())
+}
+
+func sizesPage() models.SizesPage {
+	return models.SizesPage{
+		Section: "groceries", Lang: "en", Count: 2,
+		Rows: []models.SizeRow{
+			{Expense: models.GroceriesExpense{ID: 4, Product: "Sirene", CategoryName: "Dairy", Quantity: 2, UnitPrice: 3.5, TotalPrice: 7,
+				SupermarketName: "Lidl", PurchaseDate: time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)}},
+			{Expense: models.GroceriesExpense{ID: 9, Product: "Mleko", CategoryName: "Dairy", Quantity: 1, UnitPrice: 2, TotalPrice: 2,
+				PurchaseDate: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC)}, Unit: "l", Size: 1, Suggested: true},
+		},
+	}
+}
+
+func TestGrocerySizesList(t *testing.T) {
+	doc := parseHTML(t, render(t, "grocery-sizes", sizesPage()))
+	rows := doc.Find("li.size-row")
+	require.Equal(t, 2, rows.Length())
+	first := rows.First()
+	assert.Contains(t, first.Text(), "Sirene")
+	assert.Contains(t, first.Text(), "Dairy")
+	assert.Contains(t, first.Text(), "2 × 3.50")
+	assert.Contains(t, first.Text(), "Lidl")
+	assert.Contains(t, first.Text(), "03.11.2026", "the year too: the list reaches back years")
+	assert.Equal(t, 1, first.Find("#size-fields-4").Length())
+	dis, _ := first.Find("form").Attr("hx-disabled-elt")
+	assert.Equal(t, "#size-row-4 button", dis, "a submit disables Save and Skip")
+	dis, _ = first.Find("button[hx-post]").Attr("hx-disabled-elt")
+	assert.Equal(t, "#size-row-4 button", dis)
+	assert.Equal(t, 1, doc.Find("#sizes-body").Length())
+	form := first.Find("form")
+	post, _ := form.Attr("hx-post")
+	assert.Equal(t, "/groceries/sizes/4", post)
+	skip, _ := first.Find("button[hx-post]").Attr("hx-post")
+	assert.Equal(t, "/groceries/sizes/4/skip", skip)
+	assert.Equal(t, 1, first.Find(`button[type="submit"]`).Length())
+	suggest, _ := doc.Find(`button[hx-post="/groceries/sizes/suggest"]`).Attr("hx-target")
+	assert.Equal(t, "#section-content", suggest)
+	assert.Equal(t, 1, doc.Find("#unsized-count").Length())
+}
+
+func TestGrocerySizesEmpty(t *testing.T) {
+	p := sizesPage()
+	p.Rows, p.Count = nil, 0
+	doc := parseHTML(t, render(t, "grocery-sizes", p))
+	assert.Equal(t, 0, doc.Find("li.size-row").Length())
+	assert.Contains(t, doc.Text(), "All your purchases have a size")
+	assert.Equal(t, 0, doc.Find(`button[hx-post="/groceries/sizes/suggest"]`).Length())
+}
+
+func TestSizeRowSuggestedMarker(t *testing.T) {
+	doc := parseHTML(t, render(t, "grocery-sizes", sizesPage()))
+	rows := doc.Find("li.size-row")
+	assert.Equal(t, 0, rows.First().Find(".size-suggested").Length())
+	assert.Equal(t, 1, rows.Last().Find(".size-suggested").Length())
+	assert.Equal(t, "1", rows.Last().Find(`input[name="size_guessed"]`).AttrOr("value", ""))
+}
+
+func TestUnsizedBadge(t *testing.T) {
+	p := trendsItemPage()
+	p.Section = "groceries"
+	p.Unsized = 4
+	doc := parseHTML(t, render(t, "trends", p))
+	badge := doc.Find("#unsized-count")
+	require.Equal(t, 1, badge.Length())
+	assert.Contains(t, badge.Text(), "4")
+	assert.Equal(t, "/groceries/sizes", badge.AttrOr("hx-get", ""))
+	assert.Equal(t, "true", badge.AttrOr("hx-push-url", ""))
+	p.Unsized = 0
+	assert.Equal(t, 0, parseHTML(t, render(t, "trends", p)).Find("#unsized-count").Length())
+}
+
+func TestTrendItemRowWithoutNowShowsDash(t *testing.T) {
+	p := trendsItemPage()
+	p.Item.Items[1].Now = 0
+	doc := parseHTML(t, render(t, "trend-item", p))
+	now := doc.Find("table.item-all tbody tr").Last().Find("td").Eq(1)
+	assert.Equal(t, "—", strings.TrimSpace(now.Text()))
+}
+
+func TestSvgPriceBandSegments(t *testing.T) {
+	f := func(v float64) *float64 { return &v }
+	p := chart.Price(chart.DefaultFrame, []string{"Jan", "Feb", "Mar", "Apr"},
+		[]*float64{f(2), f(3), nil, f(2.5)}, []*float64{f(1.5), f(2), nil, f(2)},
+		[]*float64{f(2.5), f(3.5), nil, f(3)}, nil, nil)
+	doc := parseHTML(t, render(t, "svg-price", map[string]any{"Chart": p, "Lang": "en", "Unit": "kg"}))
+	assert.Equal(t, 2, doc.Find("polygon.price-band").Length(), "no band across the empty month")
+	pts, _ := doc.Find("polygon.price-band").First().Attr("points")
+	assert.Equal(t, p.Band[0], pts)
+}
+
+func TestSvgPriceShelfTranslated(t *testing.T) {
+	f := func(v float64) *float64 { return &v }
+	p := chart.Price(chart.DefaultFrame, []string{"Jan"}, []*float64{f(2)}, []*float64{f(1.5)},
+		[]*float64{f(2.5)}, []*float64{f(2.4)}, []float64{1})
+	bg := render(t, "svg-price", map[string]any{"Chart": p, "Lang": "bg", "Unit": "кг"})
+	assert.NotContains(t, bg, "shelf:")
+	assert.Contains(t, parseHTML(t, bg).Find("g.hit title").Text(), "редовна цена: 2.40")
+	en := render(t, "svg-price", map[string]any{"Chart": p, "Lang": "en", "Unit": "kg"})
+	assert.Contains(t, parseHTML(t, en).Find("g.hit title").Text(), "(shelf: 2.40)")
+}
+
+func TestTrendItemPriceNowNamesPeriod(t *testing.T) {
+	p := trendsItemPage()
+	p.Item.PriceNowPeriod = "Oct 2026"
+	doc := parseHTML(t, render(t, "trend-item", p))
+	assert.Contains(t, doc.Find(".kpi-total .kpi-sub").Text(), "Oct 2026")
 }

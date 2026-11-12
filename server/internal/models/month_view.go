@@ -61,6 +61,7 @@ type MonthView struct {
 // usual monthly amount.
 type TypeShare struct {
 	Type     string
+	Color    int // colour slot: the type's fixed chart.TypeColor (house, car) or rank 1..6 (groceries); 0 = other
 	Amount   float64
 	Share    float64 // percent of the month's total
 	Usual    float64 // average per month over the comparison window
