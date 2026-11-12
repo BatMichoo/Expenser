@@ -2,6 +2,7 @@ package handlers
 
 import (
 	database "expenser/internal/db"
+	"expenser/internal/middleware"
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
@@ -88,12 +89,12 @@ func (h *RootHandler) NotFound(c *gin.Context) error {
 
 func (h *RootHandler) ChangeLanguage(c *gin.Context) error {
 	lang := c.PostForm("lang")
-	if lang == "" {
+	if !middleware.SupportedLanguage(lang) {
 		c.Status(http.StatusBadRequest)
 		return nil
 	}
 
-	c.SetCookie("lang", lang, 3600*24*30, "/", "", false, true)
+	middleware.SetLanguageCookie(c, h.AS.Domain, lang)
 
 	if claims := services.ClaimsFromContext(c); claims != nil {
 		userID := claims.UserID
