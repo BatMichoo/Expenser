@@ -570,5 +570,10 @@
   "sizes.save": "Save",
   "sizes.skip": "Skip",
   "sizes.suggest": "Suggest sizes with AI",
-  "sizes.suggested": "Suggested"
+  "sizes.suggested": "Suggested",
+  "sizes.suggest_limited": "Suggested sizes for the first %d. Save them, then ask again for the rest.",
+  "error.sizes_not_suggested": "The AI could not suggest sizes this time. Enter them by hand or try again.",
+  "error.sizes_ai_said": "The AI could not suggest sizes: %s",
+  "error.sizes_too_many": "There are too many products for the AI to answer in one go. Save some sizes, then ask again.",
+  "error.sizes_ai_refused": "The AI did not suggest sizes (reason: %s). Enter them by hand."
 }

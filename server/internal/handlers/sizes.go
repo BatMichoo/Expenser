@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -38,8 +39,12 @@ type Suggester interface {
 	SuggestSizes(ctx context.Context, products []string) ([]gemini.SizeSuggestion, error)
 }
 
+// suggestLimit is how many products one request asks about, so the answer
+// fits and comes back in time.
+const suggestLimit = 40
+
 // suggestTimeout bounds one "suggest sizes" request, retries included.
-const suggestTimeout = 3 * time.Minute
+const suggestTimeout = 2 * time.Minute // under nginx's 180s read timeout
 
 func NewSizesHandler(store SizesStore, ai Suggester) *SizesHandler {
 	return &SizesHandler{store: store, ai: ai}
@@ -63,13 +68,14 @@ func sizeRows(expenses []models.GroceriesExpense) []models.SizeRow {
 	return rows
 }
 
-func (h *SizesHandler) render(c *gin.Context, rows []models.SizeRow, suggestError string) {
+func (h *SizesHandler) render(c *gin.Context, rows []models.SizeRow, suggestError, note string) {
 	renderView(c, "grocery-sizes", "grocery-sizes-page", &models.SizesPage{
 		Section:      string(models.SectionGroceries),
 		Rows:         rows,
 		Count:        len(rows),
 		Lang:         currentLang(c),
 		SuggestError: suggestError,
+		SuggestNote:  note,
 	})
 }
 
@@ -80,7 +86,7 @@ func (h *SizesHandler) GetSizes(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	h.render(c, sizeRows(expenses), "")
+	h.render(c, sizeRows(expenses), "", "")
 	return nil
 }
 
@@ -96,22 +102,23 @@ func (h *SizesHandler) Suggest(c *gin.Context) error {
 	}
 	rows := sizeRows(expenses)
 	if len(rows) == 0 {
-		h.render(c, rows, "")
+		h.render(c, rows, "", "")
 		return nil
 	}
-	names := make([]string, len(expenses))
-	for i, e := range expenses {
+	asked := min(len(rows), suggestLimit)
+	names := make([]string, asked)
+	for i, e := range expenses[:asked] {
 		names[i] = e.Product
 	}
 	suggestions, err := h.ai.SuggestSizes(ctx, names)
 	if err != nil {
 		log.Printf("suggest sizes: %v", err)
-		message := utilities.T(currentLang(c), "error.receipt_not_analyzed")
+		message := utilities.T(currentLang(c), "error.sizes_not_suggested")
 		var httpErr *HTTPError
-		if errors.As(receiptError(err), &httpErr) {
+		if errors.As(sizesError(err), &httpErr) {
 			message = httpErr.message(currentLang(c))
 		}
-		h.render(c, rows, message)
+		h.render(c, rows, message, "")
 		return nil
 	}
 	for i, s := range suggestions {
@@ -119,7 +126,11 @@ func (h *SizesHandler) Suggest(c *gin.Context) error {
 			rows[i].Unit, rows[i].Size, rows[i].Suggested = s.Unit, s.UnitSize, true
 		}
 	}
-	h.render(c, rows, "")
+	note := ""
+	if len(rows) > asked {
+		note = fmt.Sprintf(utilities.T(currentLang(c), "sizes.suggest_limited"), asked)
+	}
+	h.render(c, rows, "", note)
 	return nil
 }
 

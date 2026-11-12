@@ -145,6 +145,26 @@ func sizeFieldsID(id string) string {
 // or the API's error message. Failures with nothing useful to say (network,
 // unreadable response) get the general message.
 func receiptError(err error) error {
+	return aiError(err, aiMessages{
+		said: "error.receipt_ai_said", tooLong: "error.receipt_too_long",
+		refused: "error.receipt_ai_refused", other: "error.receipt_not_analyzed",
+	})
+}
+
+// sizesError is receiptError for the size suggestions, in its own words.
+func sizesError(err error) error {
+	return aiError(err, aiMessages{
+		said: "error.sizes_ai_said", tooLong: "error.sizes_too_many",
+		refused: "error.sizes_ai_refused", other: "error.sizes_not_suggested",
+	})
+}
+
+// aiMessages are the message keys for what the model did instead of the job.
+type aiMessages struct{ said, tooLong, refused, other string }
+
+// aiError maps a Gemini failure to an HTTPError; the outage and
+// configuration cases are the same for every job, the rest use m.
+func aiError(err error, m aiMessages) error {
 	var (
 		apiErr   *gemini.APIError
 		replyErr *gemini.ReplyError
@@ -160,13 +180,13 @@ func receiptError(err error) error {
 	case errors.As(err, &apiErr):
 		return gateway("error.ai_error", apiErr.Message)
 	case errors.As(err, &replyErr) && replyErr.Reply != "":
-		return gateway("error.receipt_ai_said", replyErr.Reply)
+		return gateway(m.said, replyErr.Reply)
 	case errors.As(err, &replyErr) && replyErr.FinishReason == "MAX_TOKENS":
-		return gateway("error.receipt_too_long")
+		return gateway(m.tooLong)
 	case errors.As(err, &replyErr) && replyErr.FinishReason != "":
-		return gateway("error.receipt_ai_refused", replyErr.FinishReason)
+		return gateway(m.refused, replyErr.FinishReason)
 	}
-	return gateway("error.receipt_not_analyzed")
+	return gateway(m.other)
 }
 
 // UploadReceipt starts reading the receipt in the background and shows a

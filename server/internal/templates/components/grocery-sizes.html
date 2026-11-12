@@ -14,6 +14,7 @@
       hx-push-url="true">{{ T .Lang "sizes.back" }}</a>
   </div>
   {{ if .SuggestError }}<p class="sizes-error" role="alert">{{ .SuggestError }}</p>{{ end }}
+  {{ if .SuggestNote }}<p class="sizes-hint" role="status">{{ .SuggestNote }}</p>{{ end }}
   {{ if .Rows }}
   <p class="sizes-count">{{ template "unsized-count" . }}</p>
   <button type="button" class="btn-secondary sizes-suggest" hx-post="/groceries/sizes/suggest" hx-target="#section-content"

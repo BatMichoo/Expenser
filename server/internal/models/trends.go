@@ -205,4 +205,5 @@ type SizesPage struct {
 	Count        int
 	Lang         string
 	SuggestError string
+	SuggestNote  string // e.g. only the first rows were asked about
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"html"
 	"net/http"
@@ -189,4 +190,48 @@ func TestSuggestErrorShown(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), html.EscapeString(utilities.T("en", "error.ai_not_configured")))
 	assert.Contains(t, w.Body.String(), "Мляко", "list still shown")
+}
+
+func TestSuggestAsksAtMostLimitAndNotes(t *testing.T) {
+	var rows []models.GroceriesExpense
+	for i := 1; i <= 45; i++ {
+		rows = append(rows, models.GroceriesExpense{ID: i, Product: fmt.Sprintf("P%d", i)})
+	}
+	store := &fakeSizesStore{owner: uuid.New(), rows: rows}
+	out := make([]gemini.SizeSuggestion, 40)
+	ai := &fakeSuggester{out: out}
+	w := suggestCall(t, store, ai)
+	assert.Len(t, ai.got, 40)
+	assert.Equal(t, "P40", ai.got[39])
+	assert.Contains(t, w.Body.String(), "Suggested sizes for the first 40")
+	assert.Contains(t, w.Body.String(), "P45", "the rest are still listed")
+}
+
+func TestSuggestEmptyListSkipsAI(t *testing.T) {
+	ai := &fakeSuggester{}
+	w := suggestCall(t, &fakeSizesStore{owner: uuid.New()}, ai)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Nil(t, ai.got)
+}
+
+func TestSizesError(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		key  string
+	}{
+		{"length mismatch", &gemini.ReplyError{Err: errors.New("mismatch")}, "error.sizes_not_suggested"},
+		{"too long", &gemini.ReplyError{FinishReason: "MAX_TOKENS", Err: errors.New("cut")}, "error.sizes_too_many"},
+		{"words", &gemini.ReplyError{Reply: "no idea", Err: errors.New("x")}, "error.sizes_ai_said"},
+		{"refused", &gemini.ReplyError{FinishReason: "SAFETY", Err: errors.New("x")}, "error.sizes_ai_refused"},
+		{"not configured", gemini.ErrNotConfigured, "error.ai_not_configured"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var httpErr *HTTPError
+			require.ErrorAs(t, sizesError(tc.err), &httpErr)
+			assert.Equal(t, tc.key, httpErr.MessageKey)
+			assert.NotContains(t, httpErr.message("en"), "receipt")
+		})
+	}
 }
