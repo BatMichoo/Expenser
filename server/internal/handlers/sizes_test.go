@@ -15,6 +15,7 @@ import (
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/services/gemini"
+	"expenser/internal/templates"
 	"expenser/internal/utilities"
 
 	"github.com/PuerkitoBio/goquery"
@@ -61,7 +62,7 @@ func (f *fakeSizesStore) SkipGrocerySize(_ context.Context, userID uuid.UUID, id
 func sizesCall(t *testing.T, store *fakeSizesStore, user uuid.UUID, method, path string, form url.Values) *httptest.ResponseRecorder {
 	t.Helper()
 	require.NoError(t, utilities.InitI18n())
-	tmpl, err := utilities.ParseTemplates("../templates/*/*.html")
+	tmpl, err := utilities.ParseTemplates(templates.FS, templates.Patterns...)
 	require.NoError(t, err)
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -171,7 +172,7 @@ func (f *fakeSuggester) SuggestSizes(_ context.Context, names []string) ([]gemin
 func suggestCall(t *testing.T, store *fakeSizesStore, ai Suggester) *httptest.ResponseRecorder {
 	t.Helper()
 	require.NoError(t, utilities.InitI18n())
-	tmpl, err := utilities.ParseTemplates("../templates/*/*.html")
+	tmpl, err := utilities.ParseTemplates(templates.FS, templates.Patterns...)
 	require.NoError(t, err)
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
