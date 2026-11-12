@@ -335,3 +335,13 @@ func (db *DB) GetCarTypeTotals(userID uuid.UUID, from, to time.Time) (map[string
 		WHERE ce.created_by = $1 AND ce.expense_date >= $2 AND ce.expense_date < $3
 		GROUP BY ct.name`, userID, from, to)
 }
+
+// GetCarSpendHistory returns net car spending per expense type and day for [from, to).
+func (db *DB) GetCarSpendHistory(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
+	return db.spendHistory(`
+		SELECT ct.name, to_char(ce.expense_date, 'YYYY-MM-DD'), SUM(ce.amount - ce.discount_amount)
+		FROM car_expenses ce
+		JOIN car_expense_types ct ON ct.id = ce.car_expense_type_id
+		WHERE ce.created_by = $1 AND ce.expense_date >= $2 AND ce.expense_date < $3
+		GROUP BY 1, 2`, userID, from, to)
+}

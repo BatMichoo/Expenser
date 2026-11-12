@@ -25,6 +25,25 @@ type fakeMonthStore struct {
 	typeTo        time.Time
 	bills         []models.RecurringPayment
 	upcomingUntil time.Time
+
+	history        []models.SpendEntry
+	historySection string
+	historyFrom    time.Time
+	historyTo      time.Time
+}
+
+func (f *fakeMonthStore) spendHistory(section string, from, to time.Time) ([]models.SpendEntry, error) {
+	f.historySection, f.historyFrom, f.historyTo = section, from, to
+	return f.history, nil
+}
+func (f *fakeMonthStore) GetHouseSpendHistory(_ uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
+	return f.spendHistory("house", from, to)
+}
+func (f *fakeMonthStore) GetCarSpendHistory(_ uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
+	return f.spendHistory("car", from, to)
+}
+func (f *fakeMonthStore) GetGroceriesSpendHistory(_ uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
+	return f.spendHistory("groceries", from, to)
 }
 
 func (f *fakeMonthStore) GetHouseExpensesForMonth(m time.Month, y int, _ uuid.UUID) (*[]models.HouseExpense, error) {
@@ -82,6 +101,10 @@ func newMonthStore() *fakeMonthStore {
 		},
 		totals:     map[string]float64{"2026-01": 50, "2026-10": 100, "2026-11": 120},
 		typeTotals: map[string]float64{"Gas": 300},
+		// Electricity (50 on the 15th) and water (20 on the 5th) for six
+		// months; this month only the water is in.
+		history: append(append(everyMonth("Electricity", 6, 15, 50), everyMonth("Water", 6, 5, 20)...),
+			spend("Water", 0, 4, 20)),
 	}
 }
 
@@ -108,6 +131,7 @@ func TestHouseMonthView(t *testing.T) {
 	require.True(t, v.HasChange)
 	assert.InDelta(t, 20, v.ChangePct, 0.001)
 	assert.Len(t, v.Bars, 6)
+	assert.InDelta(t, 220, v.BarsTotal, 0.001, "Jun-Nov summed, January outside the chart")
 	assert.Equal(t, []models.TypeOption{{ID: 2, Name: "Water"}, {ID: 3, Name: "Gas"}}, v.Types)
 	assert.Equal(t, "type.", v.TypePrefix)
 	assert.False(t, v.Filtered)
@@ -120,16 +144,39 @@ func TestHouseMonthView(t *testing.T) {
 	assert.InDelta(t, 50, v.Breakdown[0].Usual, 0.001)
 
 	assert.InDelta(t, 270, v.YearSoFar.Total, 0.001, "Jan 50 + Oct 100 + Nov 120")
-	assert.InDelta(t, 100.0/6, v.Usual, 0.001, "May-Oct average")
+	from, to := EstimateHistoryWindow(YearMonth{2026, time.November})
+	assert.Equal(t, from, store.historyFrom, "estimate history from a year back")
+	assert.Equal(t, to, store.historyTo)
 	require.True(t, v.HasEstimate, "current month gets an estimate")
-	assert.InDelta(t, 120+(100.0/6)*20/30, v.Estimate, 0.001)
+	assert.InDelta(t, 20+50, v.Estimate, 0.001, "water paid, electricity still due at its usual 50")
+	assert.False(t, v.EstimateFromPace)
+}
+
+func TestMonthViewEstimatePerSection(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	now := time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC)
+	ym := YearMonth{2026, time.November}
+	store := newMonthStore()
+	svc := NewMonthViewService(store)
+
+	car, err := svc.Car(uuid.New(), ym, MonthFilter{}, "en", now)
+	require.NoError(t, err)
+	assert.Equal(t, "car", store.historySection)
+	assert.True(t, car.HasEstimate)
+
+	groceries, err := svc.Groceries(uuid.New(), ym, MonthFilter{}, "en", now)
+	require.NoError(t, err)
+	assert.Equal(t, "groceries", store.historySection)
+	assert.True(t, groceries.HasEstimate)
 }
 
 func TestPastMonthHasNoEstimate(t *testing.T) {
 	require.NoError(t, utilities.InitI18n())
-	v, err := NewMonthViewService(newMonthStore()).House(uuid.New(), YearMonth{2026, time.October}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	store := newMonthStore()
+	v, err := NewMonthViewService(store).House(uuid.New(), YearMonth{2026, time.October}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	assert.False(t, v.HasEstimate)
+	assert.True(t, store.historyFrom.IsZero(), "no history query for a past month")
 }
 
 func TestHouseMonthViewFilters(t *testing.T) {
@@ -207,4 +254,20 @@ func TestHouseMonthViewSubtractsDiscounts(t *testing.T) {
 	v, err := NewMonthViewService(store).House(uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	assert.InDelta(t, 100, v.Summary.Total, 0.001, "85 - 5 + 20")
+}
+
+func TestGroceriesEstimateIgnoresCategories(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	// One shop a month, each time filed under a different category: every
+	// category looks like a one-off, but the groceries themselves are not.
+	store := &fakeMonthStore{}
+	for back, cat := range []string{"", "Meat", "Dairy", "Fruit", "Bread", "Fish", "Wine"} {
+		if back > 0 {
+			store.history = append(store.history, spend(cat, back, 20, 100))
+		}
+	}
+	v, err := NewMonthViewService(store).Groceries(uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC))
+	require.NoError(t, err)
+	require.True(t, v.HasEstimate)
+	assert.InDelta(t, 100, v.Estimate, 0.001)
 }

@@ -113,28 +113,3 @@ func TestYearSoFar(t *testing.T) {
 	jan := YearSoFar(totals, YearMonth{2026, time.January})
 	assert.False(t, jan.HasComparison, "nothing to compare in January")
 }
-
-func TestUsualMonthly(t *testing.T) {
-	totals := map[string]float64{"2026-05": 60, "2026-08": 120, "2026-11": 500}
-	assert.InDelta(t, 30, UsualMonthly(totals, YearMonth{2026, time.November}, 6), 0.001,
-		"previous 6 months (May-Oct), current month excluded, empty months count as 0")
-}
-
-func TestEstimateMonthEnd(t *testing.T) {
-	nov10 := time.Date(2026, 11, 10, 9, 0, 0, 0, time.UTC) // 20 of 30 days left
-
-	est, ok := EstimateMonthEnd(100, 150, nov10)
-	require.True(t, ok)
-	assert.InDelta(t, 100+150*20.0/30, est, 0.001, "spent so far plus the usual share of the days left")
-
-	est, ok = EstimateMonthEnd(100, 0, nov10)
-	require.True(t, ok)
-	assert.InDelta(t, 100.0/10*30, est, 0.001, "no history: daily pace")
-
-	_, ok = EstimateMonthEnd(30, 0, time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC))
-	assert.False(t, ok, "too early for a pace estimate")
-
-	est, ok = EstimateMonthEnd(80, 60, time.Date(2026, 11, 30, 0, 0, 0, 0, time.UTC))
-	require.True(t, ok)
-	assert.InDelta(t, 80, est, 0.001, "last day: nothing left to add")
-}

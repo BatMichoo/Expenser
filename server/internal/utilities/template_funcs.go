@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"math"
+	"strings"
 )
 
 // ParseTemplates parses the app's templates with TemplateFuncs, plus two
@@ -70,6 +71,7 @@ func TemplateFuncs() template.FuncMap {
 		"money": func(v float64) string {
 			return fmt.Sprintf("%.2f %s", v, CurrencySymbol())
 		},
+		"rough": RoughAmount,
 		"contains": func(slice interface{}, item string) bool {
 			s, ok := slice.([]string)
 			if !ok {
@@ -120,5 +122,21 @@ func TemplateFuncs() template.FuncMap {
 			}
 			return a / b
 		},
+	}
+}
+
+// RoughAmount formats v as a short whole number for chart labels, using a
+// "k" suffix from 1000 up: 87.4 -> "87", 1234 -> "1.2k", 12500 -> "13k".
+// Zero gives "" so empty months stay unlabelled.
+func RoughAmount(v float64) string {
+	switch {
+	case v == 0:
+		return ""
+	case math.Abs(v) < 999.5:
+		return fmt.Sprintf("%.0f", math.Round(v))
+	case math.Abs(v) < 9950:
+		return strings.TrimSuffix(fmt.Sprintf("%.1f", math.Round(v/100)/10), ".0") + "k"
+	default:
+		return fmt.Sprintf("%.0fk", math.Round(v/1000))
 	}
 }

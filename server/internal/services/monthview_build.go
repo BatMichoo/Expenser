@@ -28,6 +28,41 @@ type MonthStore interface {
 	GetHouseTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
 	GetCarTypeTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
 	GetGroceriesCategoryTotals(userID uuid.UUID, from, to time.Time) (map[string]float64, error)
+	GetHouseSpendHistory(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error)
+	GetCarSpendHistory(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error)
+	GetGroceriesSpendHistory(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error)
+}
+
+// spendHistoryFunc is one section's per-type daily spending query.
+type spendHistoryFunc func(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error)
+
+// groceriesAsOneType drops the category from groceries history. Shopping
+// is steady as a whole but each category comes and goes, so per category
+// the estimate would take most of them for one-offs (and backtests showed
+// the section as one type predicts as well or better).
+func groceriesAsOneType(history spendHistoryFunc) spendHistoryFunc {
+	return func(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
+		entries, err := history(userID, from, to)
+		for i := range entries {
+			entries[i].Type = ""
+		}
+		return entries, err
+	}
+}
+
+// addEstimate fills in the month-end estimate when v is the current month.
+func addEstimate(v *models.MonthView, history spendHistoryFunc, userID uuid.UUID, ym YearMonth, now time.Time) error {
+	if !v.IsCurrent {
+		return nil
+	}
+	from, to := EstimateHistoryWindow(ym)
+	entries, err := history(userID, from, to)
+	if err != nil {
+		return fmt.Errorf("%s spend history: %w", v.Section, err)
+	}
+	e := EstimateMonthEnd(entries, ym, now)
+	v.Estimate, v.HasEstimate, v.EstimateFromPace = e.Amount, e.OK, e.FromPace
+	return nil
 }
 
 // MonthFilter narrows the expense list (not the KPIs) of a month view.
@@ -58,10 +93,10 @@ func (s *MonthViewService) base(section string, ym YearMonth, filter MonthFilter
 	totals, typeTotals map[string]float64, lang string, now time.Time) *models.MonthView {
 	summary := Summarize(items)
 	isCurrent := ym == YearMonth{now.Year(), now.Month()}
-	usual := UsualMonthly(totals, ym, usualMonths)
-	estimate, hasEstimate := 0.0, false
-	if isCurrent {
-		estimate, hasEstimate = EstimateMonthEnd(summary.Total, usual, now)
+	bars := Bars(totals, ym, barMonths)
+	barsTotal := 0.0
+	for _, b := range bars {
+		barsTotal += b.Total
 	}
 	change, hasChange := ChangePercent(summary.Total, totals[ym.Prev().String()])
 	return &models.MonthView{
@@ -75,17 +110,15 @@ func (s *MonthViewService) base(section string, ym YearMonth, filter MonthFilter
 		Summary:   summary,
 		ChangePct: change,
 		HasChange: hasChange,
-		Bars:      Bars(totals, ym, barMonths),
+		Bars:      bars,
+		BarsTotal: barsTotal,
 		Query:     filter.Query,
 		TypeID:    filter.TypeID,
 		Filtered:  filter.TypeID != 0 || strings.TrimSpace(filter.Query) != "",
 		Lang:      lang,
 
-		Breakdown:   Breakdown(items, typeTotals, usualMonths),
-		YearSoFar:   YearSoFar(totals, ym),
-		Usual:       usual,
-		Estimate:    estimate,
-		HasEstimate: hasEstimate,
+		Breakdown: Breakdown(items, typeTotals, usualMonths),
+		YearSoFar: YearSoFar(totals, ym),
 	}
 }
 
@@ -148,6 +181,9 @@ func (s *MonthViewService) House(userID uuid.UUID, ym YearMonth, filter MonthFil
 	}
 
 	v := s.base("house", ym, filter, items, totals, typeTotals, lang, now)
+	if err := addEstimate(v, s.store.GetHouseSpendHistory, userID, ym, now); err != nil {
+		return nil, err
+	}
 	if v.UpcomingBills, err = s.upcomingBills(userID, models.SectionHouse, v.IsCurrent, now); err != nil {
 		return nil, err
 	}
@@ -194,6 +230,9 @@ func (s *MonthViewService) Car(userID uuid.UUID, ym YearMonth, filter MonthFilte
 	}
 
 	v := s.base("car", ym, filter, items, totals, typeTotals, lang, now)
+	if err := addEstimate(v, s.store.GetCarSpendHistory, userID, ym, now); err != nil {
+		return nil, err
+	}
 	if v.UpcomingBills, err = s.upcomingBills(userID, models.SectionCar, v.IsCurrent, now); err != nil {
 		return nil, err
 	}
@@ -241,6 +280,9 @@ func (s *MonthViewService) Groceries(userID uuid.UUID, ym YearMonth, filter Mont
 	}
 
 	v := s.base("groceries", ym, filter, items, totals, typeTotals, lang, now)
+	if err := addEstimate(v, groceriesAsOneType(s.store.GetGroceriesSpendHistory), userID, ym, now); err != nil {
+		return nil, err
+	}
 	v.Groceries = shown
 	v.TypePrefix = "category."
 	for _, c := range categories {

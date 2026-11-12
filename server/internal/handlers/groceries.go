@@ -9,7 +9,9 @@ import (
 	"expenser/internal/utilities"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -153,22 +155,40 @@ func (h *GroceriesHandler) renderReceiptJob(c *gin.Context, job services.Receipt
 	return h.renderReceiptReview(c, job.Result)
 }
 
+// parseReceiptPurchaseTime reads the purchase date and time from the
+// receipt review form; without one the items are dated now.
+func parseReceiptPurchaseTime(form url.Values, now time.Time) (time.Time, error) {
+	s := strings.TrimSpace(form.Get("purchased_at"))
+	if s == "" {
+		return now, nil
+	}
+	t, err := time.ParseInLocation(receiptTimeInput, s, time.Local)
+	if err != nil {
+		return time.Time{}, badRequest("error.invalid_date", err)
+	}
+	return t, nil
+}
+
+// receiptTimeInput is the value format of a datetime-local input.
+const receiptTimeInput = "2006-01-02T15:04"
+
 // renderReceiptReview shows what was read, to check before saving.
 func (h *GroceriesHandler) renderReceiptReview(c *gin.Context, analysis *models.ReceiptAnalysis) error {
 	categories, err := h.BaseHandler.DB.GetAllCategories()
 	if err != nil {
 		return err
 	}
-	total := 0.0
-	for _, item := range analysis.Items {
-		total += item.TotalPrice - item.TotalDiscount
-	}
+	subtotal, discount := analysis.Sums()
+	purchasedAt, _ := analysis.PurchaseTime(time.Now())
 	c.HTML(http.StatusOK, "groceries-receipt-edit-form", gin.H{
-		"Store":      analysis.Store,
-		"Items":      analysis.Items,
-		"Total":      total,
-		"Categories": categories,
-		"Lang":       currentLang(c),
+		"PurchasedAt": purchasedAt,
+		"Store":       analysis.Store,
+		"Items":       analysis.Items,
+		"Subtotal":    subtotal,
+		"Discount":    discount,
+		"Total":       subtotal - discount,
+		"Categories":  categories,
+		"Lang":        currentLang(c),
 	})
 	return nil
 }
@@ -176,6 +196,13 @@ func (h *GroceriesHandler) renderReceiptReview(c *gin.Context, analysis *models.
 func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 	lang := currentLang(c)
 	userID := currentUserID(c)
+	if err := c.Request.ParseForm(); err != nil {
+		return badRequest("error.invalid_date", err)
+	}
+	purchasedAt, err := parseReceiptPurchaseTime(c.Request.PostForm, time.Now())
+	if err != nil {
+		return err
+	}
 
 	var rows []gin.H
 	for i := 0; ; i++ {
@@ -204,7 +231,7 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 			TotalPrice:      totalPrice,
 			TotalDiscount:   totalDiscount,
 			SupermarketName: supermarketName,
-			PurchaseDate:    time.Now(),
+			PurchaseDate:    purchasedAt,
 		}
 
 		if err := h.BaseHandler.DB.CreateGroceriesExpense(expense); err != nil {

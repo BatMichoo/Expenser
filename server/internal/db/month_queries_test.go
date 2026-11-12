@@ -109,3 +109,40 @@ func TestTypeTotals(t *testing.T) {
 		assert.InDelta(t, 8, v, 0.001, "net of discount")
 	}
 }
+
+func TestSpendHistory(t *testing.T) {
+	db, userID := setupMonthTestDB(t)
+	for _, e := range []struct {
+		typeID int
+		amount float64
+		at     time.Time
+	}{{2, 10, day(2026, 9, 5)}, {2, 15, day(2026, 9, 5)}, {3, 40, day(2026, 10, 9)}, {3, 99, day(2026, 12, 1)}} {
+		require.NoError(t, db.CreateHouseExpense(&models.HouseExpense{UtilityTypeID: e.typeID, Amount: e.amount, DiscountAmount: 1, ExpenseDate: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+		require.NoError(t, db.CreateCarExpense(&models.CarExpense{ExpenseTypeID: e.typeID, Amount: e.amount, Date: e.at, Metadata: []byte("{}"), CreatedBy: userID}))
+	}
+	addGrocery(t, db, userID, "Milk", 10, 2, day(2026, 10, 5))
+
+	from, to := day(2026, 5, 1), time.Date(2026, 11, 1, 0, 0, 0, 0, time.Local)
+
+	house, err := db.GetHouseSpendHistory(userID, from, to)
+	require.NoError(t, err)
+	require.Len(t, house, 2, "one row per type and day; December is outside the range")
+	byType := map[string]models.SpendEntry{}
+	for _, e := range house {
+		byType[e.Type] = e
+	}
+	assert.InDelta(t, 23, byType["Water"].Amount, 0.001, "same-day amounts summed, net of discount")
+	assert.Equal(t, 5, byType["Water"].Date.Day())
+	assert.Equal(t, time.September, byType["Water"].Date.Month())
+	assert.InDelta(t, 39, byType["Gas"].Amount, 0.001)
+
+	car, err := db.GetCarSpendHistory(userID, from, to)
+	require.NoError(t, err)
+	assert.Len(t, car, 2)
+
+	groceries, err := db.GetGroceriesSpendHistory(userID, from, to)
+	require.NoError(t, err)
+	require.Len(t, groceries, 1)
+	assert.InDelta(t, 8, groceries[0].Amount, 0.001, "net of discount")
+	assert.NotEmpty(t, groceries[0].Type, "keyed by category")
+}

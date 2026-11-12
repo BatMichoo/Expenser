@@ -115,12 +115,12 @@
 
 {{ define "mini-chart" }}
 <section class="side-panel mini-chart" id="mini-chart">
-  {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "kpi.last_months") "Meta" (money .Summary.Total)) }}
+  {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "kpi.last_months") "Meta" (money .BarsTotal)) }}
   <a class="mini-chart-bars" href="#" hx-get="/{{ .Section }}/chart" hx-target="#section-content"
     title='{{ T .Lang "kpi.open_chart" }}' aria-label='{{ T .Lang "kpi.open_chart" }}'>
     {{ range .Bars }}
     <span class="mini-bar{{ if .Current }} current{{ end }}" style="height: {{ printf "%.0f" .Height }}%"
-      title="{{ T $.Lang (print "month." .MonthNum) }}: {{ money .Total }}"></span>
+      title="{{ T $.Lang (print "month." .MonthNum) }}: {{ money .Total }}"><span class="mini-bar-value">{{ rough .Total }}</span></span>
     {{ end }}
   </a>
   <div class="mini-chart-labels">
@@ -258,7 +258,7 @@
 
 {{ define "year-so-far" }}
 <section class="side-panel year-so-far">
-  {{ template "side-panel-head" (dict "Icon" "calendar" "Title" (print (T .Lang "insights.year_so_far") " " .Year)) }}
+  {{ template "side-panel-head" (dict "Icon" "calendar" "Title" (print .Year " " (T .Lang "insights.year_so_far"))) }}
   <p class="side-big">{{ money .YearSoFar.Total }}</p>
   <dl class="side-stats">
     <div>
@@ -284,7 +284,7 @@
     <span>{{ T .Lang "insights.spent_so_far" }}: {{ money .Summary.Total }}</span>
   </div>
   <p class="side-foot">
-    {{ if gt .Usual 0.0 }}{{ T .Lang "insights.based_on_usual" }} {{ money .Usual }}{{ else }}{{ T .Lang "insights.based_on_pace" }}{{ end }}
+    {{ if .EstimateFromPace }}{{ T .Lang "insights.based_on_pace" }}{{ else }}{{ T .Lang "insights.based_on_bills" }}{{ end }}
   </p>
 </section>
 {{ end }}
