@@ -8,6 +8,27 @@
       <strong>{{ printf (T .Lang "receipt.items") (len .Items) }} · {{ money .Total }}</strong>
       <span>{{ T .Lang "receipt.review" }}</span>
     </p>
+    <label class="receipt-date">
+      <span>{{ T .Lang "receipt.purchased_at" }}</span>
+      <input type="datetime-local" name="purchased_at" required
+        value="{{ if not .PurchasedAt.IsZero }}{{ .PurchasedAt.Format "2006-01-02T15:04" }}{{ end }}" />
+    </label>
+    <dl class="receipt-totals">
+      <div class="receipt-subtotal">
+        <dt>{{ T .Lang "receipt.subtotal" }}</dt>
+        <dd>{{ money .Subtotal }}</dd>
+      </div>
+      {{ if .Discount }}
+      <div class="receipt-discount">
+        <dt>{{ T .Lang "receipt.discounts" }}</dt>
+        <dd>-{{ money .Discount }}</dd>
+      </div>
+      {{ end }}
+      <div class="receipt-total">
+        <dt>{{ T .Lang "receipt.total" }}</dt>
+        <dd>{{ money .Total }}</dd>
+      </div>
+    </dl>
     {{ range $i, $item := .Items }}
     <fieldset class="receipt-item">
       <input type="hidden" name="items[{{ $i }}].supermarket_name" value="{{ $.Store }}" />

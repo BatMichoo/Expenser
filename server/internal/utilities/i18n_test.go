@@ -47,3 +47,12 @@ func TestTranslationsHaveSameKeys(t *testing.T) {
 		}
 	}
 }
+
+func TestRoughAmount(t *testing.T) {
+	cases := map[float64]string{0: "", 87.4: "87", 999.4: "999", 999.6: "1k", 1234: "1.2k", 2000: "2k", 9949: "9.9k", 9951: "10k", 12500: "13k"}
+	for in, want := range cases {
+		if got := RoughAmount(in); got != want {
+			t.Errorf("RoughAmount(%v) = %q, want %q", in, got, want)
+		}
+	}
+}

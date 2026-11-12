@@ -109,3 +109,18 @@ func TestBillErrorMessages(t *testing.T) {
 		assert.Equal(t, want.key, httpErr.MessageKey, err.Error())
 	}
 }
+
+func TestParseReceiptPurchaseTime(t *testing.T) {
+	now := time.Date(2026, 11, 12, 18, 30, 0, 0, time.Local)
+
+	got, err := parseReceiptPurchaseTime(url.Values{"purchased_at": {"2026-11-10T14:05"}}, now)
+	require.NoError(t, err)
+	assert.True(t, time.Date(2026, 11, 10, 14, 5, 0, 0, time.Local).Equal(got))
+
+	got, err = parseReceiptPurchaseTime(url.Values{}, now)
+	require.NoError(t, err)
+	assert.True(t, now.Equal(got), "no date sent: now")
+
+	_, err = parseReceiptPurchaseTime(url.Values{"purchased_at": {"10.11.2026"}}, now)
+	assert.Error(t, err)
+}

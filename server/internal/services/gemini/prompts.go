@@ -27,11 +27,14 @@ var Prompts = &GeminiPrompts{
 
 	Discounts: a discount printed directly with an item belongs in that item's "total_discount" (and "discount_per_unit"). A discount printed separately, usually after the subtotal with the items it applies to (e.g. "XTRA отстъпка -3,73" followed by "Позиции:19,15"), goes in "discounts" with its amount and "positions": the 1-based numbers of those items in the printed order (here [19, 15]); do NOT also put it on the items, it is applied to them later. Give amounts as positive numbers.
 
+	Purchase date: put the date and time printed on the receipt (when the purchase was made) in "purchased_at" as "YYYY-MM-DDTHH:MM", 24-hour clock, exactly as printed (local time, no time zone). Bulgarian receipts usually print it as DD.MM.YYYY HH:MM:SS near the end, e.g. "12.11.2026 14:05:31" is "2026-11-12T14:05". If only the date is printed, give "YYYY-MM-DD". If there is no date or it cannot be read, give "". Do not guess and do not use today's date.
+
 	Use the following JSON schema:
 	{
 	  "store": "string",
 	  "address": "string",
 	  "vat_number": "string",
+	  "purchased_at": "string",
 	  "items": [
 	    {
 	      "name": "string",

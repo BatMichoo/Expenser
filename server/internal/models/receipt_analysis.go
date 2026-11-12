@@ -3,6 +3,7 @@ package models
 import (
 	"math"
 	"sort"
+	"time"
 )
 
 type ReceiptItem struct {
@@ -31,12 +32,15 @@ type Totals struct {
 }
 
 type ReceiptAnalysis struct {
-	Store     string        `json:"store"`
-	Address   string        `json:"address"`
-	VATNumber string        `json:"vat_number"`
-	Items     []ReceiptItem `json:"items"`
-	Discounts []Discount    `json:"discounts"`
-	Totals    Totals        `json:"totals"`
+	Store     string `json:"store"`
+	Address   string `json:"address"`
+	VATNumber string `json:"vat_number"`
+	// PurchasedAt is the date and time printed on the receipt, as
+	// YYYY-MM-DDTHH:MM, or "" when there is none.
+	PurchasedAt string        `json:"purchased_at"`
+	Items       []ReceiptItem `json:"items"`
+	Discounts   []Discount    `json:"discounts"`
+	Totals      Totals        `json:"totals"`
 }
 
 // ApplyDiscounts puts each separately printed discount onto the items it
@@ -108,4 +112,45 @@ func (a *ReceiptAnalysis) applyDiscount(d Discount) bool {
 		}
 	}
 	return true
+}
+
+// receiptTimeLayouts are the forms PurchasedAt is accepted in.
+var receiptTimeLayouts = []string{"2006-01-02T15:04", "2006-01-02T15:04:05", "2006-01-02 15:04", "2006-01-02 15:04:05"}
+
+// PurchaseTime is when the receipt says the shopping happened, in now's
+// location. A printed date without a time counts as noon. found is false,
+// and the time is now, when no date was printed, it can't be parsed, or
+// it isn't believable: after today, or more than a year ago (a misread).
+func (a *ReceiptAnalysis) PurchaseTime(now time.Time) (t time.Time, found bool) {
+	loc := now.Location()
+	parsed, ok := time.Time{}, false
+	for _, layout := range receiptTimeLayouts {
+		if p, err := time.ParseInLocation(layout, a.PurchasedAt, loc); err == nil {
+			parsed, ok = p, true
+			break
+		}
+	}
+	if !ok {
+		d, err := time.ParseInLocation("2006-01-02", a.PurchasedAt, loc)
+		if err != nil {
+			return now, false
+		}
+		parsed = d.Add(12 * time.Hour)
+	}
+	y, m, d := now.Date()
+	endOfToday := time.Date(y, m, d+1, 0, 0, 0, 0, loc)
+	if !parsed.Before(endOfToday) || parsed.Before(now.AddDate(-1, 0, 0)) {
+		return now, false
+	}
+	return parsed, true
+}
+
+// Sums adds up the items: what they cost before discounts, and the
+// discounts on them. What was paid is subtotal - discount.
+func (a *ReceiptAnalysis) Sums() (subtotal, discount float64) {
+	for _, item := range a.Items {
+		subtotal += item.TotalPrice
+		discount += item.TotalDiscount
+	}
+	return subtotal, discount
 }

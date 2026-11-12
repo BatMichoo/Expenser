@@ -42,6 +42,12 @@ func (ym YearMonth) Prev() YearMonth {
 	return YearMonth{t.Year(), t.Month()}
 }
 
+// Back is the month k months before ym.
+func (ym YearMonth) Back(k int) YearMonth {
+	t := ym.Start().AddDate(0, -k, 0)
+	return YearMonth{t.Year(), t.Month()}
+}
+
 func (ym YearMonth) Next() YearMonth {
 	t := ym.End()
 	return YearMonth{t.Year(), t.Month()}
@@ -177,38 +183,4 @@ func YearSoFar(totals map[string]float64, ym YearMonth) models.YearSummary {
 		y.VsAverage, y.HasComparison = ChangePercent(totals[ym.String()], y.Average)
 	}
 	return y
-}
-
-// UsualMonthly is the average monthly total over the `months` months
-// before ym (ym itself excluded; months without spending count as zero).
-func UsualMonthly(totals map[string]float64, ym YearMonth, months int) float64 {
-	sum := 0.0
-	m := ym
-	for i := 0; i < months; i++ {
-		m = m.Prev()
-		sum += totals[m.String()]
-	}
-	return sum / float64(months)
-}
-
-// minPaceDays is how far into the month a pace-only estimate becomes
-// worth showing.
-const minPaceDays = 7
-
-// EstimateMonthEnd predicts the current month's total. Bills arrive in
-// lumps, so instead of extrapolating the daily pace it adds the usual
-// spending for the days still left to what was spent so far. Without any
-// usual amount it falls back to the daily pace, once a week has passed.
-func EstimateMonthEnd(spent, usual float64, now time.Time) (float64, bool) {
-	daysInMonth := time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, now.Location()).Day()
-	elapsed := now.Day()
-	remaining := daysInMonth - elapsed
-
-	if usual > 0 {
-		return spent + usual*float64(remaining)/float64(daysInMonth), true
-	}
-	if elapsed < minPaceDays {
-		return 0, false
-	}
-	return spent / float64(elapsed) * float64(daysInMonth), true
 }

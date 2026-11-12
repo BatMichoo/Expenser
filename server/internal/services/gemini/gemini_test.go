@@ -86,10 +86,11 @@ func jsonString(s string) string {
 }
 
 func TestAnalyzeReceiptReadsItems(t *testing.T) {
-	gs, req := fakeGemini(t, 200, reply("```json\n{\"store\":\"Lidl\",\"items\":[{\"name\":\"Milk\",\"quantity\":1,\"total_price\":2.4}]}\n```", "STOP"))
+	gs, req := fakeGemini(t, 200, reply("```json\n{\"store\":\"Lidl\",\"purchased_at\":\"2026-11-10T14:05\",\"items\":[{\"name\":\"Milk\",\"quantity\":1,\"total_price\":2.4}]}\n```", "STOP"))
 	a, err := gs.AnalyzeReceipt(context.Background(), jpeg)
 	require.NoError(t, err)
 	assert.Equal(t, "Lidl", a.Store)
+	assert.Equal(t, "2026-11-10T14:05", a.PurchasedAt)
 	require.Len(t, a.Items, 1)
 	assert.Equal(t, "secret-key", req.Header.Get("x-goog-api-key"), "key goes in a header")
 	assert.NotContains(t, req.URL.RawQuery, "secret-key", "never in the URL, which can end up in logs")

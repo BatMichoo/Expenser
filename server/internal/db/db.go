@@ -3,9 +3,11 @@ package database
 import (
 	"database/sql"
 	"expenser/internal/config"
+	"expenser/internal/models"
 	"fmt"
 	"log"
 	"path/filepath"
+	"time"
 
 	_ "github.com/lib/pq" // Import the PostgreSQL driver
 	"github.com/pressly/goose"
@@ -99,4 +101,28 @@ func (db *DB) monthlyTotals(query string, args ...any) (map[string]float64, erro
 		totals[month] = total.Float64
 	}
 	return totals, rows.Err()
+}
+
+// spendHistory runs a query returning (type, YYYY-MM-DD, sum) rows and
+// collects them as SpendEntry values dated midnight UTC.
+func (db *DB) spendHistory(query string, args ...any) ([]models.SpendEntry, error) {
+	rows, err := db.conn.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query spend history: %w", err)
+	}
+	defer rows.Close()
+
+	var out []models.SpendEntry
+	for rows.Next() {
+		var e models.SpendEntry
+		var date string
+		if err := rows.Scan(&e.Type, &date, &e.Amount); err != nil {
+			return nil, fmt.Errorf("failed to read spend history: %w", err)
+		}
+		if e.Date, err = time.Parse("2006-01-02", date); err != nil {
+			return nil, fmt.Errorf("failed to parse spend history date %q: %w", date, err)
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
 }

@@ -335,3 +335,13 @@ func (db *DB) GetHouseTypeTotals(userID uuid.UUID, from, to time.Time) (map[stri
 		WHERE he.created_by = $1 AND he.expense_date >= $2 AND he.expense_date < $3
 		GROUP BY ut.name`, userID, from, to)
 }
+
+// GetHouseSpendHistory returns net house spending per utility type and day for [from, to).
+func (db *DB) GetHouseSpendHistory(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
+	return db.spendHistory(`
+		SELECT ut.name, to_char(he.expense_date, 'YYYY-MM-DD'), SUM(he.amount - he.discount_amount)
+		FROM home_expenses he
+		JOIN utility_types ut ON ut.id = he.utility_type_id
+		WHERE he.created_by = $1 AND he.expense_date >= $2 AND he.expense_date < $3
+		GROUP BY 1, 2`, userID, from, to)
+}

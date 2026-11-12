@@ -28,32 +28,33 @@ type TypeOption struct {
 
 // MonthView is everything one section page shows for one month.
 type MonthView struct {
-	Section       string // "house", "car" or "groceries"
-	Month         string // YYYY-MM being viewed
-	MonthNum      time.Month
-	Year          int
-	PrevMonth     string
-	NextMonth     string
-	IsCurrent     bool // viewing the current calendar month
-	Summary       MonthSummary
-	ChangePct     float64
-	HasChange     bool // false when last month had no spending to compare with
-	Bars          []MonthBar
-	Query         string
-	TypeID        int
-	Types         []TypeOption
-	TypePrefix    string      // "type." or "category." for translation keys
-	Filtered      bool        // a search or type filter is active
-	Breakdown     []TypeShare // this month by type, largest first
-	YearSoFar     YearSummary
-	Usual         float64 // average monthly total over the previous 6 months
-	Estimate      float64 // predicted month-end total (current month only)
-	HasEstimate   bool
-	UpcomingBills []UpcomingPayment // unpaid bills for this section, next 30 days
-	House         []HouseExpense
-	Car           []CarExpense
-	Groceries     []GroceriesExpense
-	Lang          string
+	Section          string // "house", "car" or "groceries"
+	Month            string // YYYY-MM being viewed
+	MonthNum         time.Month
+	Year             int
+	PrevMonth        string
+	NextMonth        string
+	IsCurrent        bool // viewing the current calendar month
+	Summary          MonthSummary
+	ChangePct        float64
+	HasChange        bool // false when last month had no spending to compare with
+	Bars             []MonthBar
+	BarsTotal        float64 // sum of the months shown in the mini chart
+	Query            string
+	TypeID           int
+	Types            []TypeOption
+	TypePrefix       string      // "type." or "category." for translation keys
+	Filtered         bool        // a search or type filter is active
+	Breakdown        []TypeShare // this month by type, largest first
+	YearSoFar        YearSummary
+	Estimate         float64 // predicted month-end total (current month only)
+	HasEstimate      bool
+	EstimateFromPace bool              // no history yet: based on the daily pace alone
+	UpcomingBills    []UpcomingPayment // unpaid bills for this section, next 30 days
+	House            []HouseExpense
+	Car              []CarExpense
+	Groceries        []GroceriesExpense
+	Lang             string
 }
 
 // TypeShare is one type's slice of a month's spending, compared with its
@@ -74,4 +75,12 @@ type YearSummary struct {
 	Average       float64
 	VsAverage     float64 // viewed month vs the year's monthly average, percent
 	HasComparison bool
+}
+
+// SpendEntry is what one type cost on one day: the history the month-end
+// estimate learns from.
+type SpendEntry struct {
+	Type   string
+	Date   time.Time
+	Amount float64
 }

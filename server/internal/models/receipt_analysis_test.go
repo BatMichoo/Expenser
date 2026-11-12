@@ -2,6 +2,7 @@ package models
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,4 +69,41 @@ func TestApplyDiscountsLeavesDoubtfulOnesUnassigned(t *testing.T) {
 			assert.Equal(t, 0.5, a.Items[1].TotalDiscount, "an item's own discount is kept, not doubled")
 		})
 	}
+}
+
+func TestReceiptPurchaseTime(t *testing.T) {
+	sofia, err := time.LoadLocation("Europe/Sofia")
+	require.NoError(t, err)
+	now := time.Date(2026, 11, 12, 18, 30, 0, 0, sofia)
+
+	for name, tc := range map[string]struct {
+		printed string
+		want    time.Time
+		found   bool
+	}{
+		"date and time":     {"2026-11-10T14:05", time.Date(2026, 11, 10, 14, 5, 0, 0, sofia), true},
+		"with seconds":      {"2026-11-10T14:05:31", time.Date(2026, 11, 10, 14, 5, 31, 0, sofia), true},
+		"space separated":   {"2026-11-10 14:05", time.Date(2026, 11, 10, 14, 5, 0, 0, sofia), true},
+		"date only: noon":   {"2026-11-10", time.Date(2026, 11, 10, 12, 0, 0, 0, sofia), true},
+		"later today":       {"2026-11-12T20:00", time.Date(2026, 11, 12, 20, 0, 0, 0, sofia), true},
+		"not printed":       {"", now, false},
+		"unreadable":        {"10.11.2026", now, false},
+		"future: misread":   {"2026-12-10T14:05", now, false},
+		"over a year: typo": {"2025-11-10T14:05", now, false},
+	} {
+		got, found := (&ReceiptAnalysis{PurchasedAt: tc.printed}).PurchaseTime(now)
+		assert.Equal(t, tc.found, found, name)
+		assert.True(t, tc.want.Equal(got), "%s: got %v", name, got)
+	}
+}
+
+func TestReceiptSums(t *testing.T) {
+	a := &ReceiptAnalysis{Items: []ReceiptItem{
+		{TotalPrice: 7.92, TotalDiscount: 1.2},
+		{TotalPrice: 2.9},
+		{TotalPrice: 0.1, TotalDiscount: 0.1},
+	}}
+	subtotal, discount := a.Sums()
+	assert.InDelta(t, 10.92, subtotal, 1e-9, "before discounts")
+	assert.InDelta(t, 1.3, discount, 1e-9)
 }

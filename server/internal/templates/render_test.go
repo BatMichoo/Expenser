@@ -170,8 +170,8 @@ func monthView(section string) *models.MonthView {
 		TypePrefix: "type.",
 		Bars: []models.MonthBar{
 			{Month: "2026-06", MonthNum: time.June}, {Month: "2026-07", MonthNum: time.July},
-			{Month: "2026-08", MonthNum: time.August}, {Month: "2026-09", MonthNum: time.September, Height: 50},
-			{Month: "2026-10", MonthNum: time.October, Height: 100}, {Month: "2026-11", MonthNum: time.November, Height: 80, Current: true},
+			{Month: "2026-08", MonthNum: time.August}, {Month: "2026-09", MonthNum: time.September, Height: 50, Total: 625},
+			{Month: "2026-10", MonthNum: time.October, Height: 100, Total: 1250}, {Month: "2026-11", MonthNum: time.November, Height: 80, Total: 1000, Current: true},
 		},
 	}
 }
@@ -291,6 +291,14 @@ func TestMiniChart(t *testing.T) {
 	link, _ := doc.Find(".mini-chart-bars").Attr("hx-get")
 	assert.Equal(t, "/house/chart", link)
 	assert.Contains(t, doc.Find(".mini-chart-labels").Text(), "Jun")
+
+	values := doc.Find(".mini-chart .mini-bar-value")
+	require.Equal(t, 6, values.Length(), "one rough value per bar")
+	assert.Empty(t, strings.TrimSpace(values.Eq(0).Text()), "empty months stay unlabelled")
+	assert.Equal(t, "625", values.Eq(3).Text())
+	assert.Equal(t, "1.3k", values.Eq(4).Text())
+	assert.Equal(t, "1k", values.Eq(5).Text())
+	assert.True(t, bars.Eq(5).HasClass("current"), "current value is styled through its bar")
 }
 
 func TestRowActionsAreLabelledIcons(t *testing.T) {
@@ -438,7 +446,7 @@ func TestInsightPanels(t *testing.T) {
 		{Type: "TV", Amount: 9.99, Share: 5.4},
 	}
 	v.YearSoFar = models.YearSummary{Total: 1834.5, Months: 11, Average: 166.77, VsAverage: 10.1, HasComparison: true}
-	v.Usual = 170
+	v.BarsTotal = 912.4
 	doc := parseHTML(t, render(t, "house-current", v))
 
 	// Every panel has an icon and a title, like the KPI tiles.
@@ -469,6 +477,7 @@ func TestInsightPanels(t *testing.T) {
 	assert.Contains(t, items.Eq(2).Find(".pill").Text(), "New")
 
 	year := doc.Find(".year-so-far")
+	assert.Equal(t, "2026 so far", strings.TrimSpace(year.Find(".side-panel-head h3").Text()))
 	assert.Contains(t, year.Find(".side-big").Text(), "1834.50 €")
 	assert.Contains(t, year.Text(), "166.77 €")
 	assert.Contains(t, year.Find(".pill").Text(), "10%")
@@ -481,9 +490,13 @@ func TestInsightPanels(t *testing.T) {
 	fill, _ := est.Find(".progress span").Attr("style")
 	assert.Contains(t, fill, "width: 73.5%", "spent so far out of the estimate")
 	assert.Contains(t, est.Text(), "183.63 €")
-	assert.Contains(t, est.Text(), "170.00 €", "explains the usual month it is based on")
+	assert.Contains(t, est.Find(".side-foot").Text(), "Bills still due plus your usual pace")
 
-	assert.Contains(t, doc.Find(".mini-chart .side-panel-head").Text(), "183.63 €", "chart header shows the month's total")
+	v.EstimateFromPace = true
+	doc = parseHTML(t, render(t, "house-current", v))
+	assert.Contains(t, doc.Find(".estimate .side-foot").Text(), "Based on your daily pace so far")
+
+	assert.Contains(t, doc.Find(".mini-chart .side-panel-head").Text(), "912.40 €", "chart header shows the 6-month total")
 }
 
 func TestInsightPanelsEmptyMonth(t *testing.T) {
@@ -565,13 +578,29 @@ func TestReceiptReviewSheet(t *testing.T) {
 	}
 	cats := []models.Category{{ID: 1, Name: "Meat"}, {ID: 2, Name: "Dairy"}, {ID: 9, Name: "Other"}}
 	doc := parseHTML(t, render(t, "groceries-receipt-edit-form", map[string]any{
-		"Store": "Lidl", "Items": items, "Categories": cats, "Total": 9.62, "Lang": "en",
+		"Store": "Lidl", "Items": items, "Categories": cats, "Subtotal": 10.82, "Discount": 1.2, "Total": 9.62, "Lang": "en",
+		"PurchasedAt": time.Date(2026, 11, 10, 14, 5, 0, 0, time.UTC),
 	}))
+
+	when, _ := doc.Find(`input[name="purchased_at"]`).Attr("value")
+	assert.Equal(t, "2026-11-10T14:05", when, "the date printed on the receipt, editable before saving")
+	kind, _ := doc.Find(`input[name="purchased_at"]`).Attr("type")
+	assert.Equal(t, "datetime-local", kind)
 
 	head := doc.Find(".new-expense-heading")
 	assert.Contains(t, head.Text(), "Lidl")
 	assert.Contains(t, doc.Find(".receipt-summary").Text(), "2 items")
 	assert.Contains(t, doc.Find(".receipt-summary").Text(), "9.62 €")
+	totals := doc.Find(".receipt-totals")
+	require.Equal(t, 1, totals.Length(), "totals shown before saving")
+	assert.Contains(t, totals.Find(".receipt-subtotal").Text(), "10.82 €")
+	assert.Contains(t, totals.Find(".receipt-discount").Text(), "-1.20 €")
+	assert.Contains(t, totals.Find(".receipt-total").Text(), "9.62 €")
+
+	noDiscount := parseHTML(t, render(t, "groceries-receipt-edit-form", map[string]any{
+		"Items": items, "Categories": cats, "Subtotal": 10.82, "Total": 10.82, "Lang": "en",
+	}))
+	assert.Equal(t, 0, noDiscount.Find(".receipt-discount").Length(), "no discount row without discounts")
 
 	cards := doc.Find(".receipt-item")
 	require.Equal(t, 2, cards.Length(), "one card per item instead of a wide table")

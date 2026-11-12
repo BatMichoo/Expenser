@@ -229,6 +229,16 @@ func (db *DB) GetGroceriesCategoryTotals(userID uuid.UUID, from, to time.Time) (
 		GROUP BY c.name`, userID, from, to)
 }
 
+// GetGroceriesSpendHistory returns net groceries spending per category and day for [from, to).
+func (db *DB) GetGroceriesSpendHistory(userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
+	return db.spendHistory(`
+		SELECT gc.name, to_char(g.purchase_date, 'YYYY-MM-DD'), SUM(g.total_price - g.total_discount)
+		FROM groceries_expenses g
+		JOIN grocery_categories gc ON gc.id = g.category_id
+		WHERE g.user_id = $1 AND g.purchase_date >= $2 AND g.purchase_date < $3
+		GROUP BY 1, 2`, userID, from, to)
+}
+
 // GetGroceriesStoreTotals returns net groceries spending per supermarket,
 // keyed by its name, for [from, to). Purchases without a store name are
 // left out.

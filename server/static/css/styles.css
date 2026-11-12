@@ -1505,21 +1505,44 @@ tr:hover .row-actions,
   align-items: flex-end;
   gap: 0.35rem;
   height: 6rem;
+  padding-top: 0.8rem; /* room for the tallest bar's value */
+  box-sizing: content-box;
   text-decoration: none;
 }
 
+/* Rough amount sitting just above each bar */
+.mini-bar-value {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0.15rem;
+  font-size: 0.62rem;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-bar.current .mini-bar-value {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .mini-bar {
+  position: relative;
   flex: 1;
   min-height: 2px;
   border-radius: 0.25rem 0.25rem 0 0;
-  background: var(--accent);
-  opacity: 0.4;
-  transition: opacity 0.15s;
+  /* Faded through the colour, not opacity, so the value label stays readable */
+  background: color-mix(in oklch, var(--accent) 40%, transparent);
+  transition: background 0.15s;
 }
 
 .mini-chart-bars:hover .mini-bar,
 .mini-bar.current {
-  opacity: 1;
+  background: var(--accent);
 }
 
 .mini-chart-labels {
@@ -2033,7 +2056,7 @@ tr:hover .row-actions,
 
 .mini-bar {
   border-radius: 0.3rem 0.3rem 0.1rem 0.1rem;
-  opacity: 0.35;
+  background: color-mix(in oklch, var(--accent) 35%, transparent);
 }
 
 .mini-bar.current {
@@ -2622,6 +2645,47 @@ tr:hover .row-actions,
 
 .receipt-summary strong {
   font-size: 1rem;
+  color: var(--text);
+}
+
+/* Receipt review: before discounts, discounts, what was paid */
+.receipt-totals {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--bg-dark);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 0.9rem;
+}
+
+.receipt-totals div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.receipt-totals dt {
+  color: var(--text-muted);
+}
+
+.receipt-totals dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-totals .receipt-discount dd {
+  color: var(--success);
+}
+
+.receipt-totals .receipt-total {
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--bg-dark);
+  font-weight: 600;
+}
+
+.receipt-totals .receipt-total dt {
   color: var(--text);
 }
 
