@@ -23,17 +23,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// trustedProxies are the private networks a reverse proxy can be on.
-var trustedProxies = []string{"127.0.0.1/32", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"}
-
 func main() {
-	router := gin.Default()
-	// Only nginx (on the Docker network) and local tools may set
-	// X-Forwarded-For; anyone else's is ignored.
-	if err := router.SetTrustedProxies(trustedProxies); err != nil {
-		log.Fatalf("Trusted proxies: %v", err)
-	}
-
 	envPath, loaded, err := config.LoadDevEnv()
 	if err != nil {
 		log.Fatalf("Couldn't load .env.dev: %v", err)
@@ -50,6 +40,11 @@ func main() {
 	// times in the household's zone, and "today" for reminders is its day.
 	time.Local = cfg.Location
 	log.Printf("Time zone: %s.", cfg.Location)
+
+	router, err := newRouter(cfg)
+	if err != nil {
+		log.Fatalf("Couldn't create the router: %v", err)
+	}
 
 	t := template.Must(utilities.ParseTemplates(templates.FS, templates.Patterns...))
 	router.SetHTMLTemplate(t) // Tell Gin to use this template set

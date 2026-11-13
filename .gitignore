@@ -43,3 +43,6 @@ docs/
 
 # Superpowers brainstorm/plan scratch
 .superpowers/
+
+# Binary from `go build` run inside server/cmd
+server/cmd/cmd
