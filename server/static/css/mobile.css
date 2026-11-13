@@ -500,8 +500,11 @@
     padding: 0.4em 0.5em;
   }
 
-  /* Phones: icon + count only, so a whole bill fits on the line */
-  .upcoming-head h3 {
+  /* Phones: icon only, so a whole bill fits on the line. "All bills" is
+     the Bills tab in the bottom bar. */
+  .upcoming-head h3,
+  .upcoming-count,
+  .upcoming-bills .all-bills {
     display: none;
   }
 
