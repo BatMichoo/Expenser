@@ -20,7 +20,7 @@ This project relies on environment variables for configuration, managed through 
 
 ## TLS Certificate
 
-nginx's certificate comes from a private certificate authority (CA) for your home, made and used by the `certs` container (`certs/issue-certs.sh`). `docker compose up` runs it before nginx starts. The first time, it creates the CA in the `ca-data` volume. After that, it issues a new certificate for `LAN_DOMAIN` and `LAN_IP` only when the current one is missing, expires within 30 days, or no longer matches them. Certificates last 397 days, and autodeploy restarts nginx when one is renewed.
+nginx's certificate comes from a private certificate authority (CA) for your home, made and used by the `certs` container (`certs/issue-certs.sh`). `docker compose up` runs it before nginx starts. The first time, it creates the CA in the `ca-data` volume. After that, it issues a new certificate for `LAN_DOMAIN` and `LAN_IP` only when the current one is missing, expires within 45 days, or no longer matches them. Certificates last 397 days. Autodeploy also runs this check every 30 days, even without a deploy, and restarts nginx when a certificate is renewed, so renewal needs nothing from you.
 
 The certificate covers `LAN_DOMAIN`, its subdomains (the app is `expenser.<LAN_DOMAIN>`), `LAN_IP` and `localhost`.
 

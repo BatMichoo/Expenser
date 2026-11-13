@@ -17,6 +17,7 @@ DRY_RUN="${AUTODEPLOY_DRY_RUN:-0}"
 BACKUP_DIR="${AUTODEPLOY_BACKUP_DIR:-backups}"
 BACKUP_KEEP="${AUTODEPLOY_BACKUP_KEEP:-14}"
 ONCE="${AUTODEPLOY_ONCE:-0}"
+CERT_CHECK_INTERVAL="${AUTODEPLOY_CERT_CHECK_INTERVAL:-2592000}" # 30 days
 
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') autodeploy: $*"; }
 
@@ -25,6 +26,36 @@ log() { echo "$(date '+%Y-%m-%d %H:%M:%S') autodeploy: $*"; }
 skip_file() { echo "$(git rev-parse --git-dir)/autodeploy-skip"; }
 is_skipped() { grep -qx "$1" "$(skip_file)" 2>/dev/null; }
 mark_skipped() { echo "$1" >>"$(skip_file)"; }
+
+# When the TLS certificate was last checked, also stored in .git. Deploys
+# check it too (the certs service runs before nginx), but months can pass
+# without one, so the certificate is also checked every CERT_CHECK_INTERVAL.
+cert_check_file() { echo "$(git rev-parse --git-dir)/autodeploy-cert-checked"; }
+
+cert_check_due() {
+	last=$(cat "$(cert_check_file)" 2>/dev/null || echo 0)
+	[ $(($(date +%s) - last)) -ge "$CERT_CHECK_INTERVAL" ]
+}
+
+# check_certs runs the certs service, which renews the certificate only when
+# needed, and restarts nginx when it did. A failed check is retried on the
+# next poll.
+check_certs() {
+	if [ "$DRY_RUN" = "1" ]; then
+		log "dry run: would check the TLS certificate"
+		return 0
+	fi
+	before=$(cert_fingerprint)
+	if ! docker compose run --rm certs; then
+		log "TLS certificate check failed; will retry"
+		return 1
+	fi
+	date +%s >"$(cert_check_file)"
+	if [ "$(cert_fingerprint)" != "$before" ]; then
+		log "TLS certificate renewed, restarting nginx"
+		docker compose restart nginx || return 1
+	fi
+}
 
 # Prints success, pending or failure for the CI checks of a commit.
 ci_status() {
@@ -191,6 +222,10 @@ main() {
 					esac
 				fi
 			fi
+		fi
+
+		if [ "$current_branch" = "$BRANCH" ] && cert_check_due; then
+			check_certs || true
 		fi
 
 		[ "$ONCE" = "1" ] && exit 0
