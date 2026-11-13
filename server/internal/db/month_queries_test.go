@@ -48,10 +48,10 @@ func TestGetGroceriesExpensesForMonth(t *testing.T) {
 
 	got, err := db.GetGroceriesExpensesForMonth(context.Background(), time.November, 2026, userID)
 	require.NoError(t, err)
-	require.Len(t, *got, 2)
-	assert.Equal(t, "Bread", (*got)[0].Product, "newest first")
-	assert.Equal(t, "Milk", (*got)[1].Product)
-	assert.NotEmpty(t, (*got)[0].CategoryName)
+	require.Len(t, got, 2)
+	assert.Equal(t, "Bread", got[0].Product, "newest first")
+	assert.Equal(t, "Milk", got[1].Product)
+	assert.NotEmpty(t, got[0].CategoryName)
 }
 
 func TestMonthlyTotals(t *testing.T) {
@@ -146,4 +146,31 @@ func TestSpendHistory(t *testing.T) {
 	require.Len(t, groceries, 1)
 	assert.InDelta(t, 8, groceries[0].Amount, 0.001, "net of discount")
 	assert.NotEmpty(t, groceries[0].Type, "keyed by category")
+}
+
+// A purchase just after local midnight on the 1st belongs to that month in
+// every query, not only in the month list (whose EXTRACT uses the session
+// zone): range bounds are local midnights, not UTC ones.
+func TestGroceriesRangesUseLocalDays(t *testing.T) {
+	db, userID := setupMonthTestDB(t)
+	cfg, err := config.LoadConfig()
+	require.NoError(t, err)
+	addGrocery(t, db, userID, "Night snack", 3, 0, time.Date(2026, 11, 1, 0, 30, 0, 0, cfg.Location))
+
+	ctx := context.Background()
+	nov, err := db.GetGroceriesMonthlyTotals(ctx, userID, models.Date(2026, 11, 1), models.Date(2026, 12, 1))
+	require.NoError(t, err)
+	assert.Equal(t, map[string]float64{"2026-11": 3}, nov)
+
+	oct, err := db.GetGroceriesMonthlyTotals(ctx, userID, models.Date(2026, 10, 1), models.Date(2026, 11, 1))
+	require.NoError(t, err)
+	assert.Empty(t, oct)
+
+	stores, err := db.GetGroceriesCategoryTotals(ctx, userID, models.Date(2026, 11, 1), models.Date(2026, 12, 1))
+	require.NoError(t, err)
+	assert.Len(t, stores, 1)
+
+	list, err := db.GetGroceriesExpensesForMonth(ctx, time.November, 2026, userID)
+	require.NoError(t, err)
+	assert.Len(t, list, 1)
 }

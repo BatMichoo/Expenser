@@ -421,7 +421,7 @@ func TestMarkRecurringPaymentPaidRollsBackOnFailure(t *testing.T) {
 
 	expenses, err := testDB.GetHouseExpensesForMonth(context.Background(), time.December, 2026, userID)
 	require.NoError(t, err)
-	assert.Empty(t, *expenses, "no expense left behind")
+	assert.Empty(t, expenses, "no expense left behind")
 }
 
 func TestRecurringPaymentInputNormalized(t *testing.T) {

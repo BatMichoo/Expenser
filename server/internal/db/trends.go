@@ -18,6 +18,9 @@ func (db *DB) GetMonthTypeTotals(ctx context.Context, userID uuid.UUID, s models
 	if err != nil {
 		return nil, err
 	}
+	if s == models.SectionGroceries {
+		from, to = db.localRange(from, to) // purchase times are instants
+	}
 	rows, err := db.conn.QueryContext(ctx, query, userID, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query month totals: %w", err)
@@ -97,6 +100,7 @@ func (db *DB) GetYearTotals(ctx context.Context, userID uuid.UUID, s models.Sect
 // GetGroceriesDiscountTotal returns the total discount on the user's
 // groceries bought in [from, to).
 func (db *DB) GetGroceriesDiscountTotal(ctx context.Context, userID uuid.UUID, from, to time.Time) (float64, error) {
+	from, to = db.localRange(from, to) // purchase times are instants
 	var total sql.NullFloat64
 	err := db.conn.QueryRowContext(ctx, `
 		SELECT SUM(total_discount)::float8 FROM groceries_expenses
@@ -112,6 +116,7 @@ func (db *DB) GetGroceriesDiscountTotal(ctx context.Context, userID uuid.UUID, f
 // [from, to), oldest first, whatever their size status. categoryID 0 means
 // every category.
 func (db *DB) GetGroceryLines(ctx context.Context, userID uuid.UUID, categoryID int, from, to time.Time) ([]models.GroceryLine, error) {
+	from, to = db.localRange(from, to) // purchase times are instants
 	rows, err := db.conn.QueryContext(ctx, `
 		SELECT e.id, e.category_id, c.name, e.product, e.supermarket_name, e.purchase_date,
 			e.quantity::float8, e.unit_size::float8, e.total_price::float8, e.total_discount::float8, e.unit, e.size_status
@@ -144,13 +149,9 @@ func (db *DB) GetGroceryLines(ctx context.Context, userID uuid.UUID, categoryID 
 // GetUnsizedGroceries returns the user's purchases still waiting for a size,
 // newest first.
 func (db *DB) GetUnsizedGroceries(ctx context.Context, userID uuid.UUID) ([]models.GroceriesExpense, error) {
-	rows, err := db.conn.QueryContext(ctx, groceriesSelect+`
+	out, err := queryAll(ctx, db.conn, scanGroceriesExpense, groceriesSelect+`
 		WHERE e.user_id = $1 AND e.size_status = 'unknown'
 		ORDER BY e.purchase_date DESC, e.id DESC`, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query unsized groceries: %w", err)
-	}
-	out, err := scanGroceries(rows)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read unsized groceries: %w", err)
 	}

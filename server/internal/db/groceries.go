@@ -33,20 +33,20 @@ func storableSize(unit string, size float64) bool {
 	return groceryunits.Size{Unit: groceryunits.Unit(unit), Per: size}.Storable()
 }
 
-// scanUnit applies the nullable unit columns to e.
-func scanUnit(e *models.GroceriesExpense, unit sql.NullString, size sql.NullFloat64) {
-	e.Unit = unit.String
-	e.UnitSize = size.Float64
-}
-
-func (db *DB) CreateGroceriesExpense(ctx context.Context, input *models.GroceriesExpense) error {
-	query := `
+const insertGroceriesSQL = `
 		INSERT INTO groceries_expenses (user_id, category_id, product, quantity, unit_price, discount_per_unit, total_price, total_discount, supermarket_name, purchase_date, unit, unit_size, size_status)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::text, $12::numeric, ` + sizeStatusSQL + `)
-		RETURNING id, created_at, size_status;
-	`
+		RETURNING id, created_at, size_status, (SELECT name FROM grocery_categories WHERE id = $2)`
 
-	err := db.conn.QueryRowContext(ctx, query,
+// execQuerier is a *sql.DB or *sql.Tx.
+type execQuerier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// insertGroceriesExpense stores input and fills in its ID, creation time,
+// size status and category name.
+func insertGroceriesExpense(ctx context.Context, q execQuerier, input *models.GroceriesExpense) error {
+	return q.QueryRowContext(ctx, insertGroceriesSQL,
 		input.UserID,
 		input.CategoryID,
 		input.Product,
@@ -59,12 +59,35 @@ func (db *DB) CreateGroceriesExpense(ctx context.Context, input *models.Grocerie
 		input.PurchaseDate,
 		nullableUnit(input.Unit, input.UnitSize),
 		nullableUnitSize(input.Unit, input.UnitSize),
-	).Scan(&input.ID, &input.CreatedAt, &input.SizeStatus)
+	).Scan(&input.ID, &input.CreatedAt, &input.SizeStatus, &input.CategoryName)
+}
 
-	if err != nil {
+// CreateGroceriesExpense stores one purchase and fills in its ID, creation
+// time, size status and category name.
+func (db *DB) CreateGroceriesExpense(ctx context.Context, input *models.GroceriesExpense) error {
+	if err := insertGroceriesExpense(ctx, db.conn, input); err != nil {
 		return fmt.Errorf("failed to create groceries expense: %w", err)
 	}
+	return nil
+}
 
+// CreateGroceriesExpenses stores the purchases of one receipt, all or
+// nothing, filling in each one like CreateGroceriesExpense.
+func (db *DB) CreateGroceriesExpenses(ctx context.Context, items []*models.GroceriesExpense) error {
+	tx, err := db.conn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin groceries batch: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // no-op after Commit
+
+	for i, item := range items {
+		if err := insertGroceriesExpense(ctx, tx, item); err != nil {
+			return fmt.Errorf("failed to save item %d: %w", i, err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit groceries batch: %w", err)
+	}
 	return nil
 }
 
@@ -74,48 +97,36 @@ const groceriesSelect = `
 		JOIN grocery_categories c ON e.category_id = c.id
 `
 
-// scanGroceries reads rows produced by groceriesSelect.
-func scanGroceries(rows *sql.Rows) ([]models.GroceriesExpense, error) {
-	defer rows.Close()
-	var expenses []models.GroceriesExpense
-	for rows.Next() {
-		var e models.GroceriesExpense
-		var unitPriceRaw, discountPerUnitRaw, totalPriceRaw, totalDiscountRaw []byte
-		var unit sql.NullString
-		var unitSize sql.NullFloat64
-		if err := rows.Scan(&e.ID, &e.UserID, &e.CategoryID, &e.CategoryName, &e.Product, &e.Quantity, &unitPriceRaw, &discountPerUnitRaw, &totalPriceRaw, &totalDiscountRaw, &e.SupermarketName, &e.PurchaseDate, &e.CreatedAt, &unit, &unitSize, &e.SizeStatus); err != nil {
-			return nil, err
-		}
-		scanUnit(&e, unit, unitSize)
-		fmt.Sscanf(string(unitPriceRaw), "%f", &e.UnitPrice)
-		fmt.Sscanf(string(discountPerUnitRaw), "%f", &e.DiscountPerUnit)
-		fmt.Sscanf(string(totalPriceRaw), "%f", &e.TotalPrice)
-		fmt.Sscanf(string(totalDiscountRaw), "%f", &e.TotalDiscount)
-		expenses = append(expenses, e)
+// scanGroceriesExpense reads a row produced by groceriesSelect.
+func scanGroceriesExpense(r rowScanner, e *models.GroceriesExpense) error {
+	var unit sql.NullString
+	var unitSize sql.NullFloat64
+	if err := r.Scan(&e.ID, &e.UserID, &e.CategoryID, &e.CategoryName, &e.Product, &e.Quantity,
+		&e.UnitPrice, &e.DiscountPerUnit, &e.TotalPrice, &e.TotalDiscount, &e.SupermarketName,
+		&e.PurchaseDate, &e.CreatedAt, &unit, &unitSize, &e.SizeStatus); err != nil {
+		return err
 	}
-	return expenses, rows.Err()
+	e.Unit, e.UnitSize = unit.String, unitSize.Float64
+	return nil
 }
 
 // GetGroceriesExpensesForMonth returns the user's groceries bought in the
 // given month and year, newest first.
-func (db *DB) GetGroceriesExpensesForMonth(ctx context.Context, month time.Month, year int, userID uuid.UUID) (*[]models.GroceriesExpense, error) {
-	rows, err := db.conn.QueryContext(ctx, groceriesSelect+`
-		WHERE e.user_id = $1
-			AND EXTRACT(MONTH FROM e.purchase_date) = $2 AND EXTRACT(YEAR FROM e.purchase_date) = $3
-		ORDER BY e.purchase_date DESC, e.id DESC;`, userID, int(month), year)
+func (db *DB) GetGroceriesExpensesForMonth(ctx context.Context, month time.Month, year int, userID uuid.UUID) ([]models.GroceriesExpense, error) {
+	from, to := db.localRange(monthRange(month, year))
+	expenses, err := queryAll(ctx, db.conn, scanGroceriesExpense, groceriesSelect+`
+		WHERE e.user_id = $1 AND e.purchase_date >= $2 AND e.purchase_date < $3
+		ORDER BY e.purchase_date DESC, e.id DESC`, userID, from, to)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query groceries for month: %w", err)
+		return nil, fmt.Errorf("failed to fetch groceries for month: %w", err)
 	}
-	expenses, err := scanGroceries(rows)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read groceries for month: %w", err)
-	}
-	return &expenses, nil
+	return expenses, nil
 }
 
 // GetGroceriesMonthlyTotals returns net spending (price minus discount) per
 // month, keyed "YYYY-MM", for purchases in [from, to).
 func (db *DB) GetGroceriesMonthlyTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
+	from, to = db.localRange(from, to) // purchase times are instants
 	return db.monthlyTotals(ctx, `
 		SELECT to_char(purchase_date, 'YYYY-MM'), SUM(total_price - total_discount)
 		FROM groceries_expenses
@@ -126,25 +137,11 @@ func (db *DB) GetGroceriesMonthlyTotals(ctx context.Context, userID uuid.UUID, f
 // GetGroceriesExpenseByID returns the user's groceries expense. It returns an
 // error wrapping sql.ErrNoRows when no such expense belongs to the user.
 func (db *DB) GetGroceriesExpenseByID(ctx context.Context, id int, userID uuid.UUID) (*models.GroceriesExpense, error) {
-	query := `
-		SELECT e.id, e.user_id, e.category_id, c.name, e.product, e.quantity, e.unit_price, e.discount_per_unit, e.total_price, e.total_discount, e.supermarket_name, e.purchase_date, e.created_at, e.unit, e.unit_size::float8, e.size_status
-		FROM groceries_expenses e
-		JOIN grocery_categories c ON e.category_id = c.id
-		WHERE e.id = $1 AND e.user_id = $2;
-	`
 	var e models.GroceriesExpense
-	var unitPriceRaw, discountPerUnitRaw, totalPriceRaw, totalDiscountRaw []byte
-	var unit sql.NullString
-	var unitSize sql.NullFloat64
-	err := db.conn.QueryRowContext(ctx, query, id, userID).Scan(&e.ID, &e.UserID, &e.CategoryID, &e.CategoryName, &e.Product, &e.Quantity, &unitPriceRaw, &discountPerUnitRaw, &totalPriceRaw, &totalDiscountRaw, &e.SupermarketName, &e.PurchaseDate, &e.CreatedAt, &unit, &unitSize, &e.SizeStatus)
-	if err != nil {
+	row := db.conn.QueryRowContext(ctx, groceriesSelect+`WHERE e.id = $1 AND e.user_id = $2`, id, userID)
+	if err := scanGroceriesExpense(row, &e); err != nil {
 		return nil, fmt.Errorf("failed to get expense: %w", err)
 	}
-	scanUnit(&e, unit, unitSize)
-	fmt.Sscanf(string(unitPriceRaw), "%f", &e.UnitPrice)
-	fmt.Sscanf(string(discountPerUnitRaw), "%f", &e.DiscountPerUnit)
-	fmt.Sscanf(string(totalPriceRaw), "%f", &e.TotalPrice)
-	fmt.Sscanf(string(totalDiscountRaw), "%f", &e.TotalDiscount)
 	return &e, nil
 }
 
@@ -184,31 +181,26 @@ func (db *DB) DeleteGroceriesExpense(ctx context.Context, id int, userID uuid.UU
 	if err != nil {
 		return false, fmt.Errorf("failed to delete expense: %w", err)
 	}
-	rowsAffected, _ := res.RowsAffected()
-	return rowsAffected > 0, nil
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("failed to delete expense: %w", err)
+	}
+	return n > 0, nil
 }
 
 func (db *DB) GetAllCategories(ctx context.Context) ([]models.Category, error) {
-	query := `SELECT id, name FROM grocery_categories ORDER BY name ASC`
-	rows, err := db.conn.QueryContext(ctx, query)
+	categories, err := queryAll(ctx, db.conn, func(r rowScanner, c *models.Category) error {
+		return r.Scan(&c.ID, &c.Name)
+	}, `SELECT id, name FROM grocery_categories ORDER BY name ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch categories: %w", err)
-	}
-	defer rows.Close()
-
-	var categories []models.Category
-	for rows.Next() {
-		var c models.Category
-		if err := rows.Scan(&c.ID, &c.Name); err != nil {
-			return nil, err
-		}
-		categories = append(categories, c)
 	}
 	return categories, nil
 }
 
 // GetGroceriesCategoryTotals returns net groceries spending per category, keyed by name, for [from, to).
 func (db *DB) GetGroceriesCategoryTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
+	from, to = db.localRange(from, to) // purchase times are instants
 	return db.monthlyTotals(ctx, `
 		SELECT c.name, SUM(e.total_price - e.total_discount)
 		FROM groceries_expenses e
@@ -219,6 +211,7 @@ func (db *DB) GetGroceriesCategoryTotals(ctx context.Context, userID uuid.UUID, 
 
 // GetGroceriesSpendHistory returns net groceries spending per category and day for [from, to).
 func (db *DB) GetGroceriesSpendHistory(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]models.SpendEntry, error) {
+	from, to = db.localRange(from, to) // purchase times are instants
 	return db.spendHistory(ctx, `
 		SELECT gc.name, to_char(g.purchase_date, 'YYYY-MM-DD'), SUM(g.total_price - g.total_discount)
 		FROM groceries_expenses g
@@ -231,6 +224,7 @@ func (db *DB) GetGroceriesSpendHistory(ctx context.Context, userID uuid.UUID, fr
 // keyed by its name, for [from, to). Purchases without a store name are
 // left out.
 func (db *DB) GetGroceriesStoreTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error) {
+	from, to = db.localRange(from, to) // purchase times are instants
 	return db.monthlyTotals(ctx, `
 		SELECT TRIM(supermarket_name), SUM(total_price - total_discount)
 		FROM groceries_expenses

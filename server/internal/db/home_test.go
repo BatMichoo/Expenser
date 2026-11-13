@@ -299,18 +299,18 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 
 	type testCase struct {
 		name       string
-		funcToTest func(userId uuid.UUID) (*[]models.HouseExpense, error)
+		funcToTest func(userId uuid.UUID) ([]models.HouseExpense, error)
 		expected   []models.HouseExpense
 		setup      func(t *testing.T)
 		wantErr    bool
-		validate   func(t *testing.T, exp []models.HouseExpense, got *[]models.HouseExpense)
+		validate   func(t *testing.T, exp []models.HouseExpense, got []models.HouseExpense)
 	}
 
 	expenseDate := time.Now()
 	tests := []testCase{
 		{
 			name: "Expenses for month",
-			funcToTest: func(userId uuid.UUID) (*[]models.HouseExpense, error) {
+			funcToTest: func(userId uuid.UUID) ([]models.HouseExpense, error) {
 				return testDB.GetHouseExpensesForMonth(context.Background(), expenseDate.Month(), expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
@@ -367,8 +367,8 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			validate: func(t *testing.T, exp []models.HouseExpense, got *[]models.HouseExpense) {
-				actual := *got
+			validate: func(t *testing.T, exp []models.HouseExpense, got []models.HouseExpense) {
+				actual := got
 				for i, act := range actual {
 					assert.Equal(t, exp[i].Amount, act.Amount)
 				}
@@ -376,7 +376,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 		},
 		{
 			name: "Expenses for year",
-			funcToTest: func(userId uuid.UUID) (*[]models.HouseExpense, error) {
+			funcToTest: func(userId uuid.UUID) ([]models.HouseExpense, error) {
 				return testDB.GetHouseExpensesForYear(context.Background(), expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
@@ -425,8 +425,8 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			validate: func(t *testing.T, exp []models.HouseExpense, got *[]models.HouseExpense) {
-				actual := *got
+			validate: func(t *testing.T, exp []models.HouseExpense, got []models.HouseExpense) {
+				actual := got
 				assert.Equal(t, len(exp), len(actual))
 
 				for i, act := range actual {

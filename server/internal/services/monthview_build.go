@@ -16,13 +16,13 @@ import (
 // MonthStore is the data access the month views need. *database.DB
 // implements it.
 type MonthStore interface {
-	GetHouseExpensesForMonth(ctx context.Context, month time.Month, year int, userID uuid.UUID) (*[]models.HouseExpense, error)
+	GetHouseExpensesForMonth(ctx context.Context, month time.Month, year int, userID uuid.UUID) ([]models.HouseExpense, error)
 	GetHouseMonthlyTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetHouseUtilityTypes(ctx context.Context) (*[]models.HomeUtilityType, error)
-	GetCarExpensesForMonth(ctx context.Context, month time.Month, year int, userID uuid.UUID) (*[]models.CarExpense, error)
+	GetHouseUtilityTypes(ctx context.Context) ([]models.HomeUtilityType, error)
+	GetCarExpensesForMonth(ctx context.Context, month time.Month, year int, userID uuid.UUID) ([]models.CarExpense, error)
 	GetCarMonthlyTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
-	GetCarExpenseTypes(ctx context.Context) (*[]models.CarExpenseType, error)
-	GetGroceriesExpensesForMonth(ctx context.Context, month time.Month, year int, userID uuid.UUID) (*[]models.GroceriesExpense, error)
+	GetCarExpenseTypes(ctx context.Context) ([]models.CarExpenseType, error)
+	GetGroceriesExpensesForMonth(ctx context.Context, month time.Month, year int, userID uuid.UUID) ([]models.GroceriesExpense, error)
 	GetGroceriesMonthlyTotals(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]float64, error)
 	GetAllCategories(ctx context.Context) ([]models.Category, error)
 	GetUpcomingRecurringPayments(ctx context.Context, userID uuid.UUID, until time.Time) ([]models.RecurringPayment, error)
@@ -190,9 +190,9 @@ func (s *MonthViewService) House(ctx context.Context, userID uuid.UUID, ym YearM
 		return nil, fmt.Errorf("house types: %w", err)
 	}
 
-	items := make([]SummaryItem, 0, len(*rows))
+	items := make([]SummaryItem, 0, len(rows))
 	shown := []models.HouseExpense{}
-	for _, e := range *rows {
+	for _, e := range rows {
 		items = append(items, SummaryItem{Type: e.UtilityType, Amount: e.Amount - e.DiscountAmount})
 		if filter.TypeID != 0 && e.UtilityTypeID != filter.TypeID {
 			continue
@@ -217,7 +217,7 @@ func (s *MonthViewService) House(ctx context.Context, userID uuid.UUID, ym YearM
 	}
 	v.House = shown
 	v.TypePrefix = "type."
-	for _, t := range *types {
+	for _, t := range types {
 		v.Types = append(v.Types, models.TypeOption{ID: t.ID, Name: t.Name})
 	}
 	colorBreakdown(v)
@@ -240,9 +240,9 @@ func (s *MonthViewService) Car(ctx context.Context, userID uuid.UUID, ym YearMon
 		return nil, fmt.Errorf("car types: %w", err)
 	}
 
-	items := make([]SummaryItem, 0, len(*rows))
+	items := make([]SummaryItem, 0, len(rows))
 	shown := []models.CarExpense{}
-	for _, e := range *rows {
+	for _, e := range rows {
 		items = append(items, SummaryItem{Type: e.Type, Amount: e.Amount - e.DiscountAmount})
 		if filter.TypeID != 0 && e.ExpenseTypeID != filter.TypeID {
 			continue
@@ -267,7 +267,7 @@ func (s *MonthViewService) Car(ctx context.Context, userID uuid.UUID, ym YearMon
 	}
 	v.Car = shown
 	v.TypePrefix = "type."
-	for _, t := range *types {
+	for _, t := range types {
 		v.Types = append(v.Types, models.TypeOption{ID: t.ID, Name: t.Name})
 	}
 	colorBreakdown(v)
@@ -291,9 +291,9 @@ func (s *MonthViewService) Groceries(ctx context.Context, userID uuid.UUID, ym Y
 		return nil, fmt.Errorf("groceries categories: %w", err)
 	}
 
-	items := make([]SummaryItem, 0, len(*rows))
+	items := make([]SummaryItem, 0, len(rows))
 	shown := []models.GroceriesExpense{}
-	for _, e := range *rows {
+	for _, e := range rows {
 		items = append(items, SummaryItem{Type: e.CategoryName, Amount: e.TotalPrice - e.TotalDiscount})
 		if filter.TypeID != 0 && e.CategoryID != filter.TypeID {
 			continue

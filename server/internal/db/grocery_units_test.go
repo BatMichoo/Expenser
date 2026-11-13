@@ -184,7 +184,7 @@ func TestCreateGroceriesSizeStatus(t *testing.T) {
 	list, err := tdb.GetGroceriesExpensesForMonth(context.Background(), time.Now().Month(), time.Now().Year(), u.ID)
 	require.NoError(t, err)
 	statuses := map[string]int{}
-	for _, e := range *list {
+	for _, e := range list {
 		statuses[e.SizeStatus]++
 	}
 	assert.Equal(t, map[string]int{models.SizeKnown: 2, models.SizeNotTracked: 1}, statuses)

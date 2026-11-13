@@ -311,12 +311,12 @@ func TestRowActionsAreLabelledIcons(t *testing.T) {
 	assert.Equal(t, "/house/expenses/delete/42", hx)
 }
 
-func houseTypes() *[]models.HomeUtilityType {
-	return &[]models.HomeUtilityType{{ID: 1, Name: "Electricity"}, {ID: 3, Name: "Gas"}, {ID: 7, Name: "Other"}}
+func houseTypes() []models.HomeUtilityType {
+	return []models.HomeUtilityType{{ID: 1, Name: "Electricity"}, {ID: 3, Name: "Gas"}, {ID: 7, Name: "Other"}}
 }
 
-func carTypes() *[]models.CarExpenseType {
-	return &[]models.CarExpenseType{{ID: 1, Name: "Fuel"}, {ID: 3, Name: "Insurance"}}
+func carTypes() []models.CarExpenseType {
+	return []models.CarExpenseType{{ID: 1, Name: "Fuel"}, {ID: 3, Name: "Insurance"}}
 }
 
 // assertSheetForm checks the parts every add/edit sheet shares.

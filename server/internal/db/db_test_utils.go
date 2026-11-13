@@ -75,5 +75,5 @@ func connectTestDB(cfg *config.Config) (*DB, error) {
 	}
 	fmt.Println("Migrations applied successfully to test DB.")
 
-	return &DB{conn: testDBConn}, nil
+	return &DB{conn: testDBConn, loc: cfg.Location}, nil
 }

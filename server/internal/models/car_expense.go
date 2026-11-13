@@ -126,7 +126,7 @@ type CarExpResponse struct {
 
 type EditCarFormData struct {
 	Expense  *CarExpense
-	Types    *[]CarExpenseType
+	Types    []CarExpenseType
 	Metadata any
 	Lang     string
 }

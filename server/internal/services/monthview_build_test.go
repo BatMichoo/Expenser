@@ -46,30 +46,30 @@ func (f *fakeMonthStore) GetGroceriesSpendHistory(_ context.Context, _ uuid.UUID
 	return f.spendHistory("groceries", from, to)
 }
 
-func (f *fakeMonthStore) GetHouseExpensesForMonth(_ context.Context, m time.Month, y int, _ uuid.UUID) (*[]models.HouseExpense, error) {
+func (f *fakeMonthStore) GetHouseExpensesForMonth(_ context.Context, m time.Month, y int, _ uuid.UUID) ([]models.HouseExpense, error) {
 	f.gotMonth, f.gotYear = m, y
 	rows := append([]models.HouseExpense(nil), f.house...)
-	return &rows, nil
+	return rows, nil
 }
 func (f *fakeMonthStore) GetHouseMonthlyTotals(_ context.Context, _ uuid.UUID, from, to time.Time) (map[string]float64, error) {
 	f.gotFrom, f.gotTo = from, to
 	return f.totals, nil
 }
-func (f *fakeMonthStore) GetHouseUtilityTypes(_ context.Context) (*[]models.HomeUtilityType, error) {
-	return &[]models.HomeUtilityType{{ID: 2, Name: "Water"}, {ID: 3, Name: "Gas"}}, nil
+func (f *fakeMonthStore) GetHouseUtilityTypes(_ context.Context) ([]models.HomeUtilityType, error) {
+	return []models.HomeUtilityType{{ID: 2, Name: "Water"}, {ID: 3, Name: "Gas"}}, nil
 }
-func (f *fakeMonthStore) GetCarExpensesForMonth(context.Context, time.Month, int, uuid.UUID) (*[]models.CarExpense, error) {
-	return &[]models.CarExpense{}, nil
+func (f *fakeMonthStore) GetCarExpensesForMonth(context.Context, time.Month, int, uuid.UUID) ([]models.CarExpense, error) {
+	return []models.CarExpense{}, nil
 }
 func (f *fakeMonthStore) GetCarMonthlyTotals(context.Context, uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
 	return f.totals, nil
 }
-func (f *fakeMonthStore) GetCarExpenseTypes(_ context.Context) (*[]models.CarExpenseType, error) {
-	return &[]models.CarExpenseType{}, nil
+func (f *fakeMonthStore) GetCarExpenseTypes(_ context.Context) ([]models.CarExpenseType, error) {
+	return []models.CarExpenseType{}, nil
 }
-func (f *fakeMonthStore) GetGroceriesExpensesForMonth(context.Context, time.Month, int, uuid.UUID) (*[]models.GroceriesExpense, error) {
+func (f *fakeMonthStore) GetGroceriesExpensesForMonth(context.Context, time.Month, int, uuid.UUID) ([]models.GroceriesExpense, error) {
 	rows := append([]models.GroceriesExpense(nil), f.groceries...)
-	return &rows, nil
+	return rows, nil
 }
 func (f *fakeMonthStore) GetGroceriesMonthlyTotals(context.Context, uuid.UUID, time.Time, time.Time) (map[string]float64, error) {
 	return f.totals, nil

@@ -121,7 +121,7 @@ type HouseExpResponse struct {
 
 type EditHouseFormData struct {
 	Expense  *HouseExpense
-	Types    *[]HomeUtilityType
+	Types    []HomeUtilityType
 	Metadata interface{}
 	Lang     string
 }

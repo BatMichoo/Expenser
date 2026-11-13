@@ -296,18 +296,18 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 
 	type testCase struct {
 		name       string
-		funcToTest func(userId uuid.UUID) (*[]models.CarExpense, error)
+		funcToTest func(userId uuid.UUID) ([]models.CarExpense, error)
 		expected   []models.CarExpense
 		setup      func(t *testing.T)
 		wantErr    bool
-		validate   func(t *testing.T, exp []models.CarExpense, got *[]models.CarExpense)
+		validate   func(t *testing.T, exp []models.CarExpense, got []models.CarExpense)
 	}
 
 	expenseDate := time.Now()
 	tests := []testCase{
 		{
 			name: "Expenses for month",
-			funcToTest: func(userId uuid.UUID) (*[]models.CarExpense, error) {
+			funcToTest: func(userId uuid.UUID) ([]models.CarExpense, error) {
 				return testDB.GetCarExpensesForMonth(context.Background(), expenseDate.Month(), expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
@@ -364,8 +364,8 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			validate: func(t *testing.T, exp []models.CarExpense, got *[]models.CarExpense) {
-				actual := *got
+			validate: func(t *testing.T, exp []models.CarExpense, got []models.CarExpense) {
+				actual := got
 				for i, act := range actual {
 					assert.Equal(t, exp[i].Amount, act.Amount)
 				}
@@ -373,7 +373,7 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 		},
 		{
 			name: "Expenses for year",
-			funcToTest: func(userId uuid.UUID) (*[]models.CarExpense, error) {
+			funcToTest: func(userId uuid.UUID) ([]models.CarExpense, error) {
 				return testDB.GetCarExpensesForYear(context.Background(), expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
@@ -422,8 +422,8 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			validate: func(t *testing.T, exp []models.CarExpense, got *[]models.CarExpense) {
-				actual := *got
+			validate: func(t *testing.T, exp []models.CarExpense, got []models.CarExpense) {
+				actual := got
 				assert.Equal(t, len(exp), len(actual))
 
 				for i, act := range actual {

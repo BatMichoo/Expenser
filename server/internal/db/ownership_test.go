@@ -111,7 +111,7 @@ func TestExpenseWithoutMetadata(t *testing.T) {
 
 	cars, err := testDB.GetCarExpensesForYear(context.Background(), 0, user.ID)
 	require.NoError(t, err)
-	assert.Len(t, *cars, 1)
+	assert.Len(t, cars, 1)
 
 	house := &models.HouseExpense{UtilityTypeID: 6, Amount: 20, ExpenseDate: time.Now(), CreatedBy: user.ID}
 	require.NoError(t, testDB.CreateHouseExpense(context.Background(), house))

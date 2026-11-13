@@ -99,22 +99,22 @@ func TestHouseAndCarTotalsSubtractDiscounts(t *testing.T) {
 		"house year": func() []float64 {
 			r, err := db.GetHouseExpensesForYear(context.Background(), 2026, userID)
 			require.NoError(t, err)
-			return houseAmounts(*r)
+			return houseAmounts(r)
 		},
 		"house type": func() []float64 {
 			r, err := db.GetHouseExpenseTypeForYear(context.Background(), 2, 2026, userID)
 			require.NoError(t, err)
-			return houseAmounts(*r)
+			return houseAmounts(r)
 		},
 		"car year": func() []float64 {
 			r, err := db.GetCarExpensesForYear(context.Background(), 2026, userID)
 			require.NoError(t, err)
-			return carAmounts(*r)
+			return carAmounts(r)
 		},
 		"car type": func() []float64 {
 			r, err := db.GetCarExpenseTypeForYear(context.Background(), 1, 2026, userID)
 			require.NoError(t, err)
-			return carAmounts(*r)
+			return carAmounts(r)
 		},
 	} {
 		amounts := get()
