@@ -1,5 +1,3 @@
--include .env
-
 .PHONY: start dev-db dev-db-down
 
 start:

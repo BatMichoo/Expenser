@@ -35,8 +35,6 @@ backups/
 docs/
 
 *.crt
-# Written by the old host-side make certs
-nginx/certs/openssl.cnf
 ca-backup.tgz
 *.key
 
