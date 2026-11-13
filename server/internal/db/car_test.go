@@ -6,6 +6,7 @@ import (
 	"expenser/internal/models"
 	"fmt"
 	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 )
 
 func TestCreateCarExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Create Car Expense %v", err)
 		t.FailNow()
@@ -94,7 +95,7 @@ func TestCreateCarExpense(t *testing.T) {
 }
 
 func TestEditCarExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Edit Car Expense %v", err)
 		t.FailNow()
@@ -174,7 +175,7 @@ func TestEditCarExpense(t *testing.T) {
 }
 
 func TestGetCarExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Get Car Expense %v", err)
 		t.FailNow()
@@ -285,7 +286,7 @@ func TestGetCarExpense(t *testing.T) {
 }
 
 func TestGetMultipleCarExpenses(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Get Multiple Car Expense %v", err)
 		t.FailNow()
@@ -395,7 +396,7 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 }
 
 func TestDeleteCarExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Delete Car Expense %v", err)
 		t.FailNow()

@@ -2,6 +2,7 @@ package database
 
 import (
 	"expenser/internal/config"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,7 +10,7 @@ import (
 )
 
 func TestSessionUsesTheAppTimezone(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 	testDB := InitTestDB(cfg)
 	defer testDB.Close()

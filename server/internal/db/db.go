@@ -27,9 +27,9 @@ type DB struct {
 // dev seed data. Every failure is returned, so the caller decides how to
 // stop.
 func InitDatabase(cfg *config.Config) (*DB, error) {
-	log.Printf("Connecting to %s.", config.RedactConnString(cfg.DB.DBConnString))
+	log.Printf("Connecting to %s.", config.RedactConnString(cfg.DB.ConnString()))
 
-	db, err := connect(cfg.DB.DBConnString, cfg.Location)
+	db, err := connect(cfg.DB.ConnString(), cfg.Location)
 	if err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
 	}

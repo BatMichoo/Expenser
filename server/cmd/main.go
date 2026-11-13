@@ -42,7 +42,7 @@ func main() {
 		log.Printf("Loaded %s.", envPath)
 	}
 
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Fatalf("Couldn't load configuration: %v", err)
 	}
@@ -105,18 +105,13 @@ func main() {
 	}()
 
 	// --- Start the server ---
-	port := os.Getenv("APP_PORT")
-	if port == "" {
-		port = "8080"
-	}
-
 	srv := &http.Server{
-		Addr:              ":" + port,
+		Addr:              ":" + cfg.Port,
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	go func() {
-		log.Printf("Server starting on port %s", port)
+		log.Printf("Server starting on port %s", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("Server failed to start: %v", err)
 		}

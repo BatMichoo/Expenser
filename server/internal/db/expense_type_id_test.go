@@ -4,6 +4,7 @@ import (
 	"context"
 	"expenser/internal/config"
 	"expenser/internal/models"
+	"os"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 
 // The edit forms pre-select the expense's type, so reads by ID must return it.
 func TestGetExpenseByIDReturnsTypeID(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 	testDB := InitTestDB(cfg)
 	defer testDB.Close()

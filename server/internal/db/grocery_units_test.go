@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"os"
 	"testing"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 
 func setupUnitsTestDB(t *testing.T) (*DB, *models.User) {
 	t.Helper()
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 	tdb := InitTestDB(cfg)
 	t.Cleanup(func() { tdb.Close() })

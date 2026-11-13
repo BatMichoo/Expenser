@@ -6,6 +6,7 @@ import (
 	"expenser/internal/config"
 	"expenser/internal/models"
 	"expenser/internal/services"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -29,7 +30,7 @@ func rpIntPtr(i int) *int { return &i }
 
 func setupRecurringTestDB(t *testing.T) (*DB, uuid.UUID) {
 	t.Helper()
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 
 	testDB := InitTestDB(cfg)

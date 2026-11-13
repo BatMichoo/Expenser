@@ -4,6 +4,7 @@ import (
 	"context"
 	"expenser/internal/config"
 	"expenser/internal/models"
+	"os"
 	"testing"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 
 func setupMonthTestDB(t *testing.T) (*DB, uuid.UUID) {
 	t.Helper()
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 	testDB := InitTestDB(cfg)
 	t.Cleanup(func() { testDB.Close() })
@@ -153,7 +154,7 @@ func TestSpendHistory(t *testing.T) {
 // zone): range bounds are local midnights, not UTC ones.
 func TestGroceriesRangesUseLocalDays(t *testing.T) {
 	db, userID := setupMonthTestDB(t)
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 	addGrocery(t, db, userID, "Night snack", 3, 0, time.Date(2026, 11, 1, 0, 30, 0, 0, cfg.Location))
 

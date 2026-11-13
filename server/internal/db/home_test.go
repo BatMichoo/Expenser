@@ -5,6 +5,7 @@ import (
 	"expenser/internal/config"
 	"expenser/internal/models"
 	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 )
 
 func TestCreateHomeExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Create Home Expense %v", err)
 		t.FailNow()
@@ -97,7 +98,7 @@ func TestCreateHomeExpense(t *testing.T) {
 }
 
 func TestEditHomeExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Edit Home Expense %v", err)
 		t.FailNow()
@@ -177,7 +178,7 @@ func TestEditHomeExpense(t *testing.T) {
 }
 
 func TestGetHomeExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Get Home Expense %v", err)
 		t.FailNow()
@@ -288,7 +289,7 @@ func TestGetHomeExpense(t *testing.T) {
 }
 
 func TestGetMultipleHomeExpenses(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Get Multiple Home Expense %v", err)
 		t.FailNow()
@@ -398,7 +399,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 }
 
 func TestDeleteHomeExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Delete Home Expense %v", err)
 		t.FailNow()

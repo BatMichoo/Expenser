@@ -5,6 +5,7 @@ import (
 	"expenser/internal/config"
 	"expenser/internal/models"
 	"log"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -13,7 +14,7 @@ import (
 )
 
 func TestGetUserByID(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test GetUserByID %v", err)
 		t.FailNow()
@@ -88,7 +89,7 @@ func TestGetUserByID(t *testing.T) {
 }
 
 func TestGetUserByUsername(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test GetUserByUsername %v", err)
 		t.FailNow()
@@ -159,7 +160,7 @@ func TestGetUserByUsername(t *testing.T) {
 }
 
 func TestUserExists(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test UserExists %v", err)
 		t.FailNow()
@@ -214,7 +215,7 @@ func TestUserExists(t *testing.T) {
 }
 
 func TestCreateUserTakenUsername(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 	testDB := InitTestDB(cfg)
 	defer testDB.Close()

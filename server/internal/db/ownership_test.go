@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"expenser/internal/config"
 	"expenser/internal/models"
+	"os"
 	"testing"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 // TestExpenseOwnership checks that get, edit and delete by ID only reach the
 // owner's expenses.
 func TestExpenseOwnership(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 
 	testDB := InitTestDB(cfg)
@@ -92,7 +93,7 @@ func TestExpenseOwnership(t *testing.T) {
 // TestExpenseWithoutMetadata checks that expense types without metadata are
 // stored as NULL and read back as empty.
 func TestExpenseWithoutMetadata(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 
 	testDB := InitTestDB(cfg)

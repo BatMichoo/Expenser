@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"expenser/internal/config"
 	"expenser/internal/models"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -13,7 +14,7 @@ import (
 )
 
 func TestPasswordChangeRaisesTokenVersion(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 	testDB := InitTestDB(cfg)
 	defer testDB.Close()
