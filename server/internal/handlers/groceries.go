@@ -298,6 +298,18 @@ func parseReceiptPurchaseTime(form url.Values, now time.Time) (time.Time, error)
 	return t, nil
 }
 
+// receiptItemCategory is the category to preselect for a receipt item: the
+// one the reader named, or Other when it named none or one outside the list
+// (no option would be selected and the browser would pick the first one).
+func receiptItemCategory(name string, categories []models.Category) string {
+	for _, c := range categories {
+		if c.Name == name {
+			return name
+		}
+	}
+	return models.GroceryCategoryOtherName
+}
+
 // receiptTimeInput is the value format of a datetime-local input.
 const receiptTimeInput = "2006-01-02T15:04"
 
@@ -312,6 +324,7 @@ func (h *GroceriesHandler) renderReceiptReview(c *gin.Context, analysis *models.
 	items := make([]models.ReceiptItem, len(analysis.Items))
 	for i, item := range analysis.Items {
 		item.Unit, item.UnitSize = receiptItemSize(item)
+		item.Category = receiptItemCategory(item.Category, categories)
 		items[i] = item
 	}
 	c.HTML(http.StatusOK, "groceries-receipt-edit-form", gin.H{

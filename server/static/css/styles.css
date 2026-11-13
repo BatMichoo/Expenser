@@ -4556,7 +4556,8 @@ tr:hover .row-actions,
   font-weight: 600;
 }
 
-.item-excluded {
+.item-excluded,
+.item-mixed {
   margin: 0 0 1rem;
   padding: 0.6rem 0.9rem;
   border-radius: 8px;

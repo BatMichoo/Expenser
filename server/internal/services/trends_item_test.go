@@ -308,3 +308,57 @@ func TestBuildItemTrendPriceNowPeriod(t *testing.T) {
 	tr = BuildItemTrend(lines, lines, models.Category{ID: 1, Name: "Dairy"}, "kg", "year", []string{"2025", "2026"}, now, "en")
 	require.Equal(t, "2026", tr.PriceNowPeriod)
 }
+
+func TestBuildItemTrendSplitsMixedRows(t *testing.T) {
+	now := models.Date(2026, 11, 12)
+	veg := gl(4, models.Date(2026, 10, 2), 1, 1, 3, 0, "kg")
+	veg.Category, veg.General = "Vegetables", true
+	all := []models.GroceryLine{gl(1, models.Date(2026, 10, 1), 1, 1, 2, 0, "kg"), veg}
+	it := BuildItemTrend(all[:1], all, models.Category{ID: 1, Name: "Dairy"}, "", "month", []string{"2026-10", "2026-11"}, now, "en")
+	require.Len(t, it.Items, 1)
+	require.Equal(t, "Dairy", it.Items[0].Item)
+	require.Len(t, it.MixedItems, 1, "general categories are listed apart")
+	require.Equal(t, "Vegetables", it.MixedItems[0].Item)
+	require.False(t, it.General)
+
+	it = BuildItemTrend(all[1:], all, models.Category{ID: 4, Name: "Vegetables", General: true}, "", "month", []string{"2026-10", "2026-11"}, now, "en")
+	require.True(t, it.General, "a general category's own trend is still shown, flagged")
+	require.False(t, it.Empty)
+}
+
+type mixedItemStore struct{ itemStore }
+
+func (mixedItemStore) GetTrackedCategories(context.Context) ([]models.Category, error) {
+	return []models.Category{{ID: 1, Name: "Dairy"}, {ID: 2, Name: "Meat"}, {ID: 4, Name: "Vegetables", General: true}}, nil
+}
+
+func TestPageItemPrefersSpecificCategory(t *testing.T) {
+	initI18n(t)
+	d := models.Date
+	veg := func(day int) models.GroceryLine {
+		l := gl(4, d(2026, 10, day), 1, 1, 3, 0, "kg")
+		l.Category, l.General = "Vegetables", true
+		return l
+	}
+	st := mixedItemStore{itemStore{lines: []models.GroceryLine{
+		gl(1, d(2026, 10, 1), 1, 1, 2, 0, "kg"),
+		veg(1), veg(2), veg(3), // most bought, but mixed
+	}}}
+	svc := NewTrendsService(st)
+	now := d(2026, 11, 12)
+	p, err := svc.Page(context.Background(), uuid.New(), models.SectionGroceries, models.TrendQuery{Tab: "item", Period: "12", By: "month"}, "en", now)
+	require.NoError(t, err)
+	require.Equal(t, 1, p.Item.ItemID, "a specific category is the default")
+	require.Len(t, p.Items, 2)
+	require.Len(t, p.MixedItems, 1)
+
+	p, err = svc.Page(context.Background(), uuid.New(), models.SectionGroceries, models.TrendQuery{Tab: "item", Period: "12", ItemID: 4, By: "month"}, "en", now)
+	require.NoError(t, err)
+	require.Equal(t, 4, p.Item.ItemID, "a general category can still be picked")
+	require.True(t, p.Item.General)
+
+	only := mixedItemStore{itemStore{lines: []models.GroceryLine{veg(1)}}}
+	p, err = NewTrendsService(only).Page(context.Background(), uuid.New(), models.SectionGroceries, models.TrendQuery{Tab: "item", Period: "12", By: "month"}, "en", now)
+	require.NoError(t, err)
+	require.Equal(t, 4, p.Item.ItemID, "a general category is the default when no specific one has data")
+}

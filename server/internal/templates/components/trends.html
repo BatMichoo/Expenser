@@ -58,6 +58,13 @@
     {{ range .Items }}
     <option value="{{ .ID }}" {{ if eq .ID $.Query.ItemID }}selected{{ end }}>{{ T $.Lang (print "category." .Name) }}</option>
     {{ end }}
+    {{ if .MixedItems }}
+    <optgroup label='{{ T .Lang "trends.item_mixed_group" }}'>
+      {{ range .MixedItems }}
+      <option value="{{ .ID }}" {{ if eq .ID $.Query.ItemID }}selected{{ end }}>{{ T $.Lang (print "category." .Name) }}</option>
+      {{ end }}
+    </optgroup>
+    {{ end }}
   </select>
   <select name="period" class="trend-select" aria-label='{{ T .Lang "trends.period" }}'>
     <option value="6" {{ if eq .Query.Period "6" }}selected{{ end }}>{{ T .Lang "trends.last_6" }}</option>
@@ -178,6 +185,9 @@
 <p class="trend-empty">{{ T .Lang "trends.no_data" }}</p>
 {{ else }}
 {{ $unit := T .Lang $i.UnitKey }}
+{{ if $i.General }}
+<p class="item-mixed item-mixed-note">{{ printf (T .Lang "trends.item_mixed_note") (T .Lang (print .TypePrefix $i.Item)) }}</p>
+{{ end }}
 {{ if $i.Excluded }}
 <p class="item-excluded">{{ printf (T .Lang "trends.item_excluded") $i.Excluded }}
   <a href="/groceries/sizes" hx-get="/groceries/sizes" hx-target="#section-content" hx-push-url="true">{{ T .Lang "trends.item_add_sizes" }}</a></p>
@@ -236,11 +246,26 @@
 {{ if $i.Items }}
 <section class="side-panel trend-card">
   {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "trends.item_all")) }}
+  {{ template "trend-item-table" (dict "Rows" $i.Items "Lang" .Lang "TypePrefix" .TypePrefix "Class" "item-all") }}
+</section>
+{{ end }}
+{{ if $i.MixedItems }}
+<section class="side-panel trend-card">
+  {{ template "side-panel-head" (dict "Icon" "chart" "Title" (T .Lang "trends.item_mixed_all")) }}
+  <p class="item-mixed">{{ T .Lang "trends.item_mixed_all_note" }}</p>
+  {{ template "trend-item-table" (dict "Rows" $i.MixedItems "Lang" .Lang "TypePrefix" .TypePrefix "Class" "item-mixed-all") }}
+</section>
+{{ end }}
+{{ end }}
+{{ end }}
+
+{{/* All-items price table. Rows: []ItemRow, Class: extra table class. */}}
+{{ define "trend-item-table" }}
   <div class="trend-table-wrap">
-  <table class="item-table item-all">
+  <table class="item-table {{ .Class }}">
     <thead><tr><th>{{ T .Lang "trends.item_col_item" }}</th><th class="num">{{ T .Lang "trends.item_col_now" }}</th><th class="num">{{ T .Lang "trends.item_col_year_ago" }}</th><th class="num">{{ T .Lang "trends.item_col_change" }}</th><th class="num">{{ T .Lang "trends.item_col_bought" }}</th></tr></thead>
     <tbody>
-      {{ range $i.Items }}{{ $u := T $.Lang .UnitKey }}{{ $url := print "/groceries/chart?tab=item&item=" .ItemID }}
+      {{ range .Rows }}{{ $u := T $.Lang .UnitKey }}{{ $url := print "/groceries/chart?tab=item&item=" .ItemID }}
       <tr>
         <td><a href="{{ $url }}" hx-get="{{ $url }}" hx-target="#section-content" hx-push-url="true">{{ T $.Lang (print $.TypePrefix .Item) }}</a></td>
         <td class="num">{{ if .HasNow }}{{ money .Now }} / {{ $u }}{{ else }}—{{ end }}</td>
@@ -252,7 +277,4 @@
     </tbody>
   </table>
   </div>
-</section>
-{{ end }}
-{{ end }}
 {{ end }}

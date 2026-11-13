@@ -158,7 +158,8 @@ func periodLabels(periods []string, lang string) []string {
 // used for the same-period-last-year comparison), all are every grocery line
 // for the all-items table, periods the charted period keys, oldest first.
 func BuildItemTrend(lines []models.GroceryLine, all []models.GroceryLine, item models.Category, unit, by string, periods []string, now time.Time, lang string) models.ItemTrend {
-	t := models.ItemTrend{ItemID: item.ID, Item: item.Name, By: by, Items: BuildItemRows(all, now)}
+	t := models.ItemTrend{ItemID: item.ID, Item: item.Name, General: item.General, By: by}
+	t.Items, t.MixedItems = splitMixedRows(BuildItemRows(all, now))
 	if len(periods) == 0 {
 		t.Empty = true
 		return t
@@ -315,7 +316,7 @@ func BuildItemRows(all []models.GroceryLine, now time.Time) []models.ItemRow {
 		if unit == "" {
 			continue
 		}
-		r := models.ItemRow{ItemID: id, Item: lines[0].Category, Unit: unit}
+		r := models.ItemRow{ItemID: id, Item: lines[0].Category, General: lines[0].General, Unit: unit}
 		r.Now, _ = window(lines, unit, nowFrom, tomorrow)
 		r.YearAgo, _ = window(lines, unit, yearFrom, yearTo)
 		_, r.Bought12 = window(lines, unit, boughtFrom, tomorrow)
@@ -340,6 +341,19 @@ func BuildItemRows(all []models.GroceryLine, now time.Time) []models.ItemRow {
 	return rows
 }
 
+// splitMixedRows separates the rows of specific categories from those of
+// general ones, keeping the order of each.
+func splitMixedRows(rows []models.ItemRow) (specific, mixed []models.ItemRow) {
+	for _, r := range rows {
+		if r.General {
+			mixed = append(mixed, r)
+		} else {
+			specific = append(specific, r)
+		}
+	}
+	return specific, mixed
+}
+
 // itemTrend fills the item tab of p. months is the charted month range, or
 // invalid/empty for period "all".
 func (s *TrendsService) itemTrend(ctx context.Context, userID uuid.UUID, p *models.TrendsPage, months []YearMonth, lang string, now time.Time) error {
@@ -348,7 +362,13 @@ func (s *TrendsService) itemTrend(ctx context.Context, userID uuid.UUID, p *mode
 	if err != nil {
 		return err
 	}
-	p.Items = cats
+	for _, c := range cats {
+		if c.General {
+			p.MixedItems = append(p.MixedItems, c)
+		} else {
+			p.Items = append(p.Items, c)
+		}
+	}
 	if q.By != "year" {
 		q.By = "month"
 	}
@@ -398,7 +418,9 @@ func (s *TrendsService) itemTrend(ctx context.Context, userID uuid.UUID, p *mode
 		}
 	}
 
-	// Pick the item: the asked one if tracked, else the most bought.
+	// Pick the item: the asked one if tracked, else the most bought specific
+	// one. A general category (mixed products) is only the default when no
+	// specific one has a known size.
 	var item models.Category
 	for _, c := range cats {
 		if c.ID == q.ItemID {
@@ -412,15 +434,17 @@ func (s *TrendsService) itemTrend(ctx context.Context, userID uuid.UUID, p *mode
 				known[l.CategoryID]++
 			}
 		}
-		item = cats[0]
-		for _, c := range cats[1:] {
-			if known[c.ID] > known[item.ID] {
-				item = c
+		item = mostBought(p.Items, known)
+		if known[item.ID] == 0 {
+			if mixed := mostBought(p.MixedItems, known); known[mixed.ID] > 0 || item.ID == 0 {
+				item = mixed
 			}
 		}
 	}
 	if item.ID == 0 {
-		p.Item = &models.ItemTrend{By: q.By, Empty: true, Items: BuildItemRows(all, now)}
+		t := models.ItemTrend{By: q.By, Empty: true}
+		t.Items, t.MixedItems = splitMixedRows(BuildItemRows(all, now))
+		p.Item = &t
 		return nil
 	}
 	q.ItemID = item.ID
@@ -435,6 +459,18 @@ func (s *TrendsService) itemTrend(ctx context.Context, userID uuid.UUID, p *mode
 	p.Query = q
 	p.Item = &t
 	return nil
+}
+
+// mostBought returns the category in cats with the most known lines (the
+// first on a tie), or the zero Category when cats is empty.
+func mostBought(cats []models.Category, known map[int]int) models.Category {
+	var best models.Category
+	for i, c := range cats {
+		if i == 0 || known[c.ID] > known[best.ID] {
+			best = c
+		}
+	}
+	return best
 }
 
 func earliest(a, b time.Time) time.Time {

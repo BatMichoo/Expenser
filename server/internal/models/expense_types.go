@@ -34,6 +34,9 @@ const (
 // receipt item has none.
 const GroceryCategoryOther = 7
 
+// GroceryCategoryOtherName is the name of GroceryCategoryOther.
+const GroceryCategoryOtherName = "Other"
+
 // newHouseMetadata returns a pointer to an empty metadata struct for the
 // utility type, or nil when the type records no metadata.
 func newHouseMetadata(typeID int) any {

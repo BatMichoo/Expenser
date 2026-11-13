@@ -574,7 +574,7 @@ func TestReceiptUploadSheet(t *testing.T) {
 func TestReceiptReviewSheet(t *testing.T) {
 	items := []models.ReceiptItem{
 		{Name: "Chicken breast", Quantity: 0.8, UnitPrice: 9.9, TotalPrice: 7.92, TotalDiscount: 1.2, Category: "Meat"},
-		{Name: "Milk", Quantity: 2, UnitPrice: 1.45, TotalPrice: 2.9, Category: ""},
+		{Name: "Milk", Quantity: 2, UnitPrice: 1.45, TotalPrice: 2.9, Category: "Other"},
 	}
 	cats := []models.Category{{ID: 1, Name: "Meat"}, {ID: 2, Name: "Dairy"}, {ID: 9, Name: "Other"}}
 	doc := parseHTML(t, render(t, "groceries-receipt-edit-form", map[string]any{
@@ -610,7 +610,7 @@ func TestReceiptReviewSheet(t *testing.T) {
 	sel, _ := cards.Eq(0).Find(`select[name="items[0].category_id"] option[selected]`).Attr("value")
 	assert.Equal(t, "1", sel)
 	other, _ := cards.Eq(1).Find(`select[name="items[1].category_id"] option[selected]`).Attr("value")
-	assert.Equal(t, "9", other, "unknown category falls back to Other")
+	assert.Equal(t, "9", other, "the item's category is preselected")
 	for _, f := range []string{"quantity", "unit_price", "total_price", "discount_per_unit", "total_discount", "supermarket_name"} {
 		assert.Equal(t, 1, cards.Eq(1).Find(`[name="items[1].`+f+`"]`).Length(), f)
 	}
@@ -1593,6 +1593,29 @@ func TestTrendItemTab(t *testing.T) {
 	p.Item.Units = []string{"kg", "l"}
 	doc = parseHTML(t, render(t, "trends", p))
 	assert.Equal(t, 1, doc.Find(".unit-switch").Length())
+}
+
+func TestTrendItemMixedCategories(t *testing.T) {
+	p := trendsItemPage()
+	p.MixedItems = []models.Category{{ID: 20, Name: "Vegetables", General: true}}
+	p.Item.MixedItems = []models.ItemRow{{ItemID: 20, Item: "Vegetables", General: true, Unit: "kg", Now: 3, Bought12: 4}}
+	doc := parseHTML(t, render(t, "trends", p))
+	group := doc.Find(`select[name="item"] optgroup`)
+	require.Equal(t, 1, group.Length(), "general categories are grouped apart in the picker")
+	assert.Equal(t, 1, group.Find("option").Length())
+	assert.Equal(t, 2, doc.Find(`select[name="item"] > option`).Length())
+	assert.Equal(t, 2, doc.Find("table.item-all tbody tr").Length(), "mixed rows are not in the main table")
+	mixed := doc.Find("table.item-mixed-all tbody tr")
+	require.Equal(t, 1, mixed.Length(), "mixed rows have their own table")
+	link, _ := mixed.Find("a").Attr("hx-get")
+	assert.Equal(t, "/groceries/chart?tab=item&item=20", link)
+	assert.Equal(t, 0, doc.Find(".item-mixed-note").Length(), "no mixed note for a specific item")
+
+	p.Item.General, p.Item.Item, p.Item.ItemID = true, "Vegetables", 20
+	doc = parseHTML(t, render(t, "trend-item", p))
+	note := doc.Find(".item-mixed-note")
+	require.Equal(t, 1, note.Length())
+	assert.Contains(t, note.Text(), "Vegetables", "a general item's trend says its prices mix products")
 }
 
 func TestTrendItemExcludedNote(t *testing.T) {

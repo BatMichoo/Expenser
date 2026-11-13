@@ -267,3 +267,28 @@ func TestTrendQueriesScopedToUser(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, n)
 }
+
+func TestGeneralCategories(t *testing.T) {
+	f := setupTrends(t)
+	cats, err := f.db.GetTrackedCategories(context.Background())
+	require.NoError(t, err)
+	general := map[string]bool{}
+	for _, c := range cats {
+		general[c.Name] = c.General
+	}
+	assert.True(t, general["Vegetables"], "Vegetables is a general category")
+	assert.True(t, general["Meat"])
+	assert.False(t, general["Cucumbers"], "Cucumbers is a specific one")
+	assert.False(t, general["Milk"])
+
+	l, one := "kg", 1.0
+	insertGrocery(t, f.db, f.a, "Vegetables", "Zucchini", 3, 0, utc(2025, 1, 6), "known", &l, &one)
+	lines, err := f.db.GetGroceryLines(context.Background(), f.a, 0, utc(2025, 1, 1), utc(2025, 2, 1))
+	require.NoError(t, err)
+	seen := map[string]bool{}
+	for _, gl := range lines {
+		seen[gl.Product] = gl.General
+	}
+	assert.True(t, seen["Zucchini"], "lines carry their category's general flag")
+	assert.False(t, seen["Milk"])
+}

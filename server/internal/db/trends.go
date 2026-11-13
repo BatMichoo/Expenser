@@ -118,7 +118,7 @@ func (db *DB) GetGroceriesDiscountTotal(ctx context.Context, userID uuid.UUID, f
 func (db *DB) GetGroceryLines(ctx context.Context, userID uuid.UUID, categoryID int, from, to time.Time) ([]models.GroceryLine, error) {
 	from, to = db.localRange(from, to) // purchase times are instants
 	rows, err := db.conn.QueryContext(ctx, `
-		SELECT e.id, e.category_id, c.name, e.product, e.supermarket_name, e.purchase_date,
+		SELECT e.id, e.category_id, c.name, c.general, e.product, e.supermarket_name, e.purchase_date,
 			e.quantity::float8, e.unit_size::float8, e.total_price::float8, e.total_discount::float8, e.unit, e.size_status
 		FROM groceries_expenses e
 		JOIN grocery_categories c ON c.id = e.category_id
@@ -136,7 +136,7 @@ func (db *DB) GetGroceryLines(ctx context.Context, userID uuid.UUID, categoryID 
 		var l models.GroceryLine
 		var size sql.NullFloat64
 		var unit sql.NullString
-		if err := rows.Scan(&l.ID, &l.CategoryID, &l.Category, &l.Product, &l.Store, &l.Date,
+		if err := rows.Scan(&l.ID, &l.CategoryID, &l.Category, &l.General, &l.Product, &l.Store, &l.Date,
 			&l.Quantity, &size, &l.TotalPrice, &l.TotalDiscount, &unit, &l.SizeStatus); err != nil {
 			return nil, fmt.Errorf("failed to read grocery lines: %w", err)
 		}
@@ -207,9 +207,10 @@ func (db *DB) updateSizeStatus(ctx context.Context, userID uuid.UUID, id int, qu
 	return nil
 }
 
-// GetTrackedCategories lists every grocery category except Other, by name.
+// GetTrackedCategories lists every grocery category except Other, by name,
+// with whether it is a general one.
 func (db *DB) GetTrackedCategories(ctx context.Context) ([]models.Category, error) {
-	rows, err := db.conn.QueryContext(ctx, `SELECT id, name FROM grocery_categories WHERE name <> 'Other' ORDER BY name`)
+	rows, err := db.conn.QueryContext(ctx, `SELECT id, name, general FROM grocery_categories WHERE name <> 'Other' ORDER BY name`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query tracked categories: %w", err)
 	}
@@ -217,7 +218,7 @@ func (db *DB) GetTrackedCategories(ctx context.Context) ([]models.Category, erro
 	var out []models.Category
 	for rows.Next() {
 		var c models.Category
-		if err := rows.Scan(&c.ID, &c.Name); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.General); err != nil {
 			return nil, fmt.Errorf("failed to read tracked categories: %w", err)
 		}
 		out = append(out, c)

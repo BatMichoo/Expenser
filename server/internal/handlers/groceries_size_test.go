@@ -130,3 +130,19 @@ func TestParseFormIgnoresSizeGuessed(t *testing.T) {
 	assert.Equal(t, "l", e.Unit)
 	assert.Equal(t, 1.0, e.UnitSize)
 }
+
+func TestReceiptItemCategory(t *testing.T) {
+	cats := []models.Category{{ID: 1, Name: "Vegetables"}, {ID: 7, Name: "Other"}}
+	cases := map[string]struct{ in, want string }{
+		"known":   {"Vegetables", "Vegetables"},
+		"unknown": {"Zucchini", "Other"},
+		"empty":   {"", "Other"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := receiptItemCategory(tc.in, cats); got != tc.want {
+				t.Errorf("receiptItemCategory(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}

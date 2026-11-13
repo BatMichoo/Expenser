@@ -43,7 +43,7 @@
           <span>{{ T $.Lang "groceries.category" }}</span>
           <select name="items[{{ $i }}].category_id" required>
             {{ range $.Categories }}
-            <option value="{{ .ID }}" {{ if eq .Name $item.Category }}selected{{ else if and (eq $item.Category "") (eq .Name "Other") }}selected{{ end }}>{{ T $.Lang (print "category." .Name) }}</option>
+            <option value="{{ .ID }}" {{ if eq .Name $item.Category }}selected{{ end }}>{{ T $.Lang (print "category." .Name) }}</option>
             {{ end }}
           </select>
         </label>

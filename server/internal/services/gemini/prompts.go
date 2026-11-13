@@ -21,14 +21,24 @@ var Prompts = &GeminiPrompts{
 
 	Quantity lines: some items have a line with the quantity and unit price (e.g. "2.000 x 1.78", "2 * 0,25" or "9,955 KG"). Receipt formats differ in where that line goes. In some (e.g. Lidl) it is printed just ABOVE its item and the item's total is on the item's own line; in others (e.g. Kaufland) it is printed just BELOW its item and carries the item's total. Work out which layout this receipt uses from the prices (quantity x unit price = line total) and pair each quantity line with the right item. Items without a quantity line have a quantity of 1 and a unit price equal to their line total. Decimal commas (4,48) are decimal points.
 
-	Categorization instruction: For each item in "items", assign a category in the "category" field. The value MUST be one of the following exact string values, matching case and spelling:
-	"Tomatoes", "Cucumbers", "Onions", "Garlic", "Peppers", "Carrots", "Lettuce", "Spinach", "Broccoli", "Mushrooms",
-	"Milk", "Pork", "Beef", "Chicken", "Fish", "Sausages", "Bacon", "Ham", "Eggs", "Cheese", "Yogurt", "Butter",
+	Categorization instruction: For each item in "items", assign a category in the "category" field. The value MUST be one of the exact string values below, matching case and spelling. Do not use any other category names. Pick in this order:
+	1. A specific category, when the item is that product:
+	"Tomatoes", "Cucumbers", "Onions", "Garlic", "Peppers", "Carrots", "Potatoes", "Lettuce", "Spinach", "Broccoli", "Mushrooms",
+	"Apples", "Bananas", "Oranges", "Grapes", "Lemons", "Avocados",
+	"Pork", "Beef", "Chicken", "Fish", "Sausages", "Bacon", "Ham",
+	"Milk", "Eggs", "Cheese", "Yogurt", "Butter",
 	"Bread", "Rice", "Pasta", "Flour", "Sugar", "Cereal", "Beans", "Olive Oil", "Honey", "Ketchup",
-	"Potatoes", "Apples", "Bananas", "Oranges", "Grapes", "Lemons", "Avocados",
 	"Chips", "Nuts", "Chocolate", "Candy", "Cookies", "Ice Cream",
-	"Water", "Juice", "Soda", "Coffee", "Tea", "Beer", "Wine", "Other".
-	If an item does not clearly fit into the specific food items listed, assign "Other". Do not use any other category names.
+	"Water", "Juice", "Soda", "Coffee", "Tea", "Beer", "Wine".
+	2. Otherwise a general category, for any food or drink without a specific category:
+	"Vegetables" (fresh vegetables and herbs, e.g. zucchini, eggplant, cabbage, parsley), "Fruits" (fresh or dried fruit, e.g. pears, strawberries, kiwi),
+	"Meat" (other meat and meat products, e.g. lamb, turkey, minced meat, salami), "Seafood" (shrimp, squid, mussels, canned tuna),
+	"Dairy" (other dairy, e.g. cream, cottage cheese, kefir), "Bakery" (pastries, croissants, banitsa, tortillas),
+	"Pantry" (cooking staples, e.g. oil, vinegar, salt, spices, sauces, canned or jarred food, lentils, yeast),
+	"Frozen Food" (frozen vegetables, pizza, ready-to-cook frozen products), "Ready Meals" (salads, sandwiches and dishes sold ready to eat),
+	"Snacks" (crackers, popcorn, pretzels, salty snacks), "Sweets" (cakes, wafers, desserts, jam),
+	"Beverages" (other non-alcoholic drinks, e.g. energy drinks, iced tea, plant milk), "Alcohol" (spirits and other alcoholic drinks, e.g. rakia, vodka, whisky).
+	3. "Other", ONLY for items that are not food or drink, e.g. plastic bags, matches, batteries, cleaning products, toiletries, paper goods, deposit (packaging return) fees. Never put food or drink in "Other".
 
 	Units: for each item give "unit" and "unit_size", which say what ONE counted quantity of the item is. "unit" is "kg" (weight), "l" (volume) or "pc" (pieces). A weight line like "9,955 KG" means the item is sold by weight: unit "kg", unit_size 1. For packaged goods take the pack size from the product name: "1л" is unit "l", unit_size 1; "400г" is unit "kg", unit_size 0.4; "500мл" is unit "l", unit_size 0.5; "10бр" is unit "pc", unit_size 10. If the unit or size is unknown, give unit "" and unit_size 0. Do not guess.
 

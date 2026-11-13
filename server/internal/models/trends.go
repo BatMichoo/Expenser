@@ -30,6 +30,7 @@ type GroceryLine struct {
 	ID            int
 	CategoryID    int
 	Category      string
+	General       bool // the category is a general one (see Category.General)
 	Product       string
 	Store         string
 	Date          time.Time
@@ -72,7 +73,8 @@ type TrendsPage struct {
 	Unsized    int // groceries only
 	Month      *MonthTrend
 	Year       *YearTrend
-	Items      []Category // item tab: tracked categories for the picker
+	Items      []Category // item tab: tracked specific categories for the picker
+	MixedItems []Category // item tab: tracked general categories, listed apart
 	Item       *ItemTrend
 }
 
@@ -152,6 +154,7 @@ type PriceLine struct {
 type ItemRow struct {
 	ItemID       int
 	Item, Unit   string
+	General      bool
 	Now, YearAgo float64
 	ChangePct    float64
 	HasChange    bool
@@ -163,6 +166,7 @@ type ItemRow struct {
 type ItemTrend struct {
 	ItemID         int
 	Item           string
+	General        bool // a general category: prices mix different products
 	Unit           string
 	Units          []string
 	By             string
@@ -179,7 +183,8 @@ type ItemTrend struct {
 	TotalSaved     float64
 	Excluded       int
 	Chart          chart.PriceChart
-	Items          []ItemRow
+	Items          []ItemRow // specific categories
+	MixedItems     []ItemRow // general categories, shown apart as a rough guide
 	Empty          bool
 }
 
