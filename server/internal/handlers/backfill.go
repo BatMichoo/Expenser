@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"time"
 
-	database "expenser/internal/db"
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
@@ -19,12 +18,8 @@ import (
 // BackfillHandler adds the same house or car expense to a range of months
 // ("Several months" in the add panel): a preview first, then the payments.
 type BackfillHandler struct {
-	db  *database.DB
-	svc *services.BackfillService
-}
-
-func NewBackfillHandler(db *database.DB) *BackfillHandler {
-	return &BackfillHandler{db: db, svc: services.NewBackfillService(db)}
+	types SectionTypesStore
+	svc   *services.BackfillService
 }
 
 // parseBackfillForm reads the add panel with "Several months" on. The day
@@ -64,7 +59,7 @@ func backfillError(err error) error { return mapError(err, backfillErrors) }
 
 // typeName checks the type belongs to the section and returns its name.
 func (h *BackfillHandler) typeName(ctx context.Context, section models.Section, typeID int) (string, error) {
-	types, err := h.db.GetSectionTypes(ctx, section)
+	types, err := h.types.GetSectionTypes(ctx, section)
 	if err != nil {
 		return "", err
 	}

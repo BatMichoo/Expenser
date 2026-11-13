@@ -22,15 +22,8 @@ import (
 // BillsHandler serves the Bills section: recurring payments the user wants
 // to be reminded about and can mark as paid.
 type BillsHandler struct {
-	BaseHandler BaseHandler
-	bills       *services.RecurringPaymentService
-}
-
-func NewBillsHandler(rh *RootHandler) *BillsHandler {
-	return &BillsHandler{
-		BaseHandler: rh.BaseHandler,
-		bills:       services.NewRecurringPaymentService(rh.BaseHandler.DB),
-	}
+	store BillsStore
+	bills *services.RecurringPaymentService
 }
 
 // billsChanged tells the page that bills changed (and, when an expense was
@@ -220,9 +213,9 @@ type billFormData struct {
 // typesFor lists a bill category's types; anything but car means house.
 func (h *BillsHandler) typesFor(ctx context.Context, category string) ([]models.TypeOption, error) {
 	if models.Section(category) == models.SectionCar {
-		return h.BaseHandler.DB.GetSectionTypes(ctx, models.SectionCar)
+		return h.store.GetSectionTypes(ctx, models.SectionCar)
 	}
-	return h.BaseHandler.DB.GetSectionTypes(ctx, models.SectionHouse)
+	return h.store.GetSectionTypes(ctx, models.SectionHouse)
 }
 
 func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEdit bool) (*billFormData, error) {
@@ -239,7 +232,7 @@ func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEd
 		Bill: p, IsEdit: isEdit, Types: types, Category: category,
 		Options: map[string]bool{}, KnownOptions: knownPaymentOptions, Lang: currentLang(c),
 	}
-	if user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c)); err == nil {
+	if user, err := h.store.GetUserByID(c.Request.Context(), currentUserID(c)); err == nil {
 		d.UserEmail = user.Email
 	}
 	if p.UtilityTypeID != nil {
@@ -288,7 +281,7 @@ func newBill(category string, defaults models.ReminderDefaults, now time.Time) *
 // GetNewBillForm renders the add form, pre-filled with the user's reminder
 // defaults (house by default).
 func (h *BillsHandler) GetNewBillForm(c *gin.Context) error {
-	user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c))
+	user, err := h.store.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}

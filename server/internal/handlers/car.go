@@ -15,16 +15,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// CarHandler serves the car section: month view and expense forms.
 type CarHandler struct {
-	BaseHandler BaseHandler
-	months      *services.MonthViewService
-}
-
-func NewCarHandler(rh *RootHandler) *CarHandler {
-	return &CarHandler{
-		BaseHandler: rh.BaseHandler,
-		months:      services.NewMonthViewService(rh.BaseHandler.DB),
-	}
+	store  CarStore
+	months *services.MonthViewService
 }
 
 // parseCarExpenseForm reads the fields shared by the create and edit forms.
@@ -70,7 +64,7 @@ func (h *CarHandler) GetCurrentMonth(c *gin.Context) error {
 }
 
 func (h *CarHandler) GetCreateCarForm(c *gin.Context) error {
-	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes(c.Request.Context())
+	expTypes, err := h.store.GetCarExpenseTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -182,7 +176,7 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) error {
 	}
 	newExpense.CreatedBy = userID
 
-	if err := h.BaseHandler.DB.CreateCarExpense(c.Request.Context(), newExpense); err != nil {
+	if err := h.store.CreateCarExpense(c.Request.Context(), newExpense); err != nil {
 		return err
 	}
 
@@ -208,7 +202,7 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) error {
 		return err
 	}
 
-	exp, err := h.BaseHandler.DB.GetCarExpenseByID(c.Request.Context(), id, currentUserID(c))
+	exp, err := h.store.GetCarExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -216,7 +210,7 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) error {
 		return notFound("error.expense_not_found")
 	}
 
-	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes(c.Request.Context())
+	expTypes, err := h.store.GetCarExpenseTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -249,7 +243,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) error {
 	}
 	editExpense.ID = id
 
-	if err := h.BaseHandler.DB.EditCarExpense(c.Request.Context(), editExpense, currentUserID(c)); err != nil {
+	if err := h.store.EditCarExpense(c.Request.Context(), editExpense, currentUserID(c)); err != nil {
 		return err
 	}
 
@@ -275,7 +269,7 @@ func (h *CarHandler) GetDeleteConfirm(c *gin.Context) error {
 		return err
 	}
 
-	exp, err := h.BaseHandler.DB.GetCarExpenseByID(c.Request.Context(), id, currentUserID(c))
+	exp, err := h.store.GetCarExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -309,7 +303,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) error {
 		return err
 	}
 
-	deleted, err := h.BaseHandler.DB.DeleteCarExpense(c.Request.Context(), id, currentUserID(c))
+	deleted, err := h.store.DeleteCarExpense(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}

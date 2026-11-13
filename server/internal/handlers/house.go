@@ -14,18 +14,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// HouseHandler serves the house section: month view and expense forms.
 type HouseHandler struct {
-	BaseHandler BaseHandler
-	months      *services.MonthViewService
-}
-
-// NewHouseHandler creates and returns a new instance of HomeHandler.
-// It requires a database connection pool to operate.
-func NewHouseHandler(rh *RootHandler) *HouseHandler {
-	return &HouseHandler{
-		BaseHandler: rh.BaseHandler,
-		months:      services.NewMonthViewService(rh.BaseHandler.DB),
-	}
+	store  HouseStore
+	months *services.MonthViewService
 }
 
 // parseHouseExpenseForm reads the fields shared by the create and edit forms.
@@ -53,7 +45,7 @@ func (h *HouseHandler) parseHouseExpenseForm(c *gin.Context) (*models.HouseExpen
 // for a new home expense.
 // This handler serves the UI component for expense creation.
 func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) error {
-	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes(c.Request.Context())
+	expTypes, err := h.store.GetHouseUtilityTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -146,7 +138,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) error {
 	}
 	newExpense.CreatedBy = userID
 
-	if err := h.BaseHandler.DB.CreateHouseExpense(c.Request.Context(), newExpense); err != nil {
+	if err := h.store.CreateHouseExpense(c.Request.Context(), newExpense); err != nil {
 		return err
 	}
 
@@ -197,7 +189,7 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) error {
 		return err
 	}
 
-	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(c.Request.Context(), id, currentUserID(c))
+	exp, err := h.store.GetHouseExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -205,7 +197,7 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) error {
 		return notFound("error.expense_not_found")
 	}
 
-	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes(c.Request.Context())
+	expTypes, err := h.store.GetHouseUtilityTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -238,7 +230,7 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) error {
 	}
 	editExpense.ID = id
 
-	if err := h.BaseHandler.DB.EditHouseExpense(c.Request.Context(), editExpense, currentUserID(c)); err != nil {
+	if err := h.store.EditHouseExpense(c.Request.Context(), editExpense, currentUserID(c)); err != nil {
 		return err
 	}
 
@@ -264,7 +256,7 @@ func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) error {
 		return err
 	}
 
-	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(c.Request.Context(), id, currentUserID(c))
+	exp, err := h.store.GetHouseExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -298,7 +290,7 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) error {
 		return err
 	}
 
-	deleted, err := h.BaseHandler.DB.DeleteHouseExpense(c.Request.Context(), id, currentUserID(c))
+	deleted, err := h.store.DeleteHouseExpense(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}

@@ -19,20 +19,12 @@ import (
 	"github.com/google/uuid"
 )
 
+// GroceriesHandler serves the groceries section: month view, purchase forms
+// and receipt reading.
 type GroceriesHandler struct {
-	BaseHandler BaseHandler
-	GeminiS     *gemini.GeminiService
-	months      *services.MonthViewService
-	receipts    *services.ReceiptJobs // receipts being read in the background
-}
-
-func NewGroceriesHandler(rh *RootHandler, gs *gemini.GeminiService) *GroceriesHandler {
-	return &GroceriesHandler{
-		BaseHandler: rh.BaseHandler,
-		GeminiS:     gs,
-		months:      services.NewMonthViewService(rh.BaseHandler.DB),
-		receipts:    services.NewReceiptJobs(gs.AnalyzeReceipt),
-	}
+	store    GroceriesStore
+	months   *services.MonthViewService
+	receipts *services.ReceiptJobs // receipts being read in the background
 }
 
 // renderGroceryRows renders the given rows and tells the page that expenses
@@ -311,7 +303,7 @@ const receiptTimeInput = "2006-01-02T15:04"
 
 // renderReceiptReview shows what was read, to check before saving.
 func (h *GroceriesHandler) renderReceiptReview(c *gin.Context, analysis *models.ReceiptAnalysis) error {
-	categories, err := h.BaseHandler.DB.GetAllCategories(c.Request.Context())
+	categories, err := h.store.GetAllCategories(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -349,7 +341,7 @@ func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := h.BaseHandler.DB.CreateGroceriesExpenses(c.Request.Context(), items); err != nil {
+	if err := h.store.CreateGroceriesExpenses(c.Request.Context(), items); err != nil {
 		return err
 	}
 
@@ -396,7 +388,7 @@ func (h *GroceriesHandler) GetGroceriesForm(c *gin.Context) error {
 }
 
 func (h *GroceriesHandler) GetCreateGroceriesForm(c *gin.Context) error {
-	categories, err := h.BaseHandler.DB.GetAllCategories(c.Request.Context())
+	categories, err := h.store.GetAllCategories(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -416,7 +408,7 @@ func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) error {
 	expense.UserID = currentUserID(c)
 
 	// Creating fills in the category name the row shows.
-	if err := h.BaseHandler.DB.CreateGroceriesExpense(c.Request.Context(), expense); err != nil {
+	if err := h.store.CreateGroceriesExpense(c.Request.Context(), expense); err != nil {
 		return err
 	}
 	return h.renderGroceryRows(c, http.StatusCreated, []gin.H{groceryRowData(expense, currentLang(c))})
@@ -428,12 +420,12 @@ func (h *GroceriesHandler) GetEditGroceriesForm(c *gin.Context) error {
 		return err
 	}
 
-	expense, err := h.BaseHandler.DB.GetGroceriesExpenseByID(c.Request.Context(), id, currentUserID(c))
+	expense, err := h.store.GetGroceriesExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
 
-	categories, err := h.BaseHandler.DB.GetAllCategories(c.Request.Context())
+	categories, err := h.store.GetAllCategories(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -458,12 +450,12 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) error {
 	}
 	expense.ID = id
 
-	if err := h.BaseHandler.DB.EditGroceriesExpense(c.Request.Context(), expense, currentUserID(c)); err != nil {
+	if err := h.store.EditGroceriesExpense(c.Request.Context(), expense, currentUserID(c)); err != nil {
 		return err
 	}
 
 	// Fetch updated expense to render the row
-	updated, err := h.BaseHandler.DB.GetGroceriesExpenseByID(c.Request.Context(), id, currentUserID(c))
+	updated, err := h.store.GetGroceriesExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -477,7 +469,7 @@ func (h *GroceriesHandler) DeleteGroceriesExpense(c *gin.Context) error {
 		return err
 	}
 
-	deleted, err := h.BaseHandler.DB.DeleteGroceriesExpense(c.Request.Context(), id, currentUserID(c))
+	deleted, err := h.store.DeleteGroceriesExpense(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}

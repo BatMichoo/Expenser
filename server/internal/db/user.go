@@ -12,17 +12,10 @@ import (
 	"github.com/lib/pq"
 )
 
-// ErrUsernameTaken means another user already has the username.
-var ErrUsernameTaken = errors.New("username is taken")
-
-// ErrUserNotFound means no user has the ID or username. It wraps
-// sql.ErrNoRows, so handlers that don't check for it show a 404.
-var ErrUserNotFound = fmt.Errorf("user not found: %w", sql.ErrNoRows)
-
 // uniqueViolation is PostgreSQL's error code for a broken UNIQUE constraint.
 const uniqueViolation = "23505"
 
-// CreateUser creates a new user in the database. It returns ErrUsernameTaken
+// CreateUser creates a new user in the database. It returns models.ErrUsernameTaken
 // when the username is in use, even if another registration got there first.
 func (db *DB) CreateUser(ctx context.Context, user *models.User) error {
 	query := `
@@ -45,7 +38,7 @@ func (db *DB) CreateUser(ctx context.Context, user *models.User) error {
 
 	var pqErr *pq.Error
 	if errors.As(err, &pqErr) && pqErr.Code == uniqueViolation {
-		return ErrUsernameTaken
+		return models.ErrUsernameTaken
 	}
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
@@ -86,7 +79,7 @@ func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, erro
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrUserNotFound
+			return nil, models.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by ID: %w", err)
 	}
@@ -116,7 +109,7 @@ func (db *DB) GetUserByUsername(ctx context.Context, username string) (*models.U
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrUserNotFound
+			return nil, models.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by username: %w", err)
 	}
@@ -179,7 +172,7 @@ func (db *DB) UpdateUserPassword(ctx context.Context, id uuid.UUID, hash string)
 		return fmt.Errorf("failed to update password: %w", err)
 	}
 	if n, err := res.RowsAffected(); err == nil && n == 0 {
-		return ErrUserNotFound
+		return models.ErrUserNotFound
 	}
 	return nil
 }

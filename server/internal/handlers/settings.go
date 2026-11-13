@@ -16,15 +16,13 @@ import (
 
 // SettingsHandler serves per-user settings that need a logged-in user.
 type SettingsHandler struct {
-	BaseHandler BaseHandler
+	users    SettingsStore
+	accounts *services.AccountService
+	auth     *services.AuthService
 	// Mailer sends the dev-mode test email; nil when SMTP isn't configured.
 	Mailer  services.Mailer
 	Links   *services.ReminderLinkBuilder // nil: emails have no links
 	DevMode bool
-}
-
-func NewSettingsHandler(rh *RootHandler, mailer services.Mailer, links *services.ReminderLinkBuilder, devMode bool) *SettingsHandler {
-	return &SettingsHandler{BaseHandler: rh.BaseHandler, Mailer: mailer, Links: links, DevMode: devMode}
 }
 
 // accountForm is what Settings > Account saves.
@@ -68,7 +66,7 @@ func accountError(err error) error { return mapError(err, accountErrors) }
 // GetAccountForm opens the Account panel: name, reminder email and the
 // reminder defaults for new bills.
 func (h *SettingsHandler) GetAccountForm(c *gin.Context) error {
-	user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c))
+	user, err := h.users.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -86,7 +84,7 @@ func (h *SettingsHandler) SaveAccount(c *gin.Context) error {
 	if err != nil {
 		return accountError(err)
 	}
-	if err := h.BaseHandler.DB.UpdateUserAccount(c.Request.Context(), currentUserID(c), a.DisplayName, a.Email, a.Defaults); err != nil {
+	if err := h.users.UpdateUserAccount(c.Request.Context(), currentUserID(c), a.DisplayName, a.Email, a.Defaults); err != nil {
 		return err
 	}
 	billsChanged(c, false) // the "no email" hints on the Bills page may change
@@ -108,21 +106,21 @@ func passwordError(err error) error { return mapError(err, passwordErrors) }
 // ChangePassword sets a new password after checking the current one. The
 // user stays logged in; other logins last until their token expires.
 func (h *SettingsHandler) ChangePassword(c *gin.Context) error {
-	err := services.ChangePassword(c.Request.Context(), h.BaseHandler.DB, currentUserID(c),
+	err := h.accounts.ChangePassword(c.Request.Context(), currentUserID(c),
 		c.PostForm("current_password"), c.PostForm("new_password"), c.PostForm("confirm_password"))
 	if err != nil {
 		return passwordError(err)
 	}
 	// The change logged out every login, this one included: issue a new one.
-	user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c))
+	user, err := h.users.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return fmt.Errorf("reload user after password change: %w", err)
 	}
-	token, err := h.BaseHandler.AS.GenerateToken(user)
+	token, err := h.auth.GenerateToken(user)
 	if err != nil {
 		return fmt.Errorf("generate token: %w", err)
 	}
-	h.BaseHandler.AS.SetCookie(token, c)
+	h.auth.SetCookie(token, c)
 	lang := currentLang(c)
 	renderSuccess(c, http.StatusOK, utilities.T(lang, "settings.password_changed"), utilities.T(lang, "settings.password_changed_elsewhere"))
 	return nil
@@ -144,7 +142,7 @@ func (h *SettingsHandler) SendTestEmail(c *gin.Context) error {
 		renderError(c, http.StatusServiceUnavailable, utilities.T(lang, "settings.test_failed"), utilities.T(lang, "settings.smtp_not_configured"))
 		return nil
 	}
-	user, err := h.BaseHandler.DB.GetUserByID(c.Request.Context(), currentUserID(c))
+	user, err := h.users.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}

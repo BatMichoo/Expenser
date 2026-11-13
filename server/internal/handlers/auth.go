@@ -2,30 +2,22 @@ package handlers
 
 import (
 	"errors"
-	database "expenser/internal/db"
 	"expenser/internal/models"
+	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"golang.org/x/crypto/bcrypt"
 )
 
-// AuthHandler handles API endpoints for JWT authentication
+// AuthHandler serves registration, login and logout.
 type AuthHandler struct {
-	BaseHandler
-}
-
-// NewAuthHandler creates a new APIHandler instance
-func NewAuthHandler(rh *RootHandler) *AuthHandler {
-	return &AuthHandler{
-		BaseHandler: rh.BaseHandler,
-	}
+	accounts *services.AccountService
+	auth     *services.AuthService
 }
 
 func invalidCredentials(err error) error {
@@ -79,36 +71,20 @@ func (h *AuthHandler) Register(c *gin.Context) error {
 		return registrationError(err)
 	}
 
-	// Checked first to skip hashing; CreateUser still catches a race.
-	exists, err := h.BaseHandler.DB.UserExists(c.Request.Context(), regData.Username)
+	user, err := h.accounts.Register(c.Request.Context(), regData.Username, regData.Password)
+	if errors.Is(err, models.ErrUsernameTaken) {
+		return usernameTaken()
+	}
 	if err != nil {
 		return err
 	}
-	if exists {
-		return usernameTaken()
-	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(regData.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("hash password: %w", err)
-	}
-
-	user := &models.User{
-		Username:     regData.Username,
-		PasswordHash: string(hashedPassword),
-	}
-	if err := h.BaseHandler.DB.CreateUser(c.Request.Context(), user); errors.Is(err, database.ErrUsernameTaken) {
-		return usernameTaken()
-	} else if err != nil {
-		return err
-	}
-
-	token, err := h.BaseHandler.AS.GenerateToken(user)
+	token, err := h.auth.GenerateToken(user)
 	if err != nil {
 		return fmt.Errorf("generate token: %w", err)
 	}
 
-	h.BaseHandler.AS.SetCookie(token, c)
+	h.auth.SetCookie(token, c)
 	c.HTML(http.StatusCreated, utilities.Templates.Responses.RegisterSuccess, gin.H{
 		"User": user,
 		"Lang": currentLang(c),
@@ -142,16 +118,6 @@ func nextParam(next string) string {
 	return ""
 }
 
-// dummyPasswordHash is a hash no password is checked against except when the
-// username is unknown, made once on first use.
-var dummyPasswordHash = sync.OnceValue(func() []byte {
-	hash, err := bcrypt.GenerateFromPassword([]byte("not a real password"), bcrypt.DefaultCost)
-	if err != nil {
-		panic(fmt.Sprintf("dummy password hash: %v", err))
-	}
-	return hash
-})
-
 // Login verifies the credentials, sets the auth cookie and redirects home.
 func (h *AuthHandler) Login(c *gin.Context) error {
 	var loginData models.UserLogin
@@ -159,27 +125,20 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 		return badRequest("auth.login_required", err)
 	}
 
-	user, err := h.BaseHandler.DB.GetUserByUsername(c.Request.Context(), loginData.Username)
-	if errors.Is(err, database.ErrUserNotFound) {
-		// Hash anyway, so an unknown username takes as long to refuse as a
-		// wrong password and doesn't reveal which usernames exist.
-		_ = bcrypt.CompareHashAndPassword(dummyPasswordHash(), []byte(loginData.Password))
+	user, err := h.accounts.Login(c.Request.Context(), loginData.Username, loginData.Password)
+	if errors.Is(err, services.ErrInvalidCredentials) {
 		return invalidCredentials(err)
 	}
 	if err != nil {
-		return err // the database failed: a 500, not "wrong password"
+		return err // the check failed: a 500, not "wrong password"
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginData.Password)); err != nil {
-		return invalidCredentials(err)
-	}
-
-	token, err := h.BaseHandler.AS.GenerateToken(user)
+	token, err := h.auth.GenerateToken(user)
 	if err != nil {
 		return fmt.Errorf("generate token: %w", err)
 	}
 
-	h.BaseHandler.AS.SetCookie(token, c)
+	h.auth.SetCookie(token, c)
 	c.Header("HX-Redirect", safeNext(c.PostForm("next")))
 	c.Status(http.StatusOK)
 	return nil
@@ -189,7 +148,7 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 // from the Logout button, or with a plain redirect when /logout is opened
 // directly (otherwise the browser shows a blank page).
 func (h *AuthHandler) Logout(c *gin.Context) error {
-	h.BaseHandler.AS.ClearCookie(c)
+	h.auth.ClearCookie(c)
 
 	if !isHTMX(c) {
 		c.Redirect(http.StatusSeeOther, "/")

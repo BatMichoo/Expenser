@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	database "expenser/internal/db"
 	"expenser/internal/middleware"
 	"expenser/internal/models"
 	"expenser/internal/services"
@@ -14,26 +13,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type BaseHandler struct {
-	DB *database.DB
-	AS *services.AuthService
-}
-
-func NewBaseHandler(db *database.DB, as *services.AuthService) BaseHandler {
-	return BaseHandler{
-		DB: db,
-		AS: as,
-	}
-}
-
+// RootHandler serves the home page, the flash popup and the language
+// switch.
 type RootHandler struct {
-	BaseHandler
-}
-
-func NewRootHandler(db *database.DB, as *services.AuthService) *RootHandler {
-	return &RootHandler{
-		BaseHandler: NewBaseHandler(db, as),
-	}
+	users UserStore
+	homes *services.HomeService
+	auth  *services.AuthService
 }
 
 func (h *RootHandler) GetRoot(c *gin.Context) error {
@@ -57,7 +42,7 @@ func (h *RootHandler) GetRoot(c *gin.Context) error {
 
 // home builds the logged-in home page's cards.
 func (h *RootHandler) home(c *gin.Context) (*models.HomeView, error) {
-	user, err := h.DB.GetUserByID(c.Request.Context(), currentUserID(c))
+	user, err := h.users.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +50,7 @@ func (h *RootHandler) home(c *gin.Context) (*models.HomeView, error) {
 	if name == "" {
 		name = user.Username
 	}
-	return services.NewHomeService(h.DB).Build(c.Request.Context(), user.ID, name, currentLang(c), time.Now())
+	return h.homes.Build(c.Request.Context(), user.ID, name, currentLang(c), time.Now())
 }
 
 // GetFlash pops the pending flash error up as the error modal.
@@ -95,7 +80,7 @@ func (h *RootHandler) ChangeLanguage(c *gin.Context) error {
 		return nil
 	}
 
-	middleware.SetLanguageCookie(c, h.AS.Domain, lang)
+	middleware.SetLanguageCookie(c, h.auth.Domain, lang)
 
 	// Logged in: remember the choice on the account too, and reissue the
 	// token so its claims carry the new language. The cookie alone already
@@ -114,17 +99,17 @@ func (h *RootHandler) ChangeLanguage(c *gin.Context) error {
 // saveLanguage stores the user's language and refreshes their login token.
 func (h *RootHandler) saveLanguage(c *gin.Context, userID uuid.UUID, lang string) error {
 	ctx := c.Request.Context()
-	if err := h.DB.UpdateUserLanguage(ctx, userID, lang); err != nil {
+	if err := h.users.UpdateUserLanguage(ctx, userID, lang); err != nil {
 		return err
 	}
-	user, err := h.DB.GetUserByID(ctx, userID)
+	user, err := h.users.GetUserByID(ctx, userID)
 	if err != nil {
 		return err
 	}
-	token, err := h.AS.GenerateToken(user)
+	token, err := h.auth.GenerateToken(user)
 	if err != nil {
 		return err
 	}
-	h.AS.SetCookie(token, c)
+	h.auth.SetCookie(token, c)
 	return nil
 }

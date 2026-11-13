@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	database "expenser/internal/db"
 	"expenser/internal/groceryunits"
 	"expenser/internal/models"
 	"expenser/internal/services"
@@ -17,10 +16,6 @@ import (
 // ChartHandler serves each section's trends (charts) page.
 type ChartHandler struct {
 	trends *services.TrendsService
-}
-
-func NewChartHandler(db *database.DB) *ChartHandler {
-	return &ChartHandler{trends: services.NewTrendsService(db)}
 }
 
 // Show renders the trends page of sec: the fragment for HTMX requests, the

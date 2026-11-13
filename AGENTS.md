@@ -92,7 +92,8 @@ Managed in `internal/config/config.go`. It reads from environment variables, whi
 ## 6. Developer Guidelines for Agents
 
 - **Adding a Route**: Update `internal/handlers/routes.go` and create a corresponding handler method.
-- **Modifying Data**: Add/Edit files in `internal/db/` for database logic and `internal/models/` for data structures.
+- **Handler Dependencies**: Handlers never import `internal/db`. Each one declares the narrow store interface it needs (`internal/handlers/deps.go`; services do the same, e.g. `services.MonthStore`), and `handlers.Store` combines them. `main` builds `handlers.Deps` once; `newHandlers` creates every service once and shares it. A new DB method a handler calls goes into its store interface.
+- **Modifying Data**: Add/Edit files in `internal/db/` for database logic and `internal/models/` for data structures. Models hold data and domain rules only; text formatting and translation (e.g. `utilities.MetadataDetails`) live in `internal/utilities`.
 - **UI Changes**:
   - For full pages: `internal/templates/pages/`.
   - For reusable parts: `internal/templates/components/`.

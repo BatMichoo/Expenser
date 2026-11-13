@@ -222,5 +222,5 @@ func TestCreateUserTakenUsername(t *testing.T) {
 
 	require.NoError(t, testDB.CreateUser(context.Background(), &models.User{Username: "twin", PasswordHash: "h"}))
 	err = testDB.CreateUser(context.Background(), &models.User{Username: "twin", PasswordHash: "h2"})
-	assert.ErrorIs(t, err, ErrUsernameTaken)
+	assert.ErrorIs(t, err, models.ErrUsernameTaken)
 }

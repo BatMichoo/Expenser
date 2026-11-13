@@ -7,6 +7,7 @@ import (
 	database "expenser/internal/db"
 	"expenser/internal/handlers"
 	"expenser/internal/services"
+	"expenser/internal/services/gemini"
 	"expenser/internal/templates"
 	"expenser/internal/utilities"
 	"expenser/static"
@@ -75,7 +76,17 @@ func main() {
 	case cfg.AppURL != "":
 		log.Printf("APP_URL %q is not an http(s) address: reminder emails have no links.", cfg.AppURL)
 	}
-	handlers.RegisterRoutes(router, db, cfg, mailer, links)
+	auth := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration, cfg.LanDomain)
+	auth.CheckTokenVersions(db)
+	handlers.RegisterRoutes(router, handlers.Deps{
+		Store:     db,
+		Auth:      auth,
+		ReceiptAI: gemini.NewGeminiService(cfg.ReceiptAI.APIKey, cfg.ReceiptAI.Models()...),
+		Snooze:    services.NewSnoozeSigner(cfg.JWT.SecretKey),
+		Mailer:    mailer,
+		Links:     links,
+		DevMode:   cfg.DevMode,
+	})
 
 	schedulerCtx, stopScheduler := context.WithCancel(context.Background())
 	schedulerDone := make(chan struct{})

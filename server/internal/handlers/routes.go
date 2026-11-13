@@ -1,37 +1,31 @@
 package handlers
 
 import (
-	"expenser/internal/config"
-	database "expenser/internal/db"
 	"expenser/internal/middleware"
 	"expenser/internal/models"
-	"expenser/internal/services"
-	"expenser/internal/services/gemini"
 
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterRoutes wires every route. mailer sends the dev-mode test email and
-// is nil when SMTP isn't configured.
-func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mailer services.Mailer, links *services.ReminderLinkBuilder) {
-	// Public routes (no authentication required)
-	as := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration, cfg.LanDomain)
-	as.CheckTokenVersions(db)
+// RegisterRoutes builds the handlers from d and wires every route.
+func RegisterRoutes(router *gin.Engine, d Deps) {
+	h := newHandlers(d)
+	rootHandler, authHandler, snoozeHandler := h.root, h.auth, h.snooze
+	houseHandler, carHandler, groceriesHandler := h.house, h.car, h.groceries
+	sizesHandler, billsHandler, settingsHandler := h.sizes, h.bills, h.settings
+	backfillHandler, chartHandler := h.backfill, h.chart
 
 	router.Use(middleware.SameOrigin())
-	router.Use(middleware.LoadClaims(as))
-	router.Use(middleware.I18nMiddleware(as))
+	router.Use(middleware.LoadClaims(d.Auth))
+	router.Use(middleware.I18nMiddleware(d.Auth))
 
-	rootHandler := NewRootHandler(db, as)
+	// Public routes (no authentication required)
 	router.NoRoute(wrap(rootHandler.NotFound))
 	router.GET("/", wrap(rootHandler.GetRoot))
 	router.GET("/flash", wrap(rootHandler.GetFlash))
 	router.POST("/settings/language", wrap(rootHandler.ChangeLanguage))
 
-	authHandler := NewAuthHandler(rootHandler)
-
 	// Snooze links in reminder emails: signed, so no login needed.
-	snoozeHandler := NewSnoozeHandler(db, services.NewSnoozeSigner(cfg.JWT.SecretKey))
 	router.GET("/snooze/:token", wrap(snoozeHandler.GetSnooze))
 	router.POST("/snooze/:token", wrap(snoozeHandler.PostSnooze))
 
@@ -41,11 +35,8 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 	router.GET("/register", wrap(authHandler.GetRegister))
 	router.POST("/register", wrap(authHandler.Register))
 
-	am := middleware.NewAuthMiddleware(as)
-	chartHandler := NewChartHandler(db)
+	am := middleware.NewAuthMiddleware(d.Auth)
 
-	backfillHandler := NewBackfillHandler(db)
-	houseHandler := NewHouseHandler(rootHandler)
 	protectedHouse := router.Group("/house")
 	{
 		protectedHouse.Use(am.AuthMiddleware())
@@ -63,9 +54,6 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 		protectedHouse.DELETE("/expenses/:id", wrap(houseHandler.DeleteHouseExp))
 	}
 
-	receiptAI := gemini.NewGeminiService(cfg.ReceiptAI.APIKey, cfg.ReceiptAI.Models()...)
-	groceriesHandler := NewGroceriesHandler(rootHandler, receiptAI)
-	sizesHandler := NewSizesHandler(db, receiptAI)
 	protectedGroceries := router.Group("/groceries")
 	{
 		protectedGroceries.Use(am.AuthMiddleware())
@@ -87,19 +75,17 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 		protectedGroceries.PUT("/:id", wrap(groceriesHandler.EditGroceriesExpense))
 		protectedGroceries.DELETE("/:id", wrap(groceriesHandler.DeleteGroceriesExpense))
 	}
-	settingsHandler := NewSettingsHandler(rootHandler, mailer, links, cfg.DevMode)
 	protectedSettings := router.Group("/settings")
 	{
 		protectedSettings.Use(am.AuthMiddleware())
 		protectedSettings.GET("/account", wrap(settingsHandler.GetAccountForm))
 		protectedSettings.POST("/account", wrap(settingsHandler.SaveAccount))
 		protectedSettings.POST("/account/password", wrap(settingsHandler.ChangePassword))
-		if cfg.DevMode {
+		if d.DevMode {
 			protectedSettings.POST("/account/test-email", wrap(settingsHandler.SendTestEmail))
 		}
 	}
 
-	billsHandler := NewBillsHandler(rootHandler)
 	protectedBills := router.Group("/bills")
 	{
 		protectedBills.Use(am.AuthMiddleware())
@@ -118,7 +104,6 @@ func RegisterRoutes(router *gin.Engine, db *database.DB, cfg *config.Config, mai
 		protectedBills.POST("/:id/skip", wrap(billsHandler.SkipMissed))
 	}
 
-	carHandler := NewCarHandler(rootHandler)
 	protectedCar := router.Group("/car")
 	{
 		protectedCar.Use(am.AuthMiddleware())
