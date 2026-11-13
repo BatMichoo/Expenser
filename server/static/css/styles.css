@@ -1727,8 +1727,11 @@ tr:hover .row-actions,
   }
 }
 
-/* Keep the search box readable; the toolbar wraps before squeezing it */
+/* Keep the search box readable; the toolbar wraps before squeezing it.
+   width: 0 drops the input's built-in default width, so it starts from
+   min-width and grows into the free space instead of forcing a wrap. */
 .month-search {
+  width: 0;
   min-width: 11rem;
 }
 
@@ -1803,6 +1806,61 @@ tr:hover .row-actions,
 
 .month-toolbar .upload-btn + .add-btn {
   margin-left: 0;
+}
+
+/* The toolbar sizes itself to the main column, not the window: when the
+   column is narrow, Upload Receipt shrinks to its icon and the Add shortcut
+   hint goes, so the toolbar stays on one line. */
+.month-main {
+  container-type: inline-size;
+}
+
+@container (max-width: 60rem) {
+  .month-toolbar .upload-btn {
+    padding: 0 0.75rem;
+  }
+
+  .month-toolbar .upload-btn .btn-label,
+  .month-toolbar .add-btn kbd {
+    display: none;
+  }
+
+  .month-toolbar {
+    gap: 0.6rem;
+  }
+
+  .month-search {
+    min-width: 7rem;
+  }
+}
+
+/* Tablets: the side column is too narrow next to the list, so it moves
+   below it as a two-column grid of panels. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .month-view {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .month-side {
+    position: static;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+  }
+
+  /* Same arrangement as wide screens: "Where it went" on the right, the
+     smaller panels stacked on the left, so there are no gaps. */
+  .month-side > .estimate,
+  .month-side > .mini-chart,
+  .month-side > .year-so-far {
+    grid-column: 1;
+  }
+
+  .month-side > .breakdown {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
 }
 
 /* The section copy is only for phones */

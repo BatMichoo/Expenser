@@ -77,9 +77,10 @@
     </select>
   </form>
   {{ if eq .Section "groceries" }}
-  <button type="button" class="upload-btn" hx-get="/groceries/form" hx-target="#action-dialog">
+  <button type="button" class="upload-btn" hx-get="/groceries/form" hx-target="#action-dialog"
+    title='{{ T .Lang "groceries.upload_receipt" }}' aria-label='{{ T .Lang "groceries.upload_receipt" }}'>
     {{ template "icon" (dict "Name" "receipt") }}
-    {{ T .Lang "groceries.upload_receipt" }}
+    <span class="btn-label">{{ T .Lang "groceries.upload_receipt" }}</span>
   </button>
   {{ end }}
   <button type="button" class="add-btn" hx-get="{{ template "add-url" . }}" hx-target="#action-dialog">
