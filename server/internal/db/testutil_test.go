@@ -7,7 +7,18 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"testing"
 )
+
+// TestMain loads .env.dev (if present) once for every DB test, since
+// config.LoadConfig only reads the environment.
+func TestMain(m *testing.M) {
+	if _, _, err := config.LoadDevEnv(); err != nil {
+		fmt.Fprintf(os.Stderr, "loading .env.dev: %v\n", err)
+		os.Exit(1)
+	}
+	os.Exit(m.Run())
+}
 
 var TestUserRegisterModel *models.User = &models.User{
 	Username:     "TestTestov",
@@ -55,7 +66,7 @@ func connectTestDB(cfg *config.Config) (*DB, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create test DB: %w", err)
 		}
-		_, err = adminDB.Exec(fmt.Sprintf(`ALTER DATABASE %s SET TIMEZONE TO 'Europe/Sofia'`, cfg.DB.TestDBName))
+		_, err = adminDB.Exec(fmt.Sprintf(`ALTER DATABASE %s SET TIMEZONE TO '%s'`, cfg.DB.TestDBName, cfg.Location.String()))
 		if err != nil {
 			return nil, fmt.Errorf("failed to set test DB timezone: %w", err)
 		}

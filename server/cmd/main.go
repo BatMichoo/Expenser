@@ -34,6 +34,14 @@ func main() {
 		log.Fatalf("Trusted proxies: %v", err)
 	}
 
+	envPath, loaded, err := config.LoadDevEnv()
+	if err != nil {
+		log.Fatalf("Couldn't load .env.dev: %v", err)
+	}
+	if loaded {
+		log.Printf("Loaded %s.", envPath)
+	}
+
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("Couldn't load configuration: %v", err)

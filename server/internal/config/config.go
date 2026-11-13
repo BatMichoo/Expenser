@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 // ReceiptAIModel is the Gemini model that reads receipts. It lives in code,
@@ -106,13 +104,9 @@ type DB struct {
 	TestDBName       string
 }
 
-// LoadConfig loads the configuration from environment variables.
+// LoadConfig loads the configuration from environment variables. It does not
+// read .env.dev; see LoadDevEnv.
 func LoadConfig() (*Config, error) {
-	envPath := filepath.Join(GetProjectRootDir(), ".env.dev")
-	if err := godotenv.Load(envPath); err != nil {
-		log.Printf("No .env.development file found at %s, using environment variables\n", envPath)
-	}
-
 	lanDomain := os.Getenv("LAN_DOMAIN")
 	if lanDomain == "" {
 		lanDomain = "localhost"
