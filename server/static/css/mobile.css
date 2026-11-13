@@ -122,7 +122,7 @@
   }
 
   /* Buttons and Sections */
-  #add-expense-section button:not(.fab) {
+  #add-expense-section button {
     width: 90%;
     font-size: 1em;
     padding: 0.75em 1em;
@@ -371,37 +371,14 @@
     display: none;
   }
 
-  #add-expense-section button:not(.fab) {
+  #add-expense-section button {
     width: 100%;
     min-height: 2.75em;
   }
 
-  #add-expense-section .fab {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: fixed;
-    right: 1em;
-    bottom: calc(5em + env(safe-area-inset-bottom));
-    z-index: 25;
-    width: 3.5em;
-    height: 3.5em;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    color: #fff;
-    background: oklch(0.55 0.2 var(--hue));
-    box-shadow: 0 6px 16px oklch(0.55 0.2 var(--hue) / 0.45);
-  }
-
-  #add-expense-section .fab:active {
-    transform: scale(0.95);
-  }
-
-  /* Room below the last row so the + button never covers it */
   #recent-expenses-section {
     margin-top: 0.5em;
-    padding-bottom: 4.5em;
+    padding-bottom: 1em;
   }
 
   .sheet-grab {
@@ -480,6 +457,11 @@
     flex: 1;
   }
 
+  /* Phones: the tab bar already names the section */
+  #section-list li.section-title {
+    display: none;
+  }
+
   #section-list .section-button {
     width: 100%;
   }
@@ -489,8 +471,21 @@
     padding: 0 0 1em;
   }
 
+  .month-main > .upcoming-bills {
+    gap: 0.5em;
+    margin: 0 0.75em 0.75em;
+    padding: 0.4em 0.5em;
+  }
+
+  /* Phones: icon only, so a whole bill fits on the line. "All bills" is
+     the Bills tab in the bottom bar. */
+  .upcoming-head h3,
+  .upcoming-count,
+  .upcoming-bills .all-bills {
+    display: none;
+  }
+
   .month-side,
-  .month-toolbar .add-btn,
   .month-type,
   .kpi-count {
     display: none;
@@ -524,9 +519,32 @@
     pointer-events: none;
   }
 
+  /* Search and a square + share the second row; nothing floats over the list */
   .month-filters {
+    flex: 1;
     min-width: 0;
-    width: 100%;
+    width: auto;
+  }
+
+  .month-toolbar .add-btn {
+    flex: none;
+    justify-content: center;
+    width: 2.75em;
+    height: 2.75em;
+    margin: 0;
+    padding: 0;
+    font-size: 1rem;
+  }
+
+  .month-toolbar .add-btn .add-plus {
+    margin: 0;
+    font-size: 1.5em;
+    line-height: 1;
+  }
+
+  .month-toolbar .add-btn .btn-label,
+  .month-toolbar .add-btn kbd {
+    display: none;
   }
 
   .month-search {
@@ -630,10 +648,6 @@
   }
 
   /* Bills on phones: name and amount on top, due and actions below */
-  .bills-view .month-toolbar .add-btn {
-    display: none;
-  }
-
   .bills-title {
     font-size: 1.15em;
   }

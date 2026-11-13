@@ -849,11 +849,6 @@ select {
   display: none;
 }
 
-/* Floating add button is a phone-only control */
-.fab {
-  display: none;
-}
-
 /* Add/edit expense sheet ------------------------------------------------ */
 .sheet-grab {
   display: none;
@@ -1081,6 +1076,30 @@ select {
 #tracker-navigation .tracker-nav-button.active {
   color: var(--text);
   background: var(--accent-soft);
+}
+
+/* Section name ("House", "Car", "Groceries") before the List | Chart switch */
+#section-list li.section-title {
+  display: flex;
+  align-items: center;
+  margin-right: 1rem;
+}
+
+.section-title h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.section-title h2 svg,
+.bills-title svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  color: var(--accent);
 }
 
 /* List | Chart switcher */
@@ -1703,8 +1722,11 @@ tr:hover .row-actions,
   }
 }
 
-/* Keep the search box readable; the toolbar wraps before squeezing it */
+/* Keep the search box readable; the toolbar wraps before squeezing it.
+   width: 0 drops the input's built-in default width, so it starts from
+   min-width and grows into the free space instead of forcing a wrap. */
 .month-search {
+  width: 0;
   min-width: 11rem;
 }
 
@@ -1779,6 +1801,61 @@ tr:hover .row-actions,
 
 .month-toolbar .upload-btn + .add-btn {
   margin-left: 0;
+}
+
+/* The toolbar sizes itself to the main column, not the window: when the
+   column is narrow, Upload Receipt shrinks to its icon and the Add shortcut
+   hint goes, so the toolbar stays on one line. */
+.month-main {
+  container-type: inline-size;
+}
+
+@container (max-width: 60rem) {
+  .month-toolbar .upload-btn {
+    padding: 0 0.75rem;
+  }
+
+  .month-toolbar .upload-btn .btn-label,
+  .month-toolbar .add-btn kbd {
+    display: none;
+  }
+
+  .month-toolbar {
+    gap: 0.6rem;
+  }
+
+  .month-search {
+    min-width: 7rem;
+  }
+}
+
+/* Tablets: the side column is too narrow next to the list, so it moves
+   below it as a two-column grid of panels. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .month-view {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .month-side {
+    position: static;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+  }
+
+  /* Same arrangement as wide screens: "Where it went" on the right, the
+     smaller panels stacked on the left, so there are no gaps. */
+  .month-side > .estimate,
+  .month-side > .mini-chart,
+  .month-side > .year-so-far {
+    grid-column: 1;
+  }
+
+  .month-side > .breakdown {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
 }
 
 /* The section copy is only for phones */
@@ -2766,6 +2843,9 @@ tr:hover .row-actions,
 }
 
 .bills-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
   margin: 0 auto 0 0;
   font-size: 1.35rem;
   font-weight: 700;
@@ -3134,77 +3214,126 @@ tr:hover .row-actions,
   grid-template-columns: 1fr;
 }
 
-/* Upcoming bills (House/Car side column) */
+/* Upcoming bills: one-line banner under the month toolbar */
+.upcoming-bills {
+  --upcoming-h: 2.25rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  background: var(--bg-light);
+  box-shadow: var(--shadow);
+}
+
+.upcoming-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: none;
+}
+
+.upcoming-head h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.upcoming-count {
+  min-width: 1.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Cards wrap, but the list is one card tall: whatever wraps is clipped, so
+   only the soonest bills that fit whole are shown. */
 .upcoming-list {
+  flex: 1;
+  min-width: 0;
+  height: var(--upcoming-h);
+  overflow: hidden;
   list-style: none;
   margin: 0;
   padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.5rem;
 }
 
 .upcoming-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.55rem 0;
-  border-bottom: 1px solid var(--bg-dark);
-}
-
-.upcoming-item:last-child {
-  border-bottom: 0;
-}
-
-.upcoming-main {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
+  gap: 0.5rem;
+  /* Content-width cards, left aligned; one too wide for the line shrinks (name ellipsis) */
+  flex: 0 1 auto;
   min-width: 0;
+  height: var(--upcoming-h);
+  box-sizing: border-box;
+  padding: 0 0.25rem 0 0.65rem;
+  border: 1px solid var(--bg-dark);
+  border-left: 3px solid var(--accent);
+  border-radius: 0.5rem;
+  background: var(--bg);
+}
+
+.upcoming-item.overdue {
+  border-left-color: var(--danger);
+}
+
+.upcoming-item.waiting {
+  border-left-color: var(--warning);
 }
 
 .upcoming-name {
-  font-size: 0.9rem;
+  flex: 0 1 auto;
+  min-width: 4rem;
+  max-width: 14rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 100%;
-}
-
-.upcoming-side {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.3rem;
 }
 
 .upcoming-amount {
-  font-size: 0.9rem;
+  flex: none;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.upcoming-item .due-pill {
+  flex: none;
 }
 
 .upcoming-bills .pay-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
   height: 1.75rem;
-  padding: 0 0.6rem;
-  font-size: 0.75rem;
+  padding: 0;
 }
 
 .all-bills {
-  display: inline-block;
-  margin-top: 0.6rem;
+  flex: none;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--accent);
   text-decoration: none;
-}
-
-@media (min-width: 1400px) {
-  .month-side > .upcoming-bills {
-    grid-column: 1;
-  }
+  white-space: nowrap;
 }
 
 .bills-empty h3 {

@@ -1,5 +1,8 @@
 {{ define "groceries-section-buttons" }}
 <ul id="section-list">
+  <li class="section-title">
+    <h2>{{ template "icon" (dict "Name" "groceries") }}{{ T .Lang "nav.groceries" }}</h2>
+  </li>
   <li>
     <button
       type="button"
