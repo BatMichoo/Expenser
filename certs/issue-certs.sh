@@ -7,7 +7,7 @@
 # (rootCA.crt, to install on phones and laptops) go to $OUT_DIR
 # (nginx/certs). A new server certificate is issued only when there is none,
 # it expires within $RENEW_DAYS days, it isn't signed by this CA, it no
-# longer covers LAN_DOMAIN and LAN_IP, or FORCE is set. Otherwise nothing
+# longer covers LAN_DOMAIN (and its subdomains) and LAN_IP, or FORCE is set. Otherwise nothing
 # changes, so running this on every `docker compose up` is cheap.
 set -eu
 
@@ -58,13 +58,18 @@ reason() {
 	*) echo "LAN_DOMAIN changed"; return ;;
 	esac
 	case ",$sans," in
+	*",DNS:*.$LAN_DOMAIN,"*) ;;
+	*) echo "it doesn't cover subdomains of LAN_DOMAIN"; return ;;
+	esac
+	case ",$sans," in
 	*",IPAddress:$LAN_IP,"*) ;;
 	*) echo "LAN_IP changed"; return ;;
 	esac
 	return 1
 }
 
-# issue signs a new server certificate for LAN_DOMAIN and LAN_IP. The files
+# issue signs a new server certificate for LAN_DOMAIN, its subdomains (the
+# app is served as expenser.<domain>) and LAN_IP. The files
 # are written next to the old ones and then moved into place, so nginx never
 # sees half a certificate.
 issue() {
@@ -74,7 +79,7 @@ issue() {
 basicConstraints = critical, CA:FALSE
 keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
-subjectAltName = DNS:$LAN_DOMAIN, DNS:localhost, IP:127.0.0.1, IP:$LAN_IP
+subjectAltName = DNS:$LAN_DOMAIN, DNS:*.$LAN_DOMAIN, DNS:localhost, IP:127.0.0.1, IP:$LAN_IP
 subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid
 EXT

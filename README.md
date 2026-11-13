@@ -22,10 +22,12 @@ This project relies on environment variables for configuration, managed through 
 
 nginx's certificate comes from a private certificate authority (CA) for your home, made and used by the `certs` container (`certs/issue-certs.sh`). `docker compose up` runs it before nginx starts. The first time, it creates the CA in the `ca-data` volume. After that, it issues a new certificate for `LAN_DOMAIN` and `LAN_IP` only when the current one is missing, expires within 30 days, or no longer matches them. Certificates last 397 days, and autodeploy restarts nginx when one is renewed.
 
-**Trust the CA once on every device.** Its public certificate is `nginx/certs/rootCA.crt`:
+The certificate covers `LAN_DOMAIN`, its subdomains (the app is `expenser.<LAN_DOMAIN>`), `LAN_IP` and `localhost`.
 
-- **iPhone/iPad:** AirDrop or email the file and install the profile (Settings > General > VPN & Device Management). Then turn on full trust under Settings > General > About > Certificate Trust Settings.
-- **Android:** Settings > Security > Encryption & credentials > Install a certificate > CA certificate.
+**Trust the CA once on every device.** Download its public certificate from `http://<LAN_IP>/rootCA.crt` (plain HTTP on purpose, since HTTPS isn't trusted yet). It is also `nginx/certs/rootCA.crt` on the server. To be sure it's yours, compare the SHA-256 fingerprint the phone shows with `openssl x509 -in nginx/certs/rootCA.crt -noout -fingerprint -sha256`.
+
+- **iPhone/iPad:** open the link in Safari (other browsers can't install profiles) and allow the download. Install it under Settings > General > VPN & Device Management, then turn on full trust under Settings > General > About > Certificate Trust Settings.
+- **Android:** download it, then go to Settings > Security > Encryption & credentials > Install a certificate > CA certificate and pick the file. Chrome trusts it right away. Firefox needs Settings > About Firefox (tap the logo 5 times), then Secret Settings > "Use third party CA certificates".
 - **Desktop:** import it as a trusted authority (Firefox: Settings > Certificates > Authorities > Import).
 
 Renewals don't need this again; only a new CA does.
