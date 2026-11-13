@@ -3,9 +3,9 @@
 {{ define "month-view" }}
 <div id="month-view" class="month-view" hx-get="/{{ .Section }}/current?month={{ .Month }}" hx-include="#month-filters"
   hx-trigger="expenses-changed from:body" hx-swap="outerHTML" hx-disinherit="*">
-  {{ if .UpcomingBills }}{{ template "upcoming-bills" . }}{{ end }}
   <div class="month-main">
     {{ template "month-toolbar" . }}
+    {{ if .UpcomingBills }}{{ template "upcoming-bills" . }}{{ end }}
     {{ template "kpi-tiles" . }}
     <section id="add-expense-section">
       {{ if eq .Section "groceries" }}

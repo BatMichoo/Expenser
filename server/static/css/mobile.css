@@ -471,7 +471,7 @@
     padding: 0 0 1em;
   }
 
-  .month-view > .upcoming-bills {
+  .month-main > .upcoming-bills {
     gap: 0.5em;
     margin: 0 0.75em 0.75em;
     padding: 0.4em 0.5em;
