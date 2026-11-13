@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type GroceriesHandler struct {
@@ -50,29 +51,70 @@ func groceryRowData(e *models.GroceriesExpense, lang string) gin.H {
 	return gin.H{"G": e, "Lang": lang}
 }
 
-// parseGroceriesExpenseForm reads the fields shared by the create and edit forms.
-func parseGroceriesExpenseForm(c *gin.Context) *models.GroceriesExpense {
-	categoryID, _ := strconv.Atoi(c.PostForm("category_id"))
-	quantity, _ := strconv.ParseFloat(c.PostForm("quantity"), 64)
-	unitPrice, _ := strconv.ParseFloat(c.PostForm("unit_price"), 64)
-	discountPerUnit, _ := strconv.ParseFloat(c.PostForm("discount_per_unit"), 64)
-	totalPrice, _ := strconv.ParseFloat(c.PostForm("total_price"), 64)
-	totalDiscount, _ := strconv.ParseFloat(c.PostForm("total_discount"), 64)
-
-	unit, unitSize := parseSizeFields(c.PostForm("unit"), c.PostForm("unit_size"))
-
-	return &models.GroceriesExpense{
-		Unit:            unit,
-		UnitSize:        unitSize,
+// parseGroceryFields reads one purchase's fields; get returns a field's
+// value by name (the plain form, or one receipt item's prefixed fields).
+// Empty numbers are 0; numbers that don't parse or are negative are
+// refused, naming the field.
+func parseGroceryFields(get func(string) string) (*models.GroceriesExpense, error) {
+	categoryID, _ := strconv.Atoi(strings.TrimSpace(get("category_id")))
+	e := &models.GroceriesExpense{
 		CategoryID:      categoryID,
-		Product:         c.PostForm("product"),
-		Quantity:        quantity,
-		UnitPrice:       unitPrice,
-		DiscountPerUnit: discountPerUnit,
-		TotalPrice:      totalPrice,
-		TotalDiscount:   totalDiscount,
-		SupermarketName: c.PostForm("supermarket_name"),
-		PurchaseDate:    time.Now(),
+		Product:         strings.TrimSpace(get("product")),
+		SupermarketName: strings.TrimSpace(get("supermarket_name")),
+	}
+	for _, f := range []struct {
+		key string
+		dst *float64
+	}{
+		{"quantity", &e.Quantity},
+		{"unit_price", &e.UnitPrice},
+		{"discount_per_unit", &e.DiscountPerUnit},
+		{"total_price", &e.TotalPrice},
+		{"total_discount", &e.TotalDiscount},
+	} {
+		n, err := parseMoney(get(f.key), f.key, false)
+		if err != nil {
+			return nil, err
+		}
+		*f.dst = n
+	}
+	e.Unit, e.UnitSize = parseSizeFields(get("unit"), get("unit_size"))
+	return e, nil
+}
+
+// parseGroceriesExpenseForm reads the fields shared by the create and edit
+// forms; the purchase is dated now.
+func parseGroceriesExpenseForm(c *gin.Context) (*models.GroceriesExpense, error) {
+	e, err := parseGroceryFields(c.PostForm)
+	if err != nil {
+		return nil, err
+	}
+	if e.Product == "" {
+		return nil, badRequest("error.invalid_form", errors.New("product is required"))
+	}
+	e.PurchaseDate = time.Now()
+	return e, nil
+}
+
+// parseReceiptItems reads the items of the receipt review form, in order,
+// up to the first without a product. Items without a category go to Other.
+func parseReceiptItems(form url.Values, userID uuid.UUID, purchasedAt time.Time) ([]*models.GroceriesExpense, error) {
+	var items []*models.GroceriesExpense
+	for i := 0; ; i++ {
+		prefix := fmt.Sprintf("items[%d].", i)
+		get := func(key string) string { return form.Get(prefix + key) }
+		if strings.TrimSpace(get("product")) == "" {
+			return items, nil
+		}
+		item, err := parseGroceryFields(get)
+		if err != nil {
+			return nil, err
+		}
+		if item.CategoryID == 0 {
+			item.CategoryID = models.GroceryCategoryOther
+		}
+		item.UserID, item.PurchaseDate = userID, purchasedAt
+		items = append(items, item)
 	}
 }
 
@@ -287,62 +329,28 @@ func (h *GroceriesHandler) renderReceiptReview(c *gin.Context, analysis *models.
 	return nil
 }
 
+// ConfirmBatchReceipt saves the reviewed receipt items, all or none.
 func (h *GroceriesHandler) ConfirmBatchReceipt(c *gin.Context) error {
 	lang := currentLang(c)
-	userID := currentUserID(c)
 	if err := c.Request.ParseForm(); err != nil {
-		return badRequest("error.invalid_date", err)
+		return badRequest("error.invalid_form", err)
 	}
 	purchasedAt, err := parseReceiptPurchaseTime(c.Request.PostForm, time.Now())
 	if err != nil {
 		return err
 	}
-
-	var rows []gin.H
-	for i := 0; ; i++ {
-		product := c.PostForm(fmt.Sprintf("items[%d].product", i))
-		if product == "" {
-			break
-		}
-		categoryID, _ := strconv.Atoi(c.PostForm(fmt.Sprintf("items[%d].category_id", i)))
-		if categoryID == 0 {
-			categoryID = 7 // Default to 'Other' if not provided or empty
-		}
-		quantity, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].quantity", i)), 64)
-		unitPrice, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].unit_price", i)), 64)
-		discountPerUnit, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].discount_per_unit", i)), 64)
-		totalPrice, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].total_price", i)), 64)
-		totalDiscount, _ := strconv.ParseFloat(c.PostForm(fmt.Sprintf("items[%d].total_discount", i)), 64)
-		supermarketName := c.PostForm(fmt.Sprintf("items[%d].supermarket_name", i))
-		unit, unitSize := parseSizeFields(c.PostForm(fmt.Sprintf("items[%d].unit", i)), c.PostForm(fmt.Sprintf("items[%d].unit_size", i)))
-
-		expense := &models.GroceriesExpense{
-			UserID:          userID,
-			CategoryID:      categoryID,
-			Product:         product,
-			Quantity:        quantity,
-			UnitPrice:       unitPrice,
-			DiscountPerUnit: discountPerUnit,
-			TotalPrice:      totalPrice,
-			TotalDiscount:   totalDiscount,
-			SupermarketName: supermarketName,
-			Unit:            unit,
-			UnitSize:        unitSize,
-			PurchaseDate:    purchasedAt,
-		}
-
-		if err := h.BaseHandler.DB.CreateGroceriesExpense(c.Request.Context(), expense); err != nil {
-			return fmt.Errorf("failed to save item %d: %w", i, err)
-		}
-
-		// Fetch the saved expense to get the CategoryName populated
-		dbExpense, err := h.BaseHandler.DB.GetGroceriesExpenseByID(c.Request.Context(), expense.ID, currentUserID(c))
-		if err == nil {
-			expense = dbExpense
-		}
-		rows = append(rows, groceryRowData(expense, lang))
+	items, err := parseReceiptItems(c.Request.PostForm, currentUserID(c), purchasedAt)
+	if err != nil {
+		return err
+	}
+	if err := h.BaseHandler.DB.CreateGroceriesExpenses(c.Request.Context(), items); err != nil {
+		return err
 	}
 
+	rows := make([]gin.H, len(items))
+	for i, item := range items {
+		rows[i] = groceryRowData(item, lang)
+	}
 	expensesChanged(c)
 	c.HTML(http.StatusCreated, "confirm-batch-groceries", gin.H{
 		"Rows": rows,
@@ -395,20 +403,17 @@ func (h *GroceriesHandler) GetCreateGroceriesForm(c *gin.Context) error {
 }
 
 func (h *GroceriesHandler) PostCreateGroceriesExpense(c *gin.Context) error {
-	expense := parseGroceriesExpenseForm(c)
-	expense.UserID = currentUserID(c)
-
-	if err := h.BaseHandler.DB.CreateGroceriesExpense(c.Request.Context(), expense); err != nil {
-		return err
-	}
-
-	// Fetch the saved expense to get the CategoryName populated
-	saved, err := h.BaseHandler.DB.GetGroceriesExpenseByID(c.Request.Context(), expense.ID, currentUserID(c))
+	expense, err := parseGroceriesExpenseForm(c)
 	if err != nil {
 		return err
 	}
+	expense.UserID = currentUserID(c)
 
-	return h.renderGroceryRows(c, http.StatusCreated, []gin.H{groceryRowData(saved, currentLang(c))})
+	// Creating fills in the category name the row shows.
+	if err := h.BaseHandler.DB.CreateGroceriesExpense(c.Request.Context(), expense); err != nil {
+		return err
+	}
+	return h.renderGroceryRows(c, http.StatusCreated, []gin.H{groceryRowData(expense, currentLang(c))})
 }
 
 func (h *GroceriesHandler) GetEditGroceriesForm(c *gin.Context) error {
@@ -441,7 +446,10 @@ func (h *GroceriesHandler) EditGroceriesExpense(c *gin.Context) error {
 		return err
 	}
 
-	expense := parseGroceriesExpenseForm(c)
+	expense, err := parseGroceriesExpenseForm(c)
+	if err != nil {
+		return err
+	}
 	expense.ID = id
 
 	if err := h.BaseHandler.DB.EditGroceriesExpense(c.Request.Context(), expense, currentUserID(c)); err != nil {

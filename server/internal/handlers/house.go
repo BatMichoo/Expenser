@@ -72,7 +72,7 @@ func (h *HouseHandler) parseHouseMetadata(c *gin.Context, typeID int) models.Met
 	var metadata any
 
 	switch typeID {
-	case 1: // Electricity
+	case models.UtilityElectricity:
 		kWhDay, _ := strconv.ParseFloat(c.Request.PostFormValue("kWhDay"), 64)
 		kWhNight, _ := strconv.ParseFloat(c.Request.PostFormValue("kWhNight"), 64)
 		priceDay, _ := strconv.ParseFloat(c.Request.PostFormValue("priceDay"), 64)
@@ -83,26 +83,26 @@ func (h *HouseHandler) parseHouseMetadata(c *gin.Context, typeID int) models.Met
 			PriceDay:   priceDay,
 			PriceNight: priceNight,
 		}
-	case 2: // Water
+	case models.UtilityWater:
 		qty, _ := strconv.ParseFloat(c.Request.PostFormValue("quantity"), 64)
 		price, _ := strconv.ParseFloat(c.Request.PostFormValue("pricePerUnit"), 64)
 		metadata = models.WaterMetadata{
 			Quantity:     qty,
 			PricePerUnit: price,
 		}
-	case 3: // Gas
+	case models.UtilityGas:
 		qty, _ := strconv.ParseFloat(c.Request.PostFormValue("quantity"), 64)
 		price, _ := strconv.ParseFloat(c.Request.PostFormValue("pricePerUnit"), 64)
 		metadata = models.GasMetadata{
 			Quantity:     qty,
 			PricePerUnit: price,
 		}
-	case 4, 5: // Internet, TV
+	case models.UtilityInternet, models.UtilityTV:
 		metadata = models.InternetTVMetadata{
 			Provider: c.Request.PostFormValue("provider"),
 			Plan:     c.Request.PostFormValue("plan"),
 		}
-	case 7: // Other
+	case models.UtilityOther:
 		metadata = models.OtherMetadata{
 			CustomName: c.Request.PostFormValue("customName"),
 		}
@@ -117,27 +117,18 @@ func (h *HouseHandler) parseHouseMetadata(c *gin.Context, typeID int) models.Met
 // GetMetadataFields returns the HTML fragment for specific metadata fields based on typeID
 func (h *HouseHandler) GetMetadataFields(c *gin.Context) error {
 	typeID, _ := strconv.Atoi(c.Query("typeID"))
+	return renderMetadataFields(c, houseMetadataTemplates[typeID])
+}
 
-	// We'll map type IDs to template names
-	var templateName string
-	switch typeID {
-	case 1:
-		templateName = "house-metadata-electricity"
-	case 2:
-		templateName = "house-metadata-water"
-	case 3:
-		templateName = "house-metadata-gas"
-	case 4, 5:
-		templateName = "house-metadata-internettv"
-	case 7:
-		templateName = "house-metadata-other"
-	default:
-		c.Status(http.StatusOK)
-		return nil
-	}
-
-	c.HTML(http.StatusOK, templateName, gin.H{"Lang": currentLang(c)})
-	return nil
+// houseMetadataTemplates are the extra form fields of each utility type
+// that records metadata.
+var houseMetadataTemplates = map[int]string{
+	models.UtilityElectricity: "house-metadata-electricity",
+	models.UtilityWater:       "house-metadata-water",
+	models.UtilityGas:         "house-metadata-gas",
+	models.UtilityInternet:    "house-metadata-internettv",
+	models.UtilityTV:          "house-metadata-internettv",
+	models.UtilityOther:       "house-metadata-other",
 }
 
 // CreateHouseExpense handles the HTTP POST request to create a new home expense.

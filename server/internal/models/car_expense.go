@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"expenser/internal/utilities"
 	"fmt"
 	"strings"
@@ -23,67 +22,32 @@ type CarExpense struct {
 	CreatedBy      uuid.UUID
 }
 
+// FormattedMetadata is the expense's metadata as one line of text, empty
+// when it has none.
 func (c CarExpense) FormattedMetadata(lang string) string {
-	if len(c.Metadata) == 0 {
-		return ""
-	}
-
-	switch c.ExpenseTypeID {
-	case 1: // Fuel
-		var m FuelMetadata
-		json.Unmarshal(c.Metadata, &m)
+	switch m := c.UnmarshalMetadata().(type) {
+	case FuelMetadata:
 		return fmt.Sprintf("%.2f L (%.2f/L)", m.Liters, m.PricePerLiter)
-	case 2: // Maintenance
-		var m MaintenanceMetadata
-		json.Unmarshal(c.Metadata, &m)
+	case MaintenanceMetadata:
 		translatedParts := make([]string, len(m.Parts))
 		for i, part := range m.Parts {
 			translatedParts[i] = utilities.T(lang, "parts."+part)
 		}
 		return fmt.Sprintf("Part: %s, Labor: %.2f", strings.Join(translatedParts, ", "), m.LaborCost)
-	case 3: // Insurance
-		var m InsuranceMetadata
-		json.Unmarshal(c.Metadata, &m)
+	case InsuranceMetadata:
 		return fmt.Sprintf("%s (%s) until %s", m.Provider, m.CoverageType, m.ValidUntil.Format(utilities.DateFormats.Input))
-	case 5: // Parking/Tolls
-		var m ParkingTollsMetadata
-		json.Unmarshal(c.Metadata, &m)
+	case ParkingTollsMetadata:
 		return fmt.Sprintf("%s (%s)", m.Location, m.Duration)
-	case 6: // Other
-		var m OtherMetadata
-		json.Unmarshal(c.Metadata, &m)
+	case OtherMetadata:
 		return m.CustomName
 	}
 	return ""
 }
 
+// UnmarshalMetadata returns the metadata struct for the expense's type, or
+// nil when it has none.
 func (c CarExpense) UnmarshalMetadata() any {
-	if len(c.Metadata) == 0 {
-		return nil
-	}
-	switch c.ExpenseTypeID {
-	case 1:
-		var m FuelMetadata
-		json.Unmarshal(c.Metadata, &m)
-		return m
-	case 2:
-		var m MaintenanceMetadata
-		json.Unmarshal(c.Metadata, &m)
-		return m
-	case 3:
-		var m InsuranceMetadata
-		json.Unmarshal(c.Metadata, &m)
-		return m
-	case 5:
-		var m ParkingTollsMetadata
-		json.Unmarshal(c.Metadata, &m)
-		return m
-	case 6:
-		var m OtherMetadata
-		json.Unmarshal(c.Metadata, &m)
-		return m
-	}
-	return nil
+	return decodeMetadata(c.Metadata, newCarMetadata(c.ExpenseTypeID))
 }
 
 // FuelMetadata represents detailed info for fuel purchases

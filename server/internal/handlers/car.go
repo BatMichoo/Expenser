@@ -88,14 +88,14 @@ func (h *CarHandler) parseCarMetadata(c *gin.Context, typeID int) models.Metadat
 	var metadata any
 
 	switch typeID {
-	case 1: // Fuel
+	case models.CarFuel:
 		liters, _ := strconv.ParseFloat(c.Request.PostFormValue("liters"), 64)
 		price, _ := strconv.ParseFloat(c.Request.PostFormValue("pricePerLiter"), 64)
 		metadata = models.FuelMetadata{
 			Liters:        liters,
 			PricePerLiter: price,
 		}
-	case 2: // Maintenance/Repair
+	case models.CarMaintenance:
 		var parts []string
 		selectedPart := c.Request.PostFormValue("parts")
 		if selectedPart != "" {
@@ -115,19 +115,19 @@ func (h *CarHandler) parseCarMetadata(c *gin.Context, typeID int) models.Metadat
 			Parts:     parts,
 			LaborCost: labor,
 		}
-	case 3: // Insurance
+	case models.CarInsurance:
 		validUntil, _ := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("validUntil"))
 		metadata = models.InsuranceMetadata{
 			Provider:     c.Request.PostFormValue("provider"),
 			CoverageType: c.Request.PostFormValue("coverageType"),
 			ValidUntil:   validUntil,
 		}
-	case 5: // Parking/Tolls
+	case models.CarParkingTolls:
 		metadata = models.ParkingTollsMetadata{
 			Location: c.Request.PostFormValue("location"),
 			Duration: c.Request.PostFormValue("duration"),
 		}
-	case 6: // Other
+	case models.CarOther:
 		metadata = models.OtherMetadata{
 			CustomName: c.Request.PostFormValue("customName"),
 		}
@@ -139,28 +139,31 @@ func (h *CarHandler) parseCarMetadata(c *gin.Context, typeID int) models.Metadat
 	return data
 }
 
-// GetMetadataFields returns the HTML fragment for specific metadata fields based on typeID
+// GetMetadataFields returns the extra form fields of the chosen type (none
+// for types without metadata).
 func (h *CarHandler) GetMetadataFields(c *gin.Context) error {
 	typeID, _ := strconv.Atoi(c.Query("typeID"))
+	return renderMetadataFields(c, carMetadataTemplates[typeID])
+}
 
-	var templateName string
-	switch typeID {
-	case 1:
-		templateName = "car-metadata-fuel"
-	case 2:
-		templateName = "car-metadata-maintenance"
-	case 3:
-		templateName = "car-metadata-insurance"
-	case 5:
-		templateName = "car-metadata-parkingtolls"
-	case 6:
-		templateName = "car-metadata-other"
-	default:
+// carMetadataTemplates are the extra form fields of each car expense type
+// that records metadata.
+var carMetadataTemplates = map[int]string{
+	models.CarFuel:         "car-metadata-fuel",
+	models.CarMaintenance:  "car-metadata-maintenance",
+	models.CarInsurance:    "car-metadata-insurance",
+	models.CarParkingTolls: "car-metadata-parkingtolls",
+	models.CarOther:        "car-metadata-other",
+}
+
+// renderMetadataFields renders the metadata fields template, or an empty
+// response when the type has none.
+func renderMetadataFields(c *gin.Context, tmpl string) error {
+	if tmpl == "" {
 		c.Status(http.StatusOK)
 		return nil
 	}
-
-	c.HTML(http.StatusOK, templateName, gin.H{"Lang": currentLang(c)})
+	c.HTML(http.StatusOK, tmpl, gin.H{"Lang": currentLang(c)})
 	return nil
 }
 

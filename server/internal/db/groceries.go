@@ -36,7 +36,8 @@ func storableSize(unit string, size float64) bool {
 const insertGroceriesSQL = `
 		INSERT INTO groceries_expenses (user_id, category_id, product, quantity, unit_price, discount_per_unit, total_price, total_discount, supermarket_name, purchase_date, unit, unit_size, size_status)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::text, $12::numeric, ` + sizeStatusSQL + `)
-		RETURNING id, created_at, size_status, (SELECT name FROM grocery_categories WHERE id = $2)`
+		RETURNING id, created_at, size_status, (SELECT name FROM grocery_categories WHERE id = $2),
+			quantity, unit_price, discount_per_unit, total_price, total_discount, unit, unit_size::float8`
 
 // execQuerier is a *sql.DB or *sql.Tx.
 type execQuerier interface {
@@ -44,9 +45,12 @@ type execQuerier interface {
 }
 
 // insertGroceriesExpense stores input and fills in its ID, creation time,
-// size status and category name.
+// size status and category name, and the amounts and size as stored
+// (rounded to the columns), so it can be shown without reading it back.
 func insertGroceriesExpense(ctx context.Context, q execQuerier, input *models.GroceriesExpense) error {
-	return q.QueryRowContext(ctx, insertGroceriesSQL,
+	var unit sql.NullString
+	var unitSize sql.NullFloat64
+	err := q.QueryRowContext(ctx, insertGroceriesSQL,
 		input.UserID,
 		input.CategoryID,
 		input.Product,
@@ -59,11 +63,18 @@ func insertGroceriesExpense(ctx context.Context, q execQuerier, input *models.Gr
 		input.PurchaseDate,
 		nullableUnit(input.Unit, input.UnitSize),
 		nullableUnitSize(input.Unit, input.UnitSize),
-	).Scan(&input.ID, &input.CreatedAt, &input.SizeStatus, &input.CategoryName)
+	).Scan(&input.ID, &input.CreatedAt, &input.SizeStatus, &input.CategoryName,
+		&input.Quantity, &input.UnitPrice, &input.DiscountPerUnit, &input.TotalPrice, &input.TotalDiscount,
+		&unit, &unitSize)
+	if err != nil {
+		return err
+	}
+	input.Unit, input.UnitSize = unit.String, unitSize.Float64
+	return nil
 }
 
-// CreateGroceriesExpense stores one purchase and fills in its ID, creation
-// time, size status and category name.
+// CreateGroceriesExpense stores one purchase and fills it in as stored (see
+// insertGroceriesExpense).
 func (db *DB) CreateGroceriesExpense(ctx context.Context, input *models.GroceriesExpense) error {
 	if err := insertGroceriesExpense(ctx, db.conn, input); err != nil {
 		return fmt.Errorf("failed to create groceries expense: %w", err)

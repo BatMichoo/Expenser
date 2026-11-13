@@ -174,3 +174,25 @@ func TestGroceriesRangesUseLocalDays(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, list, 1)
 }
+
+// A receipt is saved all or nothing: an item that can't be stored leaves
+// no other item of the receipt behind.
+func TestCreateGroceriesExpensesIsAtomic(t *testing.T) {
+	db, userID := setupMonthTestDB(t)
+	ctx := context.Background()
+	at := day(2026, 11, 5)
+
+	good := &models.GroceriesExpense{UserID: userID, CategoryID: models.GroceryCategoryOther, Product: "Milk", Quantity: 1, TotalPrice: 2.456, PurchaseDate: at}
+	bad := &models.GroceriesExpense{UserID: userID, CategoryID: 999999, Product: "Ghost", Quantity: 1, TotalPrice: 1, PurchaseDate: at}
+	require.Error(t, db.CreateGroceriesExpenses(ctx, []*models.GroceriesExpense{good, bad}))
+
+	list, err := db.GetGroceriesExpensesForMonth(ctx, time.November, 2026, userID)
+	require.NoError(t, err)
+	assert.Empty(t, list)
+
+	good.ID = 0
+	require.NoError(t, db.CreateGroceriesExpenses(ctx, []*models.GroceriesExpense{good}))
+	assert.NotZero(t, good.ID)
+	assert.Equal(t, "Other", good.CategoryName, "filled in for the row")
+	assert.Equal(t, 2.46, good.TotalPrice, "as stored")
+}

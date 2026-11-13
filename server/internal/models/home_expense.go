@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -21,63 +20,28 @@ type HouseExpense struct {
 	CreatedBy      uuid.UUID
 }
 
+// FormattedMetadata is the expense's metadata as one line of text, empty
+// when it has none.
 func (h HouseExpense) FormattedMetadata(lang string) string {
-	if len(h.Metadata) == 0 {
-		return ""
-	}
-
-	switch h.UtilityTypeID {
-	case 1: // Electricity
-		var m ElectricityMetadata
-		json.Unmarshal(h.Metadata, &m)
+	switch m := h.UnmarshalMetadata().(type) {
+	case ElectricityMetadata:
 		return fmt.Sprintf("Day: %.2f (%.4f/kWh), Night: %.2f (%.4f/kWh)", m.KWhDay, m.PriceDay, m.KWhNight, m.PriceNight)
-	case 2: // Water
-		var m WaterMetadata
-		json.Unmarshal(h.Metadata, &m)
+	case WaterMetadata:
 		return fmt.Sprintf("Qty: %.2f m³ (%.2f/m³)", m.Quantity, m.PricePerUnit)
-	case 3: // Gas
-		var m GasMetadata
-		json.Unmarshal(h.Metadata, &m)
+	case GasMetadata:
 		return fmt.Sprintf("Qty: %.2f (%.2f/unit)", m.Quantity, m.PricePerUnit)
-	case 4, 5: // Internet, TV
-		var m InternetTVMetadata
-		json.Unmarshal(h.Metadata, &m)
+	case InternetTVMetadata:
 		return fmt.Sprintf("%s - %s", m.Provider, m.Plan)
-	case 7: // Other
-		var m OtherMetadata
-		json.Unmarshal(h.Metadata, &m)
+	case OtherMetadata:
 		return m.CustomName
 	}
 	return ""
 }
 
-func (h HouseExpense) UnmarshalMetadata() interface{} {
-	if len(h.Metadata) == 0 {
-		return nil
-	}
-	switch h.UtilityTypeID {
-	case 1:
-		var m ElectricityMetadata
-		json.Unmarshal(h.Metadata, &m)
-		return m
-	case 2:
-		var m WaterMetadata
-		json.Unmarshal(h.Metadata, &m)
-		return m
-	case 3:
-		var m GasMetadata
-		json.Unmarshal(h.Metadata, &m)
-		return m
-	case 4, 5:
-		var m InternetTVMetadata
-		json.Unmarshal(h.Metadata, &m)
-		return m
-	case 7:
-		var m OtherMetadata
-		json.Unmarshal(h.Metadata, &m)
-		return m
-	}
-	return nil
+// UnmarshalMetadata returns the metadata struct for the expense's utility
+// type, or nil when it has none.
+func (h HouseExpense) UnmarshalMetadata() any {
+	return decodeMetadata(h.Metadata, newHouseMetadata(h.UtilityTypeID))
 }
 
 // ElectricityMetadata represents detailed info for electricity bills
@@ -122,6 +86,6 @@ type HouseExpResponse struct {
 type EditHouseFormData struct {
 	Expense  *HouseExpense
 	Types    []HomeUtilityType
-	Metadata interface{}
+	Metadata any
 	Lang     string
 }
