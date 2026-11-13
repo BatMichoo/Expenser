@@ -3,7 +3,7 @@
 .PHONY: start dev-db dev-db-down
 
 start:
-	cd server/cmd && go run main.go
+	cd server/cmd && go run .
 
 dev-db:
 	docker compose --env-file server/.env.dev -f docker-compose.dev.yaml up -d
