@@ -39,7 +39,7 @@ DB_HOST=db<br>
 DB_PORT=4000<br>
 DB_NAME=expenses<br>
 DB_SSLMODE=disable<br>
-SERVER_PORT=8000<br>
+APP_PORT=8080<br>
 
 ### DB Test Config
 

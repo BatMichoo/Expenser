@@ -81,7 +81,7 @@ The application uses a manual repository-like pattern located in `internal/db/`.
 
 ### Configuration
 
-Managed in `internal/config/config.go`. It reads from environment variables, which are often provided by a `.env` file (managed by Docker Compose in production).
+Managed in `internal/config/config.go`. It reads from environment variables, which are often provided by a `.env` file (managed by Docker Compose in production). Only `internal/config` reads the environment (`LoadConfig(getenv)`); `.env.dev` is loaded by `config.LoadDevEnv()` from the module root when present. Startup fails on missing DB settings or a weak `JWT_SECRET` (under 32 bytes).
 
 ## 5. Deployment and Operations
 
