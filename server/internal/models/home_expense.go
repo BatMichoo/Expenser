@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,24 +17,6 @@ type HouseExpense struct {
 	Metadata       Metadata  `form:"metadata"`
 	CreatedAt      time.Time `form:"createdAt"`
 	CreatedBy      uuid.UUID
-}
-
-// FormattedMetadata is the expense's metadata as one line of text, empty
-// when it has none.
-func (h HouseExpense) FormattedMetadata(lang string) string {
-	switch m := h.UnmarshalMetadata().(type) {
-	case ElectricityMetadata:
-		return fmt.Sprintf("Day: %.2f (%.4f/kWh), Night: %.2f (%.4f/kWh)", m.KWhDay, m.PriceDay, m.KWhNight, m.PriceNight)
-	case WaterMetadata:
-		return fmt.Sprintf("Qty: %.2f m³ (%.2f/m³)", m.Quantity, m.PricePerUnit)
-	case GasMetadata:
-		return fmt.Sprintf("Qty: %.2f (%.2f/unit)", m.Quantity, m.PricePerUnit)
-	case InternetTVMetadata:
-		return fmt.Sprintf("%s - %s", m.Provider, m.Plan)
-	case OtherMetadata:
-		return m.CustomName
-	}
-	return ""
 }
 
 // UnmarshalMetadata returns the metadata struct for the expense's utility

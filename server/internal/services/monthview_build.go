@@ -197,7 +197,7 @@ func (s *MonthViewService) House(ctx context.Context, userID uuid.UUID, ym YearM
 		if filter.TypeID != 0 && e.UtilityTypeID != filter.TypeID {
 			continue
 		}
-		if MatchesQuery(filter.Query, e.UtilityType, utilities.T(lang, "type."+e.UtilityType), e.Notes, e.FormattedMetadata(lang)) {
+		if MatchesQuery(filter.Query, e.UtilityType, utilities.T(lang, "type."+e.UtilityType), e.Notes, utilities.MetadataDetails(e.UnmarshalMetadata(), lang)) {
 			shown = append(shown, e)
 		}
 	}
@@ -247,7 +247,7 @@ func (s *MonthViewService) Car(ctx context.Context, userID uuid.UUID, ym YearMon
 		if filter.TypeID != 0 && e.ExpenseTypeID != filter.TypeID {
 			continue
 		}
-		if MatchesQuery(filter.Query, e.Type, utilities.T(lang, "type."+e.Type), e.Notes, e.FormattedMetadata(lang)) {
+		if MatchesQuery(filter.Query, e.Type, utilities.T(lang, "type."+e.Type), e.Notes, utilities.MetadataDetails(e.UnmarshalMetadata(), lang)) {
 			shown = append(shown, e)
 		}
 	}

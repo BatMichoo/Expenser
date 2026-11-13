@@ -43,6 +43,8 @@ var assetVersion = strconv.FormatInt(time.Now().Unix(), 36)
 // TemplateFuncs returns the functions available to every HTML template.
 func TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
+		// metadataDetails is MetadataDetails: an expense's metadata as text.
+		"metadataDetails": MetadataDetails,
 		// deref reads an optional amount (callers check it is set).
 		"deref": func(v *float64) float64 {
 			if v == nil {

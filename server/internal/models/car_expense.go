@@ -1,9 +1,6 @@
 package models
 
 import (
-	"expenser/internal/utilities"
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,28 +17,6 @@ type CarExpense struct {
 	Metadata       Metadata  `form:"metadata"`
 	CreatedAt      time.Time `form:"createdAt"`
 	CreatedBy      uuid.UUID
-}
-
-// FormattedMetadata is the expense's metadata as one line of text, empty
-// when it has none.
-func (c CarExpense) FormattedMetadata(lang string) string {
-	switch m := c.UnmarshalMetadata().(type) {
-	case FuelMetadata:
-		return fmt.Sprintf("%.2f L (%.2f/L)", m.Liters, m.PricePerLiter)
-	case MaintenanceMetadata:
-		translatedParts := make([]string, len(m.Parts))
-		for i, part := range m.Parts {
-			translatedParts[i] = utilities.T(lang, "parts."+part)
-		}
-		return fmt.Sprintf("Part: %s, Labor: %.2f", strings.Join(translatedParts, ", "), m.LaborCost)
-	case InsuranceMetadata:
-		return fmt.Sprintf("%s (%s) until %s", m.Provider, m.CoverageType, m.ValidUntil.Format(utilities.DateFormats.Input))
-	case ParkingTollsMetadata:
-		return fmt.Sprintf("%s (%s)", m.Location, m.Duration)
-	case OtherMetadata:
-		return m.CustomName
-	}
-	return ""
 }
 
 // UnmarshalMetadata returns the metadata struct for the expense's type, or
