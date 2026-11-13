@@ -11,7 +11,7 @@
     </div>
     <div class="amount-field">
       <label for="total_price">{{ T .Lang "groceries.total_price" }}</label>
-      <input type="number" id="total_price" name="total_price" step="0.01" inputmode="decimal" placeholder="0.00" value="{{ printf "%.2f" .Expense.TotalPrice }}" required />
+      <input type="number" id="total_price" name="total_price" step="0.01" inputmode="decimal" placeholder="0.00" value="{{ moneyValue .Expense.TotalPrice }}" required />
     </div>
     <div class="qty-unit">
       <div>
@@ -22,7 +22,7 @@
       </div>
       <div>
         <label for="unit_price">{{ T .Lang "groceries.unit_price" }}</label>
-        <input type="number" id="unit_price" name="unit_price" step="0.01" inputmode="decimal" value="{{ printf "%.2f" .Expense.UnitPrice }}" required />
+        <input type="number" id="unit_price" name="unit_price" step="0.01" inputmode="decimal" value="{{ moneyValue .Expense.UnitPrice }}" required />
       </div>
     </div>
     {{ template "size-fields" (dict "Prefix" "" "ID" "size-fields" "Unit" .Expense.Unit "Size" .Expense.UnitSize "Lang" .Lang) }}
@@ -43,11 +43,11 @@
       <div class="more-fields-body">
         <div>
           <label for="discount_per_unit">{{ T .Lang "groceries.discount_per_unit" }}</label>
-          <input type="number" id="discount_per_unit" name="discount_per_unit" step="0.01" inputmode="decimal" value="{{ printf "%.2f" .Expense.DiscountPerUnit }}" />
+          <input type="number" id="discount_per_unit" name="discount_per_unit" step="0.01" inputmode="decimal" value="{{ moneyValue .Expense.DiscountPerUnit }}" />
         </div>
         <div>
           <label for="total_discount">{{ T .Lang "groceries.total_discount" }}</label>
-          <input type="number" id="total_discount" name="total_discount" step="0.01" inputmode="decimal" value="{{ printf "%.2f" .Expense.TotalDiscount }}" />
+          <input type="number" id="total_discount" name="total_discount" step="0.01" inputmode="decimal" value="{{ moneyValue .Expense.TotalDiscount }}" />
         </div>
       </div>
     </details>

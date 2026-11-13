@@ -1,4 +1,4 @@
-{{ define "house-exp-row" }}{{ $details := .Exp.FormattedMetadata .Lang }}
+{{ define "house-exp-row" }}{{ $details := metadataDetails .Exp.UnmarshalMetadata .Lang }}
 <tr id="exp-{{ .Exp.ID }}" class="exp-row" hx-get="/house/expenses/edit/{{ .Exp.ID }}" hx-target="#action-dialog"
   hx-trigger="click[!event.target.closest('button')]">
   <td class="c-date">{{ .Exp.ExpenseDate.Format "02.01" }}</td>

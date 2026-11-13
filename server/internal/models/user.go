@@ -1,7 +1,9 @@
 package models
 
 import (
+	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 	"unicode"
@@ -9,6 +11,13 @@ import (
 
 	"github.com/google/uuid"
 )
+
+// ErrUsernameTaken means another user already has the username.
+var ErrUsernameTaken = errors.New("username is taken")
+
+// ErrUserNotFound means no user has the ID or username. It wraps
+// sql.ErrNoRows, so handlers that don't check for it show a 404.
+var ErrUserNotFound = fmt.Errorf("user not found: %w", sql.ErrNoRows)
 
 // User represents a user in the system
 type User struct {

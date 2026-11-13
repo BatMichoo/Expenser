@@ -68,7 +68,8 @@ jobs:
       DB_HOST: localhost
       DB_PORT: "5432"
       DB_NAME: expenser
-      JWT_SECRET: ci-test-secret
+      # Config requires at least 32 bytes (HS256 key length).
+      JWT_SECRET: ci-test-secret-0123456789abcdefghij
     steps:
       - uses: actions/checkout@v5
 

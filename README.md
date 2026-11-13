@@ -15,12 +15,16 @@ This project relies on environment variables for configuration, managed through 
 | `PROVINCE`    | The province or state (e.g., `California`) used in your certificate's distinguished name.                             | `California`      |
 | `CITY`        | The city or locality (e.g., `San Francisco`) used in your certificate's distinguished name.                           | `San Francisco`   |
 | `ORG_NAME`    | The organization name (e.g., `MyCompany Inc.`) included in your certificate's distinguished name.                     | `My Company Inc.` |
-| `LAN_DOMAIN`  | The local area network domain name (e.g., `mywebapp.lan`) used to access the application within your LAN.             | `mywebapp.lan`    |
+| `LAN_DOMAIN`  | The local area network domain name (e.g., `mywebapp.lan`) used to access the application within your LAN; also the cookie domain. | `mywebapp.lan`    |
 | `LAN_IP`      | The local IP address (e.g., `192.168.1.123`) of the machine where the application is hosted, for Nginx configuration. | `192.168.1.123`   |
+
+## TLS Certificate
+
+`make certs` creates a self-signed certificate for nginx in `nginx/certs/` from the values above (`LAN_DOMAIN` and `LAN_IP` are required). It lasts 365 days; `make renew-certs` replaces it, then restart nginx (`docker compose restart nginx`). Devices must trust the certificate once (import `nginx/certs/homeserver.lan.crt`).
 
 ## .env Example
 
-GIN_MODE=release
+Gin runs in release mode unless `DEV_MODE=true`; never set `DEV_MODE` in production.
 
 ### NGINX Config
 
@@ -39,15 +43,9 @@ DB_HOST=db<br>
 DB_PORT=4000<br>
 DB_NAME=expenses<br>
 DB_SSLMODE=disable<br>
-SERVER_PORT=8000<br>
+APP_PORT=8080<br>
 
-### DB Test Config
-
-TEST_DB_USER=admin<br>
-TEST_DB_PASS=adminPassword!<br>
-TEST_DB_NAME=expenses_test<br>
-TEST_DB_HOST=localhost<br>
-TEST_DB_PORT=5000<br>
+Tests use the database `DB_NAME` + `_test` on the same server, created on first run; they read `server/.env.dev`, not this file.
 
 ### JWT Config
 

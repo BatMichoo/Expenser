@@ -29,10 +29,6 @@ const recurringPaymentSelect = `
 	LEFT JOIN car_expense_types ct ON ct.id = rp.car_expense_type_id
 `
 
-type rowScanner interface {
-	Scan(dest ...any) error
-}
-
 func scanRecurringPayment(row rowScanner) (*models.RecurringPayment, error) {
 	var (
 		p               models.RecurringPayment

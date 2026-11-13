@@ -42,8 +42,8 @@ func TestCreateBackfillExpenses(t *testing.T) {
 
 	jan, err := db.GetHouseExpensesForMonth(context.Background(), time.January, 2026, userID)
 	require.NoError(t, err)
-	require.Len(t, *jan, 1)
-	got := (*jan)[0]
+	require.Len(t, jan, 1)
+	got := jan[0]
 	assert.Equal(t, "Internet", got.UtilityType)
 	assert.Equal(t, 4, got.UtilityTypeID, "the month view's type filter needs the type id")
 	assert.Equal(t, 15.0, got.Amount)
@@ -55,14 +55,14 @@ func TestCreateBackfillExpenses(t *testing.T) {
 	require.NoError(t, db.CreateBackfillExpenses(ctx, carE, []time.Time{day(2026, 5, 1)}))
 	may, err := db.GetCarExpensesForMonth(context.Background(), time.May, 2026, userID)
 	require.NoError(t, err)
-	require.Len(t, *may, 1)
-	assert.Equal(t, 3, (*may)[0].ExpenseTypeID, "the month view's type filter needs the type id")
+	require.Len(t, may, 1)
+	assert.Equal(t, 3, may[0].ExpenseTypeID, "the month view's type filter needs the type id")
 
 	bad := models.BackfillExpense{UserID: userID, Section: models.SectionHouse, TypeID: 999, Amount: 1}
 	assert.Error(t, db.CreateBackfillExpenses(ctx, bad, []time.Time{day(2026, 6, 1), day(2026, 7, 1)}))
 	jun, err := db.GetHouseExpensesForMonth(context.Background(), time.June, 2026, userID)
 	require.NoError(t, err)
-	assert.Empty(t, *jun, "all or nothing")
+	assert.Empty(t, jun, "all or nothing")
 }
 
 func TestSnoozeRecurringPayment(t *testing.T) {

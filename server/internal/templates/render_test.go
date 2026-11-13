@@ -311,12 +311,12 @@ func TestRowActionsAreLabelledIcons(t *testing.T) {
 	assert.Equal(t, "/house/expenses/delete/42", hx)
 }
 
-func houseTypes() *[]models.HomeUtilityType {
-	return &[]models.HomeUtilityType{{ID: 1, Name: "Electricity"}, {ID: 3, Name: "Gas"}, {ID: 7, Name: "Other"}}
+func houseTypes() []models.HomeUtilityType {
+	return []models.HomeUtilityType{{ID: 1, Name: "Electricity"}, {ID: 3, Name: "Gas"}, {ID: 7, Name: "Other"}}
 }
 
-func carTypes() *[]models.CarExpenseType {
-	return &[]models.CarExpenseType{{ID: 1, Name: "Fuel"}, {ID: 3, Name: "Insurance"}}
+func carTypes() []models.CarExpenseType {
+	return []models.CarExpenseType{{ID: 1, Name: "Fuel"}, {ID: 3, Name: "Insurance"}}
 }
 
 // assertSheetForm checks the parts every add/edit sheet shares.
@@ -715,7 +715,7 @@ func TestBillFormEdit(t *testing.T) {
 	assert.False(t, hasMeta, "bills have no per-type detail fields")
 
 	amount, _ := form.Find(`input[name="expected_amount"]`).Attr("value")
-	assert.Equal(t, "29.9", amount)
+	assert.Equal(t, "29.90", amount)
 	unit, _ := form.Find(`select[name="cycle_unit"] option[selected]`).Attr("value")
 	assert.Equal(t, "month", unit)
 	assert.Equal(t, 1, form.Find(`input[name="payment_options"][value="cash"][checked]`).Length())
@@ -749,7 +749,7 @@ func TestBillPayForm(t *testing.T) {
 	post, _ := form.Attr("hx-post")
 	assert.Equal(t, "/bills/11111111-1111-1111-1111-111111111111/paid", post)
 	amount, _ := form.Find(`input[name="amount"]`).Attr("value")
-	assert.Equal(t, "29.9", amount, "pre-filled with the expected amount")
+	assert.Equal(t, "29.90", amount, "pre-filled with the expected amount")
 	min, _ := form.Find(`input[name="amount"]`).Attr("min")
 	assert.Equal(t, "0", min, "a free month is allowed")
 	paid, _ := form.Find(`input[name="paid_on"]`).Attr("value")
@@ -1802,4 +1802,15 @@ func TestTrendItemPriceNowNamesPeriod(t *testing.T) {
 	p.Item.PriceNowPeriod = "Oct 2026"
 	doc := parseHTML(t, render(t, "trend-item", p))
 	assert.Contains(t, doc.Find(".kpi-total .kpi-sub").Text(), "Oct 2026")
+}
+
+// Money inputs are prefilled with two decimals, as entered: 12.50, not 12.5.
+func TestMoneyInputsShowTwoDecimals(t *testing.T) {
+	doc := parseHTML(t, render(t, "amount-date-fields", map[string]any{"Lang": "en", "Amount": 12.5, "Date": "2026-11-13"}))
+	v, _ := doc.Find(`input[name="amount"]`).Attr("value")
+	assert.Equal(t, "12.50", v)
+
+	doc = parseHTML(t, render(t, "discount-notes-fields", map[string]any{"Lang": "en", "Discount": 0.8 * 3}))
+	v, _ = doc.Find(`input[name="discount_amount"]`).Attr("value")
+	assert.Equal(t, "2.40", v)
 }

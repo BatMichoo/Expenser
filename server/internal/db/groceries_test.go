@@ -4,6 +4,7 @@ import (
 	"context"
 	"expenser/internal/config"
 	"expenser/internal/models"
+	"os"
 	"testing"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 )
 
 func TestCreateGroceriesExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +97,7 @@ func TestCreateGroceriesExpense(t *testing.T) {
 }
 
 func TestGroceriesCRUD(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +167,7 @@ func TestGroceriesCRUD(t *testing.T) {
 }
 
 func TestEditGroceriesKeepsSize(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		t.Fatal(err)
 	}

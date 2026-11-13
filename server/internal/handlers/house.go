@@ -14,18 +14,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// HouseHandler serves the house section: month view and expense forms.
 type HouseHandler struct {
-	BaseHandler BaseHandler
-	months      *services.MonthViewService
-}
-
-// NewHouseHandler creates and returns a new instance of HomeHandler.
-// It requires a database connection pool to operate.
-func NewHouseHandler(rh *RootHandler) *HouseHandler {
-	return &HouseHandler{
-		BaseHandler: rh.BaseHandler,
-		months:      services.NewMonthViewService(rh.BaseHandler.DB),
-	}
+	store  HouseStore
+	months *services.MonthViewService
 }
 
 // parseHouseExpenseForm reads the fields shared by the create and edit forms.
@@ -53,7 +45,7 @@ func (h *HouseHandler) parseHouseExpenseForm(c *gin.Context) (*models.HouseExpen
 // for a new home expense.
 // This handler serves the UI component for expense creation.
 func (h *HouseHandler) GetCreateHouseForm(c *gin.Context) error {
-	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes(c.Request.Context())
+	expTypes, err := h.store.GetHouseUtilityTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -72,7 +64,7 @@ func (h *HouseHandler) parseHouseMetadata(c *gin.Context, typeID int) models.Met
 	var metadata any
 
 	switch typeID {
-	case 1: // Electricity
+	case models.UtilityElectricity:
 		kWhDay, _ := strconv.ParseFloat(c.Request.PostFormValue("kWhDay"), 64)
 		kWhNight, _ := strconv.ParseFloat(c.Request.PostFormValue("kWhNight"), 64)
 		priceDay, _ := strconv.ParseFloat(c.Request.PostFormValue("priceDay"), 64)
@@ -83,26 +75,26 @@ func (h *HouseHandler) parseHouseMetadata(c *gin.Context, typeID int) models.Met
 			PriceDay:   priceDay,
 			PriceNight: priceNight,
 		}
-	case 2: // Water
+	case models.UtilityWater:
 		qty, _ := strconv.ParseFloat(c.Request.PostFormValue("quantity"), 64)
 		price, _ := strconv.ParseFloat(c.Request.PostFormValue("pricePerUnit"), 64)
 		metadata = models.WaterMetadata{
 			Quantity:     qty,
 			PricePerUnit: price,
 		}
-	case 3: // Gas
+	case models.UtilityGas:
 		qty, _ := strconv.ParseFloat(c.Request.PostFormValue("quantity"), 64)
 		price, _ := strconv.ParseFloat(c.Request.PostFormValue("pricePerUnit"), 64)
 		metadata = models.GasMetadata{
 			Quantity:     qty,
 			PricePerUnit: price,
 		}
-	case 4, 5: // Internet, TV
+	case models.UtilityInternet, models.UtilityTV:
 		metadata = models.InternetTVMetadata{
 			Provider: c.Request.PostFormValue("provider"),
 			Plan:     c.Request.PostFormValue("plan"),
 		}
-	case 7: // Other
+	case models.UtilityOther:
 		metadata = models.OtherMetadata{
 			CustomName: c.Request.PostFormValue("customName"),
 		}
@@ -117,27 +109,18 @@ func (h *HouseHandler) parseHouseMetadata(c *gin.Context, typeID int) models.Met
 // GetMetadataFields returns the HTML fragment for specific metadata fields based on typeID
 func (h *HouseHandler) GetMetadataFields(c *gin.Context) error {
 	typeID, _ := strconv.Atoi(c.Query("typeID"))
+	return renderMetadataFields(c, houseMetadataTemplates[typeID])
+}
 
-	// We'll map type IDs to template names
-	var templateName string
-	switch typeID {
-	case 1:
-		templateName = "house-metadata-electricity"
-	case 2:
-		templateName = "house-metadata-water"
-	case 3:
-		templateName = "house-metadata-gas"
-	case 4, 5:
-		templateName = "house-metadata-internettv"
-	case 7:
-		templateName = "house-metadata-other"
-	default:
-		c.Status(http.StatusOK)
-		return nil
-	}
-
-	c.HTML(http.StatusOK, templateName, gin.H{"Lang": currentLang(c)})
-	return nil
+// houseMetadataTemplates are the extra form fields of each utility type
+// that records metadata.
+var houseMetadataTemplates = map[int]string{
+	models.UtilityElectricity: "house-metadata-electricity",
+	models.UtilityWater:       "house-metadata-water",
+	models.UtilityGas:         "house-metadata-gas",
+	models.UtilityInternet:    "house-metadata-internettv",
+	models.UtilityTV:          "house-metadata-internettv",
+	models.UtilityOther:       "house-metadata-other",
 }
 
 // CreateHouseExpense handles the HTTP POST request to create a new home expense.
@@ -155,12 +138,12 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) error {
 	}
 	newExpense.CreatedBy = userID
 
-	if err := h.BaseHandler.DB.CreateHouseExpense(c.Request.Context(), newExpense); err != nil {
+	if err := h.store.CreateHouseExpense(c.Request.Context(), newExpense); err != nil {
 		return err
 	}
 
 	title := utilities.T(lang, "modal.create_success")
-	message := fmt.Sprintf("%s: %v %s", newExpense.UtilityType, newExpense.Amount, utilities.Currency)
+	message := newExpense.UtilityType + ": " + utilities.Money(newExpense.Amount)
 
 	expensesChanged(c)
 	renderSuccess(c, http.StatusCreated, title, message)
@@ -206,7 +189,7 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) error {
 		return err
 	}
 
-	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(c.Request.Context(), id, currentUserID(c))
+	exp, err := h.store.GetHouseExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -214,7 +197,7 @@ func (h *HouseHandler) GetEditHouseForm(c *gin.Context) error {
 		return notFound("error.expense_not_found")
 	}
 
-	expTypes, err := h.BaseHandler.DB.GetHouseUtilityTypes(c.Request.Context())
+	expTypes, err := h.store.GetHouseUtilityTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -247,7 +230,7 @@ func (h *HouseHandler) EditHouseExpenseById(c *gin.Context) error {
 	}
 	editExpense.ID = id
 
-	if err := h.BaseHandler.DB.EditHouseExpense(c.Request.Context(), editExpense, currentUserID(c)); err != nil {
+	if err := h.store.EditHouseExpense(c.Request.Context(), editExpense, currentUserID(c)); err != nil {
 		return err
 	}
 
@@ -273,7 +256,7 @@ func (h *HouseHandler) GetDeleteConfirm(c *gin.Context) error {
 		return err
 	}
 
-	exp, err := h.BaseHandler.DB.GetHouseExpenseByID(c.Request.Context(), id, currentUserID(c))
+	exp, err := h.store.GetHouseExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -307,7 +290,7 @@ func (h *HouseHandler) DeleteHouseExp(c *gin.Context) error {
 		return err
 	}
 
-	deleted, err := h.BaseHandler.DB.DeleteHouseExpense(c.Request.Context(), id, currentUserID(c))
+	deleted, err := h.store.DeleteHouseExpense(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}

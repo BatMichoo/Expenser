@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"math"
 	"net/url"
 	"strconv"
 	"strings"
@@ -45,11 +46,20 @@ func parseExpenseFields(v url.Values) (expenseFields, error) {
 
 // formMoney reads a non-negative amount; an empty optional field is 0.
 func formMoney(v url.Values, key string, required bool) (float64, error) {
-	s := strings.TrimSpace(v.Get(key))
+	return parseMoney(v.Get(key), key, required)
+}
+
+// parseMoney is formMoney for a value already read; key names the field in
+// the log.
+func parseMoney(s, key string, required bool) (float64, error) {
+	s = strings.TrimSpace(s)
 	if s == "" && !required {
 		return 0, nil
 	}
 	n, err := strconv.ParseFloat(s, 64)
+	if err == nil && (math.IsNaN(n) || math.IsInf(n, 0)) {
+		err = fmt.Errorf("%q is not a finite number", s) // ParseFloat accepts "NaN" and "Inf"
+	}
 	if err != nil {
 		return 0, badRequest("error.invalid_amount", fmt.Errorf("%s: %w", key, err))
 	}

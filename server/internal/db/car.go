@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"expenser/internal/models"
 	"fmt"
 	"time"
@@ -10,35 +11,15 @@ import (
 	"github.com/google/uuid"
 )
 
-func (db *DB) GetCarExpenseTypes(ctx context.Context) (*[]models.CarExpenseType, error) {
-	query := `
-		SELECT * FROM car_expense_types
-		`
-	var expenseTypes []models.CarExpenseType
-	rows, err := db.conn.QueryContext(ctx, query)
-
+// GetCarExpenseTypes lists the car expense types in ID order.
+func (db *DB) GetCarExpenseTypes(ctx context.Context) ([]models.CarExpenseType, error) {
+	types, err := queryAll(ctx, db.conn, func(r rowScanner, t *models.CarExpenseType) error {
+		return r.Scan(&t.ID, &t.Name)
+	}, `SELECT id, name FROM car_expense_types ORDER BY id`)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch car expenses: %v", err)
+		return nil, fmt.Errorf("failed to fetch car expense types: %w", err)
 	}
-
-	for rows.Next() {
-		err := rows.Err()
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch car expenses: %v", err)
-		}
-
-		var expType models.CarExpenseType
-		err = rows.Scan(&expType.ID,
-			&expType.Name,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan expenses: %v", err)
-		}
-		expenseTypes = append(expenseTypes, expType)
-	}
-
-	return &expenseTypes, nil
+	return types, nil
 }
 
 // GetCarExpenseByID returns the user's car expense with the given ID,
@@ -80,22 +61,23 @@ func (db *DB) GetCarExpenseByID(ctx context.Context, id int, userID uuid.UUID) (
 		&expense.CreatedAt,
 		&expense.CreatedBy)
 
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("failed to get car expense: %w", err)
 	}
 
 	return &expense, nil
 }
 
-// Creates a new entry of a car expense. Automatically handles utility type FK.
+// CreateCarExpense stores a car expense and fills in its ID, creation time,
+// type name and the amounts as stored (rounded to the cent).
 func (db *DB) CreateCarExpense(ctx context.Context, input *models.CarExpense) error {
 	query := `
 		INSERT INTO car_expenses (car_expense_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, created_at, (SELECT name FROM car_expense_types WHERE id = car_expense_type_id);
+		RETURNING id, created_at, (SELECT name FROM car_expense_types WHERE id = car_expense_type_id), amount::float8, discount_amount::float8;
 	`
 
 	err := db.conn.QueryRowContext(ctx, query,
@@ -106,7 +88,7 @@ func (db *DB) CreateCarExpense(ctx context.Context, input *models.CarExpense) er
 		input.Notes,
 		input.Metadata,
 		input.CreatedBy,
-	).Scan(&input.ID, &input.CreatedAt, &input.Type)
+	).Scan(&input.ID, &input.CreatedAt, &input.Type, &input.Amount, &input.DiscountAmount)
 
 	if err != nil {
 		return fmt.Errorf("failed to create car expense: %w", err)
@@ -115,103 +97,23 @@ func (db *DB) CreateCarExpense(ctx context.Context, input *models.CarExpense) er
 	return nil
 }
 
-func (db *DB) GetCarExpensesForMonth(ctx context.Context, month time.Month, year int, userId uuid.UUID) (*[]models.CarExpense, error) {
-	query := `
+// GetCarExpensesForMonth returns the user's car expenses dated in the
+// month, newest first.
+func (db *DB) GetCarExpensesForMonth(ctx context.Context, month time.Month, year int, userID uuid.UUID) ([]models.CarExpense, error) {
+	from, to := monthRange(month, year)
+	expenses, err := queryAll(ctx, db.conn, func(r rowScanner, e *models.CarExpense) error {
+		return r.Scan(&e.ID, &e.ExpenseTypeID, &e.Type, &e.Amount, &e.DiscountAmount,
+			&e.Date, &e.Notes, &e.Metadata, &e.CreatedAt)
+	}, `
 		SELECT ce.id, ce.car_expense_type_id, ct.name, ce.amount, ce.discount_amount, ce.expense_date, ce.notes, ce.metadata, ce.created_at
-			FROM car_expenses ce
-		JOIN
-			car_expense_types ct ON ce.car_expense_type_id = ct.id
-		WHERE
-			EXTRACT(MONTH FROM expense_date) = $1 AND EXTRACT(YEAR FROM expense_date) = $2 AND ce.created_by = $3
-		ORDER BY
-			ce.expense_date DESC, ce.id DESC;
-	`
-
-	var expenses []models.CarExpense
-	rows, err := db.conn.QueryContext(ctx, query,
-		int(month),
-		year,
-		userId,
-	)
-
+		FROM car_expenses ce
+		JOIN car_expense_types ct ON ce.car_expense_type_id = ct.id
+		WHERE ce.created_by = $1 AND ce.expense_date >= $2 AND ce.expense_date < $3
+		ORDER BY ce.expense_date DESC, ce.id DESC`, userID, from, to)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch car expenses: %v", err)
+		return nil, fmt.Errorf("failed to fetch car expenses: %w", err)
 	}
-
-	for rows.Next() {
-		err := rows.Err()
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch car expenses: %v", err)
-		}
-
-		var exp models.CarExpense
-		err = rows.Scan(&exp.ID,
-			&exp.ExpenseTypeID,
-			&exp.Type,
-			&exp.Amount,
-			&exp.DiscountAmount,
-			&exp.Date,
-			&exp.Notes,
-			&exp.Metadata,
-			&exp.CreatedAt,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan expenses: %v", err)
-		}
-		expenses = append(expenses, exp)
-	}
-
-	return &expenses, nil
-}
-
-// GetCarExpensesForYear feeds the yearly chart; Amount is net of the discount, like
-// every other total.
-func (db *DB) GetCarExpensesForYear(ctx context.Context, year int, userId uuid.UUID) (*[]models.CarExpense, error) {
-	query := `
-		SELECT ce.id, ct.name, ce.amount - ce.discount_amount, ce.expense_date, ce.notes, ce.metadata, ce.created_at
-			FROM car_expenses ce
-		JOIN
-			car_expense_types ct ON ce.car_expense_type_id = ct.id
-		WHERE
-			 ($1 = 0 OR EXTRACT(YEAR FROM expense_date) = $1) AND ce.created_by = $2
-		ORDER BY 
-			ce.expense_date DESC, ce.id DESC;
-	`
-
-	var expenses []models.CarExpense
-	rows, err := db.conn.QueryContext(ctx, query,
-		year,
-		userId,
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("error fetching expenses: %v", err)
-	}
-
-	for rows.Next() {
-		err := rows.Err()
-		if err != nil {
-			return nil, fmt.Errorf("error fetching expenses: %v", err)
-		}
-
-		var exp models.CarExpense
-		err = rows.Scan(&exp.ID,
-			&exp.Type,
-			&exp.Amount,
-			&exp.Date,
-			&exp.Notes,
-			&exp.Metadata,
-			&exp.CreatedAt,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("error scanning expenses: %v", err)
-		}
-		expenses = append(expenses, exp)
-	}
-
-	return &expenses, nil
+	return expenses, nil
 }
 
 // EditCarExpense updates the user's car expense. It returns an error wrapping
@@ -227,7 +129,7 @@ func (db *DB) EditCarExpense(ctx context.Context, editExpense *models.CarExpense
 			notes = $6,
 			metadata = $7
 		WHERE id = $1 AND created_by = $8
-		RETURNING (SELECT name FROM car_expense_types WHERE id = $2);
+		RETURNING (SELECT name FROM car_expense_types WHERE id = $2), amount::float8, discount_amount::float8;
 	`
 	err := db.conn.QueryRowContext(ctx, query,
 		editExpense.ID,
@@ -238,7 +140,7 @@ func (db *DB) EditCarExpense(ctx context.Context, editExpense *models.CarExpense
 		editExpense.Notes,
 		editExpense.Metadata,
 		userID,
-	).Scan(&editExpense.Type)
+	).Scan(&editExpense.Type, &editExpense.Amount, &editExpense.DiscountAmount)
 
 	if err != nil {
 		return fmt.Errorf("error editing car expense: %w", err)
@@ -260,62 +162,13 @@ func (db *DB) DeleteCarExpense(ctx context.Context, id int, userID uuid.UUID) (b
 	)
 
 	if err != nil {
-		return false, fmt.Errorf("error deleting car expense: %v", err)
+		return false, fmt.Errorf("error deleting car expense: %w", err)
 	}
-
-	rowCount, err := res.RowsAffected()
+	n, err := res.RowsAffected()
 	if err != nil {
-		return false, fmt.Errorf("error deleting car expense: %v", err)
+		return false, fmt.Errorf("error deleting car expense: %w", err)
 	}
-
-	if rowCount < 1 {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-// GetCarExpenseTypeForYear feeds the yearly chart; Amount is net of the discount, like
-// every other total.
-func (db *DB) GetCarExpenseTypeForYear(ctx context.Context, utility, year int, userId uuid.UUID) (*[]models.CarExpense, error) {
-	query := `
-		SELECT ce.id, ct.name, ce.amount - ce.discount_amount, ce.expense_date, ce.metadata FROM car_expenses ce
-		JOIN car_expense_types ct ON ce.car_expense_type_id = ct.id
-		WHERE ce.car_expense_type_id = $1 AND ce.created_by = $3 AND ($2 = 0 OR EXTRACT(YEAR FROM ce.expense_date) = $2)
-	`
-
-	var expenses []models.CarExpense
-	rows, err := db.conn.QueryContext(ctx, query,
-		utility,
-		year,
-		userId,
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("error fetching expenses: %v", err)
-	}
-
-	for rows.Next() {
-		err := rows.Err()
-		if err != nil {
-			return nil, fmt.Errorf("error fetching expenses: %v", err)
-		}
-
-		var exp models.CarExpense
-		err = rows.Scan(&exp.ID,
-			&exp.Type,
-			&exp.Amount,
-			&exp.Date,
-			&exp.Metadata,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("error scanning expenses: %v", err)
-		}
-		expenses = append(expenses, exp)
-	}
-
-	return &expenses, nil
+	return n > 0, nil
 }
 
 // GetCarMonthlyTotals returns net car spending (amount minus discount) per month, keyed "YYYY-MM", for expenses

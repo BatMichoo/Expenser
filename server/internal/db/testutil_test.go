@@ -7,7 +7,18 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"testing"
 )
+
+// TestMain loads .env.dev (if present) once for every DB test, since
+// config.LoadConfig only reads the environment.
+func TestMain(m *testing.M) {
+	if _, _, err := config.LoadDevEnv(); err != nil {
+		fmt.Fprintf(os.Stderr, "loading .env.dev: %v\n", err)
+		os.Exit(1)
+	}
+	os.Exit(m.Run())
+}
 
 var TestUserRegisterModel *models.User = &models.User{
 	Username:     "TestTestov",
@@ -15,7 +26,7 @@ var TestUserRegisterModel *models.User = &models.User{
 }
 
 func InitTestDB(cfg *config.Config) *DB {
-	fmt.Printf("Connecting to test DB: %s\n", config.RedactConnString(cfg.DB.TestDBConnString))
+	fmt.Printf("Connecting to test DB: %s\n", config.RedactConnString(cfg.DB.WithName(cfg.DB.Name+"_test").ConnString()))
 
 	testDB, err := connectTestDB(cfg)
 	if err != nil {
@@ -34,7 +45,9 @@ func ResetTestDB(tdb *DB) {
 }
 
 func connectTestDB(cfg *config.Config) (*DB, error) {
-	adminDB, err := sql.Open("postgres", cfg.DB.DBConnString)
+	test := cfg.DB.WithName(cfg.DB.Name + "_test")
+
+	adminDB, err := sql.Open("postgres", cfg.DB.ConnString())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to admin DB: %w", err)
 	}
@@ -43,29 +56,28 @@ func connectTestDB(cfg *config.Config) (*DB, error) {
 	// Check if test DB exists
 	var exists bool
 	checkQuery := `SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)`
-	err = adminDB.QueryRow(checkQuery, cfg.DB.TestDBName).Scan(&exists)
+	err = adminDB.QueryRow(checkQuery, test.Name).Scan(&exists)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for test DB: %w", err)
 	}
 
 	// Create test DB if it doesn't exist
 	if !exists {
-		dbUser := os.Getenv("DB_USER")
-		_, err := adminDB.Exec(fmt.Sprintf(`CREATE DATABASE %s OWNER %s`, cfg.DB.TestDBName, dbUser))
+		_, err := adminDB.Exec(fmt.Sprintf(`CREATE DATABASE %s OWNER %s`, test.Name, cfg.DB.User))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create test DB: %w", err)
 		}
-		_, err = adminDB.Exec(fmt.Sprintf(`ALTER DATABASE %s SET TIMEZONE TO 'Europe/Sofia'`, cfg.DB.TestDBName))
+		_, err = adminDB.Exec(fmt.Sprintf(`ALTER DATABASE %s SET TIMEZONE TO '%s'`, test.Name, cfg.Location.String()))
 		if err != nil {
 			return nil, fmt.Errorf("failed to set test DB timezone: %w", err)
 		}
-		fmt.Printf("Created test DB: %s", cfg.DB.TestDBName)
+		fmt.Printf("Created test DB: %s", test.Name)
 	} else {
 		fmt.Println("Test DB already exists")
 	}
 
 	// Apply migrations to test DB
-	testDBConn, err := sql.Open("postgres", cfg.DB.TestDBConnString)
+	testDBConn, err := sql.Open("postgres", test.ConnString())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to test DB: %w", err)
 	}
@@ -75,5 +87,5 @@ func connectTestDB(cfg *config.Config) (*DB, error) {
 	}
 	fmt.Println("Migrations applied successfully to test DB.")
 
-	return &DB{conn: testDBConn}, nil
+	return &DB{conn: testDBConn, loc: cfg.Location}, nil
 }

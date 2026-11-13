@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"os"
 	"testing"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 
 func setupUnitsTestDB(t *testing.T) (*DB, *models.User) {
 	t.Helper()
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 	tdb := InitTestDB(cfg)
 	t.Cleanup(func() { tdb.Close() })
@@ -184,7 +185,7 @@ func TestCreateGroceriesSizeStatus(t *testing.T) {
 	list, err := tdb.GetGroceriesExpensesForMonth(context.Background(), time.Now().Month(), time.Now().Year(), u.ID)
 	require.NoError(t, err)
 	statuses := map[string]int{}
-	for _, e := range *list {
+	for _, e := range list {
 		statuses[e.SizeStatus]++
 	}
 	assert.Equal(t, map[string]int{models.SizeKnown: 2, models.SizeNotTracked: 1}, statuses)

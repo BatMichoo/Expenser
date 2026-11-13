@@ -35,6 +35,8 @@ backups/
 docs/
 
 *.crt
+# Written by make certs from .env
+nginx/certs/openssl.cnf
 *.key
 
 # Editor/IDE
@@ -43,3 +45,6 @@ docs/
 
 # Superpowers brainstorm/plan scratch
 .superpowers/
+
+# Binary from `go build` run inside server/cmd
+server/cmd/cmd

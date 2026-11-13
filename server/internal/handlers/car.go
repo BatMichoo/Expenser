@@ -15,16 +15,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// CarHandler serves the car section: month view and expense forms.
 type CarHandler struct {
-	BaseHandler BaseHandler
-	months      *services.MonthViewService
-}
-
-func NewCarHandler(rh *RootHandler) *CarHandler {
-	return &CarHandler{
-		BaseHandler: rh.BaseHandler,
-		months:      services.NewMonthViewService(rh.BaseHandler.DB),
-	}
+	store  CarStore
+	months *services.MonthViewService
 }
 
 // parseCarExpenseForm reads the fields shared by the create and edit forms.
@@ -70,7 +64,7 @@ func (h *CarHandler) GetCurrentMonth(c *gin.Context) error {
 }
 
 func (h *CarHandler) GetCreateCarForm(c *gin.Context) error {
-	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes(c.Request.Context())
+	expTypes, err := h.store.GetCarExpenseTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -88,14 +82,14 @@ func (h *CarHandler) parseCarMetadata(c *gin.Context, typeID int) models.Metadat
 	var metadata any
 
 	switch typeID {
-	case 1: // Fuel
+	case models.CarFuel:
 		liters, _ := strconv.ParseFloat(c.Request.PostFormValue("liters"), 64)
 		price, _ := strconv.ParseFloat(c.Request.PostFormValue("pricePerLiter"), 64)
 		metadata = models.FuelMetadata{
 			Liters:        liters,
 			PricePerLiter: price,
 		}
-	case 2: // Maintenance/Repair
+	case models.CarMaintenance:
 		var parts []string
 		selectedPart := c.Request.PostFormValue("parts")
 		if selectedPart != "" {
@@ -115,19 +109,19 @@ func (h *CarHandler) parseCarMetadata(c *gin.Context, typeID int) models.Metadat
 			Parts:     parts,
 			LaborCost: labor,
 		}
-	case 3: // Insurance
+	case models.CarInsurance:
 		validUntil, _ := time.Parse(utilities.DateFormats.Input, c.Request.PostFormValue("validUntil"))
 		metadata = models.InsuranceMetadata{
 			Provider:     c.Request.PostFormValue("provider"),
 			CoverageType: c.Request.PostFormValue("coverageType"),
 			ValidUntil:   validUntil,
 		}
-	case 5: // Parking/Tolls
+	case models.CarParkingTolls:
 		metadata = models.ParkingTollsMetadata{
 			Location: c.Request.PostFormValue("location"),
 			Duration: c.Request.PostFormValue("duration"),
 		}
-	case 6: // Other
+	case models.CarOther:
 		metadata = models.OtherMetadata{
 			CustomName: c.Request.PostFormValue("customName"),
 		}
@@ -139,28 +133,31 @@ func (h *CarHandler) parseCarMetadata(c *gin.Context, typeID int) models.Metadat
 	return data
 }
 
-// GetMetadataFields returns the HTML fragment for specific metadata fields based on typeID
+// GetMetadataFields returns the extra form fields of the chosen type (none
+// for types without metadata).
 func (h *CarHandler) GetMetadataFields(c *gin.Context) error {
 	typeID, _ := strconv.Atoi(c.Query("typeID"))
+	return renderMetadataFields(c, carMetadataTemplates[typeID])
+}
 
-	var templateName string
-	switch typeID {
-	case 1:
-		templateName = "car-metadata-fuel"
-	case 2:
-		templateName = "car-metadata-maintenance"
-	case 3:
-		templateName = "car-metadata-insurance"
-	case 5:
-		templateName = "car-metadata-parkingtolls"
-	case 6:
-		templateName = "car-metadata-other"
-	default:
+// carMetadataTemplates are the extra form fields of each car expense type
+// that records metadata.
+var carMetadataTemplates = map[int]string{
+	models.CarFuel:         "car-metadata-fuel",
+	models.CarMaintenance:  "car-metadata-maintenance",
+	models.CarInsurance:    "car-metadata-insurance",
+	models.CarParkingTolls: "car-metadata-parkingtolls",
+	models.CarOther:        "car-metadata-other",
+}
+
+// renderMetadataFields renders the metadata fields template, or an empty
+// response when the type has none.
+func renderMetadataFields(c *gin.Context, tmpl string) error {
+	if tmpl == "" {
 		c.Status(http.StatusOK)
 		return nil
 	}
-
-	c.HTML(http.StatusOK, templateName, gin.H{"Lang": currentLang(c)})
+	c.HTML(http.StatusOK, tmpl, gin.H{"Lang": currentLang(c)})
 	return nil
 }
 
@@ -179,13 +176,13 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) error {
 	}
 	newExpense.CreatedBy = userID
 
-	if err := h.BaseHandler.DB.CreateCarExpense(c.Request.Context(), newExpense); err != nil {
+	if err := h.store.CreateCarExpense(c.Request.Context(), newExpense); err != nil {
 		return err
 	}
 
 	modal := &models.ModalContent{
 		Title:   utilities.T(lang, "modal.create_success"),
-		Message: fmt.Sprintf("%s: %v %s", newExpense.Type, newExpense.Amount, utilities.Currency),
+		Message: newExpense.Type + ": " + utilities.Money(newExpense.Amount),
 		Lang:    lang,
 	}
 
@@ -205,7 +202,7 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) error {
 		return err
 	}
 
-	exp, err := h.BaseHandler.DB.GetCarExpenseByID(c.Request.Context(), id, currentUserID(c))
+	exp, err := h.store.GetCarExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -213,7 +210,7 @@ func (h *CarHandler) GetEditCarForm(c *gin.Context) error {
 		return notFound("error.expense_not_found")
 	}
 
-	expTypes, err := h.BaseHandler.DB.GetCarExpenseTypes(c.Request.Context())
+	expTypes, err := h.store.GetCarExpenseTypes(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -246,7 +243,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) error {
 	}
 	editExpense.ID = id
 
-	if err := h.BaseHandler.DB.EditCarExpense(c.Request.Context(), editExpense, currentUserID(c)); err != nil {
+	if err := h.store.EditCarExpense(c.Request.Context(), editExpense, currentUserID(c)); err != nil {
 		return err
 	}
 
@@ -255,7 +252,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) error {
 		Expense: editExpense,
 		Modal: &models.ModalContent{
 			Title:   utilities.T(lang, "modal.update_success"),
-			Message: fmt.Sprintf("%s: %v %s", editExpense.Type, editExpense.Amount, utilities.Currency),
+			Message: editExpense.Type + ": " + utilities.Money(editExpense.Amount),
 			Lang:    lang,
 		},
 		Lang: lang,
@@ -272,7 +269,7 @@ func (h *CarHandler) GetDeleteConfirm(c *gin.Context) error {
 		return err
 	}
 
-	exp, err := h.BaseHandler.DB.GetCarExpenseByID(c.Request.Context(), id, currentUserID(c))
+	exp, err := h.store.GetCarExpenseByID(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}
@@ -306,7 +303,7 @@ func (h *CarHandler) DeleteCarExp(c *gin.Context) error {
 		return err
 	}
 
-	deleted, err := h.BaseHandler.DB.DeleteCarExpense(c.Request.Context(), id, currentUserID(c))
+	deleted, err := h.store.DeleteCarExpense(c.Request.Context(), id, currentUserID(c))
 	if err != nil {
 		return err
 	}

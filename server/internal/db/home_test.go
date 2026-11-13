@@ -5,6 +5,7 @@ import (
 	"expenser/internal/config"
 	"expenser/internal/models"
 	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 )
 
 func TestCreateHomeExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Create Home Expense %v", err)
 		t.FailNow()
@@ -97,7 +98,7 @@ func TestCreateHomeExpense(t *testing.T) {
 }
 
 func TestEditHomeExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Edit Home Expense %v", err)
 		t.FailNow()
@@ -177,7 +178,7 @@ func TestEditHomeExpense(t *testing.T) {
 }
 
 func TestGetHomeExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Get Home Expense %v", err)
 		t.FailNow()
@@ -288,7 +289,7 @@ func TestGetHomeExpense(t *testing.T) {
 }
 
 func TestGetMultipleHomeExpenses(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Get Multiple Home Expense %v", err)
 		t.FailNow()
@@ -299,18 +300,18 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 
 	type testCase struct {
 		name       string
-		funcToTest func(userId uuid.UUID) (*[]models.HouseExpense, error)
+		funcToTest func(userId uuid.UUID) ([]models.HouseExpense, error)
 		expected   []models.HouseExpense
 		setup      func(t *testing.T)
 		wantErr    bool
-		validate   func(t *testing.T, exp []models.HouseExpense, got *[]models.HouseExpense)
+		validate   func(t *testing.T, exp []models.HouseExpense, got []models.HouseExpense)
 	}
 
 	expenseDate := time.Now()
 	tests := []testCase{
 		{
 			name: "Expenses for month",
-			funcToTest: func(userId uuid.UUID) (*[]models.HouseExpense, error) {
+			funcToTest: func(userId uuid.UUID) ([]models.HouseExpense, error) {
 				return testDB.GetHouseExpensesForMonth(context.Background(), expenseDate.Month(), expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
@@ -367,68 +368,8 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			validate: func(t *testing.T, exp []models.HouseExpense, got *[]models.HouseExpense) {
-				actual := *got
-				for i, act := range actual {
-					assert.Equal(t, exp[i].Amount, act.Amount)
-				}
-			},
-		},
-		{
-			name: "Expenses for year",
-			funcToTest: func(userId uuid.UUID) (*[]models.HouseExpense, error) {
-				return testDB.GetHouseExpensesForYear(context.Background(), expenseDate.Year(), userId)
-			},
-			setup: func(t *testing.T) {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
-				expenses := []models.HouseExpense{
-					{
-						Amount:        250.00,
-						ExpenseDate:   expenseDate,
-						UtilityTypeID: 3,
-						Notes:         "Test 1234",
-						CreatedBy:     TestUserRegisterModel.ID,
-						Metadata:      []byte("{}"),
-					},
-					{
-						Amount:        350.00,
-						ExpenseDate:   expenseDate.Add(time.Duration(365 * 31 * 24 * time.Hour)),
-						UtilityTypeID: 2,
-						Notes:         "Test 12345",
-						CreatedBy:     TestUserRegisterModel.ID,
-						Metadata:      []byte("{}"),
-					},
-					{
-						Amount:        450.00,
-						ExpenseDate:   expenseDate.Add(time.Duration(365 * 31 * 24 * time.Hour)),
-						UtilityTypeID: 5,
-						Notes:         "Test 123456",
-						CreatedBy:     TestUserRegisterModel.ID,
-						Metadata:      []byte("{}"),
-					},
-				}
-
-				for _, exp := range expenses {
-					err := testDB.CreateHouseExpense(context.Background(), &exp)
-					if err != nil {
-						t.Skipf("Error setting up existing expense test: %v", err)
-					}
-				}
-			},
-			expected: []models.HouseExpense{
-				{
-					Amount:      250.00,
-					ExpenseDate: expenseDate,
-					UtilityType: "Gas",
-					Notes:       "Test 1234",
-					Metadata:    []byte("{}"),
-				},
-			},
-			wantErr: false,
-			validate: func(t *testing.T, exp []models.HouseExpense, got *[]models.HouseExpense) {
-				actual := *got
-				assert.Equal(t, len(exp), len(actual))
-
+			validate: func(t *testing.T, exp []models.HouseExpense, got []models.HouseExpense) {
+				actual := got
 				for i, act := range actual {
 					assert.Equal(t, exp[i].Amount, act.Amount)
 				}
@@ -458,7 +399,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 }
 
 func TestDeleteHomeExpense(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Panicf("Couldn't load config in test Delete Home Expense %v", err)
 		t.FailNow()

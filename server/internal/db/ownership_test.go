@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"expenser/internal/config"
 	"expenser/internal/models"
+	"os"
 	"testing"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 // TestExpenseOwnership checks that get, edit and delete by ID only reach the
 // owner's expenses.
 func TestExpenseOwnership(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 
 	testDB := InitTestDB(cfg)
@@ -92,7 +93,7 @@ func TestExpenseOwnership(t *testing.T) {
 // TestExpenseWithoutMetadata checks that expense types without metadata are
 // stored as NULL and read back as empty.
 func TestExpenseWithoutMetadata(t *testing.T) {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
 
 	testDB := InitTestDB(cfg)
@@ -109,9 +110,9 @@ func TestExpenseWithoutMetadata(t *testing.T) {
 	require.NotNil(t, gotCar)
 	assert.Empty(t, gotCar.Metadata)
 
-	cars, err := testDB.GetCarExpensesForYear(context.Background(), 0, user.ID)
+	cars, err := testDB.GetCarExpensesForMonth(context.Background(), car.Date.Month(), car.Date.Year(), user.ID)
 	require.NoError(t, err)
-	assert.Len(t, *cars, 1)
+	assert.Len(t, cars, 1)
 
 	house := &models.HouseExpense{UtilityTypeID: 6, Amount: 20, ExpenseDate: time.Now(), CreatedBy: user.ID}
 	require.NoError(t, testDB.CreateHouseExpense(context.Background(), house))

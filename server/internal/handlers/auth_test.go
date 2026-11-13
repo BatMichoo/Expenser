@@ -15,7 +15,7 @@ import (
 func logoutRecorder(t *testing.T, htmx bool) *httptest.ResponseRecorder {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
-	h := &AuthHandler{BaseHandler: BaseHandler{AS: services.NewAuthService("secret", time.Hour, "localhost")}}
+	h := &AuthHandler{auth: services.NewAuthService("secret", time.Hour, "localhost")}
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/logout", nil)

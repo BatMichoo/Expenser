@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -9,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 // ReceiptAIModel is the Gemini model that reads receipts. It lives in code,
@@ -37,7 +36,8 @@ func (r ReceiptAI) Models() []string {
 
 // Config struct to hold application configuration.
 type Config struct {
-	ServerPort  string
+	// Port is where the app listens (APP_PORT, default 8080).
+	Port        string
 	LanDomain   string
 	DB          DB
 	JWT         JWT
@@ -100,85 +100,103 @@ type JWT struct {
 	TokenExpiration time.Duration
 }
 
+// MinJWTSecretLen is the shortest JWT_SECRET accepted; HS256 wants at least
+// 256 bits.
+const MinJWTSecretLen = 32
+
+// DB holds the database settings; ConnString builds the URL from them.
 type DB struct {
-	DBConnString     string
-	TestDBConnString string
-	TestDBName       string
+	User, Password, Host, Port, Name, SSLMode, TimeZone string
 }
 
-// LoadConfig loads the configuration from environment variables.
-func LoadConfig() (*Config, error) {
-	envPath := filepath.Join(GetProjectRootDir(), ".env.dev")
-	if err := godotenv.Load(envPath); err != nil {
-		log.Printf("No .env.development file found at %s, using environment variables\n", envPath)
+// WithName is a copy pointing at another database on the same server.
+func (d DB) WithName(name string) DB {
+	d.Name = name
+	return d
+}
+
+// LoadConfig loads the configuration through getenv (normally os.Getenv), so
+// tests can pass a map. It does not read .env.dev; see LoadDevEnv. Bad or
+// missing required settings are an error, so the app fails at start.
+func LoadConfig(getenv func(string) string) (*Config, error) {
+	if getenv("SERVER_PORT") != "" {
+		log.Printf("SERVER_PORT is no longer read; the app listens on APP_PORT (%s).\n", portOrDefault(getenv("APP_PORT")))
 	}
 
-	lanDomain := os.Getenv("LAN_DOMAIN")
-	if lanDomain == "" {
-		lanDomain = "localhost"
-	}
-
-	dbUser := os.Getenv("DB_USER")
-	dbPass := os.Getenv("DB_PASS")
-	dbHost := os.Getenv("DB_HOST")
-	dbPort := os.Getenv("DB_PORT")
-	dbName := os.Getenv("DB_NAME")
-	serverPort := os.Getenv("SERVER_PORT")
-	seedDevData := os.Getenv("SEED_DEV_DATA") == "true"
-
-	var testDBName string
-	if dbName != "" {
-		testDBName = dbName + "_test"
-	}
-
-	// JWT configuration
-	jwtSecret := os.Getenv("JWT_SECRET")
+	jwtSecret := getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		return nil, fmt.Errorf("JWT_SECRET environment variable is required")
+		return nil, fmt.Errorf("JWT_SECRET is required")
+	}
+	if len(jwtSecret) < MinJWTSecretLen {
+		return nil, fmt.Errorf("JWT_SECRET must be at least %d bytes (got %d)", MinJWTSecretLen, len(jwtSecret))
 	}
 
-	jwtExpirationStr := os.Getenv("JWT_EXPIRATION_HOURS")
-	jwtExpiration := 24 * time.Hour // Default to 24 hours
-	if jwtExpirationStr != "" {
-		if hours, err := strconv.Atoi(jwtExpirationStr); err == nil {
-			jwtExpiration = time.Duration(hours) * time.Hour
+	jwtExpiration := 24 * time.Hour
+	if v := getenv("JWT_EXPIRATION_HOURS"); v != "" {
+		hours, err := strconv.Atoi(v)
+		if err != nil || hours <= 0 {
+			return nil, fmt.Errorf("JWT_EXPIRATION_HOURS %q: must be a whole number of hours above 0", v)
+		}
+		jwtExpiration = time.Duration(hours) * time.Hour
+	}
+
+	var errs []error
+	for _, k := range []string{"DB_HOST", "DB_NAME", "DB_USER"} {
+		if getenv(k) == "" {
+			errs = append(errs, fmt.Errorf("%s is required", k))
 		}
 	}
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
+	}
 
-	reminderCheckInterval := parseReminderCheckInterval(os.Getenv("REMINDER_CHECK_INTERVAL"))
-
-	loc, err := loadLocation(os.Getenv("APP_TIMEZONE"))
+	loc, err := loadLocation(getenv("APP_TIMEZONE"))
 	if err != nil {
 		return nil, err
 	}
 
-	dbSSLMode := os.Getenv("DB_SSLMODE")
-	dbConnString := connString(dbUser, dbPass, dbHost, dbPort, dbName, dbSSLMode, loc.String())
-	testDBConnString := connString(dbUser, dbPass, dbHost, dbPort, testDBName, dbSSLMode, loc.String())
-
-	DB := DB{
-		DBConnString:     dbConnString,
-		TestDBConnString: testDBConnString,
-		TestDBName:       testDBName,
+	db := DB{
+		User:     getenv("DB_USER"),
+		Password: getenv("DB_PASS"),
+		Host:     getenv("DB_HOST"),
+		Port:     getenv("DB_PORT"),
+		Name:     getenv("DB_NAME"),
+		SSLMode:  getenv("DB_SSLMODE"),
+		TimeZone: loc.String(),
+	}
+	if db.Port == "" {
+		db.Port = "5432"
+	}
+	if db.SSLMode == "" {
+		// The database is only reached over the Docker network.
+		db.SSLMode = "disable"
 	}
 
 	return &Config{
-		ServerPort: serverPort,
-		LanDomain:  lanDomain,
-		DB:         DB,
+		Port:      portOrDefault(getenv("APP_PORT")),
+		LanDomain: strings.TrimSpace(getenv("LAN_DOMAIN")),
+		DB:        db,
 		JWT: JWT{
 			SecretKey:       jwtSecret,
 			TokenExpiration: jwtExpiration,
 		},
-		DevMode:     parseDevMode(os.Getenv("DEV_MODE")),
+		DevMode:     parseDevMode(getenv("DEV_MODE")),
 		Location:    loc,
-		AppURL:      strings.TrimRight(strings.TrimSpace(os.Getenv("APP_URL")), "/"),
-		ReceiptAI:   ReceiptAI{APIKey: os.Getenv("GEMINI_API_KEY"), Model: ReceiptAIModel, Fallbacks: ReceiptAIFallbacks},
-		SeedDevData: seedDevData,
+		AppURL:      strings.TrimRight(strings.TrimSpace(getenv("APP_URL")), "/"),
+		ReceiptAI:   ReceiptAI{APIKey: getenv("GEMINI_API_KEY"), Model: ReceiptAIModel, Fallbacks: ReceiptAIFallbacks},
+		SeedDevData: getenv("SEED_DEV_DATA") == "true",
 
-		ReminderCheckInterval: reminderCheckInterval,
-		SMTP:                  loadSMTP(os.Getenv),
+		ReminderCheckInterval: parseReminderCheckInterval(getenv("REMINDER_CHECK_INTERVAL")),
+		SMTP:                  loadSMTP(getenv),
 	}, nil
+}
+
+// portOrDefault is the APP_PORT value, or 8080 when unset.
+func portOrDefault(v string) string {
+	if v == "" {
+		return "8080"
+	}
+	return v
 }
 
 // DefaultTimezone is the time zone when APP_TIMEZONE is not set.
@@ -198,20 +216,16 @@ func loadLocation(name string) (*time.Location, error) {
 	return loc, nil
 }
 
-// connString builds a postgres URL. The user and password are escaped, so a
-// password with characters such as @ or / still works. sslmode defaults to
-// disable: the database is only reached over the Docker network. timezone
-// is the session time zone, used by EXTRACT and to_char on timestamps.
-func connString(user, pass, host, port, name, sslmode, timezone string) string {
-	if sslmode == "" {
-		sslmode = "disable"
-	}
+// ConnString builds a postgres URL. The user and password are escaped, so a
+// password with characters such as @ or / still works. TimeZone is the
+// session time zone, used by EXTRACT and to_char on timestamps.
+func (d DB) ConnString() string {
 	u := url.URL{
 		Scheme:   "postgres",
-		User:     url.UserPassword(user, pass),
-		Host:     host + ":" + port,
-		Path:     "/" + name,
-		RawQuery: url.Values{"sslmode": {sslmode}, "timezone": {timezone}}.Encode(),
+		User:     url.UserPassword(d.User, d.Password),
+		Host:     d.Host + ":" + d.Port,
+		Path:     "/" + d.Name,
+		RawQuery: url.Values{"sslmode": {d.SSLMode}, "timezone": {d.TimeZone}}.Encode(),
 	}
 	return u.String()
 }

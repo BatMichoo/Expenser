@@ -12,13 +12,10 @@ import (
 	"github.com/lib/pq"
 )
 
-// ErrUsernameTaken means another user already has the username.
-var ErrUsernameTaken = errors.New("username is taken")
-
 // uniqueViolation is PostgreSQL's error code for a broken UNIQUE constraint.
 const uniqueViolation = "23505"
 
-// CreateUser creates a new user in the database. It returns ErrUsernameTaken
+// CreateUser creates a new user in the database. It returns models.ErrUsernameTaken
 // when the username is in use, even if another registration got there first.
 func (db *DB) CreateUser(ctx context.Context, user *models.User) error {
 	query := `
@@ -41,7 +38,7 @@ func (db *DB) CreateUser(ctx context.Context, user *models.User) error {
 
 	var pqErr *pq.Error
 	if errors.As(err, &pqErr) && pqErr.Code == uniqueViolation {
-		return ErrUsernameTaken
+		return models.ErrUsernameTaken
 	}
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
@@ -81,8 +78,8 @@ func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, erro
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, models.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by ID: %w", err)
 	}
@@ -111,8 +108,8 @@ func (db *DB) GetUserByUsername(ctx context.Context, username string) (*models.U
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, models.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by username: %w", err)
 	}
@@ -125,111 +122,6 @@ func (db *DB) UpdateUserLanguage(ctx context.Context, userID uuid.UUID, lang str
 	query := `UPDATE users SET preferred_language = $1, updated_at = $2 WHERE id = $3`
 	_, err := db.conn.ExecContext(ctx, query, lang, time.Now(), userID)
 	return err
-}
-
-// UpdateUser updates an existing user in the database
-func (db *DB) UpdateUser(ctx context.Context, user *models.User) error {
-	query := `
-		UPDATE users
-		SET username = $1, password_hash = $2, updated_at = $3
-		WHERE id = $4
-		`
-
-	user.UpdatedAt = time.Now()
-	result, err := db.conn.ExecContext(ctx,
-		query,
-		user.Username,
-		user.PasswordHash,
-		user.UpdatedAt,
-		user.ID,
-	)
-
-	if err != nil {
-		return err
-	}
-
-	rowsAff, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rowsAff == 0 {
-		return fmt.Errorf("user not found")
-	}
-
-	return nil
-}
-
-// DeleteUser deletes a user from the database
-func (db *DB) DeleteUser(ctx context.Context, id uuid.UUID) error {
-	query := `DELETE FROM users WHERE id = $1`
-
-	result, err := db.conn.ExecContext(ctx, query, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete user: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("user not found")
-	}
-
-	return nil
-}
-
-// ListUsers retrieves all users from the database (for admin purposes)
-func (db *DB) ListUsers(ctx context.Context, limit, offset int) ([]*models.User, error) {
-	query := `
-		SELECT id, username, password_hash, preferred_language, created_at, updated_at
-		FROM users
-		ORDER BY created_at DESC
-		LIMIT $1 OFFSET $2`
-
-	rows, err := db.conn.QueryContext(ctx, query, limit, offset)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list users: %w", err)
-	}
-	defer rows.Close()
-
-	var users []*models.User
-	for rows.Next() {
-		user := &models.User{}
-		err := rows.Scan(
-			&user.ID,
-			&user.Username,
-			&user.PasswordHash,
-			&user.PreferredLanguage,
-			&user.CreatedAt,
-			&user.UpdatedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan user: %w", err)
-		}
-		users = append(users, user)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating users: %w", err)
-	}
-
-	return users, nil
-}
-
-// GetUserCount returns the total number of users in the database
-func (db *DB) GetUserCount(ctx context.Context) (int, error) {
-	query := `SELECT COUNT(*) FROM users`
-
-	var count int
-	err := db.conn.QueryRowContext(ctx, query).Scan(&count)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get user count: %w", err)
-	}
-
-	return count, nil
 }
 
 // UserExists checks if a user exists by username or email
@@ -280,7 +172,7 @@ func (db *DB) UpdateUserPassword(ctx context.Context, id uuid.UUID, hash string)
 		return fmt.Errorf("failed to update password: %w", err)
 	}
 	if n, err := res.RowsAffected(); err == nil && n == 0 {
-		return fmt.Errorf("user not found")
+		return models.ErrUserNotFound
 	}
 	return nil
 }

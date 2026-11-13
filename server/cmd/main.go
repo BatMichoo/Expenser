@@ -7,6 +7,7 @@ import (
 	database "expenser/internal/db"
 	"expenser/internal/handlers"
 	"expenser/internal/services"
+	"expenser/internal/services/gemini"
 	"expenser/internal/templates"
 	"expenser/internal/utilities"
 	"expenser/static"
@@ -22,18 +23,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// trustedProxies are the private networks a reverse proxy can be on.
-var trustedProxies = []string{"127.0.0.1/32", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"}
-
 func main() {
-	router := gin.Default()
-	// Only nginx (on the Docker network) and local tools may set
-	// X-Forwarded-For; anyone else's is ignored.
-	if err := router.SetTrustedProxies(trustedProxies); err != nil {
-		log.Fatalf("Trusted proxies: %v", err)
+	envPath, loaded, err := config.LoadDevEnv()
+	if err != nil {
+		log.Fatalf("Couldn't load .env.dev: %v", err)
+	}
+	if loaded {
+		log.Printf("Loaded %s.", envPath)
 	}
 
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(os.Getenv)
 	if err != nil {
 		log.Fatalf("Couldn't load configuration: %v", err)
 	}
@@ -42,12 +41,17 @@ func main() {
 	time.Local = cfg.Location
 	log.Printf("Time zone: %s.", cfg.Location)
 
+	router, err := newRouter(cfg)
+	if err != nil {
+		log.Fatalf("Couldn't create the router: %v", err)
+	}
+
 	t := template.Must(utilities.ParseTemplates(templates.FS, templates.Patterns...))
 	router.SetHTMLTemplate(t) // Tell Gin to use this template set
 
 	db, err := database.InitDatabase(cfg)
 	if err != nil {
-		log.Fatalln("Couldn't initialize database.")
+		log.Fatalf("Couldn't initialize database: %v", err)
 	}
 
 	if err := utilities.InitI18n(); err != nil {
@@ -75,7 +79,17 @@ func main() {
 	case cfg.AppURL != "":
 		log.Printf("APP_URL %q is not an http(s) address: reminder emails have no links.", cfg.AppURL)
 	}
-	handlers.RegisterRoutes(router, db, cfg, mailer, links)
+	auth := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration, cfg.LanDomain)
+	auth.CheckTokenVersions(db)
+	handlers.RegisterRoutes(router, handlers.Deps{
+		Store:     db,
+		Auth:      auth,
+		ReceiptAI: gemini.NewGeminiService(cfg.ReceiptAI.APIKey, cfg.ReceiptAI.Models()...),
+		Snooze:    services.NewSnoozeSigner(cfg.JWT.SecretKey),
+		Mailer:    mailer,
+		Links:     links,
+		DevMode:   cfg.DevMode,
+	})
 
 	schedulerCtx, stopScheduler := context.WithCancel(context.Background())
 	schedulerDone := make(chan struct{})
@@ -86,18 +100,13 @@ func main() {
 	}()
 
 	// --- Start the server ---
-	port := os.Getenv("APP_PORT")
-	if port == "" {
-		port = "8080"
-	}
-
 	srv := &http.Server{
-		Addr:              ":" + port,
+		Addr:              ":" + cfg.Port,
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	go func() {
-		log.Printf("Server starting on port %s", port)
+		log.Printf("Server starting on port %s", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("Server failed to start: %v", err)
 		}

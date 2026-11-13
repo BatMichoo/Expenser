@@ -38,7 +38,7 @@ func (db *DB) GetSectionTypes(ctx context.Context, s models.Section) ([]models.T
 		if err != nil {
 			return nil, err
 		}
-		for _, t := range *types {
+		for _, t := range types {
 			opts = append(opts, models.TypeOption{ID: t.ID, Name: t.Name})
 		}
 	case models.SectionCar:
@@ -46,7 +46,7 @@ func (db *DB) GetSectionTypes(ctx context.Context, s models.Section) ([]models.T
 		if err != nil {
 			return nil, err
 		}
-		for _, t := range *types {
+		for _, t := range types {
 			opts = append(opts, models.TypeOption{ID: t.ID, Name: t.Name})
 		}
 	default:
