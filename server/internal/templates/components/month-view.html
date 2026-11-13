@@ -3,6 +3,7 @@
 {{ define "month-view" }}
 <div id="month-view" class="month-view" hx-get="/{{ .Section }}/current?month={{ .Month }}" hx-include="#month-filters"
   hx-trigger="expenses-changed from:body" hx-swap="outerHTML" hx-disinherit="*">
+  {{ if .UpcomingBills }}{{ template "upcoming-bills" . }}{{ end }}
   <div class="month-main">
     {{ template "month-toolbar" . }}
     {{ template "kpi-tiles" . }}
@@ -31,7 +32,6 @@
     </section>
   </div>
   <aside class="month-side">
-    {{ if .UpcomingBills }}{{ template "upcoming-bills" . }}{{ end }}
     {{ if .HasEstimate }}{{ template "month-estimate" . }}{{ end }}
     {{ template "breakdown" . }}
     {{ template "mini-chart" . }}

@@ -480,6 +480,11 @@
     flex: 1;
   }
 
+  /* Phones: the tab bar already names the section */
+  #section-list li.section-title {
+    display: none;
+  }
+
   #section-list .section-button {
     width: 100%;
   }
@@ -487,6 +492,17 @@
   .month-view {
     display: block;
     padding: 0 0 1em;
+  }
+
+  .month-view > .upcoming-bills {
+    gap: 0.5em;
+    margin: 0 0.75em 0.75em;
+    padding: 0.4em 0.5em;
+  }
+
+  /* Phones: icon + count only, so a whole bill fits on the line */
+  .upcoming-head h3 {
+    display: none;
   }
 
   .month-side,

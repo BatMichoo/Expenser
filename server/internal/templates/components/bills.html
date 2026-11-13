@@ -9,7 +9,7 @@
   hx-swap="outerHTML" hx-disinherit="*">
   <div class="month-main">
     <div class="month-toolbar">
-      <h2 class="bills-title">{{ T .Lang "bills.title" }}</h2>
+      <h2 class="bills-title">{{ template "icon" (dict "Name" "bills") }}{{ T .Lang "bills.title" }}</h2>
       <button type="button" class="add-btn" hx-get="/bills/new" hx-target="#action-dialog">
         + {{ T .Lang "bills.add" }} <kbd>N</kbd>
       </button>
@@ -304,23 +304,25 @@
 </div>
 {{ end }}
 
-{{/* Side column panel on House/Car: unpaid bills due in the next 30 days. */}}
+{{/* One-line banner across the top of a section: unpaid bills due in the next
+     30 days, soonest first. Only the cards that fit on the line show. */}}
 {{ define "upcoming-bills" }}
-<section class="side-panel upcoming-bills">
-  {{ template "side-panel-head" (dict "Icon" "calendar" "Title" (T .Lang "insights.upcoming_bills")) }}
+<section class="upcoming-bills" aria-labelledby="upcoming-bills-title">
+  <div class="upcoming-head">
+    <span class="side-icon" aria-hidden="true">{{ template "icon" (dict "Name" "calendar" "Size" 16) }}</span>
+    <h3 id="upcoming-bills-title">{{ T .Lang "insights.upcoming_bills" }}</h3>
+    <span class="upcoming-count">{{ len .UpcomingBills }}</span>
+  </div>
   <ul class="upcoming-list">
     {{ range .UpcomingBills }}
-    <li class="upcoming-item">
-      <div class="upcoming-main">
-        <span class="upcoming-name">{{ template "bill-label" (dict "P" .Payment "Lang" $.Lang) }}</span>
-        {{ $arrives := eq (print .Payment.DateKind) "arrives" }}
-        <span class="due-pill {{ if and (lt .DaysLeft 0) $arrives }}waiting{{ else if lt .DaysLeft 0 }}overdue{{ else }}soon{{ end }}">{{ template "due-text" (dict "Days" .DaysLeft "Arrives" $arrives "Lang" $.Lang) }}</span>
-      </div>
-      <div class="upcoming-side">
-        <span class="upcoming-amount">{{ if .Payment.ExpectedAmount }}{{ money (deref .Payment.ExpectedAmount) }}{{ end }}</span>
-        <button type="button" class="pay-btn" hx-get="/bills/pay/{{ .Payment.ID }}" hx-target="#action-dialog"
-          hx-swap="innerHTML">{{ T $.Lang "bills.mark_paid" }}</button>
-      </div>
+    {{ $arrives := eq (print .Payment.DateKind) "arrives" }}
+    {{ $state := "soon" }}{{ if and (lt .DaysLeft 0) $arrives }}{{ $state = "waiting" }}{{ else if lt .DaysLeft 0 }}{{ $state = "overdue" }}{{ end }}
+    <li class="upcoming-item {{ $state }}">
+      <span class="upcoming-name">{{ template "bill-label" (dict "P" .Payment "Lang" $.Lang) }}</span>
+      <span class="due-pill {{ $state }}">{{ template "due-text" (dict "Days" .DaysLeft "Arrives" $arrives "Lang" $.Lang) }}</span>
+      <span class="upcoming-amount">{{ if .Payment.ExpectedAmount }}{{ money (deref .Payment.ExpectedAmount) }}{{ end }}</span>
+      <button type="button" class="pay-btn" hx-get="/bills/pay/{{ .Payment.ID }}" hx-target="#action-dialog"
+        hx-swap="innerHTML" title='{{ T $.Lang "bills.mark_paid" }}' aria-label='{{ T $.Lang "bills.mark_paid" }}'>{{ template "icon" (dict "Name" "check" "Size" 14) }}</button>
     </li>
     {{ end }}
   </ul>

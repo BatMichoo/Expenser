@@ -764,7 +764,7 @@ func TestUpcomingBillsPanel(t *testing.T) {
 	b := sampleBill("Fiber", time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC), true)
 	v.UpcomingBills = []models.UpcomingPayment{{Payment: b, DaysLeft: 3}}
 	doc := parseHTML(t, render(t, "house-current", v))
-	panel := doc.Find(".month-side .upcoming-bills")
+	panel := doc.Find(".month-view > .upcoming-bills")
 	require.Equal(t, 1, panel.Length())
 	assert.Contains(t, panel.Text(), "Fiber")
 	assert.Contains(t, panel.Text(), "in 3 days")
@@ -772,6 +772,7 @@ func TestUpcomingBillsPanel(t *testing.T) {
 	assert.Equal(t, "/bills/pay/11111111-1111-1111-1111-111111111111", pay)
 	all, _ := panel.Find("a.all-bills").Attr("hx-get")
 	assert.Equal(t, "/bills", all)
+	assert.Equal(t, 0, doc.Find(".month-side .upcoming-bills").Length(), "banner on top, not in the side column")
 
 	doc = parseHTML(t, render(t, "house-current", monthView("house")))
 	assert.Equal(t, 0, doc.Find(".upcoming-bills").Length(), "hidden when nothing is coming up")
