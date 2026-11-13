@@ -231,9 +231,15 @@ func aiError(err error, m aiMessages) error {
 	return gateway(m.other)
 }
 
+// maxReceiptUpload caps a receipt upload, like nginx's client_max_body_size,
+// for requests that reach the app directly. The whole image is kept in
+// memory until the read finishes.
+const maxReceiptUpload = 20 << 20
+
 // UploadReceipt starts reading the receipt in the background and shows a
 // panel that checks back until it's done (Gemini can take minutes).
 func (h *GroceriesHandler) UploadReceipt(c *gin.Context) error {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxReceiptUpload)
 	file, err := c.FormFile("receipt")
 	if err != nil {
 		return badRequest("error.receipt_missing", err)

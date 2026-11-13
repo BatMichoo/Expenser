@@ -39,7 +39,7 @@ func (am *AuthMiddleware) redirectToLogin(c *gin.Context) {
 		login += "?next=" + url.QueryEscape(next)
 	}
 	c.Header("HX-Redirect", login)
-	lang := c.GetString("lang")
+	lang := c.GetString(LanguageCookieKey)
 	rl := &models.RootLayout{
 		TemplateName:    utilities.Templates.Pages.Login,
 		TemplateContent: gin.H{"Lang": lang, "Next": next},
@@ -81,9 +81,6 @@ func (am *AuthMiddleware) AuthMiddleware() gin.HandlerFunc {
 			}
 		}
 
-		// Store user information in context
-		c.Set("user_id", token.Claims.UserID)
-		c.Set("username", token.Claims.Username)
 		services.SetClaims(c, token.Claims)
 
 		c.Next()

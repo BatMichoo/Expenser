@@ -15,6 +15,10 @@ import (
 // ErrUsernameTaken means another user already has the username.
 var ErrUsernameTaken = errors.New("username is taken")
 
+// ErrUserNotFound means no user has the ID or username. It wraps
+// sql.ErrNoRows, so handlers that don't check for it show a 404.
+var ErrUserNotFound = fmt.Errorf("user not found: %w", sql.ErrNoRows)
+
 // uniqueViolation is PostgreSQL's error code for a broken UNIQUE constraint.
 const uniqueViolation = "23505"
 
@@ -81,8 +85,8 @@ func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, erro
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by ID: %w", err)
 	}
@@ -111,8 +115,8 @@ func (db *DB) GetUserByUsername(ctx context.Context, username string) (*models.U
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by username: %w", err)
 	}
@@ -154,7 +158,7 @@ func (db *DB) UpdateUser(ctx context.Context, user *models.User) error {
 	}
 
 	if rowsAff == 0 {
-		return fmt.Errorf("user not found")
+		return ErrUserNotFound
 	}
 
 	return nil
@@ -175,7 +179,7 @@ func (db *DB) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("user not found")
+		return ErrUserNotFound
 	}
 
 	return nil
@@ -280,7 +284,7 @@ func (db *DB) UpdateUserPassword(ctx context.Context, id uuid.UUID, hash string)
 		return fmt.Errorf("failed to update password: %w", err)
 	}
 	if n, err := res.RowsAffected(); err == nil && n == 0 {
-		return fmt.Errorf("user not found")
+		return ErrUserNotFound
 	}
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -78,9 +79,12 @@ func (h *AuthHandler) Register(c *gin.Context) error {
 		return registrationError(err)
 	}
 
-	// Check if user already exists
-	existingUser, _ := h.BaseHandler.DB.GetUserByUsername(c.Request.Context(), regData.Username)
-	if existingUser != nil {
+	// Checked first to skip hashing; CreateUser still catches a race.
+	exists, err := h.BaseHandler.DB.UserExists(c.Request.Context(), regData.Username)
+	if err != nil {
+		return err
+	}
+	if exists {
 		return usernameTaken()
 	}
 
@@ -138,6 +142,16 @@ func nextParam(next string) string {
 	return ""
 }
 
+// dummyPasswordHash is a hash no password is checked against except when the
+// username is unknown, made once on first use.
+var dummyPasswordHash = sync.OnceValue(func() []byte {
+	hash, err := bcrypt.GenerateFromPassword([]byte("not a real password"), bcrypt.DefaultCost)
+	if err != nil {
+		panic(fmt.Sprintf("dummy password hash: %v", err))
+	}
+	return hash
+})
+
 // Login verifies the credentials, sets the auth cookie and redirects home.
 func (h *AuthHandler) Login(c *gin.Context) error {
 	var loginData models.UserLogin
@@ -146,11 +160,14 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 	}
 
 	user, err := h.BaseHandler.DB.GetUserByUsername(c.Request.Context(), loginData.Username)
-	if err != nil {
+	if errors.Is(err, database.ErrUserNotFound) {
+		// Hash anyway, so an unknown username takes as long to refuse as a
+		// wrong password and doesn't reveal which usernames exist.
+		_ = bcrypt.CompareHashAndPassword(dummyPasswordHash(), []byte(loginData.Password))
 		return invalidCredentials(err)
 	}
-	if user == nil {
-		return invalidCredentials(errors.New("user not found"))
+	if err != nil {
+		return err // the database failed: a 500, not "wrong password"
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginData.Password)); err != nil {

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type BaseHandler struct {
@@ -96,22 +97,34 @@ func (h *RootHandler) ChangeLanguage(c *gin.Context) error {
 
 	middleware.SetLanguageCookie(c, h.AS.Domain, lang)
 
+	// Logged in: remember the choice on the account too, and reissue the
+	// token so its claims carry the new language. The cookie alone already
+	// switches this browser, so a failure here is only logged.
 	if claims := services.ClaimsFromContext(c); claims != nil {
-		userID := claims.UserID
-		_ = h.DB.UpdateUserLanguage(c.Request.Context(), userID, lang)
-
-		// If logged in, we should also regenerate the token to include the new language preference
-		// to avoid stale claims in the middleware.
-		user, err := h.DB.GetUserByID(c.Request.Context(), userID)
-		if err == nil {
-			token, err := h.AS.GenerateToken(user)
-			if err == nil {
-				h.AS.SetCookie(token, c)
-			}
+		if err := h.saveLanguage(c, claims.UserID, lang); err != nil {
+			log.Printf("save language for %s: %v", claims.UserID, err)
 		}
 	}
 
 	c.Header("HX-Refresh", "true")
 	c.Status(http.StatusOK)
+	return nil
+}
+
+// saveLanguage stores the user's language and refreshes their login token.
+func (h *RootHandler) saveLanguage(c *gin.Context, userID uuid.UUID, lang string) error {
+	ctx := c.Request.Context()
+	if err := h.DB.UpdateUserLanguage(ctx, userID, lang); err != nil {
+		return err
+	}
+	user, err := h.DB.GetUserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	token, err := h.AS.GenerateToken(user)
+	if err != nil {
+		return err
+	}
+	h.AS.SetCookie(token, c)
 	return nil
 }

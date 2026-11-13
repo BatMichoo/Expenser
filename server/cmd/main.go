@@ -47,7 +47,7 @@ func main() {
 
 	db, err := database.InitDatabase(cfg)
 	if err != nil {
-		log.Fatalln("Couldn't initialize database.")
+		log.Fatalf("Couldn't initialize database: %v", err)
 	}
 
 	if err := utilities.InitI18n(); err != nil {
