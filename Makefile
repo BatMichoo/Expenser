@@ -1,5 +1,3 @@
--include .env
-
 .PHONY: start dev-db dev-db-down
 
 start:
@@ -14,62 +12,46 @@ dev-db-down:
 CERTS_DIR := nginx/certs
 KEY_FILE := $(CERTS_DIR)/homeserver.lan.key
 CRT_FILE := $(CERTS_DIR)/homeserver.lan.crt
-OPENSSL_CNF := $(CERTS_DIR)/openssl.cnf
 
-.PHONY: clean certs renew-certs test
+.PHONY: clean certs renew-certs ca-backup ca-restore test
 
 TEST_FLAGS := -v -race -cover -count=1
 
 test:
 	cd server && go test $(TEST_FLAGS) ./...
 
+# clean removes the server certificate; the home CA (ca-data volume) stays.
 clean:
 	@echo "Cleaning up generated files..."
-	@rm -f $(OPENSSL_CNF) $(KEY_FILE) $(CRT_FILE)
+	@rm -f $(KEY_FILE) $(CRT_FILE)
 	@echo "Cleaned."
 
-# certs makes a self-signed certificate for nginx from the values in .env,
-# unless one exists already. It lasts CERT_DAYS; renew-certs replaces it.
-CERT_DAYS := 365
+# TLS certificates are made in the certs container (see certs/issue-certs.sh)
+# from LAN_DOMAIN and LAN_IP in .env. `docker compose up` runs it too, so
+# these targets are for doing it by hand.
 
-certs: $(CRT_FILE)
+# certs issues the certificate if it is missing, expiring or out of date.
+certs:
+	docker compose run --rm --build certs
 
-# Sub-makes, not prerequisites: under -j, clean and certs would run at once.
+# renew-certs issues a new certificate now and reloads nginx.
 renew-certs:
-	@$(MAKE) --no-print-directory clean
-	@$(MAKE) --no-print-directory certs
+	docker compose run --rm --build -e FORCE=1 certs
+	docker compose restart nginx
 
-# One recipe writes the OpenSSL config and then the key and certificate
-# (a grouped target), so parallel make (-j) can't run openssl twice or
-# before its config exists. The extensions make it a server certificate:
-# Apple devices refuse TLS certificates without extendedKeyUsage serverAuth.
-$(KEY_FILE) $(CRT_FILE) &:
-	@test -n "$(LAN_DOMAIN)" || { echo "LAN_DOMAIN is not set (see .env.template)"; exit 1; }
-	@test -n "$(LAN_IP)" || { echo "LAN_IP is not set (see .env.template)"; exit 1; }
-	@echo "Generating self-signed certificate for $(LAN_DOMAIN) and $(LAN_IP)..."
-	@mkdir -p $(CERTS_DIR)
-	@printf '%s\n' \
-		'[ req ]' \
-		'distinguished_name = req_distinguished_name' \
-		'x509_extensions = v3_req' \
-		'' \
-		'[ req_distinguished_name ]' \
-		'' \
-		'[ v3_req ]' \
-		'basicConstraints = critical, CA:FALSE' \
-		'keyUsage = critical, digitalSignature, keyEncipherment' \
-		'extendedKeyUsage = serverAuth' \
-		'subjectAltName = @alt_names' \
-		'' \
-		'[ alt_names ]' \
-		'DNS.1 = $(LAN_DOMAIN)' \
-		'DNS.2 = localhost' \
-		'IP.1 = 127.0.0.1' \
-		'IP.2 = $(LAN_IP)' > "$(OPENSSL_CNF)"
-	openssl req -x509 -noenc -days $(CERT_DAYS) -newkey rsa:2048 \
-	    -keyout "$(KEY_FILE)" -out "$(CRT_FILE)" \
-	    -subj "/C=$(COUNTRY_ISO)/ST=$(PROVINCE)/L=$(CITY)/O=$(ORG_NAME)/CN=$(LAN_DOMAIN)" \
-	    -config "$(OPENSSL_CNF)"
+# ca-backup saves the home CA (keep it private: it can sign any site).
+ca-backup:
+	docker compose build -q certs
+	docker compose run --rm -T --entrypoint tar certs czf - -C /ca . > ca-backup.tgz
+	@chmod 600 ca-backup.tgz
+	@echo "Saved the home CA to ca-backup.tgz; keep it somewhere safe and private."
+
+# ca-restore puts a ca-backup.tgz back (e.g. on a new server), so devices
+# that trust the old CA keep working.
+ca-restore:
+	docker compose build -q certs
+	docker compose run --rm -T --entrypoint tar certs xzf - -C /ca < ca-backup.tgz
+	@echo "Restored the home CA; run make certs to issue a certificate from it."
 
 .PHONY: dev-build dev-start dev-stop dev-down
 

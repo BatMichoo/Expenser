@@ -86,7 +86,7 @@ Managed in `internal/config/config.go`. It reads from environment variables, whi
 ## 5. Deployment and Operations
 
 - **Makefile**: Provides shortcuts for common tasks (building, running, generating certs).
-- **Docker Compose**: Orchestrates the `server`, `db`, and `nginx` containers.
+- **Docker Compose**: Orchestrates the `server`, `db`, and `nginx` containers, plus `certs`, which issues nginx's TLS certificate from a private home CA (kept in the `ca-data` volume) before nginx starts.
 - **Nginx**: Handles SSL termination and proxies requests to the Go application.
 
 ## 6. Developer Guidelines for Agents

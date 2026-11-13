@@ -20,7 +20,23 @@ This project relies on environment variables for configuration, managed through 
 
 ## TLS Certificate
 
-`make certs` creates a self-signed certificate for nginx in `nginx/certs/` from the values above (`LAN_DOMAIN` and `LAN_IP` are required). It lasts 365 days; `make renew-certs` replaces it, then restart nginx (`docker compose restart nginx`). Devices must trust the certificate once (import `nginx/certs/homeserver.lan.crt`).
+nginx's certificate comes from a private certificate authority (CA) for your home, made and used by the `certs` container (`certs/issue-certs.sh`). `docker compose up` runs it before nginx starts. The first time, it creates the CA in the `ca-data` volume. After that, it issues a new certificate for `LAN_DOMAIN` and `LAN_IP` only when the current one is missing, expires within 45 days, or no longer matches them. Certificates last 397 days. Autodeploy also runs this check every 30 days, even without a deploy, and restarts nginx when a certificate is renewed, so renewal needs nothing from you.
+
+The certificate covers `LAN_DOMAIN`, its subdomains (the app is `expenser.<LAN_DOMAIN>`), `LAN_IP` and `localhost`.
+
+**Trust the CA once on every device.** Download its public certificate from `http://<LAN_IP>/rootCA.crt` (plain HTTP on purpose, since HTTPS isn't trusted yet). It is also `nginx/certs/rootCA.crt` on the server. To be sure it's yours, compare the SHA-256 fingerprint the phone shows with `openssl x509 -in nginx/certs/rootCA.crt -noout -fingerprint -sha256`.
+
+- **iPhone/iPad:** open the link in Safari (other browsers can't install profiles) and allow the download. Install it under Settings > General > VPN & Device Management, then turn on full trust under Settings > General > About > Certificate Trust Settings.
+- **Android:** download it, then go to Settings > Security > Encryption & credentials > Install a certificate > CA certificate and pick the file. Chrome trusts it right away. Firefox needs Settings > About Firefox (tap the logo 5 times), then Secret Settings > "Use third party CA certificates".
+- **Desktop:** import it as a trusted authority (Firefox: Settings > Certificates > Authorities > Import).
+
+Renewals don't need this again; only a new CA does.
+
+**Commands:**
+
+- `make certs`: issue a certificate now, if needed.
+- `make renew-certs`: issue one now regardless, and restart nginx.
+- `make ca-backup` / `make ca-restore`: save the CA to `ca-backup.tgz` and put it back, for example on a new server. Keep the backup private: the CA's key can sign a certificate for any website, and your devices would believe it. If the CA is lost, every device has to trust a new one.
 
 ## .env Example
 
