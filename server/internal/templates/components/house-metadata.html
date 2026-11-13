@@ -27,7 +27,7 @@
   </div>
   <div>
     <label for="pricePerUnit">{{ T .Lang "metadata.price_per_unit" }}</label>
-    <input type="number" id="pricePerUnit" name="pricePerUnit" step="0.01" min="0" placeholder="e.g., 3.50" value="{{ if .Metadata }}{{ .Metadata.PricePerUnit }}{{ end }}" />
+    <input type="number" id="pricePerUnit" name="pricePerUnit" step="0.01" min="0" placeholder="e.g., 3.50" value="{{ if .Metadata }}{{ moneyValue .Metadata.PricePerUnit }}{{ end }}" />
   </div>
 </div>
 {{ end }}
@@ -40,7 +40,7 @@
   </div>
   <div>
     <label for="pricePerUnit">{{ T .Lang "metadata.price_per_unit" }}</label>
-    <input type="number" id="pricePerUnit" name="pricePerUnit" step="0.01" min="0" placeholder="e.g., 0.15" value="{{ if .Metadata }}{{ .Metadata.PricePerUnit }}{{ end }}" />
+    <input type="number" id="pricePerUnit" name="pricePerUnit" step="0.01" min="0" placeholder="e.g., 0.15" value="{{ if .Metadata }}{{ moneyValue .Metadata.PricePerUnit }}{{ end }}" />
   </div>
 </div>
 {{ end }}

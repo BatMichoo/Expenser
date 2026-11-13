@@ -182,7 +182,7 @@ func (h *CarHandler) CreateCarExpense(c *gin.Context) error {
 
 	modal := &models.ModalContent{
 		Title:   utilities.T(lang, "modal.create_success"),
-		Message: fmt.Sprintf("%s: %v %s", newExpense.Type, newExpense.Amount, utilities.Currency),
+		Message: newExpense.Type + ": " + utilities.Money(newExpense.Amount),
 		Lang:    lang,
 	}
 
@@ -252,7 +252,7 @@ func (h *CarHandler) EditCarExpenseById(c *gin.Context) error {
 		Expense: editExpense,
 		Modal: &models.ModalContent{
 			Title:   utilities.T(lang, "modal.update_success"),
-			Message: fmt.Sprintf("%s: %v %s", editExpense.Type, editExpense.Amount, utilities.Currency),
+			Message: editExpense.Type + ": " + utilities.Money(editExpense.Amount),
 			Lang:    lang,
 		},
 		Lang: lang,

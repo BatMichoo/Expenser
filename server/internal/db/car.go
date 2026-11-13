@@ -71,12 +71,13 @@ func (db *DB) GetCarExpenseByID(ctx context.Context, id int, userID uuid.UUID) (
 	return &expense, nil
 }
 
-// Creates a new entry of a car expense. Automatically handles utility type FK.
+// CreateCarExpense stores a car expense and fills in its ID, creation time,
+// type name and the amounts as stored (rounded to the cent).
 func (db *DB) CreateCarExpense(ctx context.Context, input *models.CarExpense) error {
 	query := `
 		INSERT INTO car_expenses (car_expense_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, created_at, (SELECT name FROM car_expense_types WHERE id = car_expense_type_id);
+		RETURNING id, created_at, (SELECT name FROM car_expense_types WHERE id = car_expense_type_id), amount::float8, discount_amount::float8;
 	`
 
 	err := db.conn.QueryRowContext(ctx, query,
@@ -87,7 +88,7 @@ func (db *DB) CreateCarExpense(ctx context.Context, input *models.CarExpense) er
 		input.Notes,
 		input.Metadata,
 		input.CreatedBy,
-	).Scan(&input.ID, &input.CreatedAt, &input.Type)
+	).Scan(&input.ID, &input.CreatedAt, &input.Type, &input.Amount, &input.DiscountAmount)
 
 	if err != nil {
 		return fmt.Errorf("failed to create car expense: %w", err)
@@ -128,7 +129,7 @@ func (db *DB) EditCarExpense(ctx context.Context, editExpense *models.CarExpense
 			notes = $6,
 			metadata = $7
 		WHERE id = $1 AND created_by = $8
-		RETURNING (SELECT name FROM car_expense_types WHERE id = $2);
+		RETURNING (SELECT name FROM car_expense_types WHERE id = $2), amount::float8, discount_amount::float8;
 	`
 	err := db.conn.QueryRowContext(ctx, query,
 		editExpense.ID,
@@ -139,7 +140,7 @@ func (db *DB) EditCarExpense(ctx context.Context, editExpense *models.CarExpense
 		editExpense.Notes,
 		editExpense.Metadata,
 		userID,
-	).Scan(&editExpense.Type)
+	).Scan(&editExpense.Type, &editExpense.Amount, &editExpense.DiscountAmount)
 
 	if err != nil {
 		return fmt.Errorf("error editing car expense: %w", err)

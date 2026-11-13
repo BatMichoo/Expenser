@@ -88,7 +88,9 @@ func TemplateFuncs() template.FuncMap {
 		"abs":   math.Abs,
 		"sub":   func(a, b float64) float64 { return a - b },
 		"money": Money,
-		"rough": RoughAmount,
+		// moneyValue is MoneyValue: an amount for a form input ("12.50").
+		"moneyValue": MoneyValue,
+		"rough":      RoughAmount,
 		"contains": func(slice interface{}, item string) bool {
 			s, ok := slice.([]string)
 			if !ok {

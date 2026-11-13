@@ -69,12 +69,13 @@ func (db *DB) GetHouseExpenseByID(ctx context.Context, id int, userID uuid.UUID)
 	return &expense, nil
 }
 
-// Creates a new entry of a home expense. Automatically handles utility type FK.
+// CreateHouseExpense stores a house expense and fills in its ID, creation
+// time, type name and the amounts as stored (rounded to the cent).
 func (db *DB) CreateHouseExpense(ctx context.Context, input *models.HouseExpense) error {
 	query := `
 		INSERT INTO home_expenses (utility_type_id, amount, discount_amount, expense_date, notes, metadata, created_by)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, created_at, (SELECT name FROM utility_types WHERE id = utility_type_id);
+		RETURNING id, created_at, (SELECT name FROM utility_types WHERE id = utility_type_id), amount::float8, discount_amount::float8;
 	`
 
 	err := db.conn.QueryRowContext(ctx, query,
@@ -85,7 +86,7 @@ func (db *DB) CreateHouseExpense(ctx context.Context, input *models.HouseExpense
 		input.Notes,
 		input.Metadata,
 		input.CreatedBy,
-	).Scan(&input.ID, &input.CreatedAt, &input.UtilityType)
+	).Scan(&input.ID, &input.CreatedAt, &input.UtilityType, &input.Amount, &input.DiscountAmount)
 
 	if err != nil {
 		return fmt.Errorf("failed to create home expense: %w", err)
@@ -126,7 +127,7 @@ func (db *DB) EditHouseExpense(ctx context.Context, editExpense *models.HouseExp
 			notes = $6,
 			metadata = $7
 		WHERE id = $1 AND created_by = $8
-		RETURNING (SELECT name FROM utility_types WHERE id = $2);
+		RETURNING (SELECT name FROM utility_types WHERE id = $2), amount::float8, discount_amount::float8;
 	`
 	err := db.conn.QueryRowContext(ctx, query,
 		editExpense.ID,
@@ -137,7 +138,7 @@ func (db *DB) EditHouseExpense(ctx context.Context, editExpense *models.HouseExp
 		editExpense.Notes,
 		editExpense.Metadata,
 		userID,
-	).Scan(&editExpense.UtilityType)
+	).Scan(&editExpense.UtilityType, &editExpense.Amount, &editExpense.DiscountAmount)
 
 	if err != nil {
 		return fmt.Errorf("error editing expense: %w", err)

@@ -6,7 +6,7 @@
   </div>
   <div>
     <label for="pricePerLiter">{{ T .Lang "metadata.price_per_liter" }}</label>
-    <input type="number" id="pricePerLiter" name="pricePerLiter" step="0.01" min="0" placeholder="e.g., 2.65" value="{{ if .Metadata }}{{ .Metadata.PricePerLiter }}{{ end }}" />
+    <input type="number" id="pricePerLiter" name="pricePerLiter" step="0.01" min="0" placeholder="e.g., 2.65" value="{{ if .Metadata }}{{ moneyValue .Metadata.PricePerLiter }}{{ end }}" />
   </div>
 </div>
 {{ end }}
@@ -33,7 +33,7 @@
   </div>
   <div>
     <label for="laborCost">{{ T .Lang "metadata.labor_cost" }}</label>
-    <input type="number" id="laborCost" name="laborCost" step="0.01" min="0" placeholder="e.g., 50.0" value="{{ if .Metadata }}{{ .Metadata.LaborCost }}{{ end }}" />
+    <input type="number" id="laborCost" name="laborCost" step="0.01" min="0" placeholder="e.g., 50.0" value="{{ if .Metadata }}{{ moneyValue .Metadata.LaborCost }}{{ end }}" />
   </div>
 </div>
 {{ end }}

@@ -196,3 +196,21 @@ func TestCreateGroceriesExpensesIsAtomic(t *testing.T) {
 	assert.Equal(t, "Other", good.CategoryName, "filled in for the row")
 	assert.Equal(t, 2.46, good.TotalPrice, "as stored")
 }
+
+// Creating or editing an expense fills in the amounts as stored, so the
+// success message shows what was saved (rounded to the cent).
+func TestExpenseAmountsAsStored(t *testing.T) {
+	db, userID := setupMonthTestDB(t)
+	ctx := context.Background()
+	h := &models.HouseExpense{UtilityTypeID: models.UtilityWater, Amount: 12.345, DiscountAmount: 0.004, ExpenseDate: models.Date(2026, 11, 2), CreatedBy: userID}
+	require.NoError(t, db.CreateHouseExpense(ctx, h))
+	assert.Equal(t, 12.35, h.Amount)
+	assert.Equal(t, 0.0, h.DiscountAmount)
+
+	c := &models.CarExpense{ExpenseTypeID: models.CarFuel, Amount: 40.999, Date: models.Date(2026, 11, 2), CreatedBy: userID}
+	require.NoError(t, db.CreateCarExpense(ctx, c))
+	assert.Equal(t, 41.0, c.Amount)
+	c.Amount = 7.777
+	require.NoError(t, db.EditCarExpense(ctx, c, userID))
+	assert.Equal(t, 7.78, c.Amount)
+}

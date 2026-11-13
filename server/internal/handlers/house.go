@@ -143,7 +143,7 @@ func (h *HouseHandler) CreateHouseExpense(c *gin.Context) error {
 	}
 
 	title := utilities.T(lang, "modal.create_success")
-	message := fmt.Sprintf("%s: %v %s", newExpense.UtilityType, newExpense.Amount, utilities.Currency)
+	message := newExpense.UtilityType + ": " + utilities.Money(newExpense.Amount)
 
 	expensesChanged(c)
 	renderSuccess(c, http.StatusCreated, title, message)

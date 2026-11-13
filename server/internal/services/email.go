@@ -78,7 +78,7 @@ func BuildReminderEmail(r Reminder) EmailMessage {
 		{t("bills.type"), t("type." + p.TypeName)},
 	}
 	if p.ExpectedAmount != nil {
-		fields = append(fields, emailField{t("common.amount"), fmt.Sprintf("%.2f %s", *p.ExpectedAmount, utilities.CurrencySymbol())})
+		fields = append(fields, emailField{t("common.amount"), utilities.Money(*p.ExpectedAmount)})
 	}
 	fields = append(fields, emailField{dateLabel, p.DueDate.Format("02.01.2006") + " (" + when + ")"})
 	if p.PaymentHours != "" {
