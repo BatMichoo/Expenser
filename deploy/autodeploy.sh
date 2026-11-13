@@ -76,16 +76,26 @@ backup() {
 # Rebuilds the stack for the checked-out commit. $1 is the commit that was
 # running before, used to decide whether nginx needs a restart.
 rebuild() {
+	cert_before=$(cert_fingerprint)
 	# shellcheck disable=SC2086 # SERVICES is a space-separated list
 	if ! docker compose up -d --build $SERVICES; then
 		log "docker compose up failed"
 		return 1
 	fi
-	# Config files mounted into nginx are not picked up by a rebuild.
+	# Config files mounted into nginx are not picked up by a rebuild, and
+	# neither is a certificate the certs service just renewed.
 	if git diff --name-only "$1" HEAD -- nginx www | grep -q .; then
 		log "nginx files changed, restarting nginx"
 		docker compose restart nginx || return 1
+	elif [ "$(cert_fingerprint)" != "$cert_before" ]; then
+		log "TLS certificate renewed, restarting nginx"
+		docker compose restart nginx || return 1
 	fi
+}
+
+# cert_fingerprint identifies nginx's current TLS certificate (empty if none).
+cert_fingerprint() {
+	cksum nginx/certs/homeserver.lan.crt 2>/dev/null || true
 }
 
 # Waits until the web app answers HEALTH_PATH with a success status.

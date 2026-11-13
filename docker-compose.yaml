@@ -27,7 +27,27 @@ services:
       - ./nginx/certs:/etc/nginx/certs:ro # Mount your new certs directory here
       - ./www/html:/var/www/html:ro
     depends_on:
-      - web
+      web:
+        condition: service_started
+      certs:
+        condition: service_completed_successfully
+
+  # Issues nginx's TLS certificate from a private home CA, then exits. Runs
+  # on every `up` (nginx waits for it) but only issues a new certificate when
+  # needed; see certs/issue-certs.sh. The CA's key stays in the ca-data volume.
+  certs:
+    container_name: certs
+    build:
+      context: ./certs
+    env_file:
+      - ./.env
+    environment:
+      OUT_UID: ${CERTS_UID:-1000}
+      OUT_GID: ${CERTS_GID:-1000}
+    volumes:
+      - ca-data:/ca
+      - ./nginx/certs:/out
+    restart: "no"
 
   db:
     container_name: db
@@ -70,3 +90,6 @@ services:
 
 volumes:
   db-data:
+  # The home CA: back it up (make ca-backup). Losing it means every device
+  # has to trust a new CA.
+  ca-data:
