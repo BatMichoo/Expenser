@@ -205,18 +205,17 @@ func TestGroceriesCurrentUsesGroceryRow(t *testing.T) {
 	assert.Equal(t, 0, house.Find("button.upload-btn").Length(), "only groceries upload receipts")
 }
 
-func TestCurrentViewHasFab(t *testing.T) {
+func TestCurrentViewToolbarAdd(t *testing.T) {
 	for section, url := range map[string]string{"house": "/house/expenses/new", "car": "/car/expenses/new", "groceries": "/groceries/create"} {
 		t.Run(section, func(t *testing.T) {
 			doc := parseHTML(t, render(t, section+"-current", monthView(section)))
-			fab := doc.Find("button.fab")
-			require.Equal(t, 1, fab.Length())
-			hxGet, _ := fab.Attr("hx-get")
+			assert.Equal(t, 0, doc.Find("button.fab").Length(), "no floating button covering the list on phones")
+			add := doc.Find(".month-toolbar button.add-btn")
+			require.Equal(t, 1, add.Length())
+			hxGet, _ := add.Attr("hx-get")
 			assert.Equal(t, url, hxGet)
-			label, _ := fab.Attr("aria-label")
-			assert.NotEmpty(t, label)
-			add, _ := doc.Find(".month-toolbar button.add-btn").Attr("hx-get")
-			assert.Equal(t, url, add, "toolbar add button")
+			label, _ := add.Attr("aria-label")
+			assert.NotEmpty(t, label, "phones show only +, so the button needs a label")
 		})
 	}
 }
@@ -654,8 +653,7 @@ func TestBillsView(t *testing.T) {
 	assert.Equal(t, "*", dis)
 	add, _ := doc.Find(".month-toolbar .add-btn").Attr("hx-get")
 	assert.Equal(t, "/bills/new", add)
-	fab, _ := doc.Find("button.fab").Attr("hx-get")
-	assert.Equal(t, "/bills/new", fab)
+	assert.Equal(t, 0, doc.Find("button.fab").Length())
 
 	assert.Contains(t, doc.Find(".kpi-total").Text(), "59.80 €")
 	assert.Contains(t, doc.Find(".kpi-overdue").Text(), "1")

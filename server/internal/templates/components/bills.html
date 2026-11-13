@@ -10,8 +10,9 @@
   <div class="month-main">
     <div class="month-toolbar">
       <h2 class="bills-title">{{ template "icon" (dict "Name" "bills") }}{{ T .Lang "bills.title" }}</h2>
-      <button type="button" class="add-btn" hx-get="/bills/new" hx-target="#action-dialog">
-        + {{ T .Lang "bills.add" }} <kbd>N</kbd>
+      <button type="button" class="add-btn" hx-get="/bills/new" hx-target="#action-dialog"
+        aria-label='{{ T .Lang "bills.add" }}' title='{{ T .Lang "bills.add" }}'>
+        <span class="add-plus" aria-hidden="true">+</span><span class="btn-label">{{ T .Lang "bills.add" }}</span> <kbd>N</kbd>
       </button>
     </div>
 
@@ -56,13 +57,6 @@
     </div>
     {{ end }}
 
-    <section id="add-expense-section">
-      <button type="button" class="fab" aria-label='{{ T .Lang "bills.add" }}' title='{{ T .Lang "bills.add" }}'
-        hx-get="/bills/new" hx-target="#action-dialog">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
-      </button>
-    </section>
   </div>
 </div>
 {{ end }}

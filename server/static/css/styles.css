@@ -849,11 +849,6 @@ select {
   display: none;
 }
 
-/* Floating add button is a phone-only control */
-.fab {
-  display: none;
-}
-
 /* Add/edit expense sheet ------------------------------------------------ */
 .sheet-grab {
   display: none;

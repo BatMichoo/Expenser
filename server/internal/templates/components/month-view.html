@@ -14,14 +14,6 @@
         {{ T .Lang "groceries.upload_receipt" }}
       </button>
       {{ end }}
-      <button type="button" class="fab" aria-label='{{ T .Lang "common.add" }}' title='{{ T .Lang "common.add" }}'
-        hx-get="{{ template "add-url" . }}" hx-target="#action-dialog">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 5v14" />
-          <path d="M5 12h14" />
-        </svg>
-      </button>
     </section>
     <section id="recent-expenses-section">
       <div class="overflow-x-auto">
@@ -83,8 +75,9 @@
     <span class="btn-label">{{ T .Lang "groceries.upload_receipt" }}</span>
   </button>
   {{ end }}
-  <button type="button" class="add-btn" hx-get="{{ template "add-url" . }}" hx-target="#action-dialog">
-    + {{ T .Lang "common.add" }} <kbd>N</kbd>
+  <button type="button" class="add-btn" hx-get="{{ template "add-url" . }}" hx-target="#action-dialog"
+    aria-label='{{ T .Lang "common.add" }}' title='{{ T .Lang "common.add" }}'>
+    <span class="add-plus" aria-hidden="true">+</span><span class="btn-label">{{ T .Lang "common.add" }}</span> <kbd>N</kbd>
   </button>
 </div>
 {{ end }}
