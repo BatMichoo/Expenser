@@ -94,40 +94,6 @@ func TestHouseAndCarTotalsSubtractDiscounts(t *testing.T) {
 	billCar, _, err := db.GetBillTypeTotal(ctx, userID, models.SectionCar, 1, from, to)
 	require.NoError(t, err)
 	assert.Equal(t, 45.0, billCar)
-
-	for name, get := range map[string]func() []float64{
-		"house year": func() []float64 {
-			r, err := db.GetHouseExpensesForYear(context.Background(), 2026, userID)
-			require.NoError(t, err)
-			return houseAmounts(r)
-		},
-		"house type": func() []float64 {
-			r, err := db.GetHouseExpenseTypeForYear(context.Background(), 2, 2026, userID)
-			require.NoError(t, err)
-			return houseAmounts(r)
-		},
-		"car year": func() []float64 {
-			r, err := db.GetCarExpensesForYear(context.Background(), 2026, userID)
-			require.NoError(t, err)
-			return carAmounts(r)
-		},
-		"car type": func() []float64 {
-			r, err := db.GetCarExpenseTypeForYear(context.Background(), 1, 2026, userID)
-			require.NoError(t, err)
-			return carAmounts(r)
-		},
-	} {
-		amounts := get()
-		total := 0.0
-		for _, a := range amounts {
-			total += a
-		}
-		if name[:3] == "car" {
-			assert.Equal(t, 45.0, total, name+": chart amounts are net")
-		} else {
-			assert.Equal(t, 110.0, total, name+": chart amounts are net")
-		}
-	}
 }
 
 func sumMap(m map[string]float64) float64 {
@@ -136,20 +102,4 @@ func sumMap(m map[string]float64) float64 {
 		t += v
 	}
 	return t
-}
-
-func houseAmounts(rows []models.HouseExpense) []float64 {
-	out := []float64{}
-	for _, r := range rows {
-		out = append(out, r.Amount)
-	}
-	return out
-}
-
-func carAmounts(rows []models.CarExpense) []float64 {
-	out := []float64{}
-	for _, r := range rows {
-		out = append(out, r.Amount)
-	}
-	return out
 }

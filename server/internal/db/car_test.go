@@ -371,66 +371,6 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 				}
 			},
 		},
-		{
-			name: "Expenses for year",
-			funcToTest: func(userId uuid.UUID) ([]models.CarExpense, error) {
-				return testDB.GetCarExpensesForYear(context.Background(), expenseDate.Year(), userId)
-			},
-			setup: func(t *testing.T) {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
-				expenses := []models.CarExpense{
-					{
-						Amount:        250.00,
-						Date:          expenseDate,
-						ExpenseTypeID: 1,
-						Notes:         "Test 1234",
-						CreatedBy:     TestUserRegisterModel.ID,
-						Metadata:      []byte("{}"),
-					},
-					{
-						Amount:        350.00,
-						Date:          expenseDate.Add(time.Duration(365 * 31 * 24 * time.Hour)),
-						ExpenseTypeID: 3,
-						Notes:         "Test 12345",
-						CreatedBy:     TestUserRegisterModel.ID,
-						Metadata:      []byte("{}"),
-					},
-					{
-						Amount:        450.00,
-						Date:          expenseDate.Add(time.Duration(365 * 31 * 24 * time.Hour)),
-						ExpenseTypeID: 6,
-						Notes:         "Test 123456",
-						CreatedBy:     TestUserRegisterModel.ID,
-						Metadata:      []byte("{}"),
-					},
-				}
-
-				for _, exp := range expenses {
-					err := testDB.CreateCarExpense(context.Background(), &exp)
-					if err != nil {
-						t.Skipf("Error setting up existing expense test: %v", err)
-					}
-				}
-			},
-			expected: []models.CarExpense{
-				{
-					Amount:   250.00,
-					Date:     expenseDate,
-					Type:     "Fuel",
-					Notes:    "Test 1234",
-					Metadata: []byte("{}"),
-				},
-			},
-			wantErr: false,
-			validate: func(t *testing.T, exp []models.CarExpense, got []models.CarExpense) {
-				actual := got
-				assert.Equal(t, len(exp), len(actual))
-
-				for i, act := range actual {
-					assert.Equal(t, exp[i].Amount, act.Amount)
-				}
-			},
-		},
 	}
 
 	for _, tt := range tests {

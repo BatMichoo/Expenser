@@ -109,7 +109,7 @@ func TestExpenseWithoutMetadata(t *testing.T) {
 	require.NotNil(t, gotCar)
 	assert.Empty(t, gotCar.Metadata)
 
-	cars, err := testDB.GetCarExpensesForYear(context.Background(), 0, user.ID)
+	cars, err := testDB.GetCarExpensesForMonth(context.Background(), car.Date.Month(), car.Date.Year(), user.ID)
 	require.NoError(t, err)
 	assert.Len(t, cars, 1)
 

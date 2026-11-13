@@ -115,23 +115,6 @@ func (db *DB) GetCarExpensesForMonth(ctx context.Context, month time.Month, year
 	return expenses, nil
 }
 
-// GetCarExpensesForYear feeds the yearly chart (year 0: every year); Amount
-// is net of the discount, like every other total.
-func (db *DB) GetCarExpensesForYear(ctx context.Context, year int, userID uuid.UUID) ([]models.CarExpense, error) {
-	expenses, err := queryAll(ctx, db.conn, func(r rowScanner, e *models.CarExpense) error {
-		return r.Scan(&e.ID, &e.Type, &e.Amount, &e.Date, &e.Notes, &e.Metadata, &e.CreatedAt)
-	}, `
-		SELECT ce.id, ct.name, ce.amount - ce.discount_amount, ce.expense_date, ce.notes, ce.metadata, ce.created_at
-		FROM car_expenses ce
-		JOIN car_expense_types ct ON ce.car_expense_type_id = ct.id
-		WHERE ($1 = 0 OR EXTRACT(YEAR FROM expense_date) = $1) AND ce.created_by = $2
-		ORDER BY ce.expense_date DESC, ce.id DESC`, year, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch car expenses for year: %w", err)
-	}
-	return expenses, nil
-}
-
 // EditCarExpense updates the user's car expense. It returns an error wrapping
 // sql.ErrNoRows when no such expense belongs to the user.
 func (db *DB) EditCarExpense(ctx context.Context, editExpense *models.CarExpense, userID uuid.UUID) error {
@@ -185,23 +168,6 @@ func (db *DB) DeleteCarExpense(ctx context.Context, id int, userID uuid.UUID) (b
 		return false, fmt.Errorf("error deleting car expense: %w", err)
 	}
 	return n > 0, nil
-}
-
-// GetCarExpenseTypeForYear feeds the yearly chart of one type (year 0:
-// every year); Amount is net of the discount, like every other total.
-func (db *DB) GetCarExpenseTypeForYear(ctx context.Context, typeID, year int, userID uuid.UUID) ([]models.CarExpense, error) {
-	expenses, err := queryAll(ctx, db.conn, func(r rowScanner, e *models.CarExpense) error {
-		return r.Scan(&e.ID, &e.Type, &e.Amount, &e.Date, &e.Metadata)
-	}, `
-		SELECT ce.id, ct.name, ce.amount - ce.discount_amount, ce.expense_date, ce.metadata
-		FROM car_expenses ce
-		JOIN car_expense_types ct ON ce.car_expense_type_id = ct.id
-		WHERE ce.car_expense_type_id = $1 AND ce.created_by = $3 AND ($2 = 0 OR EXTRACT(YEAR FROM ce.expense_date) = $2)`,
-		typeID, year, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch car expenses of type: %w", err)
-	}
-	return expenses, nil
 }
 
 // GetCarMonthlyTotals returns net car spending (amount minus discount) per month, keyed "YYYY-MM", for expenses

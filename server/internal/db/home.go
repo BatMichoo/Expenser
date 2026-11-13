@@ -113,39 +113,6 @@ func (db *DB) GetHouseExpensesForMonth(ctx context.Context, month time.Month, ye
 	return expenses, nil
 }
 
-// GetHouseExpensesForYear feeds the yearly chart (year 0: every year);
-// Amount is net of the discount, like every other total.
-func (db *DB) GetHouseExpensesForYear(ctx context.Context, year int, userID uuid.UUID) ([]models.HouseExpense, error) {
-	expenses, err := queryAll(ctx, db.conn, func(r rowScanner, e *models.HouseExpense) error {
-		return r.Scan(&e.ID, &e.UtilityType, &e.Amount, &e.ExpenseDate, &e.Notes, &e.Metadata, &e.CreatedAt, &e.CreatedBy)
-	}, `
-		SELECT he.id, ut.name, he.amount - he.discount_amount, he.expense_date, he.notes, he.metadata, he.created_at, he.created_by
-		FROM home_expenses he
-		JOIN utility_types ut ON he.utility_type_id = ut.id
-		WHERE ($1 = 0 OR EXTRACT(YEAR FROM expense_date) = $1) AND created_by = $2`, year, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch house expenses for year: %w", err)
-	}
-	return expenses, nil
-}
-
-// GetHouseExpenseTypeForYear feeds the yearly chart of one utility type
-// (year 0: every year), oldest first; Amount is net of the discount.
-func (db *DB) GetHouseExpenseTypeForYear(ctx context.Context, typeID, year int, userID uuid.UUID) ([]models.HouseExpense, error) {
-	expenses, err := queryAll(ctx, db.conn, func(r rowScanner, e *models.HouseExpense) error {
-		return r.Scan(&e.ID, &e.UtilityType, &e.Amount, &e.ExpenseDate, &e.Metadata)
-	}, `
-		SELECT he.id, ut.name, he.amount - he.discount_amount, he.expense_date, he.metadata
-		FROM home_expenses he
-		JOIN utility_types ut ON he.utility_type_id = ut.id
-		WHERE he.utility_type_id = $1 AND he.created_by = $3 AND ($2 = 0 OR EXTRACT(YEAR FROM he.expense_date) = $2)
-		ORDER BY he.expense_date`, typeID, year, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch house expenses of type: %w", err)
-	}
-	return expenses, nil
-}
-
 // EditHouseExpense updates the user's home expense. It returns an error
 // wrapping sql.ErrNoRows when no such expense belongs to the user.
 func (db *DB) EditHouseExpense(ctx context.Context, editExpense *models.HouseExpense, userID uuid.UUID) error {
