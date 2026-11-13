@@ -18,6 +18,10 @@ This project relies on environment variables for configuration, managed through 
 | `LAN_DOMAIN`  | The local area network domain name (e.g., `mywebapp.lan`) used to access the application within your LAN; also the cookie domain. | `mywebapp.lan`    |
 | `LAN_IP`      | The local IP address (e.g., `192.168.1.123`) of the machine where the application is hosted, for Nginx configuration. | `192.168.1.123`   |
 
+## TLS Certificate
+
+`make certs` creates a self-signed certificate for nginx in `nginx/certs/` from the values above (`LAN_DOMAIN` and `LAN_IP` are required). It lasts 365 days; `make renew-certs` replaces it, then restart nginx (`docker compose restart nginx`). Devices must trust the certificate once (import `nginx/certs/homeserver.lan.crt`).
+
 ## .env Example
 
 Gin runs in release mode unless `DEV_MODE=true`; never set `DEV_MODE` in production.

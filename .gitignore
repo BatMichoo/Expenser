@@ -35,6 +35,8 @@ backups/
 docs/
 
 *.crt
+# Written by make certs from .env
+nginx/certs/openssl.cnf
 *.key
 
 # Editor/IDE
