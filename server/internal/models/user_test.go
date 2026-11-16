@@ -60,21 +60,11 @@ func TestReminderDefaultsApplyTo(t *testing.T) {
 }
 
 func TestCleanDisplayName(t *testing.T) {
-	got, err := CleanDisplayName("  Miro  ")
-	assert.NoError(t, err)
-	assert.Equal(t, "Miro", got)
-
-	got, err = CleanDisplayName("")
-	assert.NoError(t, err)
-	assert.Empty(t, got, "optional")
-
-	_, err = CleanDisplayName(strings.Repeat("я", 61))
-	assert.ErrorIs(t, err, ErrInvalidDisplayName, "max 60 characters")
-	_, err = CleanDisplayName(strings.Repeat("я", 60))
-	assert.NoError(t, err, "60 characters, not bytes")
-
-	_, err = CleanDisplayName("Miro\r\nBcc: x@example.com")
-	assert.ErrorIs(t, err, ErrInvalidDisplayName, "no line breaks or control characters (email headers)")
+	assert.Equal(t, "Miro", CleanDisplayName("  Miro  "))
+	assert.Empty(t, CleanDisplayName(""))
+	assert.Equal(t, strings.Repeat("я", 60), CleanDisplayName(strings.Repeat("я", 61)), "cut to 60 characters, not bytes")
+	assert.Equal(t, "MiroBcc: x@example.com", CleanDisplayName("Miro\r\nBcc: x@example.com"),
+		"no line breaks or control characters (email headers)")
 }
 
 func TestGreetingName(t *testing.T) {
@@ -91,14 +81,4 @@ func TestRecipientName(t *testing.T) {
 	assert.Empty(t, p.RecipientName("partner@example.com"), "someone else's address gets no name")
 	p.UserDisplayName = ""
 	assert.Empty(t, p.RecipientName("me@example.com"), "no name set")
-}
-
-func TestValidateNewPassword(t *testing.T) {
-	assert.NoError(t, ValidateNewPassword("old-secret", "123456", "123456"), "6 is enough")
-	assert.ErrorIs(t, ValidateNewPassword("old", "12345", "12345"), ErrPasswordTooShort)
-	assert.NoError(t, ValidateNewPassword("old", "пароль", "пароль"), "6 characters, not bytes")
-	assert.NoError(t, ValidateNewPassword("old", strings.Repeat("x", 72), strings.Repeat("x", 72)), "72 bytes is bcrypt's limit")
-	assert.ErrorIs(t, ValidateNewPassword("old", strings.Repeat("я", 37), strings.Repeat("я", 37)), ErrPasswordTooLong, "74 bytes")
-	assert.ErrorIs(t, ValidateNewPassword("old", "new-secret", "other"), ErrPasswordMismatch)
-	assert.ErrorIs(t, ValidateNewPassword("same-one", "same-one", "same-one"), ErrPasswordUnchanged)
 }

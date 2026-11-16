@@ -10,31 +10,27 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 // RootHandler serves the home page, the flash popup and the language
 // switch.
 type RootHandler struct {
-	users UserStore
-	homes *services.HomeService
-	auth  *services.AuthService
+	users     UserStore
+	homes     *services.HomeService
+	lanDomain string
 }
 
 func (h *RootHandler) GetRoot(c *gin.Context) error {
 	data := gin.H{
-		"Lang":       currentLang(c),
-		"IsLoggedIn": isLoggedIn(c),
-		"Year":       time.Now().Year(),
+		"Lang": currentLang(c),
+		"Year": time.Now().Year(),
 	}
-	if isLoggedIn(c) {
-		// The home page must always load: without its data it just greets.
-		home, err := h.home(c)
-		if err != nil {
-			log.Printf("home page data: %v", err)
-		} else {
-			data["Home"] = home
-		}
+	// The home page must always load: without its data it just greets.
+	home, err := h.home(c)
+	if err != nil {
+		log.Printf("home page data: %v", err)
+	} else {
+		data["Home"] = home
 	}
 	renderPage(c, utilities.Templates.Pages.Index, data)
 	return nil
@@ -73,43 +69,17 @@ func (h *RootHandler) NotFound(c *gin.Context) error {
 	return notFound("error.page_not_found")
 }
 
+// ChangeLanguage sets the language for every app of the home server (the
+// header's EN/BG). RequireUser saves it on the user on their next request,
+// for their reminder emails.
 func (h *RootHandler) ChangeLanguage(c *gin.Context) error {
 	lang := c.PostForm("lang")
 	if !middleware.SupportedLanguage(lang) {
 		c.Status(http.StatusBadRequest)
 		return nil
 	}
-
-	middleware.SetLanguageCookie(c, h.auth.Domain, lang)
-
-	// Logged in: remember the choice on the account too, and reissue the
-	// token so its claims carry the new language. The cookie alone already
-	// switches this browser, so a failure here is only logged.
-	if claims := services.ClaimsFromContext(c); claims != nil {
-		if err := h.saveLanguage(c, claims.UserID, lang); err != nil {
-			log.Printf("save language for %s: %v", claims.UserID, err)
-		}
-	}
-
+	middleware.SetLanguageCookie(c, h.lanDomain, lang)
 	c.Header("HX-Refresh", "true")
 	c.Status(http.StatusOK)
-	return nil
-}
-
-// saveLanguage stores the user's language and refreshes their login token.
-func (h *RootHandler) saveLanguage(c *gin.Context, userID uuid.UUID, lang string) error {
-	ctx := c.Request.Context()
-	if err := h.users.UpdateUserLanguage(ctx, userID, lang); err != nil {
-		return err
-	}
-	user, err := h.users.GetUserByID(ctx, userID)
-	if err != nil {
-		return err
-	}
-	token, err := h.auth.GenerateToken(user)
-	if err != nil {
-		return err
-	}
-	h.auth.SetCookie(token, c)
 	return nil
 }

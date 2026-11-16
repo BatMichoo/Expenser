@@ -61,7 +61,7 @@ func TestAllTemplatesParse(t *testing.T) {
 }
 
 func TestHeaderSettingsMenu(t *testing.T) {
-	html := render(t, "header", models.HeaderOptions{IsLoggedIn: true, Lang: "en"})
+	html := render(t, "header", models.HeaderOptions{IsLoggedIn: true, Lang: "en", LogoutURL: "https://auth.homeserver.lan/logout"})
 	doc := parseHTML(t, html)
 
 	menu := doc.Find("details.settings-menu")
@@ -74,20 +74,13 @@ func TestHeaderSettingsMenu(t *testing.T) {
 	assert.Contains(t, menu.Text(), "Theme")
 	assert.NotContains(t, menu.Text(), "Toggle Theme", "state-less toggle replaced")
 	assert.Equal(t, 2, menu.Find(".lang-btn").Length(), "language buttons inside menu")
-	assert.Equal(t, 1, menu.Find(`[hx-get="/logout"]`).Length(), "logout inside menu")
+	assert.Equal(t, 1, menu.Find(`form[method="post"][action="https://auth.homeserver.lan/logout"]`).Length(), "logout (the home server's) inside menu")
 
 	nav := doc.Find("#tracker-navigation")
 	assert.Equal(t, 4, nav.Find(".tracker-nav-button").Length(), "house, car, groceries, bills")
 	bills, _ := nav.Find(`.tracker-nav-button[data-path="/bills"]`).Attr("hx-get")
 	assert.Equal(t, "/bills", bills)
 	assert.Equal(t, 0, nav.Find(`[hx-get="/logout"]`).Length(), "logout no longer a tab")
-}
-
-func TestHeaderLoggedOut(t *testing.T) {
-	doc := parseHTML(t, render(t, "header", models.HeaderOptions{Lang: "en"}))
-	assert.Equal(t, 0, doc.Find(`[hx-get="/logout"]`).Length())
-	assert.Equal(t, 2, doc.Find("#tracker-navigation .tracker-nav-button").Length(), "login, register")
-	assert.Equal(t, 2, doc.Find("details.settings-menu .theme-option").Length(), "theme still reachable")
 }
 
 func sampleHouseExpense() *models.HouseExpense {
@@ -842,41 +835,24 @@ func TestBillsViewWaiting(t *testing.T) {
 	assert.Contains(t, doc.Find("#bill-33333333-3333-3333-3333-333333333333 .bill-due").Text(), "arrives in 3 days")
 }
 
-func TestSettingsHasAccount(t *testing.T) {
-	doc := parseHTML(t, render(t, "header", models.HeaderOptions{IsLoggedIn: true, Lang: "en"}))
-	btn := doc.Find("details.settings-menu .settings-account")
-	require.Equal(t, 1, btn.Length())
-	hx, _ := btn.Attr("hx-get")
-	assert.Equal(t, "/settings/account", hx)
-	assert.Contains(t, btn.Text(), "Account")
-
-	out := parseHTML(t, render(t, "header", models.HeaderOptions{Lang: "en"}))
-	assert.Equal(t, 0, out.Find(".settings-account").Length(), "only when logged in")
-}
-
 func accountUser() *models.User {
 	two, five := 2, 5
 	return &models.User{
-		Username: "dev", DisplayName: "Miro", Email: "me@example.com",
+		DisplayName: "Miro", Email: "me@example.com",
 		ReminderDefaults: models.ReminderDefaults{Notify: models.NotifyNone, RemindDaysBefore: 7, RemindDaysAfter: 1, RepeatEveryDays: &two, MaxReminders: &five},
 	}
 }
 
-func TestAccountForm(t *testing.T) {
-	doc := parseHTML(t, render(t, "account-form", map[string]any{"User": accountUser(), "Lang": "en"}))
-	form := doc.Find("form.account-form")
+func TestRemindersForm(t *testing.T) {
+	doc := parseHTML(t, render(t, "reminders-form", map[string]any{"User": accountUser(), "Lang": "en"}))
+	form := doc.Find("form.reminders-form")
 	require.Equal(t, 1, form.Length())
 	post, _ := form.Attr("hx-post")
-	assert.Equal(t, "/settings/account", post)
+	assert.Equal(t, "/settings/reminders", post)
 
 	val := func(sel string) string { v, _ := form.Find(sel).Attr("value"); return v }
-	assert.Equal(t, "Miro", val(`input[name="name"]`))
-	ph, _ := form.Find(`input[name="name"]`).Attr("placeholder")
-	assert.Contains(t, ph, "dev", "empty name falls back to the username")
-	_, required := form.Find(`input[name="name"]`).Attr("required")
-	assert.False(t, required)
-	ml, _ := form.Find(`input[name="name"]`).Attr("maxlength")
-	assert.Equal(t, "60", ml)
+	assert.Equal(t, 0, form.Find(`input[name="name"]`).Length(), "the name is the home server's")
+	assert.Equal(t, 0, form.Find(`input[type="password"]`).Length(), "so is the password")
 	assert.Equal(t, "me@example.com", val(`input[type="email"][name="email"]`))
 
 	assert.Equal(t, "none", val(`input[name="notify"][checked]`))
@@ -889,10 +865,10 @@ func TestAccountForm(t *testing.T) {
 	assert.Contains(t, form.Text(), "Defaults for new bills")
 }
 
-func TestAccountFormEmptyDefaults(t *testing.T) {
-	u := &models.User{Username: "dev", ReminderDefaults: models.DefaultReminderDefaults()}
+func TestRemindersFormEmptyDefaults(t *testing.T) {
+	u := &models.User{ReminderDefaults: models.DefaultReminderDefaults()}
 	u.ReminderDefaults.RepeatEveryDays = nil
-	doc := parseHTML(t, render(t, "account-form", map[string]any{"User": u, "Lang": "en"}))
+	doc := parseHTML(t, render(t, "reminders-form", map[string]any{"User": u, "Lang": "en"}))
 	assert.Equal(t, 0, doc.Find(`input[name="keep_reminding"][checked]`).Length())
 	v, _ := doc.Find(`input[name="repeat_every_days"]`).Attr("value")
 	assert.Equal(t, "3", v, "a sensible number ready when switched on")
@@ -901,35 +877,12 @@ func TestAccountFormEmptyDefaults(t *testing.T) {
 	assert.Equal(t, "email", func() string { v, _ := doc.Find(`input[name="notify"][checked]`).Attr("value"); return v }())
 }
 
-func TestAccountFormPasswordSection(t *testing.T) {
-	doc := parseHTML(t, render(t, "account-form", map[string]any{"User": accountUser(), "Lang": "en"}))
-	sec := doc.Find("details.password-section")
-	require.Equal(t, 1, sec.Length())
-	_, open := sec.Attr("open")
-	assert.False(t, open, "folded by default")
+func TestRemindersFormTestButtonOnlyInDevMode(t *testing.T) {
+	doc := parseHTML(t, render(t, "reminders-form", map[string]any{"User": accountUser(), "Lang": "en"}))
+	assert.Equal(t, 0, doc.Find(`[hx-post="/settings/reminders/test-email"]`).Length(), "hidden outside dev mode")
 
-	for name, auto := range map[string]string{"current_password": "current-password", "new_password": "new-password", "confirm_password": "new-password"} {
-		in := sec.Find(`input[type="password"][name="` + name + `"]`)
-		require.Equal(t, 1, in.Length(), name)
-		ac, _ := in.Attr("autocomplete")
-		assert.Equal(t, auto, ac, name)
-		_, req := in.Attr("required")
-		assert.False(t, req, "must not block saving the rest of the panel")
-	}
-	btn := sec.Find(`button[hx-post="/settings/account/password"]`)
-	require.Equal(t, 1, btn.Length())
-	typ, _ := btn.Attr("type")
-	assert.Equal(t, "button", typ, "its own action, not the panel's Save")
-	inc, _ := btn.Attr("hx-include")
-	assert.Equal(t, ".password-section input", inc)
-}
-
-func TestAccountFormTestButtonOnlyInDevMode(t *testing.T) {
-	doc := parseHTML(t, render(t, "account-form", map[string]any{"User": accountUser(), "Lang": "en"}))
-	assert.Equal(t, 0, doc.Find(`[hx-post="/settings/account/test-email"]`).Length(), "hidden outside dev mode")
-
-	doc = parseHTML(t, render(t, "account-form", map[string]any{"User": accountUser(), "Lang": "en", "DevMode": true}))
-	btn := doc.Find(`button[hx-post="/settings/account/test-email"]`)
+	doc = parseHTML(t, render(t, "reminders-form", map[string]any{"User": accountUser(), "Lang": "en", "DevMode": true}))
+	btn := doc.Find(`button[hx-post="/settings/reminders/test-email"]`)
 	require.Equal(t, 1, btn.Length())
 	typ, _ := btn.Attr("type")
 	assert.Equal(t, "button", typ, "must not submit the save form")
@@ -968,67 +921,6 @@ func TestBillRowNoEmailHint(t *testing.T) {
 	assert.Equal(t, 0, doc.Find(".no-email").Length())
 }
 
-func TestLoginPageSplitLayout(t *testing.T) {
-	doc := parseHTML(t, render(t, "login-page", map[string]any{"Lang": "en"}))
-	split := doc.Find("section.auth-split")
-	require.Equal(t, 1, split.Length())
-	assert.Equal(t, 1, split.Find(".auth-brand").Length(), "brand panel")
-	assert.GreaterOrEqual(t, split.Find(".auth-brand li").Length(), 3, "what the app does")
-
-	form := split.Find(".auth-card form")
-	post, _ := form.Attr("hx-post")
-	assert.Equal(t, "/login", post)
-	user := form.Find(`input[name="username"]`)
-	ac, _ := user.Attr("autocomplete")
-	assert.Equal(t, "username", ac)
-	pw := form.Find(`input[type="password"][name="password"]`)
-	ac, _ = pw.Attr("autocomplete")
-	assert.Equal(t, "current-password", ac)
-	assert.Equal(t, 1, form.Find(`button[type="submit"].auth-submit`).Length())
-	link, _ := split.Find(".auth-switch a").Attr("hx-get")
-	assert.Equal(t, "/register", link)
-}
-
-func TestRegisterPageSplitLayout(t *testing.T) {
-	doc := parseHTML(t, render(t, "register-page", map[string]any{"Lang": "en"}))
-	form := doc.Find("section.auth-split .auth-card form")
-	post, _ := form.Attr("hx-post")
-	assert.Equal(t, "/register", post)
-	for name, auto := range map[string]string{"username": "username", "password": "new-password", "confirm_password": "new-password"} {
-		ac, _ := form.Find(`input[name="` + name + `"]`).Attr("autocomplete")
-		assert.Equal(t, auto, ac, name)
-	}
-	hint := form.Find("#password-match-feedback")
-	require.Equal(t, 1, hint.Length())
-	assert.True(t, hint.HasClass("field-error"))
-	_, styled := hint.Attr("style")
-	assert.False(t, styled, "no inline red text")
-	link, _ := doc.Find(".auth-switch a").Attr("hx-get")
-	assert.Equal(t, "/login", link)
-	assert.NotContains(t, render(t, "register-page", map[string]any{"Lang": "en"}), "DOMContentLoaded",
-		"the check must also work when the page is swapped in by HTMX")
-}
-
-func TestRegisterSuccessCard(t *testing.T) {
-	doc := parseHTML(t, render(t, "register-success", map[string]any{"Lang": "en", "User": &models.User{Username: "newbie"}}))
-	card := doc.Find(".auth-card.auth-done")
-	require.Equal(t, 1, card.Length())
-	assert.Contains(t, card.Text(), "Account created")
-	href, _ := card.Find("a.auth-submit").Attr("href")
-	assert.Equal(t, "/", href, "continue button")
-	assert.Contains(t, card.Text(), "newbie")
-}
-
-func TestHomeLoggedOut(t *testing.T) {
-	doc := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en"}))
-	assert.Equal(t, 1, doc.Find("section.auth-split .auth-brand").Length(), "same brand panel as login")
-	login, _ := doc.Find(`.home-actions [hx-get="/login"]`).Attr("hx-push-url")
-	assert.Equal(t, "true", login)
-	assert.Equal(t, 1, doc.Find(`.home-actions [hx-get="/register"]`).Length())
-	assert.Equal(t, 0, doc.Find(".home-grid").Length())
-	assert.NotContains(t, doc.Text(), "top left corner", "old hints are gone")
-}
-
 func homeView() *models.HomeView {
 	bars := make([]models.MonthBar, 12)
 	for i := range bars {
@@ -1052,14 +944,13 @@ func homeView() *models.HomeView {
 }
 
 func TestHomeLoggedIn(t *testing.T) {
-	doc := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true, "Home": homeView()}))
+	doc := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "Home": homeView()}))
 	assert.Contains(t, doc.Find("h2").Text(), "Hi Miro")
 	cards := doc.Find(".home-grid .home-card")
 	require.Equal(t, 4, cards.Length())
 	var paths []string
 	cards.Each(func(_ int, s *goquery.Selection) { p, _ := s.Attr("hx-get"); paths = append(paths, p) })
 	assert.Equal(t, []string{"/house", "/car", "/groceries", "/bills"}, paths, "each card opens its tab")
-	assert.Equal(t, 0, doc.Find(".auth-split").Length())
 
 	house := doc.Find(`.home-card[hx-get="/house"]`)
 	assert.Contains(t, house.Find(".home-big").Text(), "2840.00")
@@ -1097,7 +988,7 @@ func TestHomeLoggedIn(t *testing.T) {
 }
 
 func TestHomeLoggedInWithoutData(t *testing.T) {
-	plain := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true}))
+	plain := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en"}))
 	assert.Equal(t, "Welcome back", strings.TrimSpace(plain.Find("h2").Text()), "no data: no empty name")
 	assert.Equal(t, 0, plain.Find(".home-card").Length())
 }
@@ -1105,7 +996,7 @@ func TestHomeLoggedInWithoutData(t *testing.T) {
 func TestHomeNoBills(t *testing.T) {
 	v := homeView()
 	v.Bills, v.MoreBills = nil, 0
-	doc := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true, "Home": v}))
+	doc := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "Home": v}))
 	card := doc.Find(`.home-card[hx-get="/bills"]`)
 	assert.Contains(t, card.Text(), "No bills yet")
 	assert.NotContains(t, card.Text(), "more")
@@ -1157,14 +1048,6 @@ func TestBackfillPreview(t *testing.T) {
 	assert.Equal(t, 0, none.Find("button[type=submit]").Length(), "nothing to confirm")
 }
 
-func TestLoginKeepsNext(t *testing.T) {
-	doc := parseHTML(t, render(t, "login-page", map[string]any{"Lang": "en", "Next": "/bills"}))
-	v, _ := doc.Find(`form input[type="hidden"][name="next"]`).Attr("value")
-	assert.Equal(t, "/bills", v)
-	plain := parseHTML(t, render(t, "login-page", map[string]any{"Lang": "en"}))
-	assert.Equal(t, 0, plain.Find(`input[name="next"]`).Length())
-}
-
 func TestSnoozePage(t *testing.T) {
 	until := time.Date(2026, 11, 15, 0, 0, 0, 0, time.UTC)
 	confirm := parseHTML(t, render(t, "snooze-page", map[string]any{"State": "confirm", "Bill": "Internet", "Until": until, "Token": "tok.en", "Lang": "en"}))
@@ -1187,34 +1070,6 @@ func TestSnoozePage(t *testing.T) {
 	}
 }
 
-func TestLandingPage(t *testing.T) {
-	doc := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en"}))
-	land := doc.Find("section.landing")
-	require.Equal(t, 1, land.Length(), "below the login panel for visitors")
-	assert.Equal(t, 6, land.Find(".landing-feature").Length())
-	assert.Equal(t, 3, land.Find(".landing-step").Length())
-	assert.GreaterOrEqual(t, land.Find(".landing-stat").Length(), 3)
-	preview := land.Find(".landing-preview")
-	require.Equal(t, 1, preview.Length())
-	_, hidden := preview.Find(".landing-preview-cards").Attr("aria-hidden")
-	assert.True(t, hidden, "the sample dashboard is decoration")
-	assert.Equal(t, 0, preview.Find("a, button").Length(), "nothing in the sample is clickable")
-	cta := land.Find(".landing-cta")
-	reg, _ := cta.Find(`[hx-get="/register"]`).Attr("hx-push-url")
-	assert.Equal(t, "true", reg)
-	assert.Equal(t, 1, cta.Find(`[hx-get="/login"]`).Length())
-
-	logged := parseHTML(t, render(t, "index-page", map[string]any{"Lang": "en", "IsLoggedIn": true, "Home": homeView()}))
-	assert.Equal(t, 0, logged.Find(".landing").Length(), "not for logged-in users")
-}
-
-func TestLandingPageTranslated(t *testing.T) {
-	for _, lang := range []string{"en", "bg"} {
-		out := render(t, "index-page", map[string]any{"Lang": lang})
-		assert.NotContains(t, out, "landing.", lang+": every text has a translation")
-	}
-}
-
 func TestRootLayoutRendersPagesByName(t *testing.T) {
 	page := func(name string, content any) *goquery.Document {
 		return parseHTML(t, render(t, "root", &models.RootLayout{
@@ -1222,26 +1077,21 @@ func TestRootLayoutRendersPagesByName(t *testing.T) {
 			HeaderOpts: &models.HeaderOptions{Lang: "en"},
 		}))
 	}
-	login := page("login-page", map[string]any{"Lang": "en", "Next": "/bills"})
-	assert.Equal(t, 1, login.Find(`#tracker-content form[hx-post="/login"]`).Length(), "any page by its name")
-	v, _ := login.Find(`input[name="next"]`).Attr("value")
-	assert.Equal(t, "/bills", v, "with its own data")
-
 	snooze := page("snooze-page", map[string]any{"State": "invalid", "Lang": "en"})
-	assert.Contains(t, snooze.Find("#tracker-content").Text(), "doesn't work")
+	assert.Contains(t, snooze.Find("#tracker-content").Text(), "doesn't work", "any page by its name, with its own data")
 
 	unknown := page("no-such-page", nil)
-	assert.Equal(t, 1, unknown.Find("#tracker-content section.auth-split").Length(), "unknown names show the home page")
+	assert.Equal(t, 1, unknown.Find("#tracker-content section.home").Length(), "unknown names show the home page")
 
 	// Stylesheets and scripts carry a per-start version so a deploy is not
 	// hidden behind a cached copy.
 	for _, sel := range []string{`link[rel="stylesheet"]`, `script[src]`} {
-		login.Find(sel).Each(func(_ int, el *goquery.Selection) {
+		snooze.Find(sel).Each(func(_ int, el *goquery.Selection) {
 			src := el.AttrOr("href", el.AttrOr("src", ""))
 			assert.Regexp(t, `^/static/.+\?v=[0-9a-z]+$`, src)
 		})
 	}
-	assert.Equal(t, 3, login.Find(`link[rel="stylesheet"]`).Length())
+	assert.Equal(t, 3, snooze.Find(`link[rel="stylesheet"]`).Length())
 }
 
 func TestEveryIconNameDraws(t *testing.T) {

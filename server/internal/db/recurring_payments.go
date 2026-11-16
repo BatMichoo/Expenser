@@ -14,14 +14,14 @@ import (
 // recurringPaymentSelect selects every column needed by scanRecurringPayment,
 // with the type name resolved from whichever type table the category uses.
 const recurringPaymentSelect = `
-	SELECT rp.id, rp.user_id, u.username, rp.category, rp.utility_type_id, rp.car_expense_type_id,
+	SELECT rp.id, rp.user_id, COALESCE(u.username, ''), rp.category, rp.utility_type_id, rp.car_expense_type_id,
 		COALESCE(ut.name, ct.name, ''), rp.name, rp.start_date, rp.due_date, rp.cycle_unit,
 		rp.cycle_every, rp.remind_days_before, rp.payment_hours, rp.payment_options, rp.notes,
 		rp.expected_amount, rp.remember_last_amount, rp.last_paid_on, rp.last_notified_for,
 		rp.last_notified_on, rp.active, rp.created_at, rp.updated_at,
 		rp.date_kind, rp.remind_days_after, rp.repeat_every_days, rp.max_reminders,
 		rp.reminders_sent, rp.snoozed_until,
-		rp.notify, COALESCE(rp.notify_email, ''), COALESCE(u.email, ''), u.preferred_language,
+		rp.notify, COALESCE(rp.notify_email, ''), COALESCE(u.email, ''), COALESCE(u.preferred_language, 'en'),
 		COALESCE(u.display_name, '')
 	FROM recurring_payments rp
 	JOIN users u ON u.id = rp.user_id

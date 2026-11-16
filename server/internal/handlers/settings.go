@@ -4,7 +4,6 @@ import (
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -14,31 +13,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SettingsHandler serves per-user settings that need a logged-in user.
+// SettingsHandler serves the reminder settings (the home server's auth
+// service has the account itself: name, password).
 type SettingsHandler struct {
-	users    SettingsStore
-	accounts *services.AccountService
-	auth     *services.AuthService
+	users SettingsStore
 	// Mailer sends the dev-mode test email; nil when SMTP isn't configured.
 	Mailer  services.Mailer
 	Links   *services.ReminderLinkBuilder // nil: emails have no links
 	DevMode bool
 }
 
-// accountForm is what Settings > Account saves.
-type accountForm struct {
-	DisplayName string
-	Email       string
-	Defaults    models.ReminderDefaults
+// remindersForm is what the Reminders panel saves.
+type remindersForm struct {
+	Email    string
+	Defaults models.ReminderDefaults
 }
 
-// parseAccountForm reads and validates the Account panel. The name and
-// email are optional (empty clears them).
-func parseAccountForm(v url.Values) (*accountForm, error) {
-	name, err := models.CleanDisplayName(v.Get("name"))
-	if err != nil {
-		return nil, err
-	}
+// parseRemindersForm reads and validates the Reminders panel. The email is
+// optional (empty clears it).
+func parseRemindersForm(v url.Values) (*remindersForm, error) {
 	email := strings.TrimSpace(v.Get("email"))
 	if email != "" && !models.ValidEmail(email) {
 		return nil, models.ErrInvalidEmail
@@ -50,79 +43,44 @@ func parseAccountForm(v url.Values) (*accountForm, error) {
 	if err := defaults.Validate(); err != nil {
 		return nil, err
 	}
-	return &accountForm{DisplayName: name, Email: email, Defaults: defaults}, nil
+	return &remindersForm{Email: email, Defaults: defaults}, nil
 }
 
-// accountErrors are the Account panel's validation messages.
-var accountErrors = []errorCase{
-	badInput("error.invalid_display_name", models.ErrInvalidDisplayName),
+// remindersErrors are the Reminders panel's validation messages.
+var remindersErrors = []errorCase{
 	badInput("error.invalid_email", models.ErrInvalidEmail),
 	badInput("error.invalid_reminder_defaults", models.ErrInvalidNotify, models.ErrInvalidRemindDays,
 		models.ErrInvalidRepeat, models.ErrInvalidMaxReminders),
 }
 
-func accountError(err error) error { return mapError(err, accountErrors) }
+func remindersError(err error) error { return mapError(err, remindersErrors) }
 
-// GetAccountForm opens the Account panel: name, reminder email and the
+// GetReminders opens the Reminders panel: the reminder email and the
 // reminder defaults for new bills.
-func (h *SettingsHandler) GetAccountForm(c *gin.Context) error {
+func (h *SettingsHandler) GetReminders(c *gin.Context) error {
 	user, err := h.users.GetUserByID(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}
-	c.HTML(http.StatusOK, "account-form", gin.H{"User": user, "Lang": currentLang(c), "DevMode": h.DevMode})
+	c.HTML(http.StatusOK, "reminders-form", gin.H{"User": user, "Lang": currentLang(c), "DevMode": h.DevMode})
 	return nil
 }
 
-// SaveAccount stores the Account panel. Defaults only affect bills added
-// from now on.
-func (h *SettingsHandler) SaveAccount(c *gin.Context) error {
+// SaveReminders stores the Reminders panel. Defaults only affect bills
+// added from now on.
+func (h *SettingsHandler) SaveReminders(c *gin.Context) error {
 	if err := c.Request.ParseForm(); err != nil {
 		return badRequest("error.invalid_form", err)
 	}
-	a, err := parseAccountForm(c.Request.PostForm)
+	r, err := parseRemindersForm(c.Request.PostForm)
 	if err != nil {
-		return accountError(err)
+		return remindersError(err)
 	}
-	if err := h.users.UpdateUserAccount(c.Request.Context(), currentUserID(c), a.DisplayName, a.Email, a.Defaults); err != nil {
+	if err := h.users.UpdateReminderSettings(c.Request.Context(), currentUserID(c), r.Email, r.Defaults); err != nil {
 		return err
 	}
 	billsChanged(c, false) // the "no email" hints on the Bills page may change
-	renderSuccess(c, http.StatusOK, utilities.T(currentLang(c), "settings.account_saved"), "")
-	return nil
-}
-
-// passwordErrors explain a refused password change.
-var passwordErrors = []errorCase{
-	badInput("auth.wrong_current_password", services.ErrWrongPassword),
-	badInput("auth.password_too_short", models.ErrPasswordTooShort),
-	badInput("auth.password_too_long", models.ErrPasswordTooLong),
-	badInput("auth.passwords_mismatch", models.ErrPasswordMismatch),
-	badInput("auth.password_unchanged", models.ErrPasswordUnchanged),
-}
-
-func passwordError(err error) error { return mapError(err, passwordErrors) }
-
-// ChangePassword sets a new password after checking the current one. The
-// user stays logged in; other logins last until their token expires.
-func (h *SettingsHandler) ChangePassword(c *gin.Context) error {
-	err := h.accounts.ChangePassword(c.Request.Context(), currentUserID(c),
-		c.PostForm("current_password"), c.PostForm("new_password"), c.PostForm("confirm_password"))
-	if err != nil {
-		return passwordError(err)
-	}
-	// The change logged out every login, this one included: issue a new one.
-	user, err := h.users.GetUserByID(c.Request.Context(), currentUserID(c))
-	if err != nil {
-		return fmt.Errorf("reload user after password change: %w", err)
-	}
-	token, err := h.auth.GenerateToken(user)
-	if err != nil {
-		return fmt.Errorf("generate token: %w", err)
-	}
-	h.auth.SetCookie(token, c)
-	lang := currentLang(c)
-	renderSuccess(c, http.StatusOK, utilities.T(lang, "settings.password_changed"), utilities.T(lang, "settings.password_changed_elsewhere"))
+	renderSuccess(c, http.StatusOK, utilities.T(currentLang(c), "settings.reminders_saved"), "")
 	return nil
 }
 

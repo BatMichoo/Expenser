@@ -18,16 +18,15 @@ func currentLang(c *gin.Context) string {
 	return c.GetString(middleware.LanguageCookieKey)
 }
 
-// currentUserID returns the logged-in user's ID, or uuid.Nil when anonymous.
-func currentUserID(c *gin.Context) uuid.UUID {
-	if claims := services.ClaimsFromContext(c); claims != nil {
-		return claims.UserID
-	}
-	return uuid.Nil
-}
+// authURLKey holds the home server's login service for the request (see
+// RegisterRoutes), for the header's Log out.
+const authURLKey = "expenser.auth_url"
 
-func isLoggedIn(c *gin.Context) bool {
-	return services.ClaimsFromContext(c) != nil
+// currentUserID returns the logged-in user's ID, or uuid.Nil on routes
+// without RequireUser.
+func currentUserID(c *gin.Context) uuid.UUID {
+	u, _ := middleware.CurrentUser(c)
+	return u.ID
 }
 
 // isHTMX reports whether the request wants a fragment. A history restore
@@ -57,7 +56,7 @@ func renderView(c *gin.Context, partial, page string, data any) {
 // name; a name that is not a template shows the home page.
 func renderLayout(c *gin.Context, status int, tmpl string, data any) {
 	lang := currentLang(c)
-	loggedIn := isLoggedIn(c)
+	_, loggedIn := middleware.CurrentUser(c)
 
 	c.HTML(status, utilities.Templates.Root, &models.RootLayout{
 		TemplateName:    tmpl,
@@ -65,6 +64,7 @@ func renderLayout(c *gin.Context, status int, tmpl string, data any) {
 		HeaderOpts: &models.HeaderOptions{
 			IsLoggedIn: loggedIn,
 			Lang:       lang,
+			LogoutURL:  c.GetString(authURLKey) + "/logout",
 		},
 		Lang:       lang,
 		Year:       time.Now().Year(),

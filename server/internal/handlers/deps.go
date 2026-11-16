@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 
+	"expenser/internal/middleware"
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/services/gemini"
@@ -14,10 +15,10 @@ import (
 // SizesStore do, so handlers depend on behaviour rather than on the
 // database package, and tests can pass a fake.
 
-// UserStore is what the home page and the language switch need.
+// UserStore is what the home page and RequireUser need.
 type UserStore interface {
+	middleware.UserStore
 	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
-	UpdateUserLanguage(ctx context.Context, userID uuid.UUID, lang string) error
 }
 
 // HouseStore is what the house expense forms need.
@@ -60,10 +61,10 @@ type BillsStore interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
 }
 
-// SettingsStore is what the account settings need.
+// SettingsStore is what the reminder settings need.
 type SettingsStore interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
-	UpdateUserAccount(ctx context.Context, id uuid.UUID, displayName, email string, d models.ReminderDefaults) error
+	UpdateReminderSettings(ctx context.Context, id uuid.UUID, email string, d models.ReminderDefaults) error
 }
 
 // Store is all the data access of the handlers and of the services they
@@ -77,7 +78,6 @@ type Store interface {
 	SettingsStore
 	SnoozeStore
 	SizesStore
-	services.AccountStore
 	services.MonthStore
 	services.HomeStore
 	services.TrendsStore
@@ -88,18 +88,18 @@ type Store interface {
 // Deps are what the routes are built from; main makes them once.
 type Deps struct {
 	Store     Store
-	Auth      *services.AuthService
+	LanDomain string // the language cookie is set for it
+	AuthURL   string // the home server's login service (Account, Log out)
 	ReceiptAI *gemini.GeminiService
 	Snooze    *services.SnoozeSigner
 	Mailer    services.Mailer               // nil: SMTP isn't configured
 	Links     *services.ReminderLinkBuilder // nil: emails have no links
-	DevMode   bool                          // developer helpers (test email)
+	DevMode   bool                          // developer helpers (test email), and no login needed
 }
 
 // handlerSet is every handler, each built once with the services it uses.
 type handlerSet struct {
 	root      *RootHandler
-	auth      *AuthHandler
 	snooze    *SnoozeHandler
 	house     *HouseHandler
 	car       *CarHandler
@@ -115,19 +115,16 @@ type handlerSet struct {
 // share them (the month views serve house, car and groceries).
 func newHandlers(d Deps) *handlerSet {
 	months := services.NewMonthViewService(d.Store)
-	accounts := services.NewAccountService(d.Store)
 	return &handlerSet{
-		root:      &RootHandler{users: d.Store, homes: services.NewHomeService(d.Store), auth: d.Auth},
-		auth:      &AuthHandler{accounts: accounts, auth: d.Auth},
+		root:      &RootHandler{users: d.Store, homes: services.NewHomeService(d.Store), lanDomain: d.LanDomain},
 		snooze:    NewSnoozeHandler(d.Store, d.Snooze),
 		house:     &HouseHandler{store: d.Store, months: months},
 		car:       &CarHandler{store: d.Store, months: months},
 		groceries: &GroceriesHandler{store: d.Store, months: months, receipts: services.NewReceiptJobs(d.ReceiptAI.AnalyzeReceipt)},
 		sizes:     NewSizesHandler(d.Store, d.ReceiptAI),
 		bills:     &BillsHandler{store: d.Store, bills: services.NewRecurringPaymentService(d.Store)},
-		settings: &SettingsHandler{users: d.Store, accounts: accounts, auth: d.Auth,
-			Mailer: d.Mailer, Links: d.Links, DevMode: d.DevMode},
-		backfill: &BackfillHandler{types: d.Store, svc: services.NewBackfillService(d.Store)},
-		chart:    &ChartHandler{trends: services.NewTrendsService(d.Store)},
+		settings:  &SettingsHandler{users: d.Store, Mailer: d.Mailer, Links: d.Links, DevMode: d.DevMode},
+		backfill:  &BackfillHandler{types: d.Store, svc: services.NewBackfillService(d.Store)},
+		chart:     &ChartHandler{trends: services.NewTrendsService(d.Store)},
 	}
 }

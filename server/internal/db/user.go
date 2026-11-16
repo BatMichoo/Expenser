@@ -6,51 +6,34 @@ import (
 	"errors"
 	"expenser/internal/models"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 )
 
-// uniqueViolation is PostgreSQL's error code for a broken UNIQUE constraint.
-const uniqueViolation = "23505"
-
-// CreateUser creates a new user in the database. It returns models.ErrUsernameTaken
-// when the username is in use, even if another registration got there first.
-func (db *DB) CreateUser(ctx context.Context, user *models.User) error {
-	query := `
-		INSERT INTO users (username, password_hash, preferred_language, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, created_at, updated_at`
-
-	now := time.Now()
-	if user.PreferredLanguage == "" {
-		user.PreferredLanguage = "en"
-	}
-	err := db.conn.QueryRowContext(ctx,
-		query,
-		user.Username,
-		user.PasswordHash,
-		user.PreferredLanguage,
-		now,
-		now,
-	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
-
-	var pqErr *pq.Error
-	if errors.As(err, &pqErr) && pqErr.Code == uniqueViolation {
-		return models.ErrUsernameTaken
-	}
+// EnsureUser makes sure the person the home server sent has a row, and
+// keeps their name (for greetings and emails) and language (for emails)
+// up to date. It writes only when something changed.
+func (db *DB) EnsureUser(ctx context.Context, id uuid.UUID, name, lang string) error {
+	_, err := db.conn.ExecContext(ctx, `
+		INSERT INTO users (id, display_name, preferred_language)
+		VALUES ($1, NULLIF($2, ''), $3)
+		ON CONFLICT (id) DO UPDATE SET
+			display_name = EXCLUDED.display_name,
+			preferred_language = EXCLUDED.preferred_language,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE users.display_name IS DISTINCT FROM EXCLUDED.display_name
+			OR users.preferred_language IS DISTINCT FROM EXCLUDED.preferred_language`,
+		id, name, lang)
 	if err != nil {
-		return fmt.Errorf("failed to create user: %w", err)
+		return fmt.Errorf("failed to ensure user: %w", err)
 	}
-
 	return nil
 }
 
 // GetUserByID retrieves a user by their ID, with their account settings.
 func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	query := `
-		SELECT id, username, password_hash, preferred_language, token_version, COALESCE(email, ''),
+		SELECT id, COALESCE(username, ''), COALESCE(preferred_language, 'en'), COALESCE(email, ''),
 			COALESCE(display_name, ''), default_notify, default_remind_days_before,
 			default_remind_days_after, default_repeat_every_days, default_max_reminders,
 			created_at, updated_at
@@ -63,9 +46,7 @@ func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, erro
 	err := db.conn.QueryRowContext(ctx, query, id).Scan(
 		&user.ID,
 		&user.Username,
-		&user.PasswordHash,
 		&user.PreferredLanguage,
-		&user.TokenVersion,
 		&user.Email,
 		&user.DisplayName,
 		&d.Notify,
@@ -89,90 +70,20 @@ func (db *DB) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, erro
 	return user, nil
 }
 
-// GetUserByUsername retrieves a user by their username
-func (db *DB) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
-	query := `
-		SELECT id, username, password_hash, preferred_language, token_version, created_at, updated_at
-		FROM users
-		WHERE username = $1`
-
-	user := &models.User{}
-	err := db.conn.QueryRowContext(ctx, query, username).Scan(
-		&user.ID,
-		&user.Username,
-		&user.PasswordHash,
-		&user.PreferredLanguage,
-		&user.TokenVersion,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrUserNotFound
-		}
-		return nil, fmt.Errorf("failed to get user by username: %w", err)
-	}
-
-	return user, nil
-}
-
-// UpdateUserLanguage updates the preferred language for a user
-func (db *DB) UpdateUserLanguage(ctx context.Context, userID uuid.UUID, lang string) error {
-	query := `UPDATE users SET preferred_language = $1, updated_at = $2 WHERE id = $3`
-	_, err := db.conn.ExecContext(ctx, query, lang, time.Now(), userID)
-	return err
-}
-
-// UserExists checks if a user exists by username or email
-func (db *DB) UserExists(ctx context.Context, username string) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)`
-
-	var exists bool
-	err := db.conn.QueryRowContext(ctx, query, username).Scan(&exists)
-	if err != nil {
-		return false, fmt.Errorf("failed to check if user exists: %w", err)
-	}
-
-	return exists, nil
-}
-
-// UpdateUserAccount saves the account settings: display name and reminder
-// email (empty clears either) and the reminder defaults for new bills.
-func (db *DB) UpdateUserAccount(ctx context.Context, id uuid.UUID, displayName, email string, d models.ReminderDefaults) error {
+// UpdateReminderSettings saves the reminder email (empty clears it) and
+// the reminder defaults for new bills.
+func (db *DB) UpdateReminderSettings(ctx context.Context, id uuid.UUID, email string, d models.ReminderDefaults) error {
 	_, err := db.conn.ExecContext(ctx, `
 		UPDATE users SET
-			display_name = NULLIF($1, ''), email = NULLIF($2, ''),
-			default_notify = $3, default_remind_days_before = $4, default_remind_days_after = $5,
-			default_repeat_every_days = $6, default_max_reminders = $7,
+			email = NULLIF($1, ''),
+			default_notify = $2, default_remind_days_before = $3, default_remind_days_after = $4,
+			default_repeat_every_days = $5, default_max_reminders = $6,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE id = $8`,
-		displayName, email, d.Notify, d.RemindDaysBefore, d.RemindDaysAfter,
+		WHERE id = $7`,
+		email, d.Notify, d.RemindDaysBefore, d.RemindDaysAfter,
 		d.RepeatEveryDays, d.MaxReminders, id)
 	if err != nil {
-		return fmt.Errorf("failed to update account: %w", err)
-	}
-	return nil
-}
-
-// TokenVersion is the user's login version: tokens issued for an older one
-// are no longer accepted.
-func (db *DB) TokenVersion(ctx context.Context, id uuid.UUID) (int, error) {
-	var v int
-	err := db.conn.QueryRowContext(ctx, `SELECT token_version FROM users WHERE id = $1`, id).Scan(&v)
-	return v, err
-}
-
-// UpdateUserPassword stores a new password hash and raises the token
-// version, so logins issued before stop working.
-func (db *DB) UpdateUserPassword(ctx context.Context, id uuid.UUID, hash string) error {
-	res, err := db.conn.ExecContext(ctx,
-		`UPDATE users SET password_hash = $1, token_version = token_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, hash, id)
-	if err != nil {
-		return fmt.Errorf("failed to update password: %w", err)
-	}
-	if n, err := res.RowsAffected(); err == nil && n == 0 {
-		return models.ErrUserNotFound
+		return fmt.Errorf("failed to update reminder settings: %w", err)
 	}
 	return nil
 }

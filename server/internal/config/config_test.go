@@ -15,7 +15,7 @@ import (
 
 // env is a valid configuration; tests change one key.
 func env(overrides map[string]string) func(string) string {
-	base := map[string]string{"JWT_SECRET": strings.Repeat("s", 32), "DB_HOST": "db", "DB_NAME": "expenser", "DB_USER": "app"}
+	base := map[string]string{"LINK_SECRET": strings.Repeat("s", 32), "DB_HOST": "db", "DB_NAME": "expenser", "DB_USER": "app"}
 	maps.Copy(base, overrides)
 	return func(k string) string { return base[k] }
 }
@@ -89,46 +89,36 @@ func TestLoadConfigDefaults(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "8080", cfg.Port)
 	assert.Equal(t, "", cfg.LanDomain, "host-only cookies")
-	assert.Equal(t, 24*time.Hour, cfg.JWT.TokenExpiration)
+	assert.Equal(t, 443, cfg.HTTPSPort)
 	assert.Equal(t, "5432", cfg.DB.Port)
 	assert.Contains(t, cfg.DB.ConnString(), "@db:5432/expenser?")
 	assert.Contains(t, cfg.DB.WithName("expenser_test").ConnString(), "/expenser_test?")
 }
 
-func TestLoadConfigRejectsMissingOrShortJWTSecret(t *testing.T) {
-	_, err := LoadConfig(env(map[string]string{"JWT_SECRET": ""}))
+func TestLoadConfigLinkSecret(t *testing.T) {
+	_, err := LoadConfig(env(map[string]string{"LINK_SECRET": ""}))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "JWT_SECRET is required")
+	assert.Contains(t, err.Error(), "LINK_SECRET is required")
 
-	_, err = LoadConfig(env(map[string]string{"JWT_SECRET": "short"}))
+	_, err = LoadConfig(env(map[string]string{"LINK_SECRET": "short"}))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "JWT_SECRET must be at least 32 bytes (got 5)")
+	assert.Contains(t, err.Error(), "LINK_SECRET must be at least 32 bytes (got 5)")
+
+	old := strings.Repeat("o", 32)
+	cfg, err := LoadConfig(env(map[string]string{"LINK_SECRET": "", "JWT_SECRET": old}))
+	require.NoError(t, err)
+	assert.Equal(t, old, cfg.LinkSecret, "the old name still works, so links already emailed keep working")
 }
 
-func TestJWTExpiration(t *testing.T) {
-	tests := []struct {
-		in      string
-		want    time.Duration
-		wantErr string
-	}{
-		{"", 24 * time.Hour, ""},
-		{"48", 48 * time.Hour, ""},
-		{"abc", 0, `JWT_EXPIRATION_HOURS "abc": must be a whole number of hours above 0`},
-		{"0", 0, `JWT_EXPIRATION_HOURS "0": must be a whole number of hours above 0`},
-		{"-3", 0, `JWT_EXPIRATION_HOURS "-3": must be a whole number of hours above 0`},
-	}
-	for _, tt := range tests {
-		t.Run(tt.in, func(t *testing.T) {
-			cfg, err := LoadConfig(env(map[string]string{"JWT_EXPIRATION_HOURS": tt.in}))
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, cfg.JWT.TokenExpiration)
-		})
-	}
+func TestAuthURL(t *testing.T) {
+	cfg, err := LoadConfig(env(map[string]string{"LAN_DOMAIN": "homeserver.lan"}))
+	require.NoError(t, err)
+	assert.Equal(t, "https://auth.homeserver.lan", cfg.AuthURL())
+	cfg, err = LoadConfig(env(map[string]string{"LAN_DOMAIN": "homeserver.lan", "HTTPS_PORT": "8443"}))
+	require.NoError(t, err)
+	assert.Equal(t, "https://auth.homeserver.lan:8443", cfg.AuthURL())
+	_, err = LoadConfig(env(map[string]string{"HTTPS_PORT": "nope"}))
+	assert.Error(t, err)
 }
 
 func TestLoadConfigRequiresDB(t *testing.T) {

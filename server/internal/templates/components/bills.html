@@ -10,6 +10,10 @@
   <div class="month-main">
     <div class="month-toolbar">
       <h2 class="bills-title">{{ template "icon" (dict "Name" "bills") }}{{ T .Lang "bills.title" }}</h2>
+      <button type="button" class="btn-secondary reminder-settings" hx-get="/settings/reminders" hx-target="#action-dialog"
+        title='{{ T .Lang "settings.reminders" }}'>
+        {{ template "icon" (dict "Name" "bell") }}<span class="btn-label">{{ T .Lang "settings.reminders" }}</span>
+      </button>
       <button type="button" class="add-btn" hx-get="/bills/new" hx-target="#action-dialog"
         aria-label='{{ T .Lang "bills.add" }}' title='{{ T .Lang "bills.add" }}'>
         <span class="add-plus" aria-hidden="true">+</span><span class="btn-label">{{ T .Lang "bills.add" }}</span> <kbd>N</kbd>

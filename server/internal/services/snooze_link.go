@@ -32,8 +32,8 @@ type SnoozeSigner struct {
 	key []byte
 }
 
-// NewSnoozeSigner derives its key from the app's secret (the JWT secret),
-// kept separate from the key used for logins.
+// NewSnoozeSigner derives its key from the app's link secret
+// (LINK_SECRET), so the same secret could sign other things apart.
 func NewSnoozeSigner(secret string) *SnoozeSigner {
 	sum := sha256.Sum256([]byte("snooze-link:" + secret))
 	return &SnoozeSigner{key: sum[:]}

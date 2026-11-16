@@ -1,6 +1,7 @@
 -- +goose Up
 -- Dev-only dummy data. Applied by InitDatabase only when SEED_DEV_DATA=true.
--- Login: dev / password
+-- DEV_MODE makes requests without the home server's login headers this
+-- user (00000000-0000-0000-0000-00000000de00).
 -- notes and metadata must never be NULL: the DB layer scans them into a
 -- string and a json.RawMessage, and neither accepts NULL.
 --

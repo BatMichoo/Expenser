@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"expenser/internal/config"
 	"expenser/internal/models"
@@ -8,6 +9,8 @@ import (
 	"log"
 	"os"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 // TestMain loads .env.dev (if present) once for every DB test, since
@@ -20,9 +23,13 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-var TestUserRegisterModel *models.User = &models.User{
-	Username:     "TestTestov",
-	PasswordHash: "$2a$10$dd94r0Lws8SW1EkbozUIq.1rBSkHyrjO0phxhZ4BUM8DLvi6dX8Z6",
+var TestUserRegisterModel = &models.User{}
+
+// CreateUser gives user a new id and a row, the way the app makes one for
+// someone the home server sends (EnsureUser).
+func (db *DB) CreateUser(ctx context.Context, user *models.User) error {
+	user.ID = uuid.New()
+	return db.EnsureUser(ctx, user.ID, user.DisplayName, "en")
 }
 
 func InitTestDB(cfg *config.Config) *DB {

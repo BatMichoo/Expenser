@@ -37,10 +37,15 @@ func (r ReceiptAI) Models() []string {
 // Config struct to hold application configuration.
 type Config struct {
 	// Port is where the app listens (APP_PORT, default 8080).
-	Port        string
-	LanDomain   string
-	DB          DB
-	JWT         JWT
+	Port string
+	// LanDomain is the home server's domain, e.g. homeserver.lan: the
+	// language cookie is set for it, and the auth service is auth.<it>.
+	LanDomain string
+	// HTTPSPort is where the home server serves HTTPS (HTTPS_PORT, 443).
+	HTTPSPort int
+	DB        DB
+	// LinkSecret signs the snooze links in reminder emails.
+	LinkSecret  string
 	ReceiptAI   ReceiptAI
 	SeedDevData bool
 	// ReminderCheckInterval is how often the recurring payment reminder
@@ -94,15 +99,19 @@ func loadSMTP(get func(string) string) SMTP {
 	return s
 }
 
-// JWT holds JWT-related configuration
-type JWT struct {
-	SecretKey       string
-	TokenExpiration time.Duration
-}
+// MinLinkSecretLen is the shortest LINK_SECRET accepted: 256 bits for
+// HMAC-SHA256.
+const MinLinkSecretLen = 32
 
-// MinJWTSecretLen is the shortest JWT_SECRET accepted; HS256 wants at least
-// 256 bits.
-const MinJWTSecretLen = 32
+// AuthURL is the home server's login service, e.g.
+// https://auth.homeserver.lan: the header's Account and Log out go there.
+func (c *Config) AuthURL() string {
+	u := "https://auth." + c.LanDomain
+	if c.HTTPSPort != 443 {
+		u += ":" + strconv.Itoa(c.HTTPSPort)
+	}
+	return u
+}
 
 // DB holds the database settings; ConnString builds the URL from them.
 type DB struct {
@@ -123,21 +132,27 @@ func LoadConfig(getenv func(string) string) (*Config, error) {
 		log.Printf("SERVER_PORT is no longer read; the app listens on APP_PORT (%s).\n", portOrDefault(getenv("APP_PORT")))
 	}
 
-	jwtSecret := getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		return nil, fmt.Errorf("JWT_SECRET is required")
+	// LINK_SECRET was JWT_SECRET before logins moved to the home server;
+	// the old name still works, and keeping its value keeps snooze links
+	// in emails already sent working.
+	linkSecret := getenv("LINK_SECRET")
+	if linkSecret == "" {
+		linkSecret = getenv("JWT_SECRET")
 	}
-	if len(jwtSecret) < MinJWTSecretLen {
-		return nil, fmt.Errorf("JWT_SECRET must be at least %d bytes (got %d)", MinJWTSecretLen, len(jwtSecret))
+	if linkSecret == "" {
+		return nil, fmt.Errorf("LINK_SECRET is required")
+	}
+	if len(linkSecret) < MinLinkSecretLen {
+		return nil, fmt.Errorf("LINK_SECRET must be at least %d bytes (got %d)", MinLinkSecretLen, len(linkSecret))
 	}
 
-	jwtExpiration := 24 * time.Hour
-	if v := getenv("JWT_EXPIRATION_HOURS"); v != "" {
-		hours, err := strconv.Atoi(v)
-		if err != nil || hours <= 0 {
-			return nil, fmt.Errorf("JWT_EXPIRATION_HOURS %q: must be a whole number of hours above 0", v)
+	httpsPort := 443
+	if v := strings.TrimSpace(getenv("HTTPS_PORT")); v != "" {
+		p, err := strconv.Atoi(v)
+		if err != nil || p < 1 || p > 65535 {
+			return nil, fmt.Errorf("HTTPS_PORT %q: must be a port number", v)
 		}
-		jwtExpiration = time.Duration(hours) * time.Hour
+		httpsPort = p
 	}
 
 	var errs []error
@@ -173,13 +188,11 @@ func LoadConfig(getenv func(string) string) (*Config, error) {
 	}
 
 	return &Config{
-		Port:      portOrDefault(getenv("APP_PORT")),
-		LanDomain: strings.TrimSpace(getenv("LAN_DOMAIN")),
-		DB:        db,
-		JWT: JWT{
-			SecretKey:       jwtSecret,
-			TokenExpiration: jwtExpiration,
-		},
+		Port:        portOrDefault(getenv("APP_PORT")),
+		LanDomain:   strings.TrimSpace(getenv("LAN_DOMAIN")),
+		HTTPSPort:   httpsPort,
+		DB:          db,
+		LinkSecret:  linkSecret,
 		DevMode:     parseDevMode(getenv("DEV_MODE")),
 		Location:    loc,
 		AppURL:      strings.TrimRight(strings.TrimSpace(getenv("APP_URL")), "/"),

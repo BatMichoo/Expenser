@@ -1,12 +1,17 @@
 package middleware
 
 import (
-	"expenser/internal/services"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
+// LanguageCookieKey is the context key of the request's language.
 const LanguageCookieKey = "lang"
+
+// LanguageCookie is the home server's language cookie, shared by every
+// app and set for the whole LAN domain.
+const LanguageCookie = "homeserver_lang"
 
 // languageCookieMaxAge is how long the language choice is remembered, in
 // seconds.
@@ -17,36 +22,24 @@ func SupportedLanguage(lang string) bool {
 	return lang == "en" || lang == "bg"
 }
 
-// SetLanguageCookie remembers the language for this browser. The cookie is
-// host-only, so there is exactly one; clearing a copy that older versions
-// set for the LAN domain keeps it from shadowing the new choice.
+// SetLanguageCookie remembers the language for every app of the home
+// server: the cookie is for domain (the LAN domain; "" = this host only).
 func SetLanguageCookie(c *gin.Context, domain, lang string) {
-	if domain != "" {
-		c.SetCookie(LanguageCookieKey, "", -1, "/", domain, false, true)
-	}
-	c.SetCookie(LanguageCookieKey, lang, languageCookieMaxAge, "/", "", false, true)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name: LanguageCookie, Value: lang, Domain: domain, Path: "/",
+		MaxAge: languageCookieMaxAge, Secure: true, SameSite: http.SameSiteLaxMode,
+	})
 }
 
-// I18nMiddleware determines the language for the request.
-func I18nMiddleware(as *services.AuthService) gin.HandlerFunc {
+// I18nMiddleware sets the request's language from the home server's
+// language cookie; English without one.
+func I18nMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		lang, err := c.Cookie(LanguageCookieKey)
-		if err == nil && SupportedLanguage(lang) {
-			c.Set(LanguageCookieKey, lang)
-			c.Next()
-			return
+		lang := "en"
+		if v, err := c.Cookie(LanguageCookie); err == nil && SupportedLanguage(v) {
+			lang = v
 		}
-
-		claims := services.ClaimsFromContext(c)
-		if claims != nil && SupportedLanguage(claims.PreferredLanguage) {
-			c.Set(LanguageCookieKey, claims.PreferredLanguage)
-			c.Next()
-			return
-		}
-
-		const language = "en"
-		SetLanguageCookie(c, as.Domain, language)
-		c.Set(LanguageCookieKey, language)
+		c.Set(LanguageCookieKey, lang)
 		c.Next()
 	}
 }

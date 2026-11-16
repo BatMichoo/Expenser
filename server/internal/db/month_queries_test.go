@@ -20,7 +20,7 @@ func setupMonthTestDB(t *testing.T) (*DB, uuid.UUID) {
 	testDB := InitTestDB(cfg)
 	t.Cleanup(func() { testDB.Close() })
 	ResetTestDB(testDB)
-	user := &models.User{Username: "MonthTester", PasswordHash: TestUserRegisterModel.PasswordHash}
+	user := &models.User{DisplayName: "MonthTester"}
 	require.NoError(t, testDB.CreateUser(context.Background(), user))
 	return testDB, user.ID
 }

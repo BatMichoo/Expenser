@@ -37,7 +37,7 @@ func setupRecurringTestDB(t *testing.T) (*DB, uuid.UUID) {
 	t.Cleanup(func() { testDB.Close() })
 	ResetTestDB(testDB)
 
-	user := &models.User{Username: "RecurringTester", PasswordHash: TestUserRegisterModel.PasswordHash}
+	user := &models.User{DisplayName: "RecurringTester"}
 	require.NoError(t, testDB.CreateUser(context.Background(), user))
 	return testDB, user.ID
 }
@@ -69,7 +69,7 @@ func TestCreateAndGetRecurringPayment(t *testing.T) {
 	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
 	require.NoError(t, err)
 	assert.Equal(t, "Internet", got.TypeName)
-	assert.Equal(t, "RecurringTester", got.Username)
+	assert.Equal(t, "RecurringTester", got.UserDisplayName)
 	assert.Equal(t, models.SectionHouse, got.Category)
 	assert.Equal(t, 4, *got.UtilityTypeID)
 	assert.Nil(t, got.CarExpenseTypeID)
@@ -140,7 +140,7 @@ func TestRecurringPaymentsAreScopedToUser(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
 
-	other := &models.User{Username: "OtherUser", PasswordHash: TestUserRegisterModel.PasswordHash}
+	other := &models.User{DisplayName: "OtherUser"}
 	require.NoError(t, testDB.CreateUser(context.Background(), other))
 
 	p := newInternetPayment(userID, rpDate(2026, 12, 1))
@@ -221,7 +221,7 @@ func TestGetActiveRecurringPayments(t *testing.T) {
 	got, err := testDB.GetActiveRecurringPayments(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, []uuid.UUID{active.ID}, ids(got), "the scheduler decides who gets reminded")
-	assert.Equal(t, "RecurringTester", got[0].Username)
+	assert.Equal(t, "RecurringTester", got[0].GreetingName())
 }
 
 func TestReminderScheduleRoundTrip(t *testing.T) {
@@ -448,7 +448,7 @@ func TestMarkRecurringPaymentPaidOtherUser(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
 
-	other := &models.User{Username: "OtherUser", PasswordHash: TestUserRegisterModel.PasswordHash}
+	other := &models.User{DisplayName: "OtherUser"}
 	require.NoError(t, testDB.CreateUser(context.Background(), other))
 
 	p := newInternetPayment(userID, rpDate(2026, 12, 1))
@@ -467,7 +467,7 @@ func TestGetUpcomingRecurringPayments(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
 
-	other := &models.User{Username: "OtherUser", PasswordHash: TestUserRegisterModel.PasswordHash}
+	other := &models.User{DisplayName: "OtherUser"}
 	require.NoError(t, testDB.CreateUser(context.Background(), other))
 
 	overdue := newInternetPayment(userID, rpDate(2026, 11, 1))
@@ -494,46 +494,34 @@ func TestUserAccountSettings(t *testing.T) {
 	u, err := testDB.GetUserByID(context.Background(), userID)
 	require.NoError(t, err)
 	assert.Empty(t, u.Email, "not required")
-	assert.Empty(t, u.DisplayName, "not required")
 	assert.Equal(t, models.DefaultReminderDefaults(), u.ReminderDefaults, "existing users start with today's defaults")
 
 	two, five := 2, 5
 	want := models.ReminderDefaults{Notify: models.NotifyNone, RemindDaysBefore: 7, RemindDaysAfter: 1, RepeatEveryDays: &two, MaxReminders: &five}
-	require.NoError(t, testDB.UpdateUserAccount(ctx, userID, "Miro", "me@example.com", want))
+	require.NoError(t, testDB.UpdateReminderSettings(ctx, userID, "me@example.com", want))
 	u, err = testDB.GetUserByID(context.Background(), userID)
 	require.NoError(t, err)
-	assert.Equal(t, "Miro", u.DisplayName)
 	assert.Equal(t, "me@example.com", u.Email)
 	assert.Equal(t, want, u.ReminderDefaults)
 
 	off := models.DefaultReminderDefaults()
 	off.RepeatEveryDays = nil
-	require.NoError(t, testDB.UpdateUserAccount(ctx, userID, "", "", off))
+	require.NoError(t, testDB.UpdateReminderSettings(ctx, userID, "", off))
 	u, err = testDB.GetUserByID(context.Background(), userID)
 	require.NoError(t, err)
-	assert.Empty(t, u.DisplayName, "cleared")
 	assert.Empty(t, u.Email, "cleared")
 	assert.Nil(t, u.ReminderDefaults.RepeatEveryDays, "repeat off")
 	assert.Nil(t, u.ReminderDefaults.MaxReminders, "no limit")
 
 	bad := models.DefaultReminderDefaults()
 	bad.Notify = "sms"
-	assert.Error(t, testDB.UpdateUserAccount(ctx, userID, "", "", bad), "the database refuses invalid defaults too")
-}
-
-func TestUpdateUserPassword(t *testing.T) {
-	testDB, userID := setupRecurringTestDB(t)
-	require.NoError(t, testDB.UpdateUserPassword(context.Background(), userID, "new-hash"))
-	u, err := testDB.GetUserByID(context.Background(), userID)
-	require.NoError(t, err)
-	assert.Equal(t, "new-hash", u.PasswordHash)
-
-	assert.Error(t, testDB.UpdateUserPassword(context.Background(), uuid.New(), "x"), "unknown user")
+	assert.Error(t, testDB.UpdateReminderSettings(ctx, userID, "", bad), "the database refuses invalid defaults too")
 }
 
 func setUserEmail(t *testing.T, testDB *DB, userID uuid.UUID, email, name string) {
 	t.Helper()
-	require.NoError(t, testDB.UpdateUserAccount(context.Background(), userID, name, email, models.DefaultReminderDefaults()))
+	require.NoError(t, testDB.UpdateReminderSettings(context.Background(), userID, email, models.DefaultReminderDefaults()))
+	require.NoError(t, testDB.EnsureUser(context.Background(), userID, name, "en"))
 }
 
 func TestBillDeliveryRoundTrip(t *testing.T) {

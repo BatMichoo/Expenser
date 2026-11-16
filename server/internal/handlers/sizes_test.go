@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"expenser/internal/middleware"
 	"expenser/internal/models"
-	"expenser/internal/services"
 	"expenser/internal/services/gemini"
 	"expenser/internal/templates"
 	"expenser/internal/utilities"
@@ -69,7 +69,7 @@ func sizesCall(t *testing.T, store *fakeSizesStore, user uuid.UUID, method, path
 	r.SetHTMLTemplate(tmpl)
 	r.Use(func(c *gin.Context) {
 		c.Set("lang", "en")
-		services.SetClaims(c, &services.JWTClaims{UserID: user})
+		middleware.SetUser(c, middleware.User{ID: user})
 	})
 	h := NewSizesHandler(store, nil)
 	r.GET("/groceries/sizes", wrap(h.GetSizes))
@@ -179,7 +179,7 @@ func suggestCall(t *testing.T, store *fakeSizesStore, ai Suggester) *httptest.Re
 	r.SetHTMLTemplate(tmpl)
 	r.Use(func(c *gin.Context) {
 		c.Set("lang", "en")
-		services.SetClaims(c, &services.JWTClaims{UserID: store.owner})
+		middleware.SetUser(c, middleware.User{ID: store.owner})
 	})
 	h := NewSizesHandler(store, ai)
 	r.POST("/groceries/sizes/suggest", wrap(h.Suggest))

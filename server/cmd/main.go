@@ -72,20 +72,23 @@ func main() {
 	if cfg.DevMode {
 		log.Println("Dev mode: developer helpers (test email) are on.")
 	}
-	links := services.NewReminderLinks(cfg.AppURL, services.NewSnoozeSigner(cfg.JWT.SecretKey), nil)
+	snooze := services.NewSnoozeSigner(cfg.LinkSecret)
+	links := services.NewReminderLinks(cfg.AppURL, snooze, nil)
 	switch {
 	case links != nil:
 		log.Printf("Reminder emails link to %s.", cfg.AppURL)
 	case cfg.AppURL != "":
 		log.Printf("APP_URL %q is not an http(s) address: reminder emails have no links.", cfg.AppURL)
 	}
-	auth := services.NewAuthService(cfg.JWT.SecretKey, cfg.JWT.TokenExpiration, cfg.LanDomain)
-	auth.CheckTokenVersions(db)
+	if cfg.DevMode {
+		log.Println("Dev mode: requests without the home server's login headers are the dev user.")
+	}
 	handlers.RegisterRoutes(router, handlers.Deps{
 		Store:     db,
-		Auth:      auth,
+		LanDomain: cfg.LanDomain,
+		AuthURL:   cfg.AuthURL(),
 		ReceiptAI: gemini.NewGeminiService(cfg.ReceiptAI.APIKey, cfg.ReceiptAI.Models()...),
-		Snooze:    services.NewSnoozeSigner(cfg.JWT.SecretKey),
+		Snooze:    snooze,
 		Mailer:    mailer,
 		Links:     links,
 		DevMode:   cfg.DevMode,

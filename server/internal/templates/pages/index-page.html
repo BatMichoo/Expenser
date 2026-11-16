@@ -1,9 +1,6 @@
-{{/* Home. Logged out: the brand panel with Log in / Create account (logout
-     lands here). Logged in: a greeting and shortcuts to each section.
-     Data: Lang, IsLoggedIn, Home (*models.HomeView, missing when its data
-     couldn't be loaded). */}}
+{{/* Home: a greeting and shortcuts to each section. Data: Lang, Home
+     (*models.HomeView, missing when its data couldn't be loaded). */}}
 {{ define "index-page" }}
-{{ if .IsLoggedIn }}
 <section class="home">
   {{ with .Home }}
   <h2 class="home-greeting">{{ printf (T .Lang "home.greeting") .Name }}</h2>
@@ -18,22 +15,6 @@
   <h2 class="home-greeting">{{ T .Lang "home.greeting_plain" }}</h2>
   {{ end }}
 </section>
-{{ else }}
-<section class="auth-split">
-  {{ template "auth-brand" . }}
-  <div class="auth-main">
-    <div class="auth-card home-welcome">
-      <h1 class="auth-title">{{ T .Lang "home.welcome_title" }}</h1>
-      <p class="auth-sub">{{ T .Lang "home.welcome_sub" }}</p>
-      <div class="home-actions">
-        <a class="auth-submit" href="/login" hx-get="/login" hx-target="#tracker-content" hx-swap="innerHTML show:window:top" hx-push-url="true">{{ T .Lang "login.submit" }}</a>
-        <a class="auth-secondary" href="/register" hx-get="/register" hx-target="#tracker-content" hx-swap="innerHTML show:window:top" hx-push-url="true">{{ T .Lang "home.create_account" }}</a>
-      </div>
-    </div>
-  </div>
-</section>
-{{ template "landing" . }}
-{{ end }}
 {{ end }}
 
 {{/* One expense section on the home page. Expects C (models.HomeCategory),

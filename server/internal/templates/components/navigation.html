@@ -17,16 +17,6 @@
     {{ template "icon" (dict "Name" "bills") }}
     {{ T .Lang "nav.bills" }}
   </button>
-  {{ else }}
-  <button class="tracker-nav-button" hx-get="/login" hx-target="#tracker-content" hx-push-url="true" data-path="/login">
-    {{ template "icon" (dict "Name" "login") }}
-    {{ T .Lang "nav.login" }}
-  </button>
-  <button class="tracker-nav-button" hx-get="/register" hx-target="#tracker-content" hx-push-url="true"
-    data-path="/register">
-    {{ template "icon" (dict "Name" "register") }}
-    {{ T .Lang "nav.register" }}
-  </button>
   {{ end }}
 </nav>
 {{ end }}
