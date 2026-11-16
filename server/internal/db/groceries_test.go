@@ -31,7 +31,7 @@ func TestCreateGroceriesExpense(t *testing.T) {
 		{
 			name: "Valid",
 			setup: func(t *testing.T) {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 			},
 			input: &models.GroceriesExpense{
 				CategoryID:      1,
@@ -52,7 +52,7 @@ func TestCreateGroceriesExpense(t *testing.T) {
 		{
 			name: "WithDiscount",
 			setup: func(t *testing.T) {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 			},
 			input: &models.GroceriesExpense{
 				CategoryID:      1,
@@ -115,7 +115,7 @@ func TestGroceriesCRUD(t *testing.T) {
 		{
 			name: "CRUD Workflow",
 			setup: func(t *testing.T) int {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				categories, err := testDB.GetAllCategories(context.Background())
 				assert.NoError(t, err)
 				assert.NotEmpty(t, categories)
@@ -174,7 +174,7 @@ func TestEditGroceriesKeepsSize(t *testing.T) {
 	testDB := InitTestDB(cfg)
 	defer testDB.Close()
 	ResetTestDB(testDB)
-	testDB.CreateUser(context.Background(), TestUserRegisterModel)
+	testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 	categories, err := testDB.GetAllCategories(context.Background())
 	assert.NoError(t, err)
 

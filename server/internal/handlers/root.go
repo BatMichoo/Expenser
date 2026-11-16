@@ -15,7 +15,6 @@ import (
 // RootHandler serves the home page, the flash popup and the language
 // switch.
 type RootHandler struct {
-	users     UserStore
 	homes     *services.HomeService
 	lanDomain string
 }
@@ -38,15 +37,8 @@ func (h *RootHandler) GetRoot(c *gin.Context) error {
 
 // home builds the logged-in home page's cards.
 func (h *RootHandler) home(c *gin.Context) (*models.HomeView, error) {
-	user, err := h.users.GetUserByID(c.Request.Context(), currentUserID(c))
-	if err != nil {
-		return nil, err
-	}
-	name := user.DisplayName
-	if name == "" {
-		name = user.Username
-	}
-	return h.homes.Build(c.Request.Context(), user.ID, name, currentLang(c), time.Now())
+	u, _ := middleware.CurrentUser(c)
+	return h.homes.Build(c.Request.Context(), u.ID, u.Name, currentLang(c), time.Now())
 }
 
 // GetFlash pops the pending flash error up as the error modal.

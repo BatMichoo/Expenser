@@ -1,7 +1,7 @@
 -- +goose Up
 -- Dev-only dummy data. Applied by InitDatabase only when SEED_DEV_DATA=true.
--- DEV_MODE makes requests without the home server's login headers this
--- user (00000000-0000-0000-0000-00000000de00).
+-- Everything belongs to the dev user, 00000000-0000-0000-0000-00000000de00:
+-- DEV_MODE makes a request without the home server's login headers them.
 -- notes and metadata must never be NULL: the DB layer scans them into a
 -- string and a json.RawMessage, and neither accepts NULL.
 --
@@ -16,9 +16,6 @@
 -- and every row gets the same values.
 
 SELECT setseed(0.42);
-
-INSERT INTO users (id, username, password_hash) VALUES
-    ('00000000-0000-0000-0000-00000000de00', 'dev', '$2a$10$9ZOUn1Pz/P9bDkY8l/MwLOC49mFBicqYMC5DxXRUQT5j51jqcGv4G');
 
 -- Monthly utility bills for the last 24 months. Each bill has a usual day,
 -- lands up to `jitter` days either side of it, and about one in twelve is
@@ -216,4 +213,3 @@ WHERE q.roll < i.chance
 DELETE FROM groceries_expenses WHERE user_id = '00000000-0000-0000-0000-00000000de00';
 DELETE FROM car_expenses WHERE created_by = '00000000-0000-0000-0000-00000000de00';
 DELETE FROM home_expenses WHERE created_by = '00000000-0000-0000-0000-00000000de00';
-DELETE FROM users WHERE id = '00000000-0000-0000-0000-00000000de00';

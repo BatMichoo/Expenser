@@ -25,11 +25,13 @@ nginx replaces whatever the browser sent in those headers, so Expenser
 trusts them. That only holds while Expenser is reachable through nginx
 alone: no published port. A request without them gets a 401.
 
-Each person gets a row in `users` on their first request. Their name and
-language are kept on it for reminder emails, which are sent in the
-background. Account, password and logging out are in the auth service; the
-header's Account and Log out go there. Expenser keeps only the reminder
-settings (Bills → Reminder settings).
+Expenser keeps no accounts: the id is all it stores with each expense and
+bill. Reminder emails are sent in the background, without a request, so
+each bill keeps what they need: the owner's name and language (updated
+from the headers on every request) and the address to send to. A new bill
+starts with the reminder settings and address of the person's latest one.
+Account, password and logging out are in the auth service; the header's
+Account and Log out go there.
 
 The only pages open without login are the snooze links in reminder emails
 (`/snooze/...`). They are signed with `LINK_SECRET`, work only for the
@@ -42,7 +44,7 @@ site for Expenser has to let `/snooze/` through without a login.
 |---|---|---|
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | port 5432 | The app's Postgres database |
 | `DB_SSLMODE` | `disable` | The database is reached over the Docker network |
-| `LINK_SECRET` | (required) | Signs snooze links; at least 32 bytes (`openssl rand -hex 32`). `JWT_SECRET`, its old name, still works; keep the old value and links already emailed keep working |
+| `LINK_SECRET` | (required) | Signs snooze links; at least 32 bytes (`openssl rand -hex 32`). Moving from the old server, use its `JWT_SECRET` value, so links already emailed keep working |
 | `LAN_DOMAIN` | | e.g. `homeserver.lan`: the language and theme cookies are set for it, and Account / Log out go to `https://auth.<LAN_DOMAIN>` |
 | `HTTPS_PORT` | `443` | Where the home server serves HTTPS (for the auth links) |
 | `APP_URL` | | e.g. `https://expenser.homeserver.lan`: reminder emails get an "Open bills" button and snooze links. Empty: emails without links |
@@ -51,7 +53,7 @@ site for Expenser has to let `/snooze/` through without a login.
 | `REMINDER_CHECK_INTERVAL` | `24h` | How often reminders are checked (at least `30m`) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | port 587 | Reminder emails. Without `SMTP_HOST` they are only logged. Gmail needs an app password (Google account → Security → 2-Step Verification → App passwords) |
 | `GEMINI_API_KEY` | | Reads receipts and suggests pack sizes |
-| `DEV_MODE` | off | Development only: no login needed (you are the dev seed user), Gin's debug mode, and a "Send test email" button in the reminder settings |
+| `DEV_MODE` | off | Development only: no login needed (you are the dev seed user), Gin's debug mode, and a "Send test email" button next to a bill's address |
 | `SEED_DEV_DATA` | off | Development only: two years of sample data for the dev user |
 
 Receipt PDFs that contain text are read with `pdftotext` (Poppler) and sent

@@ -37,7 +37,7 @@ func TestCreateCarExpense(t *testing.T) {
 		{
 			name: "Valid",
 			setup: func(t *testing.T) {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 			},
 			input: &models.CarExpense{
 				Amount:         250.00,
@@ -58,7 +58,7 @@ func TestCreateCarExpense(t *testing.T) {
 		{
 			name: "Invalid expense type",
 			setup: func(t *testing.T) {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 			},
 			input: &models.CarExpense{
 				Amount:        250.00,
@@ -117,7 +117,7 @@ func TestEditCarExpense(t *testing.T) {
 		{
 			name: "Valid",
 			setup: func(t *testing.T) int {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				initial := &models.CarExpense{
 					Amount:        150.00,
 					Date:          expenseDate.Add(time.Hour * 24),
@@ -198,7 +198,7 @@ func TestGetCarExpense(t *testing.T) {
 		{
 			name: "Existing Expense",
 			setup: func(t *testing.T) int {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				expense := &models.CarExpense{
 					Amount:         250.00,
 					DiscountAmount: 10.00,
@@ -231,7 +231,7 @@ func TestGetCarExpense(t *testing.T) {
 		{
 			name: "Missing expense",
 			setup: func(t *testing.T) int {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				expense := &models.CarExpense{
 					Amount:        250.00,
 					Date:          expenseDate,
@@ -312,7 +312,7 @@ func TestGetMultipleCarExpenses(t *testing.T) {
 				return testDB.GetCarExpensesForMonth(context.Background(), expenseDate.Month(), expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				expenses := []models.CarExpense{
 					{
 						Amount:        250.00,
@@ -425,7 +425,7 @@ func TestDeleteCarExpense(t *testing.T) {
 				Metadata:      []byte("{}"),
 			},
 			setup: func(t *testing.T, he *models.CarExpense) {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				he.CreatedBy = TestUserRegisterModel.ID
 				err := testDB.CreateCarExpense(context.Background(), he)
 				if err != nil {
@@ -440,7 +440,7 @@ func TestDeleteCarExpense(t *testing.T) {
 		{
 			name: "No existing expense",
 			setup: func(t *testing.T, he *models.CarExpense) {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				he.CreatedBy = TestUserRegisterModel.ID
 				he.ID = 15000
 			},

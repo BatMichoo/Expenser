@@ -263,13 +263,10 @@ func TestValidateReminderSettings(t *testing.T) {
 
 func TestReminderRecipient(t *testing.T) {
 	p := reminderBill()
-	assert.Equal(t, "", p.ReminderRecipient(), "no address anywhere: nobody to remind")
+	assert.Equal(t, "", p.ReminderRecipient(), "no address: nobody to remind")
 
-	p.UserEmail = "me@example.com"
-	assert.Equal(t, "me@example.com", p.ReminderRecipient(), "preferred email by default")
-
-	p.NotifyEmail = "partner@example.com"
-	assert.Equal(t, "partner@example.com", p.ReminderRecipient(), "the bill's own address wins")
+	p.NotifyEmail = "me@example.com"
+	assert.Equal(t, "me@example.com", p.ReminderRecipient())
 
 	p.Notify = NotifyNone
 	assert.Equal(t, "", p.ReminderRecipient(), "notifications off")

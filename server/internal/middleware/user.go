@@ -16,9 +16,10 @@ import (
 // seed data's user (see db/seeds).
 var DevUserID = uuid.MustParse("00000000-0000-0000-0000-00000000de00")
 
-// UserStore keeps a row per person, made the first time they come.
-type UserStore interface {
-	EnsureUser(ctx context.Context, id uuid.UUID, name, lang string) error
+// OwnerStore keeps the person's name and language on their bills, for
+// reminder emails (sent in the background, without a request).
+type OwnerStore interface {
+	SyncBillOwner(ctx context.Context, userID uuid.UUID, name, lang string) error
 }
 
 // User is the logged-in person, as the home server sent them.
@@ -37,10 +38,9 @@ const userContextKey = "expenser.user"
 // such people to the login page before they get here. In dev mode, with no
 // nginx in front, they are DevUserID.
 //
-// Each person gets a row on their first request, and their name and
-// language are kept on it (reminder emails, sent in the background, need
-// both). Run I18nMiddleware first.
-func RequireUser(store UserStore, devMode bool) gin.HandlerFunc {
+// Expenser keeps no accounts: the id is the home server's, and the name
+// and language go onto the person's bills. Run I18nMiddleware first.
+func RequireUser(store OwnerStore, devMode bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		u, ok := userFromHeaders(c)
 		if !ok && devMode {
@@ -50,8 +50,8 @@ func RequireUser(store UserStore, devMode bool) gin.HandlerFunc {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		if err := store.EnsureUser(c.Request.Context(), u.ID, u.Name, c.GetString(LanguageCookieKey)); err != nil {
-			log.Printf("ensure user %s: %v", u.ID, err)
+		if err := store.SyncBillOwner(c.Request.Context(), u.ID, u.Name, c.GetString(LanguageCookieKey)); err != nil {
+			log.Printf("bill owner %s: %v", u.ID, err)
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}

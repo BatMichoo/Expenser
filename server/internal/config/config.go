@@ -132,13 +132,7 @@ func LoadConfig(getenv func(string) string) (*Config, error) {
 		log.Printf("SERVER_PORT is no longer read; the app listens on APP_PORT (%s).\n", portOrDefault(getenv("APP_PORT")))
 	}
 
-	// LINK_SECRET was JWT_SECRET before logins moved to the home server;
-	// the old name still works, and keeping its value keeps snooze links
-	// in emails already sent working.
 	linkSecret := getenv("LINK_SECRET")
-	if linkSecret == "" {
-		linkSecret = getenv("JWT_SECRET")
-	}
 	if linkSecret == "" {
 		return nil, fmt.Errorf("LINK_SECRET is required")
 	}

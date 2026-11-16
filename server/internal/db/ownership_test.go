@@ -23,10 +23,10 @@ func TestExpenseOwnership(t *testing.T) {
 	defer testDB.Close()
 	ResetTestDB(testDB)
 
-	owner := &models.User{DisplayName: "owner"}
-	other := &models.User{DisplayName: "other"}
-	require.NoError(t, testDB.CreateUser(context.Background(), owner))
-	require.NoError(t, testDB.CreateUser(context.Background(), other))
+	owner := &testUser{DisplayName: "owner"}
+	other := &testUser{DisplayName: "other"}
+	require.NoError(t, testDB.AddTestUser(context.Background(), owner))
+	require.NoError(t, testDB.AddTestUser(context.Background(), other))
 
 	t.Run("Car", func(t *testing.T) {
 		exp := &models.CarExpense{ExpenseTypeID: 1, Amount: 10, Date: time.Now(), CreatedBy: owner.ID}
@@ -100,8 +100,8 @@ func TestExpenseWithoutMetadata(t *testing.T) {
 	defer testDB.Close()
 	ResetTestDB(testDB)
 
-	user := &models.User{DisplayName: "nometa"}
-	require.NoError(t, testDB.CreateUser(context.Background(), user))
+	user := &testUser{DisplayName: "nometa"}
+	require.NoError(t, testDB.AddTestUser(context.Background(), user))
 
 	car := &models.CarExpense{ExpenseTypeID: 4, Amount: 8, Date: time.Now(), CreatedBy: user.ID}
 	require.NoError(t, testDB.CreateCarExpense(context.Background(), car))

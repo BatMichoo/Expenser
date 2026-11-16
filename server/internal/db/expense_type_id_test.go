@@ -20,8 +20,8 @@ func TestGetExpenseByIDReturnsTypeID(t *testing.T) {
 	defer testDB.Close()
 	ResetTestDB(testDB)
 
-	user := &models.User{DisplayName: "TypeIDTester"}
-	require.NoError(t, testDB.CreateUser(context.Background(), user))
+	user := &testUser{DisplayName: "TypeIDTester"}
+	require.NoError(t, testDB.AddTestUser(context.Background(), user))
 
 	house := &models.HouseExpense{UtilityTypeID: 2, Amount: 10, ExpenseDate: time.Now(), Metadata: []byte("{}"), CreatedBy: user.ID}
 	require.NoError(t, testDB.CreateHouseExpense(context.Background(), house))

@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"expenser/internal/models"
 	"fmt"
 	"time"
@@ -14,17 +15,15 @@ import (
 // recurringPaymentSelect selects every column needed by scanRecurringPayment,
 // with the type name resolved from whichever type table the category uses.
 const recurringPaymentSelect = `
-	SELECT rp.id, rp.user_id, COALESCE(u.username, ''), rp.category, rp.utility_type_id, rp.car_expense_type_id,
+	SELECT rp.id, rp.user_id, rp.category, rp.utility_type_id, rp.car_expense_type_id,
 		COALESCE(ut.name, ct.name, ''), rp.name, rp.start_date, rp.due_date, rp.cycle_unit,
 		rp.cycle_every, rp.remind_days_before, rp.payment_hours, rp.payment_options, rp.notes,
 		rp.expected_amount, rp.remember_last_amount, rp.last_paid_on, rp.last_notified_for,
 		rp.last_notified_on, rp.active, rp.created_at, rp.updated_at,
 		rp.date_kind, rp.remind_days_after, rp.repeat_every_days, rp.max_reminders,
 		rp.reminders_sent, rp.snoozed_until,
-		rp.notify, COALESCE(rp.notify_email, ''), COALESCE(u.email, ''), COALESCE(u.preferred_language, 'en'),
-		COALESCE(u.display_name, '')
+		rp.notify, COALESCE(rp.notify_email, ''), rp.owner_name, rp.owner_lang
 	FROM recurring_payments rp
-	JOIN users u ON u.id = rp.user_id
 	LEFT JOIN utility_types ut ON ut.id = rp.utility_type_id
 	LEFT JOIN car_expense_types ct ON ct.id = rp.car_expense_type_id
 `
@@ -44,15 +43,14 @@ func scanRecurringPayment(row rowScanner) (*models.RecurringPayment, error) {
 		snoozedUntil    sql.NullTime
 	)
 	err := row.Scan(
-		&p.ID, &p.UserID, &p.Username, &p.Category, &utilityTypeID, &carTypeID,
+		&p.ID, &p.UserID, &p.Category, &utilityTypeID, &carTypeID,
 		&p.TypeName, &p.Name, &p.StartDate, &p.DueDate, &p.CycleUnit,
 		&p.CycleEvery, &p.RemindDaysBefore, &p.PaymentHours, &options, &p.Notes,
 		&expectedAmount, &p.RememberLastAmount, &lastPaidOn, &lastNotifiedFor,
 		&lastNotifiedOn, &p.Active, &p.CreatedAt, &p.UpdatedAt,
 		&p.DateKind, &p.RemindDaysAfter, &repeatEvery, &maxReminders,
 		&p.RemindersSent, &snoozedUntil,
-		&p.Notify, &p.NotifyEmail, &p.UserEmail, &p.UserLang,
-		&p.UserDisplayName,
+		&p.Notify, &p.NotifyEmail, &p.OwnerName, &p.OwnerLang,
 	)
 	if err != nil {
 		return nil, err
@@ -130,6 +128,9 @@ func prepareRecurringPayment(p *models.RecurringPayment) error {
 		p.StartDate = p.DueDate
 	}
 	p.StartDate = models.DateOnly(p.StartDate)
+	if p.OwnerLang != "bg" {
+		p.OwnerLang = "en"
+	}
 	return nil
 }
 
@@ -149,9 +150,9 @@ func (db *DB) CreateRecurringPayment(ctx context.Context, p *models.RecurringPay
 			start_date, due_date, cycle_unit, cycle_every, remind_days_before, payment_hours,
 			payment_options, notes, expected_amount, remember_last_amount,
 			date_kind, remind_days_after, repeat_every_days, max_reminders, snoozed_until,
-			notify, notify_email)
+			notify, notify_email, owner_name, owner_lang)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-			$21, NULLIF($22, ''))
+			$21, NULLIF($22, ''), $23, $24)
 		RETURNING id, active, created_at, updated_at`
 
 	err := db.conn.QueryRowContext(ctx, query,
@@ -159,12 +160,39 @@ func (db *DB) CreateRecurringPayment(ctx context.Context, p *models.RecurringPay
 		p.StartDate, p.DueDate, p.CycleUnit, p.CycleEvery, p.RemindDaysBefore, p.PaymentHours,
 		pq.Array(p.PaymentOptions), p.Notes, p.ExpectedAmount, p.RememberLastAmount,
 		p.DateKind, p.RemindDaysAfter, p.RepeatEveryDays, p.MaxReminders, p.SnoozedUntil,
-		p.Notify, p.NotifyEmail,
+		p.Notify, p.NotifyEmail, p.OwnerName, p.OwnerLang,
 	).Scan(&p.ID, &p.Active, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create recurring payment: %w", err)
 	}
 	return nil
+}
+
+// SyncBillOwner keeps the owner's name and language on their bills as the
+// home server sends them, for reminder emails. It writes only when
+// something changed.
+func (db *DB) SyncBillOwner(ctx context.Context, userID uuid.UUID, name, lang string) error {
+	_, err := db.conn.ExecContext(ctx, `
+		UPDATE recurring_payments SET owner_name = $2, owner_lang = $3
+		WHERE user_id = $1 AND (owner_name <> $2 OR owner_lang <> $3)`, userID, name, lang)
+	if err != nil {
+		return fmt.Errorf("failed to update bill owner: %w", err)
+	}
+	return nil
+}
+
+// LatestRecurringPayment is the user's most recently added bill, or nil
+// when they have none. New bills start with its reminder settings.
+func (db *DB) LatestRecurringPayment(ctx context.Context, userID uuid.UUID) (*models.RecurringPayment, error) {
+	row := db.conn.QueryRowContext(ctx, recurringPaymentSelect+` WHERE rp.user_id = $1 ORDER BY rp.created_at DESC LIMIT 1`, userID)
+	p, err := scanRecurringPayment(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest recurring payment: %w", err)
+	}
+	return p, nil
 }
 
 // GetRecurringPaymentByID returns sql.ErrNoRows (wrapped) when the payment

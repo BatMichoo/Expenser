@@ -103,11 +103,6 @@ func TestLoadConfigLinkSecret(t *testing.T) {
 	_, err = LoadConfig(env(map[string]string{"LINK_SECRET": "short"}))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "LINK_SECRET must be at least 32 bytes (got 5)")
-
-	old := strings.Repeat("o", 32)
-	cfg, err := LoadConfig(env(map[string]string{"LINK_SECRET": "", "JWT_SECRET": old}))
-	require.NoError(t, err)
-	assert.Equal(t, old, cfg.LinkSecret, "the old name still works, so links already emailed keep working")
 }
 
 func TestAuthURL(t *testing.T) {

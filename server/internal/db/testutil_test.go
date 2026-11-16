@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"expenser/internal/config"
-	"expenser/internal/models"
 	"fmt"
 	"log"
 	"os"
@@ -23,13 +22,20 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-var TestUserRegisterModel = &models.User{}
+// testUser is someone the home server sends: Expenser only knows their id
+// (and, on their bills, their name).
+type testUser struct {
+	ID          uuid.UUID
+	DisplayName string
+}
 
-// CreateUser gives user a new id and a row, the way the app makes one for
-// someone the home server sends (EnsureUser).
-func (db *DB) CreateUser(ctx context.Context, user *models.User) error {
-	user.ID = uuid.New()
-	return db.EnsureUser(ctx, user.ID, user.DisplayName, "en")
+var TestUserRegisterModel = &testUser{}
+
+// AddTestUser gives u a new id. There's nothing to create: people are the
+// home server's, and Expenser keeps no table of them.
+func (db *DB) AddTestUser(_ context.Context, u *testUser) error {
+	u.ID = uuid.New()
+	return nil
 }
 
 func InitTestDB(cfg *config.Config) *DB {
@@ -44,7 +50,7 @@ func InitTestDB(cfg *config.Config) *DB {
 }
 
 func ResetTestDB(tdb *DB) {
-	_, err := tdb.conn.Exec(`TRUNCATE recurring_payments, home_expenses, car_expenses, groceries_expenses, users RESTART IDENTITY CASCADE`)
+	_, err := tdb.conn.Exec(`TRUNCATE recurring_payments, home_expenses, car_expenses, groceries_expenses RESTART IDENTITY CASCADE`)
 	if err != nil {
 		log.Printf("\n Failed to truncate test DB; \n err: %v \n", err)
 	}

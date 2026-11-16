@@ -59,7 +59,6 @@ func DefaultPaymentOptions() []string {
 type RecurringPayment struct {
 	ID               uuid.UUID
 	UserID           uuid.UUID
-	Username         string  // read-only, populated on reads
 	Category         Section // house or car
 	UtilityTypeID    *int    // set only for house payments
 	CarExpenseTypeID *int    // set only for car payments
@@ -82,13 +81,14 @@ type RecurringPayment struct {
 	RemindersSent   int        // reminders sent for the current due date (read-only)
 	SnoozedUntil    *time.Time // no reminders before this date; cleared when paid
 
-	// Delivery (see ReminderRecipient).
+	// Delivery (see ReminderRecipient). Reminders are sent in the
+	// background, without a request to say who the owner is, so the bill
+	// keeps what they need: the owner's name and language (as the home
+	// server last sent them) and the address.
 	Notify      NotifyType
-	NotifyEmail string // optional; overrides the user's preferred email
-	UserEmail   string // read-only: the owner's preferred email, may be empty
-	// UserDisplayName is read-only: the owner's optional display name.
-	UserDisplayName string
-	UserLang        string // read-only: the owner's preferred language
+	NotifyEmail string // where reminders go; empty: nowhere
+	OwnerName   string // greets the owner in reminder emails; may be ""
+	OwnerLang   string // the language of reminder emails (en, bg)
 	// ExpectedAmount is what the bill usually costs (nil when unknown). It
 	// pre-fills MarkPaid and is shown in reminders.
 	ExpectedAmount *float64
@@ -392,42 +392,19 @@ type BillsView struct {
 	Lang         string
 }
 
-// ReminderRecipient is where this bill's reminders go: the bill's own
-// address, else the owner's preferred email. Empty means nobody, and then
-// no reminder is sent at all.
+// ReminderRecipient is where this bill's reminders go. Empty means nobody,
+// and then no reminder is sent at all.
 func (p RecurringPayment) ReminderRecipient() string {
 	if p.Notify == NotifyNone {
 		return ""
 	}
-	if p.NotifyEmail != "" {
-		return p.NotifyEmail
-	}
-	return p.UserEmail
+	return p.NotifyEmail
 }
 
 // ValidEmail accepts a plain address like "name@example.com".
 func ValidEmail(s string) bool {
 	addr, err := mail.ParseAddress(s)
 	return err == nil && addr.Address == s && addr.Name == ""
-}
-
-// GreetingName is how reminder emails greet the owner: their display name,
-// else their username.
-func (p RecurringPayment) GreetingName() string {
-	if p.UserDisplayName != "" {
-		return p.UserDisplayName
-	}
-	return p.Username
-}
-
-// RecipientName is the name to show next to the recipient address: the
-// owner's display name, but only when the email goes to the owner's own
-// address (a partner's address on a bill gets no name).
-func (p RecurringPayment) RecipientName(to string) string {
-	if p.UserDisplayName == "" || !strings.EqualFold(to, p.UserEmail) {
-		return ""
-	}
-	return p.UserDisplayName
 }
 
 // TypeID is the bill's expense type: a utility type for house bills, a car

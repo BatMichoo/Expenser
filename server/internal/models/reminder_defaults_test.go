@@ -66,19 +66,3 @@ func TestCleanDisplayName(t *testing.T) {
 	assert.Equal(t, "MiroBcc: x@example.com", CleanDisplayName("Miro\r\nBcc: x@example.com"),
 		"no line breaks or control characters (email headers)")
 }
-
-func TestGreetingName(t *testing.T) {
-	p := RecurringPayment{Username: "dev"}
-	assert.Equal(t, "dev", p.GreetingName())
-	p.UserDisplayName = "Miro"
-	assert.Equal(t, "Miro", p.GreetingName())
-}
-
-func TestRecipientName(t *testing.T) {
-	p := RecurringPayment{UserEmail: "me@example.com", UserDisplayName: "Miro"}
-	assert.Equal(t, "Miro", p.RecipientName("me@example.com"), "own address")
-	assert.Equal(t, "Miro", p.RecipientName("ME@example.com"), "case doesn't matter")
-	assert.Empty(t, p.RecipientName("partner@example.com"), "someone else's address gets no name")
-	p.UserDisplayName = ""
-	assert.Empty(t, p.RecipientName("me@example.com"), "no name set")
-}

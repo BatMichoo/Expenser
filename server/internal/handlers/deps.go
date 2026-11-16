@@ -15,12 +15,6 @@ import (
 // SizesStore do, so handlers depend on behaviour rather than on the
 // database package, and tests can pass a fake.
 
-// UserStore is what the home page and RequireUser need.
-type UserStore interface {
-	middleware.UserStore
-	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
-}
-
 // HouseStore is what the house expense forms need.
 type HouseStore interface {
 	GetHouseUtilityTypes(ctx context.Context) ([]models.HomeUtilityType, error)
@@ -58,24 +52,17 @@ type SectionTypesStore interface {
 // BillsStore is what the bill forms read besides the bills themselves.
 type BillsStore interface {
 	SectionTypesStore
-	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
-}
-
-// SettingsStore is what the reminder settings need.
-type SettingsStore interface {
-	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
-	UpdateReminderSettings(ctx context.Context, id uuid.UUID, email string, d models.ReminderDefaults) error
+	LatestRecurringPayment(ctx context.Context, userID uuid.UUID) (*models.RecurringPayment, error)
 }
 
 // Store is all the data access of the handlers and of the services they
 // use. *database.DB implements it.
 type Store interface {
-	UserStore
+	middleware.OwnerStore
 	HouseStore
 	CarStore
 	GroceriesStore
 	BillsStore
-	SettingsStore
 	SnoozeStore
 	SizesStore
 	services.MonthStore
@@ -106,7 +93,6 @@ type handlerSet struct {
 	groceries *GroceriesHandler
 	sizes     *SizesHandler
 	bills     *BillsHandler
-	settings  *SettingsHandler
 	backfill  *BackfillHandler
 	chart     *ChartHandler
 }
@@ -116,15 +102,15 @@ type handlerSet struct {
 func newHandlers(d Deps) *handlerSet {
 	months := services.NewMonthViewService(d.Store)
 	return &handlerSet{
-		root:      &RootHandler{users: d.Store, homes: services.NewHomeService(d.Store), lanDomain: d.LanDomain},
+		root:      &RootHandler{homes: services.NewHomeService(d.Store), lanDomain: d.LanDomain},
 		snooze:    NewSnoozeHandler(d.Store, d.Snooze),
 		house:     &HouseHandler{store: d.Store, months: months},
 		car:       &CarHandler{store: d.Store, months: months},
 		groceries: &GroceriesHandler{store: d.Store, months: months, receipts: services.NewReceiptJobs(d.ReceiptAI.AnalyzeReceipt)},
 		sizes:     NewSizesHandler(d.Store, d.ReceiptAI),
-		bills:     &BillsHandler{store: d.Store, bills: services.NewRecurringPaymentService(d.Store)},
-		settings:  &SettingsHandler{users: d.Store, Mailer: d.Mailer, Links: d.Links, DevMode: d.DevMode},
-		backfill:  &BackfillHandler{types: d.Store, svc: services.NewBackfillService(d.Store)},
-		chart:     &ChartHandler{trends: services.NewTrendsService(d.Store)},
+		bills: &BillsHandler{store: d.Store, bills: services.NewRecurringPaymentService(d.Store),
+			Mailer: d.Mailer, Links: d.Links, DevMode: d.DevMode},
+		backfill: &BackfillHandler{types: d.Store, svc: services.NewBackfillService(d.Store)},
+		chart:    &ChartHandler{trends: services.NewTrendsService(d.Store)},
 	}
 }

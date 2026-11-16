@@ -12,7 +12,7 @@ func RegisterRoutes(router *gin.Engine, d Deps) {
 	h := newHandlers(d)
 	rootHandler, snoozeHandler := h.root, h.snooze
 	houseHandler, carHandler, groceriesHandler := h.house, h.car, h.groceries
-	sizesHandler, billsHandler, settingsHandler := h.sizes, h.bills, h.settings
+	sizesHandler, billsHandler := h.sizes, h.bills
 	backfillHandler, chartHandler := h.backfill, h.chart
 
 	router.Use(middleware.SameOrigin())
@@ -70,16 +70,6 @@ func RegisterRoutes(router *gin.Engine, d Deps) {
 		protectedGroceries.PUT("/:id", wrap(groceriesHandler.EditGroceriesExpense))
 		protectedGroceries.DELETE("/:id", wrap(groceriesHandler.DeleteGroceriesExpense))
 	}
-	protectedSettings := router.Group("/settings")
-	{
-		protectedSettings.Use(user)
-		protectedSettings.GET("/reminders", wrap(settingsHandler.GetReminders))
-		protectedSettings.POST("/reminders", wrap(settingsHandler.SaveReminders))
-		if d.DevMode {
-			protectedSettings.POST("/reminders/test-email", wrap(settingsHandler.SendTestEmail))
-		}
-	}
-
 	protectedBills := router.Group("/bills")
 	{
 		protectedBills.Use(user)
@@ -96,6 +86,9 @@ func RegisterRoutes(router *gin.Engine, d Deps) {
 		protectedBills.GET("/pay/:id", wrap(billsHandler.GetPayForm))
 		protectedBills.POST("/:id/paid", wrap(billsHandler.MarkBillPaid))
 		protectedBills.POST("/:id/skip", wrap(billsHandler.SkipMissed))
+		if d.DevMode {
+			protectedBills.POST("/test-email", wrap(billsHandler.SendTestEmail))
+		}
 	}
 
 	protectedCar := router.Group("/car")

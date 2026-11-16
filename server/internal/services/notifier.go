@@ -47,7 +47,7 @@ func FormatReminder(r Reminder) string {
 	p := r.Payment
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "[reminder] user=%s", p.Username)
+	fmt.Fprintf(&b, "[reminder] user=%s", p.UserID)
 	if r.To != "" {
 		fmt.Fprintf(&b, " to=%s", r.To)
 	}

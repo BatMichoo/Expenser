@@ -18,10 +18,10 @@ func gasReminder(lang string) Reminder {
 		To:       "me@example.com",
 		DaysLeft: -3,
 		Payment: models.RecurringPayment{
-			Username: "ivan", Name: "Gas (Overgas)", TypeName: "Gas", Category: models.SectionHouse,
+			OwnerName: "ivan", Name: "Gas (Overgas)", TypeName: "Gas", Category: models.SectionHouse,
 			DateKind: models.DateArrives, DueDate: time.Date(2026, 11, 8, 0, 0, 0, 0, time.UTC),
 			ExpectedAmount: &amount, PaymentHours: "Mon–Fri 9–18", PaymentOptions: []string{"cash", "ePay"},
-			Notes: "Client no. 42", UserLang: lang,
+			Notes: "Client no. 42", OwnerLang: lang,
 		},
 	}
 }
@@ -69,7 +69,7 @@ func TestBuildReminderEmailUnknownLanguageFallsBackToEnglish(t *testing.T) {
 func TestBuildTestReminderEmail(t *testing.T) {
 	require.NoError(t, utilities.InitI18n())
 	today := time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC)
-	m := BuildTestReminderEmail("ivan", "", "en", "me@example.com", today, nil)
+	m := BuildTestReminderEmail("ivan", "en", "me@example.com", today, nil)
 
 	assert.Equal(t, "me@example.com", m.To)
 	assert.Equal(t, "[Test] Reminder: Vivacom Fiber 500 Mbps + TV (apartment & garage) — in 3 days", m.Subject)
@@ -82,39 +82,27 @@ func TestBuildTestReminderEmail(t *testing.T) {
 	assert.Contains(t, m.HTML, "white-space:pre-line", "line breaks in notes survive in HTML")
 	assert.Contains(t, m.HTML, "vertical-align:top", "labels line up with the first line of long values")
 
-	bg := BuildTestReminderEmail("ivan", "", "bg", "me@example.com", today, nil)
+	bg := BuildTestReminderEmail("ivan", "bg", "me@example.com", today, nil)
 	assert.True(t, strings.HasPrefix(bg.Subject, "[Тест] Напомняне:"), bg.Subject)
 }
 
-func TestReminderEmailUsesDisplayName(t *testing.T) {
+func TestReminderEmailGreetsTheOwner(t *testing.T) {
 	require.NoError(t, utilities.InitI18n())
 	r := gasReminder("en")
-	r.Payment.UserEmail = "me@example.com"
-	r.Payment.UserDisplayName = "Miro"
-
+	r.Payment.OwnerName = "Miro"
 	m := BuildReminderEmail(r)
 	assert.Contains(t, m.Text, "Hi Miro,")
 	assert.Contains(t, m.HTML, "Hi Miro,")
-	assert.NotContains(t, m.Text, "ivan")
-	assert.Equal(t, "Miro", m.ToName, "own address: named")
+	assert.Empty(t, m.ToName, "the address may be someone else's: no name on it")
 
-	r.To = "partner@example.com"
+	r.Payment.OwnerName = ""
 	m = BuildReminderEmail(r)
-	assert.Contains(t, m.Text, "Hi Miro,", "still greets the owner")
-	assert.Empty(t, m.ToName, "a partner's address gets no name")
+	assert.Contains(t, m.Text, "Hi,", "no name: a plain greeting")
+	assert.NotContains(t, m.Text, "Hi ,")
 
-	r.Payment.UserDisplayName = ""
-	r.To = "me@example.com"
+	r.Payment.OwnerLang = "bg"
 	m = BuildReminderEmail(r)
-	assert.Contains(t, m.Text, "Hi ivan,", "no name: username")
-	assert.Empty(t, m.ToName)
-}
-
-func TestBuildTestReminderEmailUsesDisplayName(t *testing.T) {
-	require.NoError(t, utilities.InitI18n())
-	m := BuildTestReminderEmail("ivan", "Miro", "en", "me@example.com", time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC), nil)
-	assert.Contains(t, m.Text, "Hi Miro,")
-	assert.Equal(t, "Miro", m.ToName)
+	assert.Contains(t, m.Text, "Здравей,")
 }
 
 func TestReminderLinks(t *testing.T) {

@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"expenser/internal/middleware"
 	"expenser/internal/models"
 	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -24,6 +26,10 @@ import (
 type BillsHandler struct {
 	store BillsStore
 	bills *services.RecurringPaymentService
+	// Mailer sends the dev-mode test email; nil when SMTP isn't configured.
+	Mailer  services.Mailer
+	Links   *services.ReminderLinkBuilder // nil: emails have no links
+	DevMode bool
 }
 
 // billsChanged tells the page that bills changed (and, when an expense was
@@ -206,7 +212,7 @@ type billFormData struct {
 	Options      map[string]bool
 	OtherOption  string
 	KnownOptions []string
-	UserEmail    string // the user's reminder email, shown as the default
+	DevMode      bool // shows "Send test email" next to the address
 	Lang         string
 }
 
@@ -231,9 +237,7 @@ func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEd
 	d := &billFormData{
 		Bill: p, IsEdit: isEdit, Types: types, Category: category,
 		Options: map[string]bool{}, KnownOptions: knownPaymentOptions, Lang: currentLang(c),
-	}
-	if user, err := h.store.GetUserByID(c.Request.Context(), currentUserID(c)); err == nil {
-		d.UserEmail = user.Email
+		DevMode: h.DevMode,
 	}
 	if p.UtilityTypeID != nil {
 		d.TypeID = *p.UtilityTypeID
@@ -263,8 +267,9 @@ func (h *BillsHandler) formData(c *gin.Context, p *models.RecurringPayment, isEd
 }
 
 // newBill is the add form's starting bill: due in a month, monthly, cash
-// pre-selected, with the user's reminder defaults.
-func newBill(category string, defaults models.ReminderDefaults, now time.Time) *models.RecurringPayment {
+// pre-selected, with the reminder settings of the user's latest bill
+// (latest is nil for their first: the built-in defaults, no address).
+func newBill(category string, latest *models.RecurringPayment, now time.Time) *models.RecurringPayment {
 	p := &models.RecurringPayment{
 		Category:       models.Section(category),
 		DueDate:        now.AddDate(0, 1, 0),
@@ -274,18 +279,24 @@ func newBill(category string, defaults models.ReminderDefaults, now time.Time) *
 		PaymentOptions: models.DefaultPaymentOptions(),
 		Active:         true,
 	}
+	defaults := models.DefaultReminderDefaults()
+	if latest != nil {
+		defaults = models.ReminderDefaults{Notify: latest.Notify, RemindDaysBefore: latest.RemindDaysBefore,
+			RemindDaysAfter: latest.RemindDaysAfter, RepeatEveryDays: latest.RepeatEveryDays, MaxReminders: latest.MaxReminders}
+		p.NotifyEmail = latest.NotifyEmail
+	}
 	defaults.ApplyTo(p)
 	return p
 }
 
-// GetNewBillForm renders the add form, pre-filled with the user's reminder
-// defaults (house by default).
+// GetNewBillForm renders the add form, pre-filled with the reminder
+// settings of the user's latest bill (house by default).
 func (h *BillsHandler) GetNewBillForm(c *gin.Context) error {
-	user, err := h.store.GetUserByID(c.Request.Context(), currentUserID(c))
+	latest, err := h.store.LatestRecurringPayment(c.Request.Context(), currentUserID(c))
 	if err != nil {
 		return err
 	}
-	p := newBill(c.DefaultQuery("category", "house"), user.ReminderDefaults, time.Now())
+	p := newBill(c.DefaultQuery("category", "house"), latest, time.Now())
 	d, err := h.formData(c, p, false)
 	if err != nil {
 		return err
@@ -314,6 +325,10 @@ func (h *BillsHandler) CreateBill(c *gin.Context) error {
 		return billError(err)
 	}
 	p.UpdatedAt = time.Time{}
+	// Reminders greet the owner and speak their language (sent without a
+	// request, they can't ask the home server).
+	u, _ := middleware.CurrentUser(c)
+	p.OwnerName, p.OwnerLang = u.Name, currentLang(c)
 	if err := h.bills.Create(c.Request.Context(), currentUserID(c), p); err != nil {
 		return billError(err)
 	}
@@ -487,4 +502,30 @@ func billLabel(lang string, p *models.RecurringPayment) string {
 		return utilities.T(lang, "type."+p.TypeName)
 	}
 	return utilities.T(lang, "bills.bill")
+}
+
+// SendTestEmail (dev mode only) emails a sample reminder to the address in
+// the bill form, saved or not, so the SMTP setup can be checked right away.
+// The SMTP error is shown as is: this is a developer tool.
+func (h *BillsHandler) SendTestEmail(c *gin.Context) error {
+	lang := currentLang(c)
+	email := strings.TrimSpace(c.PostForm("notify_email"))
+	if email == "" {
+		return badRequest("settings.test_needs_email", nil)
+	}
+	if !models.ValidEmail(email) {
+		return badRequest("error.invalid_email", models.ErrInvalidEmail)
+	}
+	if h.Mailer == nil {
+		renderError(c, http.StatusServiceUnavailable, utilities.T(lang, "settings.test_failed"), utilities.T(lang, "settings.smtp_not_configured"))
+		return nil
+	}
+	u, _ := middleware.CurrentUser(c)
+	if err := h.Mailer.Send(c.Request.Context(), services.BuildTestReminderEmail(u.Name, lang, email, time.Now(), h.Links)); err != nil {
+		log.Printf("test email to %s: %v", email, err)
+		renderError(c, http.StatusBadGateway, utilities.T(lang, "settings.test_failed"), err.Error())
+		return nil
+	}
+	renderSuccess(c, http.StatusOK, utilities.T(lang, "settings.test_sent"), email)
+	return nil
 }

@@ -76,9 +76,10 @@ The application uses a manual repository-like pattern located in `internal/db/`.
 ### Authentication
 
 - **The home server logs people in**, not Expenser. Its nginx asks its auth service about every request and passes the person on in `X-User-Id` (UUID) and `X-User-Name` (percent-encoded UTF-8). nginx replaces whatever the browser sent in them, and Expenser is reachable only through nginx, so they are trusted.
-- **`middleware.RequireUser`** reads them, makes a `users` row for anyone new (`EnsureUser`, keeping their name and language for reminder emails) and answers 401 without them. In `DEV_MODE` a request without them is the dev seed user. `middleware.CurrentUser` / `currentUserID` give the person to handlers.
+- **`middleware.RequireUser`** reads them and answers 401 without them. In `DEV_MODE` a request without them is the dev seed user. `middleware.CurrentUser` / `currentUserID` give the person to handlers.
+- **No users table.** Expenses and bills store only the user id. Reminders, sent in the background, need more, so each bill keeps its owner's name and language (`SyncBillOwner`, from the headers on every request) and its address (`notify_email`).
 - **Public routes**: only `/snooze/:token` (signed links in reminder emails) and static files. The home server's nginx site for Expenser must let `/snooze/` through without a login.
-- **Account and password** live in the auth service (the header's Account and Log out go there). Expenser keeps only its reminder settings.
+- **Account and password** live in the auth service (the header's Account and Log out go there).
 
 ### Look (shared theme)
 
@@ -88,7 +89,7 @@ The application uses a manual repository-like pattern located in `internal/db/`.
 
 ### Configuration
 
-Managed in `internal/config/config.go`. It reads from environment variables, which are often provided by a `.env` file (managed by Docker Compose in production). Only `internal/config` reads the environment (`LoadConfig(getenv)`); `.env.dev` is loaded by `config.LoadDevEnv()` from the module root when present. Startup fails on missing DB settings or a weak `LINK_SECRET` (under 32 bytes; it signs snooze links, and `JWT_SECRET`, its old name, still works).
+Managed in `internal/config/config.go`. It reads from environment variables, which are often provided by a `.env` file (managed by Docker Compose in production). Only `internal/config` reads the environment (`LoadConfig(getenv)`); `.env.dev` is loaded by `config.LoadDevEnv()` from the module root when present. Startup fails on missing DB settings or a weak `LINK_SECRET` (under 32 bytes; it signs snooze links).
 
 ## 5. Deployment and Operations
 

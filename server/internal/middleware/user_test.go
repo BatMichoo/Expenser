@@ -18,7 +18,7 @@ type fakeUsers struct {
 	fail bool
 }
 
-func (f *fakeUsers) EnsureUser(_ context.Context, id uuid.UUID, name, lang string) error {
+func (f *fakeUsers) SyncBillOwner(_ context.Context, id uuid.UUID, name, lang string) error {
 	if f.fail {
 		return errors.New("db down")
 	}
@@ -26,7 +26,7 @@ func (f *fakeUsers) EnsureUser(_ context.Context, id uuid.UUID, name, lang strin
 	return nil
 }
 
-func serve(t *testing.T, store UserStore, dev bool, headers map[string]string) (*httptest.ResponseRecorder, User) {
+func serve(t *testing.T, store OwnerStore, dev bool, headers map[string]string) (*httptest.ResponseRecorder, User) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -52,7 +52,7 @@ func TestRequireUserFromHeaders(t *testing.T) {
 		"X-User-Id": id.String(), "X-User-Name": "%D0%9C%D0%B8%D1%80%D0%BE", "Cookie": "homeserver_lang=bg"})
 	require.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, User{ID: id, Name: "Миро"}, u, "the name is percent-encoded UTF-8")
-	assert.Equal(t, []string{id.String() + " Миро bg"}, users.got, "a row, with name and language for emails")
+	assert.Equal(t, []string{id.String() + " Миро bg"}, users.got, "name and language onto their bills, for emails")
 
 	w, u = serve(t, users, false, map[string]string{"X-User-Id": id.String(), "X-User-Name": "Bad%ZZ\r\nBcc: x"})
 	require.Equal(t, http.StatusOK, w.Code)

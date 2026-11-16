@@ -1,37 +1,10 @@
 package models
 
 import (
-	"database/sql"
-	"fmt"
 	"strings"
-	"time"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/google/uuid"
 )
-
-// ErrUserNotFound means no user has the ID or username. It wraps
-// sql.ErrNoRows, so handlers that don't check for it show a 404.
-var ErrUserNotFound = fmt.Errorf("user not found: %w", sql.ErrNoRows)
-
-// User is a person using Expenser. Logins are the home server's: the id
-// is its user id, and DisplayName is the name it sends (X-User-Name).
-type User struct {
-	ID uuid.UUID
-	// Username is the old Expenser username of accounts from before the
-	// home server; "" for everyone else.
-	Username          string
-	PreferredLanguage string
-	Email             string // optional preferred email for reminders
-	// DisplayName is the name greetings and emails use; empty means the
-	// username.
-	DisplayName string
-	// ReminderDefaults pre-fill the reminder settings of new bills.
-	ReminderDefaults ReminderDefaults
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-}
 
 // MaxDisplayNameLength is the most characters a display name keeps.
 const MaxDisplayNameLength = 60

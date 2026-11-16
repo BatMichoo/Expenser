@@ -17,8 +17,8 @@ func utc(y int, m time.Month, d int) time.Time { return time.Date(y, m, d, 12, 0
 
 func trendUser(t *testing.T, tdb *DB, name string) uuid.UUID {
 	t.Helper()
-	u := &models.User{DisplayName: name}
-	require.NoError(t, tdb.CreateUser(context.Background(), u))
+	u := &testUser{DisplayName: name}
+	require.NoError(t, tdb.AddTestUser(context.Background(), u))
 	return u.ID
 }
 
@@ -171,7 +171,7 @@ func TestGetGroceryLines(t *testing.T) {
 func TestSetAndSkipGrocerySize(t *testing.T) {
 	f := setupTrends(t)
 	ctx := context.Background()
-	id := insertLegacyRow(t, f.db, &models.User{ID: f.a}, "Milk", "Milk x", 1, 2)
+	id := insertLegacyRow(t, f.db, &testUser{ID: f.a}, "Milk", "Milk x", 1, 2)
 
 	require.NoError(t, f.db.SetGrocerySize(ctx, f.a, id, "l", 1.5))
 	r := readUnitRow(t, f.db, id)
@@ -183,7 +183,7 @@ func TestSetAndSkipGrocerySize(t *testing.T) {
 	assert.ErrorIs(t, f.db.SetGrocerySize(ctx, f.a, id, "l", 0), models.ErrInvalidSize)
 	assert.ErrorIs(t, f.db.SetGrocerySize(ctx, f.a, id, "l", 1e12), models.ErrInvalidSize)
 
-	id2 := insertLegacyRow(t, f.db, &models.User{ID: f.a}, "Milk", "Milk y", 1, 2)
+	id2 := insertLegacyRow(t, f.db, &testUser{ID: f.a}, "Milk", "Milk y", 1, 2)
 	require.NoError(t, f.db.SkipGrocerySize(ctx, f.a, id2))
 	assert.Equal(t, "skipped", readUnitRow(t, f.db, id2).status)
 
@@ -213,7 +213,7 @@ func TestCountAndGetUnsizedGroceries(t *testing.T) {
 	assert.Equal(t, "unknown", rows[0].SizeStatus)
 	assert.Equal(t, f.a, rows[0].UserID)
 
-	id := insertLegacyRow(t, f.db, &models.User{ID: f.a}, "Bread", "Newer", 1, 1)
+	id := insertLegacyRow(t, f.db, &testUser{ID: f.a}, "Bread", "Newer", 1, 1)
 	rows, err = f.db.GetUnsizedGroceries(ctx, f.a)
 	require.NoError(t, err)
 	require.Len(t, rows, 2)

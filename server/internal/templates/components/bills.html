@@ -10,10 +10,6 @@
   <div class="month-main">
     <div class="month-toolbar">
       <h2 class="bills-title">{{ template "icon" (dict "Name" "bills") }}{{ T .Lang "bills.title" }}</h2>
-      <button type="button" class="btn-secondary reminder-settings" hx-get="/settings/reminders" hx-target="#sheet"
-        title='{{ T .Lang "settings.reminders" }}'>
-        {{ template "icon" (dict "Name" "bell") }}<span class="btn-label">{{ T .Lang "settings.reminders" }}</span>
-      </button>
       <button type="button" class="add-btn" hx-get="/bills/new" hx-target="#sheet"
         aria-label='{{ T .Lang "bills.add" }}' title='{{ T .Lang "bills.add" }}'>
         <span class="add-plus" aria-hidden="true">+</span><span class="btn-label">{{ T .Lang "bills.add" }}</span> <kbd>N</kbd>
@@ -223,8 +219,13 @@
       <div class="notify-address">
         <label for="bill-notify-email">{{ T .Lang "bills.notify_email" }}</label>
         <input type="email" id="bill-notify-email" name="notify_email" value="{{ .Bill.NotifyEmail }}" autocomplete="email"
-          placeholder='{{ if .UserEmail }}{{ .UserEmail }}{{ else }}{{ T .Lang "bills.no_email_placeholder" }}{{ end }}' />
+          placeholder="you@example.com" />
         <span class="field-hint">{{ T .Lang "bills.notify_email_hint" }}</span>
+        {{ if .DevMode }}
+        {{/* Dev mode only: sends a sample reminder to the address typed, saved or not. */}}
+        <button type="button" class="btn-secondary send-test-email" hx-post="/bills/test-email"
+          hx-include="#bill-notify-email" hx-swap="none">{{ T .Lang "settings.send_test" }}</button>
+        {{ end }}
       </div>
 
       {{ if .IsEdit }}

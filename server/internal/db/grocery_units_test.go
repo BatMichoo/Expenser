@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupUnitsTestDB(t *testing.T) (*DB, *models.User) {
+func setupUnitsTestDB(t *testing.T) (*DB, *testUser) {
 	t.Helper()
 	cfg, err := config.LoadConfig(os.Getenv)
 	require.NoError(t, err)
@@ -23,7 +23,7 @@ func setupUnitsTestDB(t *testing.T) (*DB, *models.User) {
 	t.Cleanup(func() { tdb.Close() })
 	ResetTestDB(tdb)
 	u := *TestUserRegisterModel
-	require.NoError(t, tdb.CreateUser(context.Background(), &u))
+	require.NoError(t, tdb.AddTestUser(context.Background(), &u))
 	return tdb, &u
 }
 
@@ -35,7 +35,7 @@ func categoryID(t *testing.T, tdb *DB, name string) int {
 }
 
 // insertLegacyRow inserts a row the way pre-migration data looks: status unknown, no unit.
-func insertLegacyRow(t *testing.T, tdb *DB, u *models.User, category, product string, qty, total float64) int {
+func insertLegacyRow(t *testing.T, tdb *DB, u *testUser, category, product string, qty, total float64) int {
 	t.Helper()
 	var id int
 	require.NoError(t, tdb.conn.QueryRow(`
@@ -62,7 +62,7 @@ func readUnitRow(t *testing.T, tdb *DB, id int) unitRow {
 	return r
 }
 
-func seedBackfillRows(t *testing.T, tdb *DB, u *models.User) (milk, tomato, bread, soap int) {
+func seedBackfillRows(t *testing.T, tdb *DB, u *testUser) (milk, tomato, bread, soap int) {
 	milk = insertLegacyRow(t, tdb, u, "Milk", "Fresh milk 1L", 2, 1.5)
 	tomato = insertLegacyRow(t, tdb, u, "Tomatoes", "Tomatoes", 1.2, 4)
 	bread = insertLegacyRow(t, tdb, u, "Bread", "White bread", 1, 2)

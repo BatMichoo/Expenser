@@ -89,7 +89,7 @@ func (f *fakeNotifier) Notify(_ context.Context, r Reminder) error {
 
 func monthly(due time.Time, remind int) *models.RecurringPayment {
 	return &models.RecurringPayment{
-		UserEmail:        "me@example.com",
+		NotifyEmail:      "me@example.com",
 		ID:               uuid.New(),
 		Category:         models.SectionHouse,
 		TypeName:         "Internet",
@@ -249,12 +249,14 @@ func TestRunStopsOnCancel(t *testing.T) {
 	}
 }
 
+var ivan = uuid.MustParse("6f1c2d3e-0000-4000-8000-00000000000a")
+
 func TestConsoleNotifier(t *testing.T) {
 	var buf bytes.Buffer
 	n := NewConsoleNotifier(log.New(&buf, "", 0))
 
 	p := models.RecurringPayment{
-		Username:       "ivan",
+		UserID:         ivan,
 		Category:       models.SectionCar,
 		TypeName:       "Insurance",
 		Name:           "Allianz",
@@ -265,13 +267,13 @@ func TestConsoleNotifier(t *testing.T) {
 	}
 	require.NoError(t, n.Notify(context.Background(), Reminder{Payment: p, DaysLeft: 3}))
 	assert.Equal(t,
-		`[reminder] user=ivan [car] Insurance "Allianz" due 2026-12-01 (in 3 days) | hours: Mon-Fri 9-18 | pay: cash, card | notes: Policy 7`,
+		`[reminder] user=6f1c2d3e-0000-4000-8000-00000000000a [car] Insurance "Allianz" due 2026-12-01 (in 3 days) | hours: Mon-Fri 9-18 | pay: cash, card | notes: Policy 7`,
 		strings.TrimSpace(buf.String()))
 }
 
 func TestFormatReminderMinimal(t *testing.T) {
-	p := models.RecurringPayment{Username: "ivan", Category: models.SectionHouse, TypeName: "TV", DueDate: day(2026, 12, 1)}
-	assert.Equal(t, "[reminder] user=ivan [house] TV due 2026-12-01 (today)", FormatReminder(Reminder{Payment: p}))
+	p := models.RecurringPayment{UserID: ivan, Category: models.SectionHouse, TypeName: "TV", DueDate: day(2026, 12, 1)}
+	assert.Equal(t, "[reminder] user=6f1c2d3e-0000-4000-8000-00000000000a [house] TV due 2026-12-01 (today)", FormatReminder(Reminder{Payment: p}))
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: 1}), "(tomorrow)")
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -1}), "(OVERDUE by 1 day)")
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -4}), "(OVERDUE by 4 days)")
@@ -282,7 +284,7 @@ func TestFormatReminderMinimal(t *testing.T) {
 }
 
 func TestFormatReminderArrivesBill(t *testing.T) {
-	p := models.RecurringPayment{Username: "ivan", Category: models.SectionHouse, TypeName: "Gas", DueDate: day(2026, 11, 8), DateKind: models.DateArrives}
+	p := models.RecurringPayment{UserID: ivan, Category: models.SectionHouse, TypeName: "Gas", DueDate: day(2026, 11, 8), DateKind: models.DateArrives}
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -3}), "(waiting 3 days)", "no deadline, so not overdue")
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: -1}), "(waiting 1 day)")
 	assert.Contains(t, FormatReminder(Reminder{Payment: p, DaysLeft: 0}), "arrives around 2026-11-08 (today)")
@@ -290,7 +292,7 @@ func TestFormatReminderArrivesBill(t *testing.T) {
 
 func TestRunOnceSkipsBillsWithoutRecipient(t *testing.T) {
 	noEmail := monthly(day(2026, 11, 10), 0)
-	noEmail.UserEmail = ""
+	noEmail.NotifyEmail = ""
 	off := monthly(day(2026, 11, 10), 0)
 	off.Notify = models.NotifyNone
 	toPartner := monthly(day(2026, 11, 10), 0)

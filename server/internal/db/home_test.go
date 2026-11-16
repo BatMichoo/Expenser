@@ -36,7 +36,7 @@ func TestCreateHomeExpense(t *testing.T) {
 		{
 			name: "Valid",
 			setup: func(t *testing.T) uuid.UUID {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				return TestUserRegisterModel.ID
 			},
 			input: &models.HouseExpense{
@@ -59,7 +59,7 @@ func TestCreateHomeExpense(t *testing.T) {
 		{
 			name: "Invalid utility type",
 			setup: func(t *testing.T) uuid.UUID {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				return TestUserRegisterModel.ID
 			},
 			input: &models.HouseExpense{
@@ -120,7 +120,7 @@ func TestEditHomeExpense(t *testing.T) {
 		{
 			name: "Valid",
 			setup: func(t *testing.T) int {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				initial := &models.HouseExpense{
 					Amount:        150.00,
 					ExpenseDate:   expenseDate.Add(time.Hour * 24),
@@ -201,7 +201,7 @@ func TestGetHomeExpense(t *testing.T) {
 		{
 			name: "Existing Expense",
 			setup: func(t *testing.T) int {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				expense := &models.HouseExpense{
 					Amount:         250.00,
 					DiscountAmount: 10.00,
@@ -233,7 +233,7 @@ func TestGetHomeExpense(t *testing.T) {
 		{
 			name: "Missing expense",
 			setup: func(t *testing.T) int {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				expense := &models.HouseExpense{
 					Amount:        250.00,
 					ExpenseDate:   expenseDate,
@@ -315,7 +315,7 @@ func TestGetMultipleHomeExpenses(t *testing.T) {
 				return testDB.GetHouseExpensesForMonth(context.Background(), expenseDate.Month(), expenseDate.Year(), userId)
 			},
 			setup: func(t *testing.T) {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				expenses := []models.HouseExpense{
 					{
 						Amount:        250.00,
@@ -428,7 +428,7 @@ func TestDeleteHomeExpense(t *testing.T) {
 				Metadata:      []byte("{}"),
 			},
 			setup: func(t *testing.T, he *models.HouseExpense) {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				he.CreatedBy = TestUserRegisterModel.ID
 				err := testDB.CreateHouseExpense(context.Background(), he)
 				if err != nil {
@@ -443,7 +443,7 @@ func TestDeleteHomeExpense(t *testing.T) {
 		{
 			name: "No existing expense",
 			setup: func(t *testing.T, he *models.HouseExpense) {
-				testDB.CreateUser(context.Background(), TestUserRegisterModel)
+				testDB.AddTestUser(context.Background(), TestUserRegisterModel)
 				he.CreatedBy = TestUserRegisterModel.ID
 				he.ID = 15000
 			},

@@ -58,7 +58,7 @@ type emailField struct {
 // the internet.
 func BuildReminderEmail(r Reminder) EmailMessage {
 	p := r.Payment
-	lang := p.UserLang
+	lang := p.OwnerLang
 	if lang == "" {
 		lang = "en"
 	}
@@ -98,7 +98,10 @@ func BuildReminderEmail(r Reminder) EmailMessage {
 		fields = append(fields, emailField{t("common.notes"), p.Notes})
 	}
 
-	greeting := fmt.Sprintf(t("email.greeting"), p.GreetingName())
+	greeting := t("email.greeting_plain")
+	if p.OwnerName != "" {
+		greeting = fmt.Sprintf(t("email.greeting"), p.OwnerName)
+	}
 	var text strings.Builder
 	fmt.Fprintf(&text, "%s\n\n%s\n\n%s\n", greeting, t("email.intro"), label)
 	for _, f := range fields {
@@ -126,7 +129,6 @@ func BuildReminderEmail(r Reminder) EmailMessage {
 
 	return EmailMessage{
 		To:      r.To,
-		ToName:  p.RecipientName(r.To),
 		Subject: fmt.Sprintf(t("email.subject"), label, when),
 		Text:    text.String(),
 		HTML:    html.String(),
@@ -197,7 +199,7 @@ var reminderEmailHTML = template.Must(template.New("reminder").Parse(`<!doctype 
 // would. Every field the email can show is filled, with long values,
 // a custom payment option, a multi-line note and HTML-like characters, to
 // see how all of it renders. Dev mode only.
-func BuildTestReminderEmail(username, displayName, lang, to string, today time.Time, links *ReminderLinkBuilder) EmailMessage {
+func BuildTestReminderEmail(name, lang, to string, today time.Time, links *ReminderLinkBuilder) EmailMessage {
 	if lang == "" {
 		lang = "en"
 	}
@@ -207,7 +209,7 @@ func BuildTestReminderEmail(username, displayName, lang, to string, today time.T
 		To:       to,
 		DaysLeft: 3,
 		Payment: models.RecurringPayment{
-			Username: username, UserDisplayName: displayName, UserEmail: to, Name: "Vivacom Fiber 500 Mbps + TV (apartment & garage)",
+			OwnerName: name, NotifyEmail: to, Name: "Vivacom Fiber 500 Mbps + TV (apartment & garage)",
 			TypeName: "Internet", Category: models.SectionHouse,
 			DateKind: models.DatePayBy, DueDate: today.AddDate(0, 0, 3),
 			ExpectedAmount: &amount,
@@ -215,7 +217,7 @@ func BuildTestReminderEmail(username, displayName, lang, to string, today time.T
 			PaymentOptions: []string{"cash", "card", "bank_transfer", "online", "ePay.bg"},
 			Notes: "Client no. 1234567 — pay at the office on <Vitosha 15> or via ePay.\n" +
 				"Second line: ask for the \"loyalty\" discount & keep the receipt.",
-			UserLang: lang, ID: uuid.New(), RepeatEveryDays: &sampleRepeat,
+			OwnerLang: lang, ID: uuid.New(), RepeatEveryDays: &sampleRepeat,
 		},
 	}
 	if links != nil {

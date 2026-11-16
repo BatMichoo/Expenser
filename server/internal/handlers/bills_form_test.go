@@ -121,3 +121,29 @@ func TestParseBillFormDelivery(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, models.NotifyNone, p.Notify)
 }
+
+func TestNewBillStartsLikeTheLatest(t *testing.T) {
+	now := time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC)
+	two := 2
+	latest := &models.RecurringPayment{Notify: models.NotifyNone, NotifyEmail: "me@example.com",
+		RemindDaysBefore: 7, RemindDaysAfter: 1, RepeatEveryDays: &two, Name: "Gas", DateKind: models.DateArrives}
+	p := newBill("car", latest, now)
+	assert.Equal(t, models.SectionCar, p.Category)
+	assert.Equal(t, models.NotifyNone, p.Notify)
+	assert.Equal(t, "me@example.com", p.NotifyEmail, "the address of the last bill")
+	assert.Equal(t, 7, p.RemindDaysBefore)
+	assert.Equal(t, 1, p.RemindDaysAfter)
+	assert.Equal(t, 2, *p.RepeatEveryDays)
+	*latest.RepeatEveryDays = 9
+	assert.Equal(t, 2, *p.RepeatEveryDays, "its own copy")
+	assert.Nil(t, p.MaxReminders)
+	assert.Empty(t, p.Name, "only the reminder settings")
+	assert.Equal(t, models.DatePayBy, p.DateKind)
+	assert.Equal(t, time.Date(2026, 12, 12, 0, 0, 0, 0, time.UTC), p.DueDate)
+	assert.Equal(t, models.DefaultPaymentOptions(), p.PaymentOptions)
+	assert.True(t, p.Active)
+
+	first := newBill("house", nil, now)
+	assert.Equal(t, models.DefaultReminderDefaults().RemindDaysBefore, first.RemindDaysBefore, "first bill: the built-in defaults")
+	assert.Empty(t, first.NotifyEmail)
+}

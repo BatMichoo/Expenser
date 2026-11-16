@@ -37,8 +37,8 @@ func setupRecurringTestDB(t *testing.T) (*DB, uuid.UUID) {
 	t.Cleanup(func() { testDB.Close() })
 	ResetTestDB(testDB)
 
-	user := &models.User{DisplayName: "RecurringTester"}
-	require.NoError(t, testDB.CreateUser(context.Background(), user))
+	user := &testUser{DisplayName: "RecurringTester"}
+	require.NoError(t, testDB.AddTestUser(context.Background(), user))
 	return testDB, user.ID
 }
 
@@ -69,7 +69,6 @@ func TestCreateAndGetRecurringPayment(t *testing.T) {
 	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
 	require.NoError(t, err)
 	assert.Equal(t, "Internet", got.TypeName)
-	assert.Equal(t, "RecurringTester", got.UserDisplayName)
 	assert.Equal(t, models.SectionHouse, got.Category)
 	assert.Equal(t, 4, *got.UtilityTypeID)
 	assert.Nil(t, got.CarExpenseTypeID)
@@ -140,8 +139,8 @@ func TestRecurringPaymentsAreScopedToUser(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
 
-	other := &models.User{DisplayName: "OtherUser"}
-	require.NoError(t, testDB.CreateUser(context.Background(), other))
+	other := &testUser{DisplayName: "OtherUser"}
+	require.NoError(t, testDB.AddTestUser(context.Background(), other))
 
 	p := newInternetPayment(userID, rpDate(2026, 12, 1))
 	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
@@ -221,7 +220,6 @@ func TestGetActiveRecurringPayments(t *testing.T) {
 	got, err := testDB.GetActiveRecurringPayments(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, []uuid.UUID{active.ID}, ids(got), "the scheduler decides who gets reminded")
-	assert.Equal(t, "RecurringTester", got[0].GreetingName())
 }
 
 func TestReminderScheduleRoundTrip(t *testing.T) {
@@ -448,8 +446,8 @@ func TestMarkRecurringPaymentPaidOtherUser(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
 
-	other := &models.User{DisplayName: "OtherUser"}
-	require.NoError(t, testDB.CreateUser(context.Background(), other))
+	other := &testUser{DisplayName: "OtherUser"}
+	require.NoError(t, testDB.AddTestUser(context.Background(), other))
 
 	p := newInternetPayment(userID, rpDate(2026, 12, 1))
 	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
@@ -467,8 +465,8 @@ func TestGetUpcomingRecurringPayments(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
 
-	other := &models.User{DisplayName: "OtherUser"}
-	require.NoError(t, testDB.CreateUser(context.Background(), other))
+	other := &testUser{DisplayName: "OtherUser"}
+	require.NoError(t, testDB.AddTestUser(context.Background(), other))
 
 	overdue := newInternetPayment(userID, rpDate(2026, 11, 1))
 	soon := newInternetPayment(userID, rpDate(2026, 11, 15))
@@ -487,59 +485,26 @@ func TestGetUpcomingRecurringPayments(t *testing.T) {
 	assert.Equal(t, []uuid.UUID{overdue.ID, soon.ID, edge.ID}, ids(got))
 }
 
-func TestUserAccountSettings(t *testing.T) {
-	testDB, userID := setupRecurringTestDB(t)
-	ctx := context.Background()
-
-	u, err := testDB.GetUserByID(context.Background(), userID)
-	require.NoError(t, err)
-	assert.Empty(t, u.Email, "not required")
-	assert.Equal(t, models.DefaultReminderDefaults(), u.ReminderDefaults, "existing users start with today's defaults")
-
-	two, five := 2, 5
-	want := models.ReminderDefaults{Notify: models.NotifyNone, RemindDaysBefore: 7, RemindDaysAfter: 1, RepeatEveryDays: &two, MaxReminders: &five}
-	require.NoError(t, testDB.UpdateReminderSettings(ctx, userID, "me@example.com", want))
-	u, err = testDB.GetUserByID(context.Background(), userID)
-	require.NoError(t, err)
-	assert.Equal(t, "me@example.com", u.Email)
-	assert.Equal(t, want, u.ReminderDefaults)
-
-	off := models.DefaultReminderDefaults()
-	off.RepeatEveryDays = nil
-	require.NoError(t, testDB.UpdateReminderSettings(ctx, userID, "", off))
-	u, err = testDB.GetUserByID(context.Background(), userID)
-	require.NoError(t, err)
-	assert.Empty(t, u.Email, "cleared")
-	assert.Nil(t, u.ReminderDefaults.RepeatEveryDays, "repeat off")
-	assert.Nil(t, u.ReminderDefaults.MaxReminders, "no limit")
-
-	bad := models.DefaultReminderDefaults()
-	bad.Notify = "sms"
-	assert.Error(t, testDB.UpdateReminderSettings(ctx, userID, "", bad), "the database refuses invalid defaults too")
-}
-
-func setUserEmail(t *testing.T, testDB *DB, userID uuid.UUID, email, name string) {
-	t.Helper()
-	require.NoError(t, testDB.UpdateReminderSettings(context.Background(), userID, email, models.DefaultReminderDefaults()))
-	require.NoError(t, testDB.EnsureUser(context.Background(), userID, name, "en"))
-}
-
 func TestBillDeliveryRoundTrip(t *testing.T) {
 	testDB, userID := setupRecurringTestDB(t)
 	ctx := context.Background()
-	setUserEmail(t, testDB, userID, "me@example.com", "Miro")
 
 	p := newInternetPayment(userID, rpDate(2026, 12, 1))
-	p.NotifyEmail = "partner@example.com"
+	p.NotifyEmail = "me@example.com"
+	p.OwnerName, p.OwnerLang = "Miro", "bg"
 	require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
 
 	got, err := testDB.GetRecurringPaymentByID(ctx, p.ID, userID)
 	require.NoError(t, err)
 	assert.Equal(t, models.NotifyEmail, got.Notify, "email by default")
-	assert.Equal(t, "partner@example.com", got.NotifyEmail)
-	assert.Equal(t, "me@example.com", got.UserEmail)
-	assert.Equal(t, "Miro", got.UserDisplayName)
-	assert.Equal(t, "en", got.UserLang)
+	assert.Equal(t, "me@example.com", got.NotifyEmail)
+	assert.Equal(t, "Miro", got.OwnerName, "reminders greet the owner")
+	assert.Equal(t, "bg", got.OwnerLang, "in their language")
+
+	active, err := testDB.GetActiveRecurringPayments(ctx)
+	require.NoError(t, err)
+	require.Len(t, active, 1)
+	assert.Equal(t, "me@example.com", active[0].ReminderRecipient(), "the scheduler knows where to send")
 
 	got.Notify, got.NotifyEmail = models.NotifyNone, ""
 	require.NoError(t, testDB.UpdateRecurringPayment(ctx, got, userID))
@@ -547,9 +512,54 @@ func TestBillDeliveryRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, models.NotifyNone, got.Notify)
 	assert.Empty(t, got.NotifyEmail)
+	assert.Equal(t, "Miro", got.OwnerName, "editing a bill keeps its owner")
 
-	active, err := testDB.GetActiveRecurringPayments(ctx)
+	q := newInternetPayment(userID, rpDate(2026, 12, 1))
+	q.OwnerLang = "xx"
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, q))
+	got, err = testDB.GetRecurringPaymentByID(ctx, q.ID, userID)
 	require.NoError(t, err)
-	require.Len(t, active, 1)
-	assert.Equal(t, "me@example.com", active[0].UserEmail, "the scheduler knows where to send")
+	assert.Equal(t, "en", got.OwnerLang, "unknown languages are English")
+}
+
+func TestSyncBillOwner(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+	mine := newInternetPayment(userID, rpDate(2026, 12, 1))
+	mine.OwnerName = "Miro"
+	other := newInternetPayment(uuid.New(), rpDate(2026, 12, 1))
+	other.OwnerName = "Ana"
+	for _, p := range []*models.RecurringPayment{mine, other} {
+		require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+	}
+
+	require.NoError(t, testDB.SyncBillOwner(ctx, userID, "Miroslav", "bg"))
+	got, err := testDB.GetRecurringPaymentByID(ctx, mine.ID, userID)
+	require.NoError(t, err)
+	assert.Equal(t, "Miroslav", got.OwnerName)
+	assert.Equal(t, "bg", got.OwnerLang)
+	assert.True(t, got.UpdatedAt.Equal(mine.UpdatedAt), "not an edit of the bill")
+	theirs, err := testDB.GetRecurringPaymentByID(ctx, other.ID, other.UserID)
+	require.NoError(t, err)
+	assert.Equal(t, "Ana", theirs.OwnerName, "only the person's own bills")
+}
+
+func TestLatestRecurringPayment(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+	got, err := testDB.LatestRecurringPayment(ctx, userID)
+	require.NoError(t, err)
+	assert.Nil(t, got, "no bills yet")
+
+	first := newInternetPayment(userID, rpDate(2026, 12, 1))
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, first))
+	second := newInternetPayment(userID, rpDate(2026, 11, 1))
+	second.NotifyEmail = "me@example.com"
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, second))
+	require.NoError(t, testDB.CreateRecurringPayment(ctx, newInternetPayment(uuid.New(), rpDate(2026, 12, 1))))
+
+	got, err = testDB.LatestRecurringPayment(ctx, userID)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, second.ID, got.ID, "the one added last, not the one due last")
 }
