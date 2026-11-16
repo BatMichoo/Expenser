@@ -21,7 +21,7 @@
      Title and TopLabel (i18n keys), TopIsType (translate TopName), Lang. */}}
 {{ define "home-card" }}
 {{ $c := .C }}
-<a class="home-card" href="/{{ $c.Section }}" hx-get="/{{ $c.Section }}" hx-target="#tracker-content" hx-swap="innerHTML show:window:top" hx-push-url="true">
+<a class="home-card" href="/{{ $c.Section }}" hx-get="/{{ $c.Section }}" hx-target="#content" hx-swap="innerHTML show:window:top" hx-push-url="true">
   <span class="home-card-head">
     {{ template "home-icon" $c.Section }}
     <span class="home-card-title">{{ T .Lang .Title }}</span>
@@ -53,7 +53,7 @@
 {{/* The home page's Bills card: the next few bills, each with what its type
      cost in the same month last year. Expects a *models.HomeView. */}}
 {{ define "home-bills-card" }}
-<a class="home-card home-bills" href="/bills" hx-get="/bills" hx-target="#tracker-content" hx-swap="innerHTML show:window:top" hx-push-url="true">
+<a class="home-card home-bills" href="/bills" hx-get="/bills" hx-target="#content" hx-swap="innerHTML show:window:top" hx-push-url="true">
   <span class="home-card-head">
     {{ template "home-icon" "bills" }}
     <span class="home-card-title">{{ T .Lang "home.upcoming_bills" }}</span>

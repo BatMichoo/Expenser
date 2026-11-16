@@ -1,5 +1,5 @@
 {{ define "grocery-row" }}{{ $g := .G }}
-<tr id="grocery-{{ $g.ID }}" class="exp-row" hx-get="/groceries/edit/{{ $g.ID }}" hx-target="#action-dialog"
+<tr id="grocery-{{ $g.ID }}" class="exp-row" hx-get="/groceries/edit/{{ $g.ID }}" hx-target="#sheet"
   hx-trigger="click[!event.target.closest('button')]">
   <td class="c-date">{{ $g.PurchaseDate.Format "02.01" }}</td>
   <td class="c-product">{{ $g.Product }}</td>

@@ -1,7 +1,7 @@
 {{/* Toast popups (top right). Kind is "success", "error" or "info";
-     Duration is the auto-dismiss time in ms (main.js showModal). */}}
+     Duration is the auto-dismiss time in ms (the theme's themeShowToast). */}}
 {{ define "toast" }}
-<dialog id="modal" hx-swap-oob="true" open hx-on::after-settle="showModal(this, {{ .Duration }})">
+<dialog id="toast" hx-swap-oob="true" open hx-on::after-settle="themeShowToast(this, {{ .Duration }})">
   <div class="modal-container toast {{ .Kind }}" role="status">
     <span class="toast-icon" aria-hidden="true">
       {{ if eq .Kind "success" }}
@@ -14,7 +14,7 @@
       <strong class="toast-title">{{ .Content.Title }}</strong>
       {{ if .Content.Message }}<p class="toast-message">{{ .Content.Message }}</p>{{ end }}
     </div>
-    <button id="confirm-btn" type="button" class="toast-close" onClick="hideModal()"
+    <button id="toast-close" type="button" class="toast-close" onClick="themeHideToast()"
       aria-label='{{ T .Content.Lang "modal.close" }}' title='{{ T .Content.Lang "modal.close" }}'>
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>

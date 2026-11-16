@@ -2,7 +2,7 @@
 <div class="sheet">
   {{ template "sheet-heading" (dict "Title" (print (T .Lang "form.edit") ": " (T .Lang (print "type." $Expense.Type))) "Lang" .Lang) }}
   <form class="new-expense-form" hx-put="/car/expenses/{{ $Expense.ID }}" hx-target="#exp-{{ $Expense.ID }}"
-    hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful && event.target === this) { themeHideSheet(); }">
     {{ template "type-chips" (dict "Types" .Types "Selected" $Expense.ExpenseTypeID "Lang" .Lang "Label" "form.expense_type" "MetaURL" "/car/expenses/metadata") }}
     {{ template "amount-date-fields" (dict "Lang" .Lang "Amount" $Expense.Amount "Date" ($Expense.Date.Format "2006-01-02")) }}
     <details class="more-fields" open>

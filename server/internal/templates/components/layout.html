@@ -1,0 +1,28 @@
+{{/* The page around every full page load is the shared theme's (theme/page:
+     header, footer, #content, #sheet, #toast). These are Expenser's parts
+     of it. */}}
+
+{{/* The navigation buttons, in place of the theme's own (theme/nav): the
+     same buttons, drawn with Expenser's icons. Input: theme.Header. */}}
+{{ define "theme/nav" }}
+<nav id="nav">
+  {{ range .Nav }}
+  <button class="nav-button" hx-get="{{ .URL }}" hx-target="#content" hx-push-url="true" data-path="{{ .URL }}">
+    {{ if .Icon }}{{ template "icon" (dict "Name" .Icon) }}{{ end }}
+    {{ .Label }}
+  </button>
+  {{ end }}
+</nav>
+{{ end }}
+
+{{/* The page's content: the template a handler chose (renderLayout), or
+     the home page for a name that isn't one. Input: handlers.pageData. */}}
+{{ define "expenser/content" }}
+{{ if hasTemplate .Name }}{{ include .Name .Data }}{{ else }}{{ template "index-page" (dict "Lang" .Lang) }}{{ end }}
+{{ end }}
+
+{{/* Last in <body>: shows a waiting flash error (see flash.go). Input:
+     handlers.pageData. */}}
+{{ define "expenser/body-end" }}
+{{ if .HasFlash }}<div hx-get="/flash" hx-trigger="load" hx-swap="none"></div>{{ end }}
+{{ end }}

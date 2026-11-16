@@ -3,6 +3,7 @@ module expenser
 go 1.23.0
 
 require (
+	github.com/BatMichoo/theme v0.1.0
 	github.com/PuerkitoBio/goquery v1.10.3
 	github.com/gin-gonic/gin v1.10.1
 	github.com/joho/godotenv v1.5.1

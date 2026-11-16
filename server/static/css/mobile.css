@@ -1,125 +1,37 @@
 @media (max-width: 767px) {
 
   /* Top bar: title left, settings right */
-  .header-section {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    width: 100%;
-    box-sizing: border-box;
-    max-height: unset;
-    height: 3.25em;
-    padding: 0 0.75em;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    background-color: var(--bg-light);
-    box-shadow: var(--shadow);
-  }
+  
 
-  .header-section h3 {
-    position: static;
-    transform: none;
-    margin: 0;
-    font-size: 1.15em;
-    order: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  
 
-  .header-left {
-    order: 2;
-    margin-left: auto;
-  }
+  
 
-  .header-right {
-    order: 3;
-  }
+  
 
-  .settings-menu > summary {
-    margin: 0;
-    padding: 0.6em;
-    min-height: 2.75em;
-    min-width: 2.75em;
-    justify-content: center;
-    box-shadow: none;
-  }
+  
 
-  .settings-menu > summary span {
-    display: none;
-  }
+  
 
-  .settings-panel {
-    left: auto;
-    right: 0;
-    min-width: 17em;
-    max-width: calc(100vw - 1.5em);
-  }
+  
 
   /* Bottom tab bar */
-  #tracker-navigation {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 30;
-    display: flex;
-    flex-direction: row;
-    gap: 0;
-    width: 100%;
-    padding: 0 0 env(safe-area-inset-bottom);
-    background-color: var(--bg-light);
-    box-shadow: 0 -2px 6px oklch(0 0 0 / 0.15);
-  }
+  
 
-  #tracker-navigation .tracker-nav-button {
-    flex: 1;
-    flex-direction: column;
-    justify-content: center;
-    gap: 0.15em;
-    min-height: 3.75em;
-    padding: 0.4em 0.25em;
-    margin: 0;
-    border: 0;
-    border-radius: 0;
-    border-top: 3px solid transparent;
-    background: transparent;
-    box-shadow: none;
-    font-size: 0.75em;
-    color: var(--text-muted);
-    white-space: nowrap;
-  }
+  
 
-  #tracker-navigation .tracker-nav-button svg {
-    margin: 0;
-    width: 1.75em;
-    height: 1.75em;
-  }
+  
 
-  #tracker-navigation .tracker-nav-button.active {
-    color: var(--text);
-    border-top-color: var(--highlight-sec);
-  }
+  
 
   /* Full-width page, kept clear of the tab bar */
-  body {
-    padding: 0 0 calc(4.5em + env(safe-area-inset-bottom));
-  }
+  
 
-  footer {
-    display: none;
-  }
+  
 
-  .container {
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    padding: 0.75em 0;
-  }
+  
 
-  #tracker-content {
-    padding: 1em;
-  }
+  
 
   /* Buttons and Sections */
   #add-expense-section button {
@@ -143,34 +55,10 @@
   }
 
   /* Add/edit expense: bottom sheet */
-  #action-dialog {
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    transform: none;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    max-height: 90dvh;
-    margin: 0;
-    padding: 0 0 env(safe-area-inset-bottom);
-    box-sizing: border-box;
-    border: 0;
-    border-radius: 1em 1em 0 0;
-    background-color: var(--bg-light);
-    box-shadow: 0 -4px 20px oklch(0 0 0 / 0.35);
-  }
+  
 
   /* Toasts: full width under the top bar */
-  #modal {
-    top: 3.75em;
-    left: 0.75em;
-    right: 0.75em;
-    width: auto;
-    min-width: 0;
-    transform: none;
-  }
+  
 
   /* Forms */
   .new-expense-form {
@@ -188,15 +76,9 @@
 
   /* Cards and Overview */
 
-
-  .card {
-    width: 90%;
-    min-height: unset;
-    padding: 1.25em;
-  }
+  
 
   /* Welcome Section */
-
 
   /* Other Elements */
   /* #section-list li { */
@@ -359,9 +241,7 @@
     display: none;
   }
 
-  #tracker-content {
-    padding: 0;
-  }
+  
 
   #add-expense-section {
     margin: 0.75em;
@@ -381,15 +261,7 @@
     padding-bottom: 1em;
   }
 
-  .sheet-grab {
-    display: block;
-    width: 2.5em;
-    height: 0.25em;
-    margin: 0.5em auto 0;
-    border-radius: 1em;
-    background-color: var(--text-muted);
-    opacity: 0.4;
-  }
+  
 
   .sheet .new-expense-heading {
     font-size: 1.15em;
@@ -437,15 +309,9 @@
   }
 
   /* Month view on phones: one column, no side chart */
-  .header-section {
-    padding: 0 0.75em;
-    min-height: 3.25em;
-    gap: 0;
-  }
+  
 
-  .header-left {
-    margin-left: auto;
-  }
+  
 
   #section-list {
     margin: 0 0.75em 0.75em;

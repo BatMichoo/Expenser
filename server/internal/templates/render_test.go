@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BatMichoo/theme"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -57,30 +58,24 @@ func parseHTML(t *testing.T, html string) *goquery.Document {
 func TestAllTemplatesParse(t *testing.T) {
 	tmpl := loadTemplates(t)
 	require.NotNil(t, tmpl.Lookup("house-exp-row"))
-	require.NotNil(t, tmpl.Lookup("root"))
+	require.NotNil(t, tmpl.Lookup("theme/page"), "the shared theme's page")
+	require.NotNil(t, tmpl.Lookup("expenser/content"))
 }
 
-func TestHeaderSettingsMenu(t *testing.T) {
-	html := render(t, "header", models.HeaderOptions{IsLoggedIn: true, Lang: "en", LogoutURL: "https://auth.homeserver.lan/logout"})
-	doc := parseHTML(t, html)
-
-	menu := doc.Find("details.settings-menu")
-	require.Equal(t, 1, menu.Length(), "settings menu present")
-	themes := menu.Find(".theme-option")
-	require.Equal(t, 2, themes.Length(), "light and dark options")
-	light, _ := themes.Eq(0).Attr("data-theme")
-	dark, _ := themes.Eq(1).Attr("data-theme")
-	assert.Equal(t, []string{"light", "dark"}, []string{light, dark})
-	assert.Contains(t, menu.Text(), "Theme")
-	assert.NotContains(t, menu.Text(), "Toggle Theme", "state-less toggle replaced")
-	assert.Equal(t, 2, menu.Find(".lang-btn").Length(), "language buttons inside menu")
-	assert.Equal(t, 1, menu.Find(`form[method="post"][action="https://auth.homeserver.lan/logout"]`).Length(), "logout (the home server's) inside menu")
-
-	nav := doc.Find("#tracker-navigation")
-	assert.Equal(t, 4, nav.Find(".tracker-nav-button").Length(), "house, car, groceries, bills")
-	bills, _ := nav.Find(`.tracker-nav-button[data-path="/bills"]`).Attr("hx-get")
-	assert.Equal(t, "/bills", bills)
-	assert.Equal(t, 0, nav.Find(`[hx-get="/logout"]`).Length(), "logout no longer a tab")
+func TestNavUsesExpenserIcons(t *testing.T) {
+	// Expenser replaces the theme's theme/nav: the same buttons, with its
+	// own icons (the theme has no house, car, groceries or bills).
+	doc := parseHTML(t, render(t, "theme/header", theme.Header{Lang: "en", LoggedIn: true, Nav: []theme.NavItem{
+		{Label: "House", URL: "/house", Icon: "house"}, {Label: "Bills", URL: "/bills", Icon: "bills"}}}))
+	buttons := doc.Find("#nav .nav-button")
+	require.Equal(t, 2, buttons.Length())
+	get, _ := buttons.Eq(1).Attr("hx-get")
+	path, _ := buttons.Eq(1).Attr("data-path")
+	target, _ := buttons.Eq(1).Attr("hx-target")
+	assert.Equal(t, []string{"/bills", "/bills", "#content"}, []string{get, path, target})
+	assert.Equal(t, 1, buttons.Eq(0).Find("svg").Length(), "an icon")
+	assert.Contains(t, buttons.Eq(0).Text(), "House")
+	assert.Equal(t, 1, doc.Find("details.settings-menu").Length(), "the rest is the theme's header")
 }
 
 func sampleHouseExpense() *models.HouseExpense {
@@ -103,7 +98,7 @@ func TestHouseRowCompactMarkup(t *testing.T) {
 	hxGet, _ := row.Attr("hx-get")
 	assert.Equal(t, "/house/expenses/edit/42", hxGet)
 	target, _ := row.Attr("hx-target")
-	assert.Equal(t, "#action-dialog", target)
+	assert.Equal(t, "#sheet", target)
 	trigger, _ := row.Attr("hx-trigger")
 	assert.Equal(t, "click[!event.target.closest('button')]", trigger)
 
@@ -526,14 +521,14 @@ func TestToasts(t *testing.T) {
 	for tmpl, kind := range cases {
 		t.Run(tmpl, func(t *testing.T) {
 			doc := parseHTML(t, render(t, tmpl, &models.ModalContent{Title: "Saved", Message: "Gas updated", Lang: "en"}))
-			toast := doc.Find("dialog#modal .toast")
+			toast := doc.Find("dialog#toast .toast")
 			require.Equal(t, 1, toast.Length())
 			assert.True(t, toast.HasClass(kind))
 			assert.Equal(t, 1, toast.Find(".toast-icon svg").Length())
 			assert.Equal(t, "Saved", strings.TrimSpace(toast.Find(".toast-title").Text()))
 			assert.Equal(t, "Gas updated", strings.TrimSpace(toast.Find(".toast-message").Text()))
-			closeBtn := toast.Find("button#confirm-btn.toast-close")
-			require.Equal(t, 1, closeBtn.Length(), "keeps the id main.js focuses")
+			closeBtn := toast.Find("button#toast-close.toast-close")
+			require.Equal(t, 1, closeBtn.Length(), "the id the theme's themeShowToast focuses")
 			label, _ := closeBtn.Attr("aria-label")
 			assert.Equal(t, "Close", label)
 			assert.Equal(t, 1, toast.Find("progress#countdown-progress").Length(), "auto-dismiss countdown")
@@ -548,7 +543,7 @@ func TestReceiptUploadSheet(t *testing.T) {
 
 	form := doc.Find("form.receipt-upload-form")
 	target, _ := form.Attr("hx-target")
-	assert.Equal(t, "#action-dialog", target, "the review replaces the upload step")
+	assert.Equal(t, "#sheet", target, "the review replaces the upload step")
 	indicator, _ := form.Attr("hx-indicator")
 	assert.Equal(t, "#receipt-reading", indicator)
 	assert.Equal(t, 1, doc.Find("#receipt-reading").Length(), "reading state while the AI works")
@@ -1070,34 +1065,10 @@ func TestSnoozePage(t *testing.T) {
 	}
 }
 
-func TestRootLayoutRendersPagesByName(t *testing.T) {
-	page := func(name string, content any) *goquery.Document {
-		return parseHTML(t, render(t, "root", &models.RootLayout{
-			TemplateName: name, TemplateContent: content, Lang: "en",
-			HeaderOpts: &models.HeaderOptions{Lang: "en"},
-		}))
-	}
-	snooze := page("snooze-page", map[string]any{"State": "invalid", "Lang": "en"})
-	assert.Contains(t, snooze.Find("#tracker-content").Text(), "doesn't work", "any page by its name, with its own data")
-
-	unknown := page("no-such-page", nil)
-	assert.Equal(t, 1, unknown.Find("#tracker-content section.home").Length(), "unknown names show the home page")
-
-	// Stylesheets and scripts carry a per-start version so a deploy is not
-	// hidden behind a cached copy.
-	for _, sel := range []string{`link[rel="stylesheet"]`, `script[src]`} {
-		snooze.Find(sel).Each(func(_ int, el *goquery.Selection) {
-			src := el.AttrOr("href", el.AttrOr("src", ""))
-			assert.Regexp(t, `^/static/.+\?v=[0-9a-z]+$`, src)
-		})
-	}
-	assert.Equal(t, 3, snooze.Find(`link[rel="stylesheet"]`).Length())
-}
-
 func TestEveryIconNameDraws(t *testing.T) {
 	// Names used by the templates: navigation, home cards, side panels,
 	// landing features, toasts and confirmation cards.
-	for _, name := range []string{"house", "car", "groceries", "bills", "login", "register", "check", "alert", "moon",
+	for _, name := range []string{"house", "car", "groceries", "bills", "check", "alert", "moon",
 		"receipt", "chart", "pie", "calendar", "target", "trend", "bell", "calendar-days", "history", "phone"} {
 		doc := parseHTML(t, render(t, "icon", map[string]any{"Name": name}))
 		svg := doc.Find("svg")
@@ -1125,7 +1096,7 @@ func TestReceiptJobPanel(t *testing.T) {
 	trigger, _ := poll.Attr("hx-trigger")
 	assert.Equal(t, "every 2s", trigger)
 	target, _ := poll.Attr("hx-target")
-	assert.Equal(t, "#action-dialog", target, "the review form replaces the panel when ready")
+	assert.Equal(t, "#sheet", target, "the review form replaces the panel when ready")
 	assert.Contains(t, reading.Text(), "close this panel", "explains it keeps going in the background")
 
 	failed := parseHTML(t, render(t, "groceries-receipt-job", map[string]any{"State": "failed", "Message": "The AI said: “too small”", "Lang": "en"}))
@@ -1390,7 +1361,8 @@ func TestTrendsPageHasSectionButtons(t *testing.T) {
 }
 
 func TestNoChartJS(t *testing.T) {
-	html := render(t, "root", &models.RootLayout{Lang: "en", HeaderOpts: &models.HeaderOptions{Lang: "en"}})
+	html := render(t, "theme/page", theme.Page{Lang: "en", Content: "expenser/content",
+		Data: map[string]any{"Name": "index-page", "Data": map[string]any{"Lang": "en"}, "Lang": "en"}})
 	lib := strings.Join([]string{"chart", "js"}, ".") // spelled out so a grep for it finds no leftovers
 	assert.False(t, strings.Contains(strings.ToLower(html), lib), "no Chart.js script")
 	assert.Nil(t, loadTemplates(t).Lookup("exp-chart"), "old chart template removed")

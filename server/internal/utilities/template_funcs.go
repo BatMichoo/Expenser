@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/BatMichoo/theme"
 )
 
 // ParseTemplates parses the app's templates with TemplateFuncs, plus two
@@ -31,14 +33,30 @@ func ParseTemplates(fsys fs.FS, patterns ...string) (*template.Template, error) 
 		},
 		"hasTemplate": func(name string) bool { return name != "" && set.Lookup(name) != nil },
 	}
-	set, err := template.New("").Funcs(TemplateFuncs()).Funcs(pages).ParseFS(fsys, patterns...)
+	// The shared theme's templates (theme/page, theme/header, theme/sheet...)
+	// first, so Expenser's can use them and replace theme/nav.
+	base, err := theme.AddTemplates(template.New("").Funcs(TemplateFuncs()).Funcs(pages))
+	if err != nil {
+		return nil, err
+	}
+	set, err = base.ParseFS(fsys, patterns...)
 	return set, err
 }
+
+// StaticPrefix is where Expenser's own static files are served; the
+// theme's are at theme.DefaultPrefix.
+const StaticPrefix = "/static/expenser"
 
 // assetVersion changes on every start (so on every deploy) and is appended to
 // stylesheet and script URLs, so browsers do not keep using a cached copy of
 // an older version.
 var assetVersion = strconv.FormatInt(time.Now().Unix(), 36)
+
+// AssetVersion is the version appended to static file URLs.
+func AssetVersion() string { return assetVersion }
+
+// AppVersion is the running build's version, as the footer shows it.
+func AppVersion() string { return "v" + version.Version }
 
 // TemplateFuncs returns the functions available to every HTML template.
 func TemplateFuncs() template.FuncMap {
@@ -76,7 +94,7 @@ func TemplateFuncs() template.FuncMap {
 		},
 		// asset is the URL of a static file with the current asset version.
 		"asset": func(path string) string {
-			return "/static/" + path + "?v=" + assetVersion
+			return StaticPrefix + "/" + path + "?v=" + assetVersion
 		},
 		// appVersion is the running build's version, shown in the footer.
 		"appVersion": func() string { return "v" + version.Version },

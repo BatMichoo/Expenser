@@ -2,7 +2,7 @@
 <div class="sheet">
   {{ template "sheet-heading" (dict "Title" (T .Lang "form.edit") "Lang" .Lang) }}
   <form class="new-expense-form" hx-put="/groceries/{{ .Expense.ID }}" hx-target="#grocery-{{ .Expense.ID }}" hx-swap="outerHTML"
-    hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    hx-on::after-request="if(event.detail.successful && event.target === this) { themeHideSheet(); }">
     <div>
       <label for="product">{{ T .Lang "groceries.product" }}</label>
       <input type="text" id="product" name="product" value="{{ .Expense.Product }}" required
@@ -54,10 +54,10 @@
     <div class="sheet-actions">
       <button type="button" class="sheet-delete" hx-delete="/groceries/{{ .Expense.ID }}"
         hx-target="#grocery-{{ .Expense.ID }}" hx-swap="outerHTML" hx-confirm='{{ T .Lang "modal.delete_confirm" }}'
-        hx-on::after-request="if(event.detail.successful) { hideDialog(); }">
+        hx-on::after-request="if(event.detail.successful) { themeHideSheet(); }">
         {{ T .Lang "common.delete" }}
       </button>
-      <button type="button" class="sheet-cancel" onclick="hideDialog()">{{ T .Lang "common.cancel" }}</button>
+      <button type="button" class="sheet-cancel" onclick="themeHideSheet()">{{ T .Lang "common.cancel" }}</button>
       <button type="submit" class="btn-primary sheet-save">{{ T .Lang "common.save" }}</button>
     </div>
   </form>

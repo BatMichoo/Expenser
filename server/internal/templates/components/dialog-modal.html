@@ -13,11 +13,11 @@
     <button id="confirm-btn" type="button" {{ if eq .Method "GET" }} hx-get="{{ .Endpoint }}" {{ end }} {{ if eq
       .Method "DELETE" }} hx-delete="{{ .Endpoint }}" {{ end }} {{ if eq .Method "POST" }} hx-post="{{ .Endpoint }}" {{
       end }} hx-target="{{ .Target }}" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) {
-        hideDialog();
+        themeHideSheet();
     }">
       {{ if .ConfirmLabel }}{{ .ConfirmLabel }}{{ else }}{{ T .Lang "modal.confirm_btn" }}{{ end }}
     </button>
-    <button id="cancel-btn" type="button" onClick="hideDialog()">{{ T .Lang "modal.cancel_btn" }}</button>
+    <button id="cancel-btn" type="button" onClick="themeHideSheet()">{{ T .Lang "modal.cancel_btn" }}</button>
   </div>
 </div>
 {{ end }}

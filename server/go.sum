@@ -1,3 +1,5 @@
+github.com/BatMichoo/theme v0.1.0 h1:Bj5V0OPW7N8NeUuu19pxVh0DtmOoxYHawq+CcOuA7RE=
+github.com/BatMichoo/theme v0.1.0/go.mod h1:u58ML++5gdncecfO/usvfvTWgeLeTkPem/V3OK/0yVo=
 github.com/PuerkitoBio/goquery v1.10.3 h1:pFYcNSqHxBD06Fpj/KsbStFRsgRATgnf3LeXiUkhzPo=
 github.com/PuerkitoBio/goquery v1.10.3/go.mod h1:tMUX0zDMHXYlAQk6p35XxQMqMweEKB7iK7iLNd4RH4Y=
 github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kktS1LM=

@@ -4,7 +4,7 @@
 <div class="sheet-grab" aria-hidden="true"></div>
 <h2 class="new-expense-heading">
   {{ .Title }}
-  <button type="button" class="sheet-close" aria-label='{{ T .Lang "common.cancel" }}' onClick="hideDialog();">
+  <button type="button" class="sheet-close" aria-label='{{ T .Lang "common.cancel" }}' onClick="themeHideSheet();">
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M18 6 6 18" />
@@ -56,11 +56,11 @@
 {{ define "sheet-actions" }}
 <div class="sheet-actions">
   {{ if .DeleteURL }}
-  <button type="button" class="sheet-delete" hx-get="{{ .DeleteURL }}" hx-target="#action-dialog" hx-swap="innerHTML">
+  <button type="button" class="sheet-delete" hx-get="{{ .DeleteURL }}" hx-target="#sheet" hx-swap="innerHTML">
     {{ T .Lang "common.delete" }}
   </button>
   {{ end }}
-  <button type="button" class="sheet-cancel" onClick="hideDialog();">{{ T .Lang "common.cancel" }}</button>
+  <button type="button" class="sheet-cancel" onClick="themeHideSheet();">{{ T .Lang "common.cancel" }}</button>
   <button type="submit" class="btn-primary sheet-save">{{ T .Lang .SaveLabel }}</button>
 </div>
 {{ end }}

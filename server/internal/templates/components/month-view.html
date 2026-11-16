@@ -9,7 +9,7 @@
     {{ template "kpi-tiles" . }}
     <section id="add-expense-section">
       {{ if eq .Section "groceries" }}
-      <button type="button" class="upload-btn" hx-get="/groceries/form" hx-target="#action-dialog">
+      <button type="button" class="upload-btn" hx-get="/groceries/form" hx-target="#sheet">
         {{ template "icon" (dict "Name" "receipt") }}
         {{ T .Lang "groceries.upload_receipt" }}
       </button>
@@ -69,13 +69,13 @@
     </select>
   </form>
   {{ if eq .Section "groceries" }}
-  <button type="button" class="upload-btn" hx-get="/groceries/form" hx-target="#action-dialog"
+  <button type="button" class="upload-btn" hx-get="/groceries/form" hx-target="#sheet"
     title='{{ T .Lang "groceries.upload_receipt" }}' aria-label='{{ T .Lang "groceries.upload_receipt" }}'>
     {{ template "icon" (dict "Name" "receipt") }}
     <span class="btn-label">{{ T .Lang "groceries.upload_receipt" }}</span>
   </button>
   {{ end }}
-  <button type="button" class="add-btn" hx-get="{{ template "add-url" . }}" hx-target="#action-dialog"
+  <button type="button" class="add-btn" hx-get="{{ template "add-url" . }}" hx-target="#sheet"
     aria-label='{{ T .Lang "common.add" }}' title='{{ T .Lang "common.add" }}'>
     <span class="add-plus" aria-hidden="true">+</span><span class="btn-label">{{ T .Lang "common.add" }}</span> <kbd>N</kbd>
   </button>
@@ -190,7 +190,7 @@
 {{ define "row-actions" }}
 <div class="row-actions">
   <button type="button" class="icon-btn" aria-label='{{ T .Lang "common.edit" }}' title='{{ T .Lang "common.edit" }}'
-    hx-get="{{ .EditURL }}" hx-target="#action-dialog" hx-swap="innerHTML">
+    hx-get="{{ .EditURL }}" hx-target="#sheet" hx-swap="innerHTML">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 20h9" />
@@ -199,7 +199,7 @@
   </button>
   <button type="button" class="icon-btn danger" aria-label='{{ T .Lang "common.delete" }}' title='{{ T .Lang "common.delete" }}'
     {{ if .DeleteConfirm }}hx-delete="{{ .DeleteURL }}" hx-target="{{ .RowID }}" hx-swap="outerHTML" hx-confirm="{{ .DeleteConfirm }}"
-    {{ else }}hx-get="{{ .DeleteURL }}" hx-target="#action-dialog" hx-swap="innerHTML"{{ end }}>
+    {{ else }}hx-get="{{ .DeleteURL }}" hx-target="#sheet" hx-swap="innerHTML"{{ end }}>
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3 6h18" />

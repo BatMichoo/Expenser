@@ -10,11 +10,11 @@
   <div class="month-main">
     <div class="month-toolbar">
       <h2 class="bills-title">{{ template "icon" (dict "Name" "bills") }}{{ T .Lang "bills.title" }}</h2>
-      <button type="button" class="btn-secondary reminder-settings" hx-get="/settings/reminders" hx-target="#action-dialog"
+      <button type="button" class="btn-secondary reminder-settings" hx-get="/settings/reminders" hx-target="#sheet"
         title='{{ T .Lang "settings.reminders" }}'>
         {{ template "icon" (dict "Name" "bell") }}<span class="btn-label">{{ T .Lang "settings.reminders" }}</span>
       </button>
-      <button type="button" class="add-btn" hx-get="/bills/new" hx-target="#action-dialog"
+      <button type="button" class="add-btn" hx-get="/bills/new" hx-target="#sheet"
         aria-label='{{ T .Lang "bills.add" }}' title='{{ T .Lang "bills.add" }}'>
         <span class="add-plus" aria-hidden="true">+</span><span class="btn-label">{{ T .Lang "bills.add" }}</span> <kbd>N</kbd>
       </button>
@@ -55,7 +55,7 @@
       </span>
       <h3>{{ T .Lang "bills.empty_title" }}</h3>
       <p>{{ T .Lang "bills.empty_text" }}</p>
-      <button type="button" class="btn-primary sheet-save" hx-get="/bills/new" hx-target="#action-dialog">
+      <button type="button" class="btn-primary sheet-save" hx-get="/bills/new" hx-target="#sheet">
         + {{ T .Lang "bills.add" }}
       </button>
     </div>
@@ -77,7 +77,7 @@
 {{ end }}
 
 {{ define "bill-row" }}{{ $p := .R.Payment }}
-<li id="bill-{{ $p.ID }}" class="bill-row {{ .Kind }}" hx-get="/bills/edit/{{ $p.ID }}" hx-target="#action-dialog"
+<li id="bill-{{ $p.ID }}" class="bill-row {{ .Kind }}" hx-get="/bills/edit/{{ $p.ID }}" hx-target="#sheet"
   hx-swap="innerHTML" hx-trigger="click[!event.target.closest('button')]">
   <span class="bill-icon {{ $p.Category }}" aria-hidden="true">
     {{ if eq (print $p.Category) "car" }}
@@ -104,7 +104,7 @@
       title='{{ T .Lang "bills.skip_title" }}'>{{ T .Lang "bills.skip" }}</button>
     {{ end }}
     {{ if $p.Active }}
-    <button type="button" class="pay-btn" hx-get="/bills/pay/{{ $p.ID }}" hx-target="#action-dialog"
+    <button type="button" class="pay-btn" hx-get="/bills/pay/{{ $p.ID }}" hx-target="#sheet"
       hx-swap="innerHTML">{{ T .Lang "bills.mark_paid" }}</button>
     {{ end }}
   </div>
@@ -123,7 +123,7 @@
 <div class="sheet">
   {{ template "sheet-heading" (dict "Title" (T .Lang (print "bills." (or (and .IsEdit "edit_title") "add_title"))) "Lang" .Lang) }}
   <form class="new-expense-form bill-form" {{ if .IsEdit }}hx-put="/bills/{{ .Bill.ID }}"{{ else }}hx-post="/bills"{{ end }}
-    hx-swap="none" hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    hx-swap="none" hx-on::after-request="if(event.detail.successful && event.target === this) { themeHideSheet(); }">
     {{ if .IsEdit }}<input type="hidden" name="version" value="{{ .Version }}" />{{ end }}
 
     <fieldset class="category-switch segmented" hx-get="/bills/types" hx-target="#bill-type-chips" hx-swap="innerHTML"
@@ -283,7 +283,7 @@
 <div class="sheet">
   {{ template "sheet-heading" (dict "Title" (print (T .Lang "bills.pay_title") ": " .Label) "Lang" .Lang) }}
   <form class="new-expense-form bill-pay-form" hx-post="/bills/{{ .Bill.ID }}/paid" hx-swap="none"
-    hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    hx-on::after-request="if(event.detail.successful && event.target === this) { themeHideSheet(); }">
     <p class="receipt-summary">
       <strong>{{ printf (T .Lang "bills.pay_due") (.Bill.DueDate.Format "02.01.2006") }} · {{ T .Lang (print "type." .Bill.TypeName) }}</strong>
       <span>{{ T .Lang "bills.pay_hint" }}</span>
@@ -319,12 +319,12 @@
       <span class="upcoming-name">{{ template "bill-label" (dict "P" .Payment "Lang" $.Lang) }}</span>
       <span class="due-pill {{ $state }}">{{ template "due-text" (dict "Days" .DaysLeft "Arrives" $arrives "Lang" $.Lang) }}</span>
       <span class="upcoming-amount">{{ if .Payment.ExpectedAmount }}{{ money (deref .Payment.ExpectedAmount) }}{{ end }}</span>
-      <button type="button" class="pay-btn" hx-get="/bills/pay/{{ .Payment.ID }}" hx-target="#action-dialog"
+      <button type="button" class="pay-btn" hx-get="/bills/pay/{{ .Payment.ID }}" hx-target="#sheet"
         hx-swap="innerHTML" title='{{ T $.Lang "bills.mark_paid" }}' aria-label='{{ T $.Lang "bills.mark_paid" }}'>{{ template "icon" (dict "Name" "check" "Size" 14) }}</button>
     </li>
     {{ end }}
   </ul>
-  <a class="all-bills" href="/bills" hx-get="/bills" hx-target="#tracker-content" hx-push-url="/bills">{{ T .Lang "insights.all_bills" }} →</a>
+  <a class="all-bills" href="/bills" hx-get="/bills" hx-target="#content" hx-push-url="/bills">{{ T .Lang "insights.all_bills" }} →</a>
 </section>
 {{ end }}
 

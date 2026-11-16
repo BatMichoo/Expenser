@@ -12,7 +12,6 @@ type Pages struct {
 
 // HTMXComponents defines the names for reusable HTMX-specific UI components.
 type HTMXComponents struct {
-	Header               string // Header is the name for the application's header component.
 	Footer               string // Footer is the name for the application's footer component.
 	CreateHouseExpForm   string // CreateExpForm is the name for the expense creation form component.
 	CreateCarExpForm     string // CreateExpForm is the name for the expense creation form component.
@@ -50,7 +49,6 @@ type Responses struct {
 // HTMLTemplates groups all template names used throughout the application.
 // This provides a centralized and organized way to reference templates for rendering.
 type HTMLTemplates struct {
-	Root       string          // Root is the name for the root template that often includes other templates.
 	Pages      *Pages          // Pages holds a collection of full page template names.
 	Responses  *Responses      // Responses holds a collection of HTMX response partial template names.
 	Components *HTMXComponents // Components holds a collection of reusable HTMX component template names.
@@ -66,7 +64,6 @@ var pages = &Pages{
 }
 
 var components = &HTMXComponents{
-	Header:               "header",
 	Footer:               "footer",
 	HouseExpRow:          "house-exp-row",
 	CarExpRow:            "car-exp-row",
@@ -100,7 +97,6 @@ var responses = &Responses{
 // organized template names. It should be imported and used
 // globally for consistent template referencing.
 var Templates = &HTMLTemplates{
-	Root:       "root",
 	Pages:      pages,
 	Responses:  responses,
 	Components: components,

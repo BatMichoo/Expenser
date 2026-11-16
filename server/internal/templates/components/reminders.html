@@ -6,7 +6,7 @@
 <div class="sheet">
   {{ template "sheet-heading" (dict "Title" (T .Lang "settings.reminders") "Lang" .Lang) }}
   <form class="new-expense-form account-form reminders-form" hx-post="/settings/reminders" hx-swap="none"
-    hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    hx-on::after-request="if(event.detail.successful && event.target === this) { themeHideSheet(); }">
     <div>
       <label for="account-email">{{ T .Lang "settings.reminder_email" }}</label>
       <input type="email" id="account-email" name="email" value="{{ .User.Email }}" autocomplete="email"

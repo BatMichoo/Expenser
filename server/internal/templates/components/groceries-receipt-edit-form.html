@@ -4,7 +4,7 @@
   {{ template "sheet-heading" (dict "Title" (or .Store (T .Lang "receipt.store_unknown")) "Lang" .Lang) }}
   <form class="new-expense-form receipt-review-form" hx-post="/groceries/confirm-batch" hx-target="#recent-expenses"
     hx-disabled-elt="find button[type='submit']"
-    hx-swap="afterbegin" hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    hx-swap="afterbegin" hx-on::after-request="if(event.detail.successful && event.target === this) { themeHideSheet(); }">
     <p class="receipt-summary">
       <strong>{{ printf (T .Lang "receipt.items") (len .Items) }} · {{ money .Total }}</strong>
       <span>{{ T .Lang "receipt.review" }}</span>
@@ -71,7 +71,7 @@
     </fieldset>
     {{ end }}
     <div class="sheet-actions">
-      <button type="button" class="sheet-cancel" onClick="hideDialog();">{{ T .Lang "common.cancel" }}</button>
+      <button type="button" class="sheet-cancel" onClick="themeHideSheet();">{{ T .Lang "common.cancel" }}</button>
       <button type="submit" class="btn-primary sheet-save">{{ printf (T .Lang "receipt.save_items") (len .Items) }}</button>
     </div>
   </form>

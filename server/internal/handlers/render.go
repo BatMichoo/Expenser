@@ -6,6 +6,8 @@ import (
 	"expenser/internal/services"
 	"expenser/internal/utilities"
 	"net/http"
+
+	"github.com/BatMichoo/theme"
 	"strconv"
 	"time"
 
@@ -18,9 +20,24 @@ func currentLang(c *gin.Context) string {
 	return c.GetString(middleware.LanguageCookieKey)
 }
 
-// authURLKey holds the home server's login service for the request (see
-// RegisterRoutes), for the header's Log out.
-const authURLKey = "expenser.auth_url"
+// site is where Expenser sits in the home server, for the page header.
+type site struct {
+	AuthURL   string // the login service: Account, Log out
+	LanDomain string // the theme cookie is set for it
+}
+
+const siteKey = "expenser.site"
+
+// withSite makes s available to renderLayout for every request.
+func withSite(s site) gin.HandlerFunc {
+	return func(c *gin.Context) { c.Set(siteKey, s); c.Next() }
+}
+
+func siteOf(c *gin.Context) site {
+	v, _ := c.Get(siteKey)
+	s, _ := v.(site)
+	return s
+}
 
 // currentUserID returns the logged-in user's ID, or uuid.Nil on routes
 // without RequireUser.
@@ -52,24 +69,52 @@ func renderView(c *gin.Context, partial, page string, data any) {
 	renderLayout(c, http.StatusOK, page, data)
 }
 
-// renderLayout renders tmpl inside the root layout, which includes it by
-// name; a name that is not a template shows the home page.
+// pageData is what the page around a full page load passes to Expenser's
+// parts of it (templates/components/layout.html).
+type pageData struct {
+	Name     string // the content template
+	Data     any    // its data
+	Lang     string
+	HasFlash bool // a flash error waits to be shown as a popup
+}
+
+// renderLayout renders tmpl inside the shared theme's page (header,
+// footer, sheet and toast containers); a name that is not a template
+// shows the home page.
 func renderLayout(c *gin.Context, status int, tmpl string, data any) {
 	lang := currentLang(c)
+	s := siteOf(c)
 	_, loggedIn := middleware.CurrentUser(c)
+	app := utilities.T(lang, "header.title")
 
-	c.HTML(status, utilities.Templates.Root, &models.RootLayout{
-		TemplateName:    tmpl,
-		TemplateContent: data,
-		HeaderOpts: &models.HeaderOptions{
-			IsLoggedIn: loggedIn,
-			Lang:       lang,
-			LogoutURL:  c.GetString(authURLKey) + "/logout",
-		},
-		Lang:       lang,
-		Year:       time.Now().Year(),
-		IsLoggedIn: loggedIn,
-		HasFlash:   hasFlash(c),
+	header := theme.Header{
+		AppName: app, HomeURL: "/", Lang: lang, LoggedIn: loggedIn,
+		LanguageURL: "/settings/language",
+	}
+	if loggedIn {
+		header.Nav = []theme.NavItem{
+			{Label: utilities.T(lang, "nav.house"), URL: "/house", Icon: "house"},
+			{Label: utilities.T(lang, "nav.car"), URL: "/car", Icon: "car"},
+			{Label: utilities.T(lang, "nav.groceries"), URL: "/groceries", Icon: "groceries"},
+			{Label: utilities.T(lang, "nav.bills"), URL: "/bills", Icon: "bills"},
+		}
+		header.AccountURL = s.AuthURL + "/account"
+		header.LogoutURL = s.AuthURL + "/logout"
+	}
+	asset := func(p string) string { return utilities.StaticPrefix + "/" + p + "?v=" + utilities.AssetVersion() }
+
+	c.HTML(status, "theme/page", theme.Page{
+		Lang:         lang,
+		Title:        app,
+		Mode:         theme.ModeFromRequest(c.Request),
+		CookieDomain: s.LanDomain,
+		Header:       header,
+		Footer:       theme.Footer{Year: time.Now().Year(), AppName: app, Version: utilities.AppVersion(), Lang: lang},
+		Content:      "expenser/content",
+		BodyEnd:      "expenser/body-end",
+		Data:         pageData{Name: tmpl, Data: data, Lang: lang, HasFlash: hasFlash(c)},
+		CSS:          []string{asset("css/styles.css"), asset("css/mobile.css"), asset("css/tablet.css")},
+		JS:           []string{asset("js/main.js")},
 	})
 }
 

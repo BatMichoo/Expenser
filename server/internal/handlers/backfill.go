@@ -100,7 +100,7 @@ func (h *BackfillHandler) WithPreview(section models.Section, create HandlerFunc
 		}
 		// The preview replaces the panel; the add form keeps the dialog open
 		// for a retargeted response.
-		c.Header("HX-Retarget", "#action-dialog")
+		c.Header("HX-Retarget", "#sheet")
 		c.Header("HX-Reswap", "innerHTML")
 		data := gin.H{
 			"Plan": plan, "TypeName": name, "Section": string(section),

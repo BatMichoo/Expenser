@@ -20,6 +20,7 @@ import (
 	"time"
 	_ "time/tzdata" // the image has no zoneinfo; APP_TIMEZONE needs it
 
+	"github.com/BatMichoo/theme"
 	"github.com/gin-gonic/gin"
 )
 
@@ -60,10 +61,12 @@ func main() {
 
 	// Asset URLs carry a version that changes on every deploy (see the asset
 	// template function), so browsers may keep them for a while.
-	assets := router.Group("/static", func(c *gin.Context) {
+	assets := router.Group(utilities.StaticPrefix, func(c *gin.Context) {
 		c.Header("Cache-Control", "public, max-age=86400")
 	})
 	assets.StaticFS("/", http.FS(static.FS))
+	// The shared theme's CSS and scripts (header, sheet, toasts, light/dark).
+	router.GET(theme.DefaultPrefix+"/*file", gin.WrapH(http.StripPrefix(theme.DefaultPrefix, theme.Handler())))
 	// Browsers ask for /favicon.ico on pages without an icon link; without
 	// this the 404 pops up as an error on the next page.
 	router.StaticFileFS("/favicon.ico", "favicon.png", http.FS(static.FS))

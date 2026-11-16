@@ -2,7 +2,7 @@
 <div class="sheet">
   {{ template "sheet-heading" (dict "Title" (T .Lang "form.add_new") "Lang" .Lang) }}
   <form class="new-expense-form" hx-post="/groceries" hx-target="#recent-expenses" hx-swap="afterbegin"
-    hx-on::after-request="if(event.detail.successful && event.target === this) { hideDialog(); }">
+    hx-on::after-request="if(event.detail.successful && event.target === this) { themeHideSheet(); }">
     <div>
       <label for="product">{{ T .Lang "groceries.product" }}</label>
       <input type="text" id="product" name="product" required
@@ -52,7 +52,7 @@
       </div>
     </details>
     <div class="sheet-actions">
-      <button type="button" class="sheet-cancel" onclick="hideDialog()">{{ T .Lang "common.cancel" }}</button>
+      <button type="button" class="sheet-cancel" onclick="themeHideSheet()">{{ T .Lang "common.cancel" }}</button>
       <button type="submit" class="btn-primary sheet-save">{{ T .Lang "common.save" }}</button>
     </div>
   </form>
