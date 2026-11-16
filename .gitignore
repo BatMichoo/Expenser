@@ -24,7 +24,7 @@ profile.cov
 go.work
 go.work.sum
 
-# Database dumps made by the deployer
+# Database dumps (the old deployer made them here)
 backups/
 
 # env file

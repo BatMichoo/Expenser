@@ -9,7 +9,7 @@ Expenser is a **monolithic web application** following a traditional MVC-like st
 - **Backend**: Go (Gin framework).
 - **Frontend**: Go HTML Templates + HTMX + Vanilla CSS.
 - **Persistence**: PostgreSQL.
-- **Deployment**: Docker + Nginx.
+- **Hosting**: an app of the home server (github.com/BatMichoo/homeserver): its nginx, login and theme.
 
 ## 2. Technology Stack
 
@@ -22,8 +22,8 @@ Expenser is a **monolithic web application** following a traditional MVC-like st
 | **Database**                 | PostgreSQL                                                       |
 | **Database Driver**          | `lib/pq`                                                         |
 | **Migrations**               | [Goose](https://github.com/pressly/goose)                        |
-| **Authentication**           | JWT (JSON Web Tokens)                                            |
-| **Reverse Proxy**            | Nginx                                                            |
+| **Authentication**           | The home server's auth service (headers from its nginx)          |
+| **Look**                     | The home server's shared theme (github.com/BatMichoo/theme)      |
 | **Containerization**         | Docker, Docker Compose                                           |
 
 ## 3. Directory Structure
@@ -36,14 +36,13 @@ server/
 │   ├── db/             # Database connection and Data Access Objects (DAOs)
 │   │   └── migrations/ # SQL migration files (Goose)
 │   ├── handlers/       # HTTP request handlers (Controllers)
-│   ├── middleware/     # Gin middleware (e.g., Auth)
+│   ├── middleware/     # Gin middleware (RequireUser, language, same-origin)
 │   ├── models/         # Data structures and domain models
-│   ├── services/       # Business logic (e.g., AuthService)
+│   ├── services/       # Business logic (e.g., RecurringPaymentService)
 │   ├── templates/      # SSR HTML templates (Components, Pages, Responses)
 │   └── utilities/      # Helper functions (Time formats, template funcs)
 ├── static/             # Static assets (CSS, JS, HTMX)
 │   └── js/             # Small client-side helpers for HTMX
-nginx/                  # Nginx configuration and SSL setup
 ```
 
 ## 4. Key Architectural Patterns
@@ -76,18 +75,26 @@ The application uses a manual repository-like pattern located in `internal/db/`.
 
 ### Authentication
 
-- **JWT**: Tokens are issued upon login and validated via `internal/middleware/auth.go`.
-- **Middleware**: Protected routes (like `/car/*` and `/house/*`) are grouped and use the `AuthMiddleware`.
+- **The home server logs people in**, not Expenser. Its nginx asks its auth service about every request and passes the person on in `X-User-Id` (UUID) and `X-User-Name` (percent-encoded UTF-8). nginx replaces whatever the browser sent in them, and Expenser is reachable only through nginx, so they are trusted.
+- **`middleware.RequireUser`** reads them, makes a `users` row for anyone new (`EnsureUser`, keeping their name and language for reminder emails) and answers 401 without them. In `DEV_MODE` a request without them is the dev seed user. `middleware.CurrentUser` / `currentUserID` give the person to handlers.
+- **Public routes**: only `/snooze/:token` (signed links in reminder emails) and static files. The home server's nginx site for Expenser must let `/snooze/` through without a login.
+- **Account and password** live in the auth service (the header's Account and Log out go there). Expenser keeps only its reminder settings.
+
+### Look (shared theme)
+
+- Full pages are `theme/page` from github.com/BatMichoo/theme (`handlers.renderLayout`): header, footer, `#content`, the side sheet `#sheet` (`themeShowSheet`, `themeHideSheet`) and toasts `#toast` (`themeShowToast`, `themeHideToast`). Its CSS and scripts (htmx included) are served at `/static/theme`; Expenser's own at `/static/expenser`.
+- `templates/components/layout.html` holds Expenser's parts: its `theme/nav` (the theme's navigation with Expenser's icons), the content wrapper and the end of the body.
+- Language is the shared `homeserver_lang` cookie, light/dark the shared `homeserver_theme` cookie.
 
 ### Configuration
 
-Managed in `internal/config/config.go`. It reads from environment variables, which are often provided by a `.env` file (managed by Docker Compose in production). Only `internal/config` reads the environment (`LoadConfig(getenv)`); `.env.dev` is loaded by `config.LoadDevEnv()` from the module root when present. Startup fails on missing DB settings or a weak `JWT_SECRET` (under 32 bytes).
+Managed in `internal/config/config.go`. It reads from environment variables, which are often provided by a `.env` file (managed by Docker Compose in production). Only `internal/config` reads the environment (`LoadConfig(getenv)`); `.env.dev` is loaded by `config.LoadDevEnv()` from the module root when present. Startup fails on missing DB settings or a weak `LINK_SECRET` (under 32 bytes; it signs snooze links, and `JWT_SECRET`, its old name, still works).
 
 ## 5. Deployment and Operations
 
-- **Makefile**: Provides shortcuts for common tasks (building, running, generating certs).
-- **Docker Compose**: Orchestrates the `server`, `db`, and `nginx` containers, plus `certs`, which issues nginx's TLS certificate from a private home CA (kept in the `ca-data` volume) before nginx starts.
-- **Nginx**: Handles SSL termination and proxies requests to the Go application.
+- **The home server** builds `server/Dockerfile` and runs Expenser as a submodule, behind its nginx, with its Postgres and its deployer. HTTPS, certificates, backups and deploys are its job.
+- **Makefile**: shortcuts for development (`make start`, `make dev-db`, `make test`).
+- **docker-compose.dev.yaml**: the development database only.
 
 ## 6. Developer Guidelines for Agents
 
