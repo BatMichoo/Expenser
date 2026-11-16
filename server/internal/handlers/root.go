@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"expenser/internal/middleware"
 	"expenser/internal/models"
 	"expenser/internal/services"
@@ -74,4 +75,18 @@ func (h *RootHandler) ChangeLanguage(c *gin.Context) error {
 	c.Header("HX-Refresh", "true")
 	c.Status(http.StatusOK)
 	return nil
+}
+
+// health answers "ok" while the database answers, else 503.
+func health(store interface{ Ping(context.Context) error }) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		defer cancel()
+		if err := store.Ping(ctx); err != nil {
+			log.Printf("health: %v", err)
+			c.String(http.StatusServiceUnavailable, "database unavailable")
+			return
+		}
+		c.String(http.StatusOK, "ok")
+	}
 }

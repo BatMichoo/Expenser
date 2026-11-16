@@ -58,6 +58,7 @@ type BillsStore interface {
 // Store is all the data access of the handlers and of the services they
 // use. *database.DB implements it.
 type Store interface {
+	Ping(ctx context.Context) error
 	middleware.OwnerStore
 	HouseStore
 	CarStore

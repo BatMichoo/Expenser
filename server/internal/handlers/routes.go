@@ -22,6 +22,9 @@ func RegisterRoutes(router *gin.Engine, d Deps) {
 	// Public: the home server's nginx lets these through without a login
 	// (its expenser site has a public location for /snooze/).
 	router.NoRoute(wrap(rootHandler.NotFound))
+	// For the home server's container health check and deployer (its nginx
+	// keeps /healthz from the outside).
+	router.GET("/healthz", health(d.Store))
 	// Snooze links in reminder emails: signed, so no login needed.
 	router.GET("/snooze/:token", wrap(snoozeHandler.GetSnooze))
 	router.POST("/snooze/:token", wrap(snoozeHandler.PostSnooze))
