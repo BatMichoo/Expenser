@@ -124,6 +124,20 @@ func (d DB) WithName(name string) DB {
 	return d
 }
 
+// HomeServerURL is the home server's dashboard, e.g.
+// https://homeserver.lan/: the header's "Home ›" leads there. "" without a
+// LAN domain (development).
+func (c *Config) HomeServerURL() string {
+	if c.LanDomain == "" {
+		return ""
+	}
+	u := "https://" + c.LanDomain
+	if c.HTTPSPort != 443 {
+		u += ":" + strconv.Itoa(c.HTTPSPort)
+	}
+	return u + "/"
+}
+
 // LoadConfig loads the configuration through getenv (normally os.Getenv), so
 // tests can pass a map. It does not read .env.dev; see LoadDevEnv. Bad or
 // missing required settings are an error, so the app fails at start.

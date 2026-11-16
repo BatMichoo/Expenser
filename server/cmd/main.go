@@ -87,14 +87,15 @@ func main() {
 		log.Println("Dev mode: requests without the home server's login headers are the dev user.")
 	}
 	handlers.RegisterRoutes(router, handlers.Deps{
-		Store:     db,
-		LanDomain: cfg.LanDomain,
-		AuthURL:   cfg.AuthURL(),
-		ReceiptAI: gemini.NewGeminiService(cfg.ReceiptAI.APIKey, cfg.ReceiptAI.Models()...),
-		Snooze:    snooze,
-		Mailer:    mailer,
-		Links:     links,
-		DevMode:   cfg.DevMode,
+		Store:         db,
+		LanDomain:     cfg.LanDomain,
+		AuthURL:       cfg.AuthURL(),
+		HomeServerURL: cfg.HomeServerURL(),
+		ReceiptAI:     gemini.NewGeminiService(cfg.ReceiptAI.APIKey, cfg.ReceiptAI.Models()...),
+		Snooze:        snooze,
+		Mailer:        mailer,
+		Links:         links,
+		DevMode:       cfg.DevMode,
 	})
 
 	schedulerCtx, stopScheduler := context.WithCancel(context.Background())

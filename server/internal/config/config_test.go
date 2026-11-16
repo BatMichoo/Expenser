@@ -105,6 +105,18 @@ func TestLoadConfigLinkSecret(t *testing.T) {
 	assert.Contains(t, err.Error(), "LINK_SECRET must be at least 32 bytes (got 5)")
 }
 
+func TestHomeServerURL(t *testing.T) {
+	cfg, err := LoadConfig(env(map[string]string{"LAN_DOMAIN": "homeserver.lan"}))
+	require.NoError(t, err)
+	assert.Equal(t, "https://homeserver.lan/", cfg.HomeServerURL())
+	cfg, err = LoadConfig(env(map[string]string{"LAN_DOMAIN": "homeserver.lan", "HTTPS_PORT": "8443"}))
+	require.NoError(t, err)
+	assert.Equal(t, "https://homeserver.lan:8443/", cfg.HomeServerURL())
+	cfg, err = LoadConfig(env(nil))
+	require.NoError(t, err)
+	assert.Equal(t, "", cfg.HomeServerURL(), "no domain (dev): no link")
+}
+
 func TestAuthURL(t *testing.T) {
 	cfg, err := LoadConfig(env(map[string]string{"LAN_DOMAIN": "homeserver.lan"}))
 	require.NoError(t, err)

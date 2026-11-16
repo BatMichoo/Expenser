@@ -26,7 +26,7 @@ func page(t *testing.T, tmpl string, data any, loggedIn bool, cookie string) *go
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.SetHTMLTemplate(set)
-	r.Use(middleware.I18nMiddleware(), withSite(site{AuthURL: "https://auth.homeserver.lan", LanDomain: "homeserver.lan"}))
+	r.Use(middleware.I18nMiddleware(), withSite(site{AuthURL: "https://auth.homeserver.lan", LanDomain: "homeserver.lan", HomeServerURL: "https://homeserver.lan/"}))
 	r.GET("/", func(c *gin.Context) {
 		if loggedIn {
 			middleware.SetUser(c, middleware.User{ID: uuid.New(), Name: "Miro"})
@@ -56,6 +56,8 @@ func TestLayoutIsTheSharedTheme(t *testing.T) {
 	nav.Each(func(_ int, b *goquery.Selection) { paths = append(paths, b.AttrOr("data-path", "")) })
 	assert.Equal(t, []string{"/house", "/car", "/groceries", "/bills"}, paths)
 	assert.Equal(t, 4, nav.Find("svg").Length(), "Expenser's icons")
+	assert.Equal(t, "https://homeserver.lan/", doc.Find("header a.home-crumb").AttrOr("href", ""), "Home › leads to the dashboard")
+	assert.Contains(t, doc.Find("header .app-crumb").Text(), "Expense Tracker")
 
 	menu := doc.Find("details.settings-menu")
 	assert.Equal(t, "https://auth.homeserver.lan/account", menu.Find("form.settings-logout-form[method=get]").AttrOr("action", ""))

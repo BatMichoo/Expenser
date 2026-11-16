@@ -22,8 +22,9 @@ func currentLang(c *gin.Context) string {
 
 // site is where Expenser sits in the home server, for the page header.
 type site struct {
-	AuthURL   string // the login service: Account, Log out
-	LanDomain string // the theme cookie is set for it
+	AuthURL       string // the login service: Account, Log out
+	LanDomain     string // the theme cookie is set for it
+	HomeServerURL string // the dashboard: the title's "Home ›"
 }
 
 const siteKey = "expenser.site"
@@ -89,7 +90,7 @@ func renderLayout(c *gin.Context, status int, tmpl string, data any) {
 
 	header := theme.Header{
 		AppName: app, HomeURL: "/", Lang: lang, LoggedIn: loggedIn,
-		LanguageURL: "/settings/language",
+		LanguageURL: "/settings/language", HomeServerURL: s.HomeServerURL,
 	}
 	if loggedIn {
 		header.Nav = []theme.NavItem{

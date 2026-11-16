@@ -78,11 +78,13 @@ type Deps struct {
 	Store     Store
 	LanDomain string // the language cookie is set for it
 	AuthURL   string // the home server's login service (Account, Log out)
-	ReceiptAI *gemini.GeminiService
-	Snooze    *services.SnoozeSigner
-	Mailer    services.Mailer               // nil: SMTP isn't configured
-	Links     *services.ReminderLinkBuilder // nil: emails have no links
-	DevMode   bool                          // developer helpers (test email), and no login needed
+	// HomeServerURL is the home server's dashboard (the header's "Home ›").
+	HomeServerURL string
+	ReceiptAI     *gemini.GeminiService
+	Snooze        *services.SnoozeSigner
+	Mailer        services.Mailer               // nil: SMTP isn't configured
+	Links         *services.ReminderLinkBuilder // nil: emails have no links
+	DevMode       bool                          // developer helpers (test email), and no login needed
 }
 
 // handlerSet is every handler, each built once with the services it uses.

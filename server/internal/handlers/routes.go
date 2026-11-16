@@ -17,7 +17,7 @@ func RegisterRoutes(router *gin.Engine, d Deps) {
 
 	router.Use(middleware.SameOrigin())
 	router.Use(middleware.I18nMiddleware())
-	router.Use(withSite(site{AuthURL: d.AuthURL, LanDomain: d.LanDomain}))
+	router.Use(withSite(site{AuthURL: d.AuthURL, LanDomain: d.LanDomain, HomeServerURL: d.HomeServerURL}))
 
 	// Public: the home server's nginx lets these through without a login
 	// (its expenser site has a public location for /snooze/).
