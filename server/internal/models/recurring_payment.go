@@ -287,35 +287,74 @@ func (p *RecurringPayment) NextDueOnOrAfter(date time.Time) (time.Time, error) {
 }
 
 // MissedCycles reports whether the payment is more than one cycle behind:
-// not only is the current due date past, the following one is too. Such a
+// not only is the current due date past, the following one is too (both
+// compared by their effective dates, see EffectiveDueDate). Such a
 // payment can be skipped forward instead of paid cycle by cycle.
 func (p *RecurringPayment) MissedCycles(today time.Time) bool {
 	today = DateOnly(today)
-	if !DateOnly(p.DueDate).Before(today) {
+	if !p.EffectiveDueDate().Before(today) {
 		return false
 	}
 	next, err := p.NextDueAfter(p.DueDate)
-	return err == nil && !next.After(today)
+	return err == nil && !p.effective(next).After(today)
 }
 
-// DaysUntilDue is negative when the payment is overdue.
+// PayByDate is the last working day on or before d: a Saturday or Sunday
+// moves back to the Friday before (offices are closed at the weekend).
+// Public holidays are not considered.
+func PayByDate(d time.Time) time.Time {
+	d = DateOnly(d)
+	switch d.Weekday() {
+	case time.Saturday:
+		return d.AddDate(0, 0, -1)
+	case time.Sunday:
+		return d.AddDate(0, 0, -2)
+	}
+	return d
+}
+
+// effective is the date that counts for paying a bill due on d: PayByDate
+// for pay-by bills; arrives bills have no deadline and keep their date.
+func (p RecurringPayment) effective(d time.Time) time.Time {
+	if p.DateKind == DateArrives {
+		return DateOnly(d)
+	}
+	return PayByDate(d)
+}
+
+// EffectiveDueDate is the date that counts for the current due date: a
+// pay-by bill due at the weekend is due the Friday before. Overdue, days
+// left, the first reminder, sorting and what people see use it; the cycle,
+// paying, snoozing and reminder bookkeeping keep the stored DueDate.
+func (p RecurringPayment) EffectiveDueDate() time.Time {
+	return p.effective(p.DueDate)
+}
+
+// WeekendShifted reports whether EffectiveDueDate differs from the stored
+// due date (a pay-by bill due on a Saturday or Sunday).
+func (p RecurringPayment) WeekendShifted() bool {
+	return !p.EffectiveDueDate().Equal(DateOnly(p.DueDate))
+}
+
+// DaysUntilDue counts to the effective due date; negative when overdue.
 func (p *RecurringPayment) DaysUntilDue(today time.Time) int {
-	return int(DateOnly(p.DueDate).Sub(DateOnly(today)).Hours() / 24)
+	return int(p.EffectiveDueDate().Sub(DateOnly(today)).Hours() / 24)
 }
 
 // FirstReminderDate is the first day a reminder goes out for the current
-// due date: N days before a deadline, or N days after an arrival date.
+// due date: N days before the effective deadline, or N days after an
+// arrival date.
 func (p *RecurringPayment) FirstReminderDate() time.Time {
-	due := DateOnly(p.DueDate)
+	due := p.EffectiveDueDate()
 	if p.DateKind == DateArrives {
 		return due.AddDate(0, 0, p.RemindDaysAfter)
 	}
 	return due.AddDate(0, 0, -p.RemindDaysBefore)
 }
 
-// IsOverdue: a pay-by bill whose deadline has passed unpaid.
+// IsOverdue: a pay-by bill whose effective deadline has passed unpaid.
 func (p *RecurringPayment) IsOverdue(today time.Time) bool {
-	return p.DateKind != DateArrives && DateOnly(p.DueDate).Before(DateOnly(today))
+	return p.DateKind != DateArrives && p.EffectiveDueDate().Before(DateOnly(today))
 }
 
 // IsWaiting: an arrives bill past its date and not yet paid.

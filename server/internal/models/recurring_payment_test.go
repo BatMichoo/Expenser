@@ -154,7 +154,7 @@ func TestNextDueOnOrAfter(t *testing.T) {
 func TestMissedCycles(t *testing.T) {
 	p := &RecurringPayment{StartDate: date(2026, 9, 10), DueDate: date(2026, 9, 10), CycleUnit: CycleMonth, CycleEvery: 1, Active: true}
 	assert.True(t, p.MissedCycles(date(2026, 11, 11)), "Sep and Oct due dates both passed")
-	assert.False(t, p.MissedCycles(date(2026, 10, 9)), "overdue but the next cycle has not come yet")
+	assert.False(t, p.MissedCycles(date(2026, 10, 8)), "overdue but the next cycle has not come yet (Sat 10 Oct counts as Fri 9)")
 	assert.False(t, p.MissedCycles(date(2026, 9, 1)), "not overdue")
 }
 

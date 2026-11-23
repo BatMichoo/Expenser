@@ -225,7 +225,7 @@ func TestHouseMonthViewUpcomingBills(t *testing.T) {
 	require.NoError(t, utilities.InitI18n())
 	store := newMonthStore()
 	store.bills = []models.RecurringPayment{
-		{Name: "Fiber", Category: models.SectionHouse, DueDate: time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC), Active: true},
+		{Name: "Fiber", Category: models.SectionHouse, DueDate: time.Date(2026, 11, 13, 0, 0, 0, 0, time.UTC), Active: true},
 		{Name: "Insurance", Category: models.SectionCar, DueDate: time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC), Active: true},
 		{Name: "TV", Category: models.SectionHouse, DueDate: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC), Active: true},
 	}
@@ -239,7 +239,7 @@ func TestHouseMonthViewUpcomingBills(t *testing.T) {
 	assert.Equal(t, "TV", v.UpcomingBills[0].Payment.Name, "overdue first")
 	assert.Equal(t, -8, v.UpcomingBills[0].DaysLeft)
 	assert.Equal(t, "Fiber", v.UpcomingBills[1].Payment.Name)
-	assert.Equal(t, 4, v.UpcomingBills[1].DaysLeft)
+	assert.Equal(t, 3, v.UpcomingBills[1].DaysLeft)
 
 	past, err := svc.House(context.Background(), uuid.New(), YearMonth{2026, time.October}, MonthFilter{}, "en", now)
 	require.NoError(t, err)

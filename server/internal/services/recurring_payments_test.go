@@ -142,9 +142,9 @@ func TestMarkPaidAmounts(t *testing.T) {
 func TestUpcoming(t *testing.T) {
 	today := time.Date(2026, 11, 10, 18, 30, 0, 0, time.UTC)
 	store := &fakePaymentStore{upcoming: []models.RecurringPayment{
-		{DueDate: day(2026, 11, 7)},
+		{DueDate: day(2026, 11, 6)}, // weekdays: weekend dates count as the Friday before
 		{DueDate: day(2026, 11, 10)},
-		{DueDate: day(2026, 11, 15)},
+		{DueDate: day(2026, 11, 16)},
 	}}
 	svc := newTestPaymentService(store, today)
 
@@ -152,11 +152,11 @@ func TestUpcoming(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, day(2026, 11, 17), store.upcomingTil)
 	require.Len(t, got, 3)
-	assert.Equal(t, -3, got[0].DaysLeft)
+	assert.Equal(t, -4, got[0].DaysLeft)
 	assert.True(t, got[0].Overdue)
 	assert.Equal(t, 0, got[1].DaysLeft)
 	assert.False(t, got[1].Overdue)
-	assert.Equal(t, 5, got[2].DaysLeft)
+	assert.Equal(t, 6, got[2].DaysLeft)
 
 	_, err = svc.Upcoming(context.Background(), uuid.New(), -1)
 	assert.ErrorIs(t, err, ErrInvalidUpcomingDay)
