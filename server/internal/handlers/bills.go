@@ -471,7 +471,7 @@ func (h *BillsHandler) MarkBillPaid(c *gin.Context) error {
 	billsChanged(c, true)
 	renderSuccess(c, http.StatusOK, utilities.T(lang, "bills.paid"),
 		fmt.Sprintf(utilities.T(lang, "bills.paid_message"), billLabel(lang, paid.Payment),
-			paid.Payment.EffectiveDueDate().Format("02.01.2006")))
+			dueDateText(lang, paid.Payment)))
 	return nil
 }
 
@@ -489,8 +489,23 @@ func (h *BillsHandler) SkipMissed(c *gin.Context) error {
 	lang := currentLang(c)
 	billsChanged(c, false)
 	renderSuccess(c, http.StatusOK, utilities.T(lang, "bills.skipped"),
-		fmt.Sprintf(utilities.T(lang, "bills.next_due"), p.EffectiveDueDate().Format("02.01.2006")))
+		fmt.Sprintf(utilities.T(lang, "bills.next_due"), dueDateText(lang, p)))
 	return nil
+}
+
+// dueDateText is a bill's effective due date for messages, with the real
+// date next to it when a weekend moved it, e.g. "11.12.2026 (due Sat 12.12)"
+// (the same as the Bills page).
+func dueDateText(lang string, p *models.RecurringPayment) string {
+	text := p.EffectiveDueDate().Format("02.01.2006")
+	if p.WeekendShifted() {
+		key := "bills.weekend_due.sat"
+		if p.DueDate.Weekday() == time.Sunday {
+			key = "bills.weekend_due.sun"
+		}
+		text += " (" + fmt.Sprintf(utilities.T(lang, key), p.DueDate.Format("02.01")) + ")"
+	}
+	return text
 }
 
 // billLabel names a bill for messages: its own name, or its type.

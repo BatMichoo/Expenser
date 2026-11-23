@@ -86,3 +86,48 @@ func mustDate(s string) time.Time {
 	}
 	return d
 }
+
+func TestNextPayableOnOrAfter(t *testing.T) {
+	monthly := func(due string, kind BillDateKind) *RecurringPayment {
+		d := mustDate(due)
+		return &RecurringPayment{StartDate: d, DueDate: d, CycleUnit: CycleMonth, CycleEvery: 1, DateKind: kind}
+	}
+	cases := []struct {
+		name, due, today, want string
+		kind                   BillDateKind
+	}{
+		{"weekday cycle on today", "2026-11-12", "2026-12-12", "2027-01-12", DatePayBy},
+		{"Sunday cycle whose Friday passed is skipped", "2026-11-13", "2026-12-12", "2027-01-13", DatePayBy},
+		{"Sunday cycle whose Friday is today", "2026-11-13", "2026-12-11", "2026-12-13", DatePayBy},
+		{"arrives bill keeps the Sunday cycle", "2026-11-13", "2026-12-12", "2026-12-13", DateArrives},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := monthly(c.due, c.kind).NextPayableOnOrAfter(mustDate(c.today))
+			assert.NoError(t, err)
+			assert.Equal(t, mustDate(c.want), got)
+		})
+	}
+}
+
+func TestSortByDueDate(t *testing.T) {
+	created := func(n int) time.Time { return time.Date(2026, 1, n, 0, 0, 0, 0, time.UTC) }
+	sun := RecurringPayment{Name: "sun", DueDate: mustDate("2026-12-13"), CreatedAt: created(1)}
+	sat := RecurringPayment{Name: "sat", DueDate: mustDate("2026-12-12"), CreatedAt: created(2)}
+	friNew := RecurringPayment{Name: "fri new", DueDate: mustDate("2026-12-11"), CreatedAt: created(4)}
+	friOld := RecurringPayment{Name: "fri old", DueDate: mustDate("2026-12-11"), CreatedAt: created(3)}
+	thu := RecurringPayment{Name: "thu", DueDate: mustDate("2026-12-10"), CreatedAt: created(5)}
+
+	for _, in := range [][]RecurringPayment{
+		{sun, sat, friNew, friOld, thu},
+		{thu, friOld, friNew, sat, sun},
+		{friNew, sun, thu, sat, friOld},
+	} {
+		SortByDueDate(in)
+		var got []string
+		for _, p := range in {
+			got = append(got, p.Name)
+		}
+		assert.Equal(t, []string{"thu", "fri old", "fri new", "sat", "sun"}, got)
+	}
+}

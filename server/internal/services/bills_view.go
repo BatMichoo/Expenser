@@ -2,7 +2,6 @@ package services
 
 import (
 	"expenser/internal/models"
-	"sort"
 	"time"
 )
 
@@ -17,7 +16,7 @@ func BuildBillsView(payments []models.RecurringPayment, today time.Time) models.
 	monthEnd := time.Date(today.Year(), today.Month()+1, 0, 0, 0, 0, 0, time.UTC)
 
 	sorted := append([]models.RecurringPayment(nil), payments...)
-	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].EffectiveDueDate().Before(sorted[j].EffectiveDueDate()) })
+	models.SortByDueDate(sorted)
 
 	var v models.BillsView
 	for _, p := range sorted {

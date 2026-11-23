@@ -84,7 +84,7 @@ func TestBuildBillsViewWeekendShift(t *testing.T) {
 
 	v := BuildBillsView([]models.RecurringPayment{payments[1], payments[0], payments[2]}, today)
 
-	assert.Equal(t, []string{"saturday", "friday", "sunday 1 feb"}, names(v.DueSoon), "by the Friday date, stable on ties")
+	assert.Equal(t, []string{"friday", "saturday", "sunday 1 feb"}, names(v.DueSoon), "by the Friday date, then the real date")
 	assert.InDelta(t, 1+2+50, v.DueThisMonth, 0.001, "Sunday 1 Feb is due Friday 30 Jan")
 	require.NotNil(t, v.Next)
 	assert.Equal(t, 3, v.Next.DaysLeft)

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"expenser/internal/models"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -316,13 +315,7 @@ func (db *DB) GetUpcomingRecurringPayments(ctx context.Context, userID uuid.UUID
 			out = append(out, p)
 		}
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		a, b := out[i].EffectiveDueDate(), out[j].EffectiveDueDate()
-		if !a.Equal(b) {
-			return a.Before(b)
-		}
-		return out[i].CreatedAt.Before(out[j].CreatedAt)
-	})
+	models.SortByDueDate(out)
 	return out, nil
 }
 

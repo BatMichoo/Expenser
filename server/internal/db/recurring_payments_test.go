@@ -598,5 +598,6 @@ func TestUpcomingOrderedByEffectiveDate(t *testing.T) {
 
 	got, err := testDB.GetUpcomingRecurringPayments(ctx, userID, rpDate(2026, 1, 31))
 	require.NoError(t, err)
-	assert.Equal(t, []uuid.UUID{thursday.ID, saturday.ID, friday.ID}, ids(got))
+	assert.Equal(t, []uuid.UUID{thursday.ID, friday.ID, saturday.ID}, ids(got),
+		"same Friday: the real date breaks the tie, like the Bills page")
 }

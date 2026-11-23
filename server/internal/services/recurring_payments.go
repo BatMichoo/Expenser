@@ -96,14 +96,15 @@ func (s *RecurringPaymentService) Update(ctx context.Context, userID uuid.UUID, 
 	return s.store.UpdateRecurringPayment(ctx, p, userID)
 }
 
-// SkipMissed moves an overdue payment to its next due date on or after
-// today without recording expenses for the cycles in between.
+// SkipMissed moves an overdue payment to its first due date that can still
+// be paid on time (its effective date is today or later) without recording
+// expenses for the cycles in between.
 func (s *RecurringPaymentService) SkipMissed(ctx context.Context, userID, id uuid.UUID) (*models.RecurringPayment, error) {
 	p, err := s.store.GetRecurringPaymentByID(ctx, id, userID)
 	if err != nil {
 		return nil, err
 	}
-	next, err := p.NextDueOnOrAfter(s.now())
+	next, err := p.NextPayableOnOrAfter(s.now())
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import (
 	"expenser/internal/models"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,6 +29,18 @@ type ReminderScheduler struct {
 	hours      models.TimeWindow // reminders are only sent inside these hours
 	runTimeout time.Duration     // upper bound for one RunOnce, so a hung DB cannot stall the loop
 	now        func() time.Time
+
+	// unrecorded remembers reminders that went out but could not be saved
+	// (the database failed after sending), so a later check the same day
+	// saves them instead of sending again.
+	mu         sync.Mutex
+	unrecorded map[uuid.UUID]unrecordedReminder
+}
+
+// unrecordedReminder is a reminder sent on sentOn for dueDate that is not
+// yet saved as sent.
+type unrecordedReminder struct {
+	dueDate, sentOn time.Time
 }
 
 // defaultRunTimeout bounds a single reminder check.
@@ -41,6 +54,7 @@ func NewReminderScheduler(store ReminderStore, notifier Notifier, interval time.
 		hours:      hours,
 		runTimeout: defaultRunTimeout,
 		now:        time.Now,
+		unrecorded: map[uuid.UUID]unrecordedReminder{},
 	}
 }
 
@@ -94,8 +108,9 @@ func (s *ReminderScheduler) safeRunOnce(ctx context.Context) (err error) {
 
 // RunOnce performs a single check. Outside the send hours it does nothing.
 // "Today" is the server's local calendar date. Problems with one payment are logged and do not stop the others; a
-// payment whose reminder failed is retried on the next check. The returned
-// error joins every per-payment failure.
+// payment whose reminder failed is retried on the next check, and one sent
+// but not saved is saved on the next check, not sent again that day. The
+// returned error joins every per-payment failure.
 func (s *ReminderScheduler) RunOnce(ctx context.Context) error {
 	now := s.now()
 	if !s.hours.Contains(now) {
@@ -103,9 +118,24 @@ func (s *ReminderScheduler) RunOnce(ctx context.Context) error {
 	}
 	today := models.DateOnly(now)
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var errs []error
+	for id, u := range s.unrecorded {
+		if !u.sentOn.Equal(today) {
+			delete(s.unrecorded, id) // a new day: send as usual
+			continue
+		}
+		if err := s.store.MarkRecurringPaymentNotified(ctx, id, u.dueDate, u.sentOn); err != nil {
+			errs = append(errs, fmt.Errorf("reminder sent but not recorded for %s: %w", id, err))
+			continue
+		}
+		delete(s.unrecorded, id)
+	}
+
 	active, err := s.store.GetActiveRecurringPayments(ctx)
 	if err != nil {
-		return err
+		return errors.Join(append(errs, err)...)
 	}
 	due := make([]models.RecurringPayment, 0, len(active))
 	for _, p := range active {
@@ -113,12 +143,14 @@ func (s *ReminderScheduler) RunOnce(ctx context.Context) error {
 		if p.ReminderRecipient() == "" {
 			continue
 		}
+		if _, sent := s.unrecorded[p.ID]; sent {
+			continue // already sent today, only the record is missing
+		}
 		if p.ShouldRemind(today) {
 			due = append(due, p)
 		}
 	}
 
-	var errs []error
 	for _, p := range due {
 		if ctx.Err() != nil {
 			errs = append(errs, ctx.Err())
@@ -134,7 +166,9 @@ func (s *ReminderScheduler) RunOnce(ctx context.Context) error {
 			continue
 		}
 		if err := s.store.MarkRecurringPaymentNotified(ctx, p.ID, p.DueDate, today); err != nil {
-			// The reminder went out but may be sent again on the next check.
+			// The reminder went out: later checks today retry saving it
+			// instead of sending it again.
+			s.unrecorded[p.ID] = unrecordedReminder{dueDate: p.DueDate, sentOn: today}
 			errs = append(errs, fmt.Errorf("reminder sent but not recorded for %s: %w", p.ID, err))
 		}
 	}

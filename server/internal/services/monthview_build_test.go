@@ -304,3 +304,22 @@ func TestHouseBreakdownKeepsTypeColours(t *testing.T) {
 	require.NotEmpty(t, v.Breakdown)
 	assert.Equal(t, 3, v.Breakdown[0].Color)
 }
+
+func TestHouseMonthViewUpcomingTiesMatchBillsPage(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	store := newMonthStore()
+	created := func(n int) time.Time { return time.Date(2026, 1, n, 0, 0, 0, 0, time.UTC) }
+	store.bills = []models.RecurringPayment{ // the store's order must not matter
+		{Name: "Sunday", Category: models.SectionHouse, DueDate: day(2026, 11, 22), Active: true, CreatedAt: created(1)},
+		{Name: "Friday", Category: models.SectionHouse, DueDate: day(2026, 11, 20), Active: true, CreatedAt: created(2)},
+	}
+	now := time.Date(2026, 11, 10, 15, 0, 0, 0, time.UTC)
+	v, err := NewMonthViewService(store).House(context.Background(), uuid.New(), YearMonth{2026, time.November}, MonthFilter{}, "en", now)
+	require.NoError(t, err)
+	require.Len(t, v.UpcomingBills, 2)
+	assert.Equal(t, "Friday", v.UpcomingBills[0].Payment.Name)
+	assert.Equal(t, "Sunday", v.UpcomingBills[1].Payment.Name)
+
+	bv := BuildBillsView(store.bills, now)
+	assert.Equal(t, []string{"Friday", "Sunday"}, names(bv.DueSoon))
+}

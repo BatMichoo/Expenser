@@ -253,3 +253,16 @@ func TestSkipMissed(t *testing.T) {
 	assert.Equal(t, day(2026, 12, 5), store.updated.DueDate)
 	assert.Equal(t, day(2026, 8, 5), store.updated.StartDate)
 }
+
+func TestSkipMissedNeverLandsOnAPastFriday(t *testing.T) {
+	userID := uuid.New()
+	// Due the 13th monthly; today is Saturday 12 Dec, so the 13 Dec cycle
+	// (a Sunday, due Friday 11) is already missed too.
+	stored := &models.RecurringPayment{ID: uuid.New(), UserID: userID, Active: true, DateKind: models.DatePayBy,
+		StartDate: day(2026, 10, 13), DueDate: day(2026, 10, 13), CycleUnit: models.CycleMonth, CycleEvery: 1}
+	store := &fakePaymentStore{payment: stored}
+	p, err := newTestPaymentService(store, day(2026, 12, 12)).SkipMissed(context.Background(), userID, stored.ID)
+	require.NoError(t, err)
+	assert.Equal(t, day(2027, 1, 13), p.DueDate)
+	assert.False(t, p.IsOverdue(day(2026, 12, 12)))
+}

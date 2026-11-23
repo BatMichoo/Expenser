@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -284,6 +285,34 @@ func (p *RecurringPayment) NextDueAfter(date time.Time) (time.Time, error) {
 // NextDueOnOrAfter is the first cycle date on or after date (today counts).
 func (p *RecurringPayment) NextDueOnOrAfter(date time.Time) (time.Time, error) {
 	return p.NextDueAfter(DateOnly(date).AddDate(0, 0, -1))
+}
+
+// NextPayableOnOrAfter is the first cycle date whose effective date (see
+// EffectiveDueDate) is on or after date: a Sunday cycle whose Friday has
+// already passed is missed too, so it is skipped.
+func (p *RecurringPayment) NextPayableOnOrAfter(date time.Time) (time.Time, error) {
+	date = DateOnly(date)
+	next, err := p.NextDueOnOrAfter(date)
+	for err == nil && p.effective(next).Before(date) {
+		next, err = p.NextDueAfter(next)
+	}
+	return next, err
+}
+
+// SortByDueDate orders payments by effective due date, then by the real due
+// date (Friday, Saturday, Sunday), then oldest first, so every list of
+// bills shows ties in the same order.
+func SortByDueDate(ps []RecurringPayment) {
+	sort.SliceStable(ps, func(i, j int) bool {
+		a, b := ps[i], ps[j]
+		if ea, eb := a.EffectiveDueDate(), b.EffectiveDueDate(); !ea.Equal(eb) {
+			return ea.Before(eb)
+		}
+		if da, db := DateOnly(a.DueDate), DateOnly(b.DueDate); !da.Equal(db) {
+			return da.Before(db)
+		}
+		return a.CreatedAt.Before(b.CreatedAt)
+	})
 }
 
 // MissedCycles reports whether the payment is more than one cycle behind:

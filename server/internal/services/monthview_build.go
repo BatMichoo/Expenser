@@ -6,7 +6,6 @@ import (
 	"expenser/internal/models"
 	"expenser/internal/utilities"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -337,7 +336,7 @@ func (s *MonthViewService) upcomingBills(ctx context.Context, userID uuid.UUID, 
 	if err != nil {
 		return nil, fmt.Errorf("upcoming bills: %w", err)
 	}
-	sort.SliceStable(payments, func(i, j int) bool { return payments[i].EffectiveDueDate().Before(payments[j].EffectiveDueDate()) })
+	models.SortByDueDate(payments)
 
 	var out []models.UpcomingPayment
 	for _, p := range payments {

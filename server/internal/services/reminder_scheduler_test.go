@@ -397,3 +397,43 @@ func TestRunOnceSkipsBillsWithoutRecipient(t *testing.T) {
 	assert.Nil(t, noEmail.LastNotifiedFor, "skipped bills are not counted")
 	assert.Equal(t, 0, noEmail.RemindersSent)
 }
+
+func TestRunOnceSentButNotRecordedIsNotResentSameDay(t *testing.T) {
+	p := monthly(day(2026, 11, 12), 3)
+	p.RepeatEveryDays = intPtr(1)
+	store := &fakeStore{payments: []*models.RecurringPayment{p}, markErr: errors.New("db gone")}
+	n := &fakeNotifier{}
+	s := NewReminderScheduler(store, n, time.Hour, models.DefaultReminderHours)
+
+	s.now = func() time.Time { return at(day(2026, 11, 10), 9, 0) }
+	assert.ErrorContains(t, s.RunOnce(context.Background()), "db gone")
+
+	store.markErr = nil // the database is back: the next check records it
+	for _, h := range []int{10, 11} {
+		s.now = func() time.Time { return at(day(2026, 11, 10), h, 0) }
+		require.NoError(t, s.RunOnce(context.Background()))
+	}
+	assert.Len(t, n.sent, 1, "not sent again the same day")
+	require.NotNil(t, p.LastNotifiedOn, "recorded on a later check")
+	assert.Equal(t, day(2026, 11, 10), *p.LastNotifiedOn)
+
+	s.now = func() time.Time { return at(day(2026, 11, 11), 9, 0) }
+	require.NoError(t, s.RunOnce(context.Background()))
+	assert.Len(t, n.sent, 2, "next day sends as usual")
+}
+
+func TestRunOnceSentButNeverRecordedStillOncePerDay(t *testing.T) {
+	p := monthly(day(2026, 11, 12), 3)
+	p.RepeatEveryDays = intPtr(1)
+	store := &fakeStore{payments: []*models.RecurringPayment{p}, markErr: errors.New("db gone")}
+	n := &fakeNotifier{}
+	s := NewReminderScheduler(store, n, time.Hour, models.DefaultReminderHours)
+	for _, h := range []int{9, 10, 11, 17} {
+		s.now = func() time.Time { return at(day(2026, 11, 10), h, 0) }
+		_ = s.RunOnce(context.Background())
+	}
+	assert.Len(t, n.sent, 1)
+	s.now = func() time.Time { return at(day(2026, 11, 11), 9, 0) }
+	_ = s.RunOnce(context.Background())
+	assert.Len(t, n.sent, 2, "next day sends again")
+}
