@@ -100,7 +100,7 @@ func main() {
 
 	schedulerCtx, stopScheduler := context.WithCancel(context.Background())
 	schedulerDone := make(chan struct{})
-	reminderScheduler := services.NewReminderScheduler(db, reminderNotifier(mailer, links), cfg.ReminderCheckInterval)
+	reminderScheduler := services.NewReminderScheduler(db, reminderNotifier(mailer, links), cfg.ReminderCheckInterval, cfg.ReminderHours)
 	go func() {
 		reminderScheduler.Run(schedulerCtx)
 		close(schedulerDone)

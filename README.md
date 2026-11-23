@@ -50,7 +50,8 @@ site for Expenser has to let `/snooze/` through without a login.
 | `APP_URL` | | e.g. `https://expenser.homeserver.lan`: reminder emails get an "Open bills" button and snooze links. Empty: emails without links |
 | `APP_PORT` | `8080` | Where the app listens |
 | `APP_TIMEZONE` | `Europe/Sofia` | Which day a purchase falls on, month boundaries, "today" for reminders |
-| `REMINDER_CHECK_INTERVAL` | `24h` | How often reminders are checked (at least `30m`) |
+| `REMINDER_CHECK_INTERVAL` | `1h` | How often reminders are checked (at least `30m`) |
+| `REMINDER_HOURS` | `09:00-18:00` | When reminder emails may be sent, local time, every day (weekends too) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | port 587 | Reminder emails. Without `SMTP_HOST` they are only logged. Gmail needs an app password (Google account → Security → 2-Step Verification → App passwords) |
 | `GEMINI_API_KEY` | | Reads receipts and suggests pack sizes |
 | `DEV_MODE` | off | Development only: no login needed (you are the dev seed user), Gin's debug mode, and a "Send test email" button next to a bill's address |

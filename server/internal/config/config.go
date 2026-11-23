@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"expenser/internal/models"
 	"fmt"
 	"log"
 	"net/url"
@@ -51,6 +52,9 @@ type Config struct {
 	// ReminderCheckInterval is how often the recurring payment reminder
 	// scheduler runs.
 	ReminderCheckInterval time.Duration
+	// ReminderHours is when reminder emails may be sent, local time, every
+	// day (REMINDER_HOURS, default 09:00-18:00).
+	ReminderHours models.TimeWindow
 	// SMTP sends reminder emails; without a host they are only logged.
 	SMTP SMTP
 	// AppURL is where the app is reached, e.g. https://expenser.home.lan.
@@ -208,6 +212,7 @@ func LoadConfig(getenv func(string) string) (*Config, error) {
 		SeedDevData: getenv("SEED_DEV_DATA") == "true",
 
 		ReminderCheckInterval: parseReminderCheckInterval(getenv("REMINDER_CHECK_INTERVAL")),
+		ReminderHours:         parseReminderHours(getenv("REMINDER_HOURS")),
 		SMTP:                  loadSMTP(getenv),
 	}, nil
 }
@@ -262,7 +267,7 @@ func RedactConnString(conn string) string {
 }
 
 const (
-	DefaultReminderCheckInterval = 24 * time.Hour
+	DefaultReminderCheckInterval = time.Hour
 	MinReminderCheckInterval     = 30 * time.Minute
 )
 
@@ -283,6 +288,20 @@ func parseReminderCheckInterval(v string) time.Duration {
 		return MinReminderCheckInterval
 	}
 	return d
+}
+
+// parseReminderHours never fails: empty or invalid values use
+// models.DefaultReminderHours.
+func parseReminderHours(v string) models.TimeWindow {
+	if v == "" {
+		return models.DefaultReminderHours
+	}
+	w, err := models.ParseTimeWindow(v)
+	if err != nil {
+		log.Printf("Invalid REMINDER_HOURS %q, using default %s\n", v, models.DefaultReminderHours)
+		return models.DefaultReminderHours
+	}
+	return w
 }
 
 // GetProjectRootDir is used to have consistant way to get the root of our project

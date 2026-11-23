@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"expenser/internal/models"
 	"log"
 	"maps"
 	"os"
@@ -180,4 +181,15 @@ func TestLoadLocation(t *testing.T) {
 
 	_, err = loadLocation("Mars/Olympus")
 	assert.Error(t, err)
+}
+
+func TestParseReminderHours(t *testing.T) {
+	assert.Equal(t, models.DefaultReminderHours, parseReminderHours(""))
+	assert.Equal(t, models.DefaultReminderHours, parseReminderHours("garbage"))
+	assert.Equal(t, models.DefaultReminderHours, parseReminderHours("18:00-09:00"))
+	assert.Equal(t, models.TimeWindow{Start: 7 * time.Hour, End: 22 * time.Hour}, parseReminderHours("07:00-22:00"))
+}
+
+func TestDefaultReminderCheckIntervalIsHourly(t *testing.T) {
+	assert.Equal(t, time.Hour, DefaultReminderCheckInterval)
 }

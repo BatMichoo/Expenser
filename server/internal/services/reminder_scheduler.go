@@ -25,41 +25,58 @@ type ReminderScheduler struct {
 	store      ReminderStore
 	notifier   Notifier
 	interval   time.Duration
-	runTimeout time.Duration // upper bound for one RunOnce, so a hung DB cannot stall the loop
+	hours      models.TimeWindow // reminders are only sent inside these hours
+	runTimeout time.Duration     // upper bound for one RunOnce, so a hung DB cannot stall the loop
 	now        func() time.Time
 }
 
 // defaultRunTimeout bounds a single reminder check.
 const defaultRunTimeout = 5 * time.Minute
 
-func NewReminderScheduler(store ReminderStore, notifier Notifier, interval time.Duration) *ReminderScheduler {
+func NewReminderScheduler(store ReminderStore, notifier Notifier, interval time.Duration, hours models.TimeWindow) *ReminderScheduler {
 	return &ReminderScheduler{
 		store:      store,
 		notifier:   notifier,
 		interval:   interval,
+		hours:      hours,
 		runTimeout: defaultRunTimeout,
 		now:        time.Now,
 	}
 }
 
-// Run checks once immediately and then on every interval until ctx is
+// Run checks once immediately and then after each nextWait until ctx is
 // cancelled. It blocks, so call it in its own goroutine.
 func (s *ReminderScheduler) Run(ctx context.Context) {
-	log.Printf("Reminder scheduler started (interval %s).", s.interval)
-	ticker := time.NewTicker(s.interval)
-	defer ticker.Stop()
+	log.Printf("Reminder scheduler started (interval %s, sending %s).", s.interval, s.hours)
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+	<-timer.C
 
 	for {
 		if err := s.safeRunOnce(ctx); err != nil && ctx.Err() == nil {
 			log.Printf("Reminder check failed: %v", err)
 		}
+		timer.Reset(s.nextWait(s.now()))
 		select {
 		case <-ctx.Done():
 			log.Println("Reminder scheduler stopped.")
 			return
-		case <-ticker.C:
+		case <-timer.C:
 		}
 	}
+}
+
+// nextWait is how long to sleep before the next check: the interval, but
+// never past the moment the send hours open, so a long interval or a
+// restart at night doesn't skip the day's reminders.
+func (s *ReminderScheduler) nextWait(now time.Time) time.Duration {
+	if s.hours.Contains(now) {
+		return s.interval
+	}
+	if open := s.hours.NextOpen(now).Sub(now); open < s.interval {
+		return open
+	}
+	return s.interval
 }
 
 // safeRunOnce bounds RunOnce with runTimeout and turns a panic into an
@@ -78,12 +95,16 @@ func (s *ReminderScheduler) safeRunOnce(ctx context.Context) (err error) {
 	return s.RunOnce(ctx)
 }
 
-// RunOnce performs a single check. "Today" is the server's local calendar
-// date. Problems with one payment are logged and do not stop the others; a
+// RunOnce performs a single check. Outside the send hours it does nothing.
+// "Today" is the server's local calendar date. Problems with one payment are logged and do not stop the others; a
 // payment whose reminder failed is retried on the next check. The returned
 // error joins every per-payment failure.
 func (s *ReminderScheduler) RunOnce(ctx context.Context) error {
-	today := models.DateOnly(s.now())
+	now := s.now()
+	if !s.hours.Contains(now) {
+		return nil // outside the send hours; the next check in hours sends
+	}
+	today := models.DateOnly(now)
 
 	active, err := s.store.GetActiveRecurringPayments(ctx)
 	if err != nil {

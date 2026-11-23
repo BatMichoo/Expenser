@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func intPtr(i int) *int { return &i }
+
 func day(y int, m time.Month, d int) time.Time {
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 }
@@ -102,10 +104,88 @@ func monthly(due time.Time, remind int) *models.RecurringPayment {
 	}
 }
 
+// newTestScheduler runs at 10:00 on today, inside the default send hours.
 func newTestScheduler(store ReminderStore, n Notifier, today time.Time) *ReminderScheduler {
-	s := NewReminderScheduler(store, n, time.Hour)
-	s.now = func() time.Time { return today }
+	s := NewReminderScheduler(store, n, time.Hour, models.DefaultReminderHours)
+	s.now = func() time.Time { return today.Add(10 * time.Hour) }
 	return s
+}
+
+func at(d time.Time, h, m int) time.Time {
+	return d.Add(time.Duration(h)*time.Hour + time.Duration(m)*time.Minute)
+}
+
+func TestRunOnceSendsNothingOutsideHours(t *testing.T) {
+	p := monthly(day(2026, 11, 12), 3)
+	store := &fakeStore{payments: []*models.RecurringPayment{p}}
+	n := &fakeNotifier{}
+	s := NewReminderScheduler(store, n, time.Hour, models.DefaultReminderHours)
+
+	s.now = func() time.Time { return at(day(2026, 11, 10), 8, 59) }
+	require.NoError(t, s.RunOnce(context.Background()))
+	assert.Empty(t, n.sent)
+	assert.Nil(t, p.LastNotifiedOn, "not marked")
+
+	s.now = func() time.Time { return at(day(2026, 11, 10), 9, 0) }
+	require.NoError(t, s.RunOnce(context.Background()))
+	assert.Len(t, n.sent, 1)
+
+	s.now = func() time.Time { return at(day(2026, 11, 11), 18, 0) }
+	p.RepeatEveryDays = intPtr(1)
+	require.NoError(t, s.RunOnce(context.Background()))
+	assert.Len(t, n.sent, 1, "18:00 is outside the hours")
+}
+
+func TestRunOnceOncePerDayAcrossHourlyChecks(t *testing.T) {
+	p := monthly(day(2026, 11, 12), 3)
+	p.RepeatEveryDays = intPtr(1)
+	store := &fakeStore{payments: []*models.RecurringPayment{p}}
+	n := &fakeNotifier{}
+	s := NewReminderScheduler(store, n, time.Hour, models.DefaultReminderHours)
+	for _, h := range []int{9, 10, 17} {
+		s.now = func() time.Time { return at(day(2026, 11, 10), h, 0) }
+		require.NoError(t, s.RunOnce(context.Background()))
+	}
+	assert.Len(t, n.sent, 1)
+}
+
+func TestRunOnceWeekendBillRemindedOnce(t *testing.T) {
+	p := monthly(day(2026, 12, 13), 3) // Sunday: counts as Fri 11, first reminder Tue 8
+	p.RepeatEveryDays = intPtr(1)
+	store := &fakeStore{payments: []*models.RecurringPayment{p}}
+	n := &fakeNotifier{}
+	s := NewReminderScheduler(store, n, time.Hour, models.DefaultReminderHours)
+
+	s.now = func() time.Time { return at(day(2026, 12, 7), 10, 0) }
+	require.NoError(t, s.RunOnce(context.Background()))
+	assert.Empty(t, n.sent, "Monday 7 is before the first reminder")
+
+	for _, h := range []int{9, 12} {
+		s.now = func() time.Time { return at(day(2026, 12, 8), h, 0) }
+		require.NoError(t, s.RunOnce(context.Background()))
+	}
+	require.Len(t, n.sent, 1)
+	assert.Equal(t, 3, n.sent[0].DaysLeft)
+}
+
+func TestNextWait(t *testing.T) {
+	d := day(2026, 11, 10)
+	tests := []struct {
+		interval time.Duration
+		now      time.Time
+		want     time.Duration
+	}{
+		{24 * time.Hour, at(d, 3, 0), 6 * time.Hour},
+		{time.Hour, at(d, 3, 0), time.Hour},
+		{24 * time.Hour, at(d, 10, 0), 24 * time.Hour},
+		{time.Hour, at(d, 17, 30), time.Hour},
+		{24 * time.Hour, at(d, 18, 30), 14*time.Hour + 30*time.Minute},
+		{24 * time.Hour, at(d, 8, 59), time.Minute},
+	}
+	for _, tt := range tests {
+		s := NewReminderScheduler(&fakeStore{}, &fakeNotifier{}, tt.interval, models.DefaultReminderHours)
+		assert.Equal(t, tt.want, s.nextWait(tt.now), "%s at %s", tt.interval, tt.now.Format("15:04"))
+	}
 }
 
 func TestRunOnceSendsReminderOnce(t *testing.T) {
@@ -234,7 +314,7 @@ func TestSafeRunOnceTimesOut(t *testing.T) {
 
 func TestRunStopsOnCancel(t *testing.T) {
 	store := &fakeStore{}
-	s := NewReminderScheduler(store, &fakeNotifier{}, time.Hour)
+	s := NewReminderScheduler(store, &fakeNotifier{}, time.Hour, models.DefaultReminderHours)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
