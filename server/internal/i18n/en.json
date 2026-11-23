@@ -296,6 +296,8 @@
   "bills.paused": "Paused (no reminders)",
   "bills.pay_title": "Mark paid",
   "bills.pay_due": "Due %s",
+  "bills.weekend_due.sat": "due Sat %s",
+  "bills.weekend_due.sun": "due Sun %s",
   "bills.pay_hint": "Records the expense and moves the bill to its next due date.",
   "bills.paid_on": "Paid on",
   "bills.created": "Bill added",

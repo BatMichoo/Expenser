@@ -563,3 +563,40 @@ func TestLatestRecurringPayment(t *testing.T) {
 	require.NotNil(t, got)
 	assert.Equal(t, second.ID, got.ID, "the one added last, not the one due last")
 }
+
+func TestUpcomingIncludesWeekendShiftedIntoWindow(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+
+	sunday := newInternetPayment(userID, rpDate(2026, 2, 1)) // counts as Fri 30 Jan
+	monday := newInternetPayment(userID, rpDate(2026, 2, 2))
+	arrives := newInternetPayment(userID, rpDate(2026, 2, 1))
+	arrives.DateKind = models.DateArrives // no deadline: keeps Sunday
+	early := newInternetPayment(userID, rpDate(2026, 1, 30))
+	for _, p := range []*models.RecurringPayment{sunday, monday, arrives, early} {
+		require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+	}
+
+	got, err := testDB.GetUpcomingRecurringPayments(ctx, userID, rpDate(2026, 1, 30))
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []uuid.UUID{sunday.ID, early.ID}, ids(got))
+	for _, p := range got {
+		assert.Equal(t, rpDate(2026, 1, 30), p.EffectiveDueDate())
+	}
+}
+
+func TestUpcomingOrderedByEffectiveDate(t *testing.T) {
+	testDB, userID := setupRecurringTestDB(t)
+	ctx := context.Background()
+
+	saturday := newInternetPayment(userID, rpDate(2026, 1, 24)) // counts as Fri 23
+	thursday := newInternetPayment(userID, rpDate(2026, 1, 22))
+	friday := newInternetPayment(userID, rpDate(2026, 1, 23)) // created after saturday
+	for _, p := range []*models.RecurringPayment{saturday, thursday, friday} {
+		require.NoError(t, testDB.CreateRecurringPayment(ctx, p))
+	}
+
+	got, err := testDB.GetUpcomingRecurringPayments(ctx, userID, rpDate(2026, 1, 31))
+	require.NoError(t, err)
+	assert.Equal(t, []uuid.UUID{thursday.ID, saturday.ID, friday.ID}, ids(got))
+}

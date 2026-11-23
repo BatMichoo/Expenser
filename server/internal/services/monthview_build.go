@@ -337,7 +337,7 @@ func (s *MonthViewService) upcomingBills(ctx context.Context, userID uuid.UUID, 
 	if err != nil {
 		return nil, fmt.Errorf("upcoming bills: %w", err)
 	}
-	sort.SliceStable(payments, func(i, j int) bool { return payments[i].DueDate.Before(payments[j].DueDate) })
+	sort.SliceStable(payments, func(i, j int) bool { return payments[i].EffectiveDueDate().Before(payments[j].EffectiveDueDate()) })
 
 	var out []models.UpcomingPayment
 	for _, p := range payments {

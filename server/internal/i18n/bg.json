@@ -296,6 +296,8 @@
   "bills.paused": "На пауза (без напомняния)",
   "bills.pay_title": "Отбележи платено",
   "bills.pay_due": "Падеж %s",
+  "bills.weekend_due.sat": "срок съб %s",
+  "bills.weekend_due.sun": "срок нед %s",
   "bills.pay_hint": "Записва разхода и премества сметката към следващия падеж.",
   "bills.paid_on": "Платено на",
   "bills.created": "Сметката е добавена",

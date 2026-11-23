@@ -471,7 +471,7 @@ func (h *BillsHandler) MarkBillPaid(c *gin.Context) error {
 	billsChanged(c, true)
 	renderSuccess(c, http.StatusOK, utilities.T(lang, "bills.paid"),
 		fmt.Sprintf(utilities.T(lang, "bills.paid_message"), billLabel(lang, paid.Payment),
-			paid.Payment.DueDate.Format("02.01.2006")))
+			paid.Payment.EffectiveDueDate().Format("02.01.2006")))
 	return nil
 }
 
@@ -489,7 +489,7 @@ func (h *BillsHandler) SkipMissed(c *gin.Context) error {
 	lang := currentLang(c)
 	billsChanged(c, false)
 	renderSuccess(c, http.StatusOK, utilities.T(lang, "bills.skipped"),
-		fmt.Sprintf(utilities.T(lang, "bills.next_due"), p.DueDate.Format("02.01.2006")))
+		fmt.Sprintf(utilities.T(lang, "bills.next_due"), p.EffectiveDueDate().Format("02.01.2006")))
 	return nil
 }
 

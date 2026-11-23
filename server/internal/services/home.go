@@ -105,7 +105,7 @@ func pickHomeBills(payments []models.RecurringPayment, today time.Time, n int) (
 			active = append(active, p)
 		}
 	}
-	sort.SliceStable(active, func(i, j int) bool { return active[i].DueDate.Before(active[j].DueDate) })
+	sort.SliceStable(active, func(i, j int) bool { return active[i].EffectiveDueDate().Before(active[j].EffectiveDueDate()) })
 	more := 0
 	if len(active) > n {
 		more = len(active) - n

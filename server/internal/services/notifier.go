@@ -61,7 +61,7 @@ func FormatReminder(r Reminder) string {
 	if p.DateKind == models.DateArrives {
 		fmt.Fprintf(&b, " arrives around %s (%s)", p.DueDate.Format("2006-01-02"), waitingText(r.DaysLeft))
 	} else {
-		fmt.Fprintf(&b, " due %s (%s)", p.DueDate.Format("2006-01-02"), daysLeftText(r.DaysLeft))
+		fmt.Fprintf(&b, " due %s (%s)", p.EffectiveDueDate().Format("2006-01-02"), daysLeftText(r.DaysLeft))
 	}
 	if p.PaymentHours != "" {
 		fmt.Fprintf(&b, " | hours: %s", p.PaymentHours)

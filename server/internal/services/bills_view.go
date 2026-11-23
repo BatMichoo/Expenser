@@ -17,7 +17,7 @@ func BuildBillsView(payments []models.RecurringPayment, today time.Time) models.
 	monthEnd := time.Date(today.Year(), today.Month()+1, 0, 0, 0, 0, 0, time.UTC)
 
 	sorted := append([]models.RecurringPayment(nil), payments...)
-	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].DueDate.Before(sorted[j].DueDate) })
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].EffectiveDueDate().Before(sorted[j].EffectiveDueDate()) })
 
 	var v models.BillsView
 	for _, p := range sorted {
@@ -28,7 +28,7 @@ func BuildBillsView(payments []models.RecurringPayment, today time.Time) models.
 			v.Paused = append(v.Paused, row)
 			continue
 		}
-		if !models.DateOnly(p.DueDate).After(monthEnd) && p.ExpectedAmount != nil {
+		if !p.EffectiveDueDate().After(monthEnd) && p.ExpectedAmount != nil {
 			v.DueThisMonth += *p.ExpectedAmount
 		}
 

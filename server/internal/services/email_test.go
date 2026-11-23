@@ -72,8 +72,9 @@ func TestBuildTestReminderEmail(t *testing.T) {
 	m := BuildTestReminderEmail("ivan", "en", "me@example.com", today, nil)
 
 	assert.Equal(t, "me@example.com", m.To)
-	assert.Equal(t, "[Test] Reminder: Vivacom Fiber 500 Mbps + TV (apartment & garage) — in 3 days", m.Subject)
-	for _, want := range []string{"Hi ivan,", "Internet", "1234.56 €", "14.11.2026", "in 3 days",
+	// Due Sat 14 Nov: it counts as Friday 13, two days away.
+	assert.Equal(t, "[Test] Reminder: Vivacom Fiber 500 Mbps + TV (apartment & garage) — in 2 days", m.Subject)
+	for _, want := range []string{"Hi ivan,", "Internet", "1234.56 €", "13.11.2026 (in 2 days)",
 		"Mon–Fri 9:00–18:00", "Cash, Card, Bank transfer, Online, ePay.bg", "Client no. 1234567", "Second line"} {
 		assert.Contains(t, m.Text, want)
 		assert.Contains(t, m.HTML, want)
@@ -160,4 +161,16 @@ func TestReminderEmailWithLinks(t *testing.T) {
 	m = BuildReminderEmail(r)
 	assert.NotContains(t, m.HTML, "snooze")
 	assert.Contains(t, m.HTML, "https://app.lan/bills")
+}
+
+func TestReminderEmailShowsEffectiveDate(t *testing.T) {
+	require.NoError(t, utilities.InitI18n())
+	r := gasReminder("en")
+	r.Payment.DateKind = models.DatePayBy
+	r.Payment.DueDate = time.Date(2026, 12, 13, 0, 0, 0, 0, time.UTC) // Sunday
+	r.DaysLeft = 2
+	m := BuildReminderEmail(r)
+	assert.Contains(t, m.Text, "11.12.2026")
+	assert.Contains(t, m.HTML, "11.12.2026")
+	assert.NotContains(t, m.Text, "13.12.2026")
 }

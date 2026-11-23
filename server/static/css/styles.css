@@ -2094,6 +2094,11 @@ tr:hover .row-actions,
   font-variant-numeric: tabular-nums;
 }
 
+/* "(due Sat 12.12)" after the Friday date of a weekend bill */
+.weekend-due {
+  white-space: nowrap;
+}
+
 .due-pill {
   padding: 0.1rem 0.55rem;
   border-radius: 999px;

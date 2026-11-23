@@ -1615,3 +1615,23 @@ func TestMoneyInputsShowTwoDecimals(t *testing.T) {
 	v, _ = doc.Find(`input[name="discount_amount"]`).Attr("value")
 	assert.Equal(t, "2.40", v)
 }
+
+func TestBillsPageShowsWeekendNote(t *testing.T) {
+	sat := sampleBill("Fiber", time.Date(2026, 12, 12, 0, 0, 0, 0, time.UTC), true)
+	sat.DateKind = models.DatePayBy
+	wed := sampleBill("Water", time.Date(2026, 12, 9, 0, 0, 0, 0, time.UTC), true)
+	wed.ID = uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	wed.DateKind = models.DatePayBy
+	for lang, note := range map[string]string{"en": "(due Sat 12.12)", "bg": "(срок съб 12.12)"} {
+		v := &models.BillsView{
+			DueSoon: []models.BillRow{{Payment: wed, DaysLeft: 1}, {Payment: sat, DaysLeft: 3}},
+			Total:   2, Lang: lang,
+		}
+		doc := parseHTML(t, render(t, "bills-view", v))
+		rows := doc.Find(".bill-date")
+		require.Equal(t, 2, rows.Length())
+		assert.Equal(t, "09.12.2026", strings.TrimSpace(rows.Eq(0).Text()), "weekday: no note")
+		got := strings.Join(strings.Fields(rows.Eq(1).Text()), " ")
+		assert.Equal(t, "11.12.2026 "+note, got, lang)
+	}
+}

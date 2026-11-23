@@ -6,6 +6,7 @@ import (
 	"errors"
 	"expenser/internal/models"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -295,17 +296,34 @@ func (db *DB) MarkRecurringPaymentNotified(ctx context.Context, id uuid.UUID, du
 	return nil
 }
 
-// GetUpcomingRecurringPayments returns a user's active payments due on or
-// before until, overdue ones included, soonest first. Payments only move to
-// their next due date when paid, so every result is unpaid.
+// GetUpcomingRecurringPayments returns a user's active payments whose
+// effective due date (see RecurringPayment.EffectiveDueDate) is on or before
+// until, overdue ones included, soonest first. Payments only move to their
+// next due date when paid, so every result is unpaid.
 func (db *DB) GetUpcomingRecurringPayments(ctx context.Context, userID uuid.UUID, until time.Time) ([]models.RecurringPayment, error) {
+	until = models.DateOnly(until)
+	// A weekend due date counts up to two days earlier, so look two days
+	// further and filter on the effective date.
 	payments, err := queryRecurringPayments(ctx, db.conn, recurringPaymentSelect+`
 		WHERE rp.user_id = $1 AND rp.active AND rp.due_date <= $2
-		ORDER BY rp.due_date, rp.created_at`, userID, models.DateOnly(until))
+		ORDER BY rp.due_date, rp.created_at`, userID, until.AddDate(0, 0, 2))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get upcoming recurring payments: %w", err)
 	}
-	return payments, nil
+	out := payments[:0]
+	for _, p := range payments {
+		if !p.EffectiveDueDate().After(until) {
+			out = append(out, p)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i].EffectiveDueDate(), out[j].EffectiveDueDate()
+		if !a.Equal(b) {
+			return a.Before(b)
+		}
+		return out[i].CreatedAt.Before(out[j].CreatedAt)
+	})
+	return out, nil
 }
 
 // MarkRecurringPaymentPaid records one payment atomically: it creates the

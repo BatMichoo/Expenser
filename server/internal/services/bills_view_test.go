@@ -73,3 +73,19 @@ func TestBuildBillsViewWaiting(t *testing.T) {
 	assert.Equal(t, 1, v.OverdueCount)
 	assert.Equal(t, 1, v.WaitingCount)
 }
+
+func TestBuildBillsViewWeekendShift(t *testing.T) {
+	today := day(2026, 1, 20)
+	payments := []models.RecurringPayment{
+		bill("friday", day(2026, 1, 23), true, 1, 3),
+		bill("saturday", day(2026, 1, 24), true, 2, 3),     // counts as Fri 23
+		bill("sunday 1 feb", day(2026, 2, 1), true, 50, 3), // counts as Fri 30 Jan
+	}
+
+	v := BuildBillsView([]models.RecurringPayment{payments[1], payments[0], payments[2]}, today)
+
+	assert.Equal(t, []string{"saturday", "friday", "sunday 1 feb"}, names(v.DueSoon), "by the Friday date, stable on ties")
+	assert.InDelta(t, 1+2+50, v.DueThisMonth, 0.001, "Sunday 1 Feb is due Friday 30 Jan")
+	require.NotNil(t, v.Next)
+	assert.Equal(t, 3, v.Next.DaysLeft)
+}

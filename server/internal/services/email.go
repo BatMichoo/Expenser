@@ -80,7 +80,7 @@ func BuildReminderEmail(r Reminder) EmailMessage {
 	if p.ExpectedAmount != nil {
 		fields = append(fields, emailField{t("common.amount"), utilities.Money(*p.ExpectedAmount)})
 	}
-	fields = append(fields, emailField{dateLabel, p.DueDate.Format("02.01.2006") + " (" + when + ")"})
+	fields = append(fields, emailField{dateLabel, p.EffectiveDueDate().Format("02.01.2006") + " (" + when + ")"})
 	if p.PaymentHours != "" {
 		fields = append(fields, emailField{t("bills.payment_hours"), p.PaymentHours})
 	}
@@ -206,8 +206,7 @@ func BuildTestReminderEmail(name, lang, to string, today time.Time, links *Remin
 	amount := 1234.56
 	sampleRepeat := 3
 	r := Reminder{
-		To:       to,
-		DaysLeft: 3,
+		To: to,
 		Payment: models.RecurringPayment{
 			OwnerName: name, NotifyEmail: to, Name: "Vivacom Fiber 500 Mbps + TV (apartment & garage)",
 			TypeName: "Internet", Category: models.SectionHouse,
@@ -220,6 +219,7 @@ func BuildTestReminderEmail(name, lang, to string, today time.Time, links *Remin
 			OwnerLang: lang, ID: uuid.New(), RepeatEveryDays: &sampleRepeat,
 		},
 	}
+	r.DaysLeft = r.Payment.DaysUntilDue(today) // 3, or less when that lands on a weekend
 	if links != nil {
 		// Snooze links in the sample point at a bill that doesn't exist,
 		// so they open the "out of date" page.

@@ -31,7 +31,7 @@
         <span class="kpi-title">{{ T .Lang "bills.next" }}</span>
         {{ with .Next }}
         <span class="kpi-value">{{ template "bill-label" (dict "P" .Payment "Lang" $.Lang) }}</span>
-        <span class="kpi-sub">{{ template "due-text" (dict "Days" .DaysLeft "Arrives" (eq (print .Payment.DateKind) "arrives") "Lang" $.Lang) }} · {{ .Payment.DueDate.Format "02.01.2006" }}</span>
+        <span class="kpi-sub">{{ template "due-text" (dict "Days" .DaysLeft "Arrives" (eq (print .Payment.DateKind) "arrives") "Lang" $.Lang) }} · {{ template "due-date" (dict "P" .Payment "Lang" $.Lang) }}</span>
         {{ else }}
         <span class="kpi-value">—</span>
         <span class="kpi-sub">{{ T .Lang "bills.none_next" }}</span>
@@ -91,7 +91,7 @@
   <div class="bill-due">
     {{ if eq .Kind "paused" }}<span class="due-pill paused">{{ T .Lang "bills.group.paused" }}</span>
     {{ else }}<span class="due-pill {{ .Kind }}">{{ template "due-text" (dict "Days" .R.DaysLeft "Arrives" (eq (print $p.DateKind) "arrives") "Lang" .Lang) }}</span>{{ end }}
-    <span class="bill-date">{{ $p.DueDate.Format "02.01.2006" }}</span>
+    <span class="bill-date">{{ template "due-date" (dict "P" $p "Lang" .Lang) }}</span>
   </div>
   <div class="bill-amount">{{ if $p.ExpectedAmount }}{{ money (deref $p.ExpectedAmount) }}{{ else }}—{{ end }}</div>
   <div class="bill-actions">
@@ -111,6 +111,9 @@
 {{ define "bill-label" }}{{ if .P.Name }}{{ .P.Name }}{{ else }}{{ T .Lang (print "type." .P.TypeName) }}{{ end }}{{ end }}
 
 {{ define "cycle-text" }}{{ if eq .P.CycleEvery 1 }}{{ T .Lang (print "bills.cycle." .P.CycleUnit ".one") }}{{ else }}{{ printf (T .Lang (print "bills.cycle." .P.CycleUnit ".many")) .P.CycleEvery }}{{ end }}{{ end }}
+
+{{/* The date that counts for paying; a pay-by bill due at the weekend shows the Friday and, in brackets, its real date. */}}
+{{ define "due-date" }}{{ .P.EffectiveDueDate.Format "02.01.2006" }}{{ if .P.WeekendShifted }} <span class="weekend-due">({{ printf (T .Lang (print "bills.weekend_due." (index (dict "Saturday" "sat" "Sunday" "sun") (print .P.DueDate.Weekday)))) (.P.DueDate.Format "02.01") }})</span>{{ end }}{{ end }}
 
 {{ define "due-text" }}{{ if .Arrives }}{{ template "arrives-text" . }}{{ else if eq .Days 0 }}{{ T .Lang "bills.due.today" }}{{ else if eq .Days 1 }}{{ T .Lang "bills.due.tomorrow" }}{{ else if gt .Days 1 }}{{ printf (T .Lang "bills.due.in") .Days }}{{ else if eq .Days -1 }}{{ T .Lang "bills.due.overdue_one" }}{{ else }}{{ printf (T .Lang "bills.due.overdue") (negi .Days) }}{{ end }}{{ end }}
 
@@ -286,7 +289,7 @@
   <form class="new-expense-form bill-pay-form" hx-post="/bills/{{ .Bill.ID }}/paid" hx-swap="none"
     hx-on::after-request="if(event.detail.successful && event.target === this) { themeHideSheet(); }">
     <p class="receipt-summary">
-      <strong>{{ printf (T .Lang "bills.pay_due") (.Bill.DueDate.Format "02.01.2006") }} · {{ T .Lang (print "type." .Bill.TypeName) }}</strong>
+      <strong>{{ printf (T .Lang "bills.pay_due") (.Bill.EffectiveDueDate.Format "02.01.2006") }} · {{ T .Lang (print "type." .Bill.TypeName) }}</strong>
       <span>{{ T .Lang "bills.pay_hint" }}</span>
     </p>
     <div class="amount-field">
