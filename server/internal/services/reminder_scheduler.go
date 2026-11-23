@@ -67,13 +67,10 @@ func (s *ReminderScheduler) Run(ctx context.Context) {
 }
 
 // nextWait is how long to sleep before the next check: the interval, but
-// never past the moment the send hours open, so a long interval or a
-// restart at night doesn't skip the day's reminders.
+// never past the next time the send hours open, so a long interval, a
+// restart at night or a daylight-saving change can't skip a day.
 func (s *ReminderScheduler) nextWait(now time.Time) time.Duration {
-	if s.hours.Contains(now) {
-		return s.interval
-	}
-	if open := s.hours.NextOpen(now).Sub(now); open < s.interval {
+	if open := s.hours.NextOpenAfter(now).Sub(now); open < s.interval {
 		return open
 	}
 	return s.interval

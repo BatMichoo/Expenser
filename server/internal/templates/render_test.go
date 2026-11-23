@@ -1635,3 +1635,11 @@ func TestBillsPageShowsWeekendNote(t *testing.T) {
 		assert.Equal(t, "11.12.2026 "+note, got, lang)
 	}
 }
+
+func TestBillPayFormShowsWeekendNote(t *testing.T) {
+	b := sampleBill("Fiber", time.Date(2026, 12, 13, 0, 0, 0, 0, time.UTC), true)
+	b.DateKind = models.DatePayBy
+	doc := parseHTML(t, render(t, "bill-pay-form", map[string]any{"Bill": &b, "Label": "Fiber", "Today": "2026-12-09", "Lang": "en"}))
+	got := strings.Join(strings.Fields(doc.Find(".receipt-summary strong").Text()), " ")
+	assert.Contains(t, got, "Due 11.12.2026 (due Sun 13.12)")
+}

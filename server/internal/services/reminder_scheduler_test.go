@@ -177,7 +177,8 @@ func TestNextWait(t *testing.T) {
 	}{
 		{24 * time.Hour, at(d, 3, 0), 6 * time.Hour},
 		{time.Hour, at(d, 3, 0), time.Hour},
-		{24 * time.Hour, at(d, 10, 0), 24 * time.Hour},
+		{24 * time.Hour, at(d, 10, 0), 23 * time.Hour},                 // next day's 09:00, not 10:00
+		{24 * time.Hour, at(d, 17, 30), 15*time.Hour + 30*time.Minute}, // a 24h sleep would land at 17:30 tomorrow... or 18:30 across DST
 		{time.Hour, at(d, 17, 30), time.Hour},
 		{24 * time.Hour, at(d, 18, 30), 14*time.Hour + 30*time.Minute},
 		{24 * time.Hour, at(d, 8, 59), time.Minute},
@@ -186,6 +187,16 @@ func TestNextWait(t *testing.T) {
 		s := NewReminderScheduler(&fakeStore{}, &fakeNotifier{}, tt.interval, models.DefaultReminderHours)
 		assert.Equal(t, tt.want, s.nextWait(tt.now), "%s at %s", tt.interval, tt.now.Format("15:04"))
 	}
+}
+
+func TestNextWaitAcrossDSTDoesNotSkipADay(t *testing.T) {
+	loc, err := time.LoadLocation("Europe/Sofia")
+	require.NoError(t, err)
+	s := NewReminderScheduler(&fakeStore{}, &fakeNotifier{}, 24*time.Hour, models.DefaultReminderHours)
+	// Clocks go forward overnight on 29 March 2026.
+	now := time.Date(2026, 3, 28, 17, 30, 0, 0, loc)
+	woke := now.Add(s.nextWait(now))
+	assert.Equal(t, time.Date(2026, 3, 29, 9, 0, 0, 0, loc), woke)
 }
 
 func TestRunOnceSendsReminderOnce(t *testing.T) {

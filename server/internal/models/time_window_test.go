@@ -44,18 +44,22 @@ func TestTimeWindowContains(t *testing.T) {
 	assert.False(t, w.Contains(at(3, 0)))
 }
 
-func TestTimeWindowNextOpen(t *testing.T) {
+func TestTimeWindowNextOpenAfter(t *testing.T) {
 	loc := sofia(t)
 	w := DefaultReminderHours
 	at := func(d, h, m int) time.Time { return time.Date(2026, 12, d, h, m, 0, 0, loc) }
-	assert.Equal(t, at(12, 9, 0), w.NextOpen(at(12, 3, 0)))
-	assert.Equal(t, at(12, 10, 0), w.NextOpen(at(12, 10, 0)))
-	assert.Equal(t, at(13, 9, 0), w.NextOpen(at(12, 18, 30)))
+	assert.Equal(t, at(12, 9, 0), w.NextOpenAfter(at(12, 3, 0)), "before: today")
+	assert.Equal(t, at(13, 9, 0), w.NextOpenAfter(at(12, 9, 0)), "at the opening: tomorrow")
+	assert.Equal(t, at(13, 9, 0), w.NextOpenAfter(at(12, 10, 0)), "inside: tomorrow")
+	assert.Equal(t, at(13, 9, 0), w.NextOpenAfter(at(12, 18, 30)), "after: tomorrow")
 
 	// Clocks go forward at 03:00 on 29 March 2026 in Sofia.
 	dst := time.Date(2026, 3, 29, 1, 0, 0, 0, loc)
-	assert.Equal(t, time.Date(2026, 3, 29, 9, 0, 0, 0, loc), w.NextOpen(dst))
-	assert.Equal(t, 9, w.NextOpen(dst).Hour())
+	assert.Equal(t, time.Date(2026, 3, 29, 9, 0, 0, 0, loc), w.NextOpenAfter(dst))
+	assert.Equal(t, time.Date(2026, 3, 29, 9, 0, 0, 0, loc), w.NextOpenAfter(time.Date(2026, 3, 28, 17, 30, 0, 0, loc)))
+
+	allDay := TimeWindow{0, 24 * time.Hour}
+	assert.Equal(t, at(13, 0, 0), allDay.NextOpenAfter(at(12, 15, 0)))
 }
 
 func TestTimeWindowString(t *testing.T) {

@@ -65,15 +65,12 @@ func (w TimeWindow) Contains(t time.Time) bool {
 	return d >= w.Start && d < w.End
 }
 
-// NextOpen is t itself when inside the window, otherwise the next time the
-// window opens: today's start before it, tomorrow's after it. It uses wall
-// clock time, so a daylight-saving change doesn't shift the opening hour.
-func (w TimeWindow) NextOpen(t time.Time) time.Time {
-	if w.Contains(t) {
-		return t
-	}
+// NextOpenAfter is the next time the window opens strictly after t: today's
+// start before it, tomorrow's once it has opened. It uses wall clock time,
+// so a daylight-saving change doesn't shift the opening hour.
+func (w TimeWindow) NextOpenAfter(t time.Time) time.Time {
 	day := t
-	if sinceMidnight(t) >= w.End {
+	if sinceMidnight(t) >= w.Start {
 		day = t.AddDate(0, 0, 1)
 	}
 	h, m := int(w.Start/time.Hour), int(w.Start%time.Hour/time.Minute)
