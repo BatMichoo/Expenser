@@ -84,10 +84,12 @@ func (s *RecurringPaymentService) Update(ctx context.Context, userID uuid.UUID, 
 	}
 
 	// Resuming a paused bill: the cycles it missed while paused were not
-	// paid here, so it continues from the next due date on or after today.
+	// paid here, so it continues from the first due date that can still be
+	// paid on time (its effective date, e.g. the Friday before a weekend
+	// date, is today or later).
 	today := models.DateOnly(s.now())
-	if !existing.Active && p.Active && models.DateOnly(p.DueDate).Before(today) {
-		next, err := p.NextDueOnOrAfter(today)
+	if !existing.Active && p.Active && p.EffectiveDueDate().Before(today) {
+		next, err := p.NextPayableOnOrAfter(today)
 		if err != nil {
 			return err
 		}

@@ -266,3 +266,29 @@ func TestSkipMissedNeverLandsOnAPastFriday(t *testing.T) {
 	assert.Equal(t, day(2027, 1, 13), p.DueDate)
 	assert.False(t, p.IsOverdue(day(2026, 12, 12)))
 }
+
+func TestResumeNeverLandsOnAPastFriday(t *testing.T) {
+	saturday := day(2026, 12, 12)
+	cases := []struct {
+		name      string
+		kind      models.BillDateKind
+		due, want time.Time
+	}{
+		{"behind: the Sunday 13 Dec cycle's Friday has passed", models.DatePayBy, day(2026, 10, 13), day(2027, 1, 13)},
+		{"due tomorrow, Sunday, so its Friday has passed", models.DatePayBy, day(2026, 12, 13), day(2027, 1, 13)},
+		{"no deadline: keeps Sunday 13 Dec", models.DateArrives, day(2026, 10, 13), day(2026, 12, 13)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			userID := uuid.New()
+			stored := &models.RecurringPayment{ID: uuid.New(), UserID: userID, Active: false, DateKind: c.kind,
+				StartDate: day(2026, 1, 13), DueDate: c.due, CycleUnit: models.CycleMonth, CycleEvery: 1}
+			store := &fakePaymentStore{payment: stored}
+			edit := *stored
+			edit.Active = true
+			require.NoError(t, newTestPaymentService(store, saturday).Update(context.Background(), userID, &edit))
+			assert.Equal(t, c.want, store.updated.DueDate)
+			assert.False(t, store.updated.IsOverdue(saturday), "not overdue right after resuming")
+		})
+	}
+}
